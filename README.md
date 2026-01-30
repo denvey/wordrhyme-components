@@ -35,6 +35,14 @@ pnpm run turbo:gen:init
 
 ## 📦 Packages
 
+### [auto-crud](./packages/auto-crud/README.md)
+
+Schema-first CRUD components with auto-generated tables and forms
+
+### [auto-crud-server](./packages/auto-crud-server/README.md)
+
+tRPC server utilities for auto-crud - automatic CRUD routers for Drizzle ORM
+
 ### [shadcn](./packages/shadcn/README.md)
 
 A collection of reusable UI components built with shadcn/ui and Radix UI primitives.

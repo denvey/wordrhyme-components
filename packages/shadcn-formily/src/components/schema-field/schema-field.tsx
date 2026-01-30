@@ -14,7 +14,7 @@ import { Slider, SliderInput, SliderSelect } from '../slider';
 import { TagsInputInLine } from '../tags-input-inline';
 import { basicComponentRegistry } from './schema-field-basics';
 
-export const defaultComponentRegistry = {
+export const defaultComponentRegistry: Record<string, FormComponentConfig> = {
   ...basicComponentRegistry,
   ColorPicker: { component: ColorPicker, decorator: 'FormItem' },
   Combobox: { component: Combobox, decorator: 'FormItem' },
@@ -24,11 +24,15 @@ export const defaultComponentRegistry = {
   SliderSelect: { component: SliderSelect, decorator: 'FormItem' },
   TagsInput: { component: TagsInput, decorator: 'FormItem' },
   TagsInputInLine: { component: TagsInputInLine, decorator: 'FormItem' },
-} satisfies Record<string, FormComponentConfig>;
+};
 
-export const defaultComponents = extractComponents(defaultComponentRegistry);
+export const defaultComponents: Record<
+  string,
+  FormComponentConfig['component']
+> = extractComponents(defaultComponentRegistry);
 
-export const SchemaField = createSchemaField({
+export const SchemaField: ReturnType<typeof createSchemaField> =
+  createSchemaField({
   components: defaultComponents,
 });
 

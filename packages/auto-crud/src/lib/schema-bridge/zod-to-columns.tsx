@@ -1,0 +1,352 @@
+"use client";
+
+import type { ColumnDef, Row } from "@tanstack/react-table";
+import { z } from "zod";
+import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
+import { Badge } from "@pixpilot/shadcn";
+import { Button } from "@pixpilot/shadcn";
+import { Checkbox } from "@pixpilot/shadcn";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@pixpilot/shadcn";
+import { Ellipsis } from "lucide-react";
+import { formatDate } from "@/lib/format";
+import { humanize } from "@/lib/humanize";
+import type {
+  ColumnOverrides,
+  CreateColumnsOptions,
+  FieldType,
+  FilterVariant,
+  ParsedZodField,
+} from "./types";
+import { fieldTypeToFilterVariant, inferFilterVariantByFieldName } from "./types";
+
+/**
+ * 解析 Zod 字段类型
+ */
+export function parseZodField(schema: z.ZodType): ParsedZodField {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const def = (schema as any)._zod?.def ?? (schema as any)._def;
+
+  // 检查是否 optional
+  const testNull = schema.safeParse(null);
+  const testUndefined = schema.safeParse(undefined);
+  const required = !testUndefined.success && !testNull.success;
+
+  // 优先检查 Zod 内部类型名称（更准确）
+  const typeName = def?.typeName;
+
+  // 处理 nullable/optional 类型 - 解包获取内部类型
+  if (def?.type === 'nullable' || def?.type === 'optional' || typeName === 'ZodNullable' || typeName === 'ZodOptional') {
+    const innerType = def?.innerType;
+    if (innerType) {
+      const innerParsed = parseZodField(innerType);
+      return { ...innerParsed, required: false };
+    }
+  }
+
+  // 检查 drizzle-zod 生成的简化结构
+  if (def?.type === 'boolean') {
+    return { type: "boolean", required };
+  }
+
+  if (def?.type === 'number') {
+    return { type: "number", required };
+  }
+
+  if (def?.type === 'date') {
+    return { type: "date", required };
+  }
+
+  // 检查 enum 类型
+  if (def?.type === 'enum') {
+    let enumValues: string[] | undefined;
+    if (def?.entries) {
+      const entries = def.entries;
+      if (Array.isArray(entries)) {
+        enumValues = entries.map(String);
+      } else if (typeof entries === "object") {
+        enumValues = Object.keys(entries);
+      }
+    } else if (def?.values) {
+      const values = def.values;
+      if (Array.isArray(values)) {
+        enumValues = values.map(String);
+      }
+    }
+    if (enumValues && enumValues.length > 0) {
+      return { type: "enum", required, enumValues };
+    }
+  }
+
+  if (def?.type === 'string') {
+    return { type: "string", required };
+  }
+
+  // 显式检查标准 Zod 类型
+  if (typeName === "ZodBoolean") {
+    return { type: "boolean", required };
+  }
+
+  // 尝试获取 enum 值 (Zod v3/v4 兼容)
+  let enumValues: string[] | undefined;
+
+  if (def?.entries) {
+    // Zod v4 format - entries 可能是对象或数组
+    const entries = def.entries;
+    if (Array.isArray(entries)) {
+      enumValues = entries.map(String);
+    } else if (typeof entries === "object") {
+      enumValues = Object.keys(entries);
+    }
+  } else if (def?.values) {
+    // Zod v3 format
+    const values = def.values;
+    if (Array.isArray(values)) {
+      enumValues = values.map(String);
+    }
+  }
+
+  if (enumValues && Array.isArray(enumValues) && enumValues.length > 0) {
+    return { type: "enum", required, enumValues };
+  }
+
+  // 显式检查其他 Zod 类型
+  if (typeName === "ZodNumber") {
+    return { type: "number", required };
+  }
+
+  if (typeName === "ZodDate") {
+    return { type: "date", required };
+  }
+
+  if (typeName === "ZodArray") {
+    return { type: "array", required };
+  }
+
+  if (typeName === "ZodObject") {
+    return { type: "object", required };
+  }
+
+  // 回退到 safeParse 检测（兼容性）
+  const testString = schema.safeParse("test");
+  const testNumber = schema.safeParse(123);
+  const testBoolean = schema.safeParse(true);
+  // 使用时间戳避免 Next.js 警告
+  const testDate = schema.safeParse(1704067200000); // 2024-01-01 的时间戳
+
+  if (testBoolean.success && !testString.success && !testNumber.success) {
+    return { type: "boolean", required };
+  }
+
+  if (testDate.success && !testString.success) {
+    return { type: "date", required };
+  }
+
+  if (testNumber.success && !testString.success) {
+    return { type: "number", required };
+  }
+
+  const testArray = schema.safeParse([]);
+  if (testArray.success && !testString.success) {
+    return { type: "array", required };
+  }
+
+  return { type: "string", required };
+}
+
+/**
+ * 渲染单元格内容
+ */
+function renderCell(value: unknown, type: FieldType) {
+  if (value === null || value === undefined) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  switch (type) {
+    case "boolean":
+      return value ? "✓" : "✗";
+    case "date":
+      return formatDate(value as Date);
+    case "enum":
+      return (
+        <Badge variant="outline" className="capitalize">
+          {String(value)}
+        </Badge>
+      );
+    case "array":
+      return Array.isArray(value) ? (
+        <div className="flex gap-1 flex-wrap">
+          {value.slice(0, 3).map((v, i) => (
+            <Badge key={i} variant="secondary">
+              {String(v)}
+            </Badge>
+          ))}
+          {value.length > 3 && (
+            <Badge variant="outline">+{value.length - 3}</Badge>
+          )}
+        </div>
+      ) : null;
+    case "number":
+      return <span className="tabular-nums">{String(value)}</span>;
+    default:
+      return <span className="truncate max-w-48">{String(value)}</span>;
+  }
+}
+
+/**
+ * 从 Zod Schema 创建 ColumnDef 数组
+ */
+export function createColumns<T extends z.ZodObject<z.ZodRawShape>>(
+  schema: T,
+  options?: CreateColumnsOptions<z.infer<T>>
+): ColumnDef<z.infer<T>>[] {
+  const shape = schema.shape;
+  const columns: ColumnDef<z.infer<T>>[] = [];
+  const { overrides, exclude = [] } = options ?? {};
+
+  for (const [key, fieldSchema] of Object.entries(shape)) {
+    if (exclude.includes(key as keyof z.infer<T>)) continue;
+
+    const override = overrides?.[key as keyof z.infer<T>];
+    if (override?.hidden) continue;
+
+    const parsed = parseZodField(fieldSchema as z.ZodType);
+    const label = override?.label ?? humanize(key);
+
+    // 智能推断筛选器类型：override > 字段名模式 > 字段类型
+    const inferredVariant = inferFilterVariantByFieldName(key);
+    const variant: FilterVariant = override?.meta?.variant ?? inferredVariant ?? fieldTypeToFilterVariant[parsed.type];
+
+    // 自动生成的 options
+    const autoOptions = Array.isArray(parsed.enumValues)
+      ? parsed.enumValues.map((v) => ({ label: humanize(v), value: v }))
+      : undefined;
+
+    // 合并 meta，保留自动生成的 options
+    const meta = {
+      label,
+      variant,
+      ...(autoOptions && { options: autoOptions }),
+      ...override?.meta,
+      // 如果 override.meta 没有 options，使用自动生成的
+      options: override?.meta?.options ?? autoOptions,
+    };
+
+    // 从 override 中排除 meta，单独处理
+    const { meta: _ignoredMeta, ...restOverride } = override ?? {};
+
+    columns.push({
+      id: key,
+      accessorKey: key,
+      header: ({ column }) => (
+        <DataTableColumnHeader column={column} label={label} />
+      ),
+      cell: ({ row }) => renderCell(row.getValue(key), parsed.type),
+      enableColumnFilter: true,
+      enableSorting: true,
+      meta,
+      ...restOverride,
+    } as ColumnDef<z.infer<T>>);
+  }
+
+  return columns;
+}
+
+/**
+ * 创建选择列
+ */
+export function createSelectColumn<T>(): ColumnDef<T> {
+  return {
+    id: "select",
+    header: ({ table }) => (
+      <Checkbox
+        aria-label="Select all"
+        className="translate-y-0.5"
+        checked={
+          table.getIsAllPageRowsSelected() ||
+          (table.getIsSomePageRowsSelected() && "indeterminate")
+        }
+        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+      />
+    ),
+    cell: ({ row }) => (
+      <Checkbox
+        aria-label="Select row"
+        className="translate-y-0.5"
+        checked={row.getIsSelected()}
+        onCheckedChange={(value) => row.toggleSelected(!!value)}
+      />
+    ),
+    enableHiding: false,
+    enableSorting: false,
+    size: 40,
+  };
+}
+
+/**
+ * 操作列配置
+ */
+export interface ActionsColumnConfig<T> {
+  onEdit?: (row: T) => void;
+  onDelete?: (row: T) => void;
+  onView?: (row: T) => void;
+  onCopy?: (row: T) => void;
+}
+
+/**
+ * 创建操作列
+ */
+export function createActionsColumn<T>(
+  config: ActionsColumnConfig<T>
+): ColumnDef<T> {
+  const { onEdit, onDelete, onView, onCopy } = config;
+
+  return {
+    id: "actions",
+    cell: ({ row }) => (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            aria-label="Open menu"
+            variant="ghost"
+            className="flex size-8 p-0 data-[state=open]:bg-muted"
+          >
+            <Ellipsis className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-40">
+          {onView && (
+            <DropdownMenuItem onClick={() => onView(row.original)}>
+              查看
+            </DropdownMenuItem>
+          )}
+          {onEdit && (
+            <DropdownMenuItem onClick={() => onEdit(row.original)}>
+              编辑
+            </DropdownMenuItem>
+          )}
+          {onCopy && (
+            <DropdownMenuItem onClick={() => onCopy(row.original)}>
+              复制
+            </DropdownMenuItem>
+          )}
+          {(onView || onEdit || onCopy) && onDelete && <DropdownMenuSeparator />}
+          {onDelete && (
+            <DropdownMenuItem
+              className="text-destructive"
+              onClick={() => onDelete(row.original)}
+            >
+              删除
+            </DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ),
+    size: 40,
+  };
+}

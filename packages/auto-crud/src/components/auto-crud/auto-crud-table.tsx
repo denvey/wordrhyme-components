@@ -1,0 +1,464 @@
+"use client";
+
+import type { z } from "zod";
+import type { UseAutoCrudResourceReturn } from "@/hooks/use-auto-crud-resource";
+import type { ModalVariant } from "./form-modal";
+import { AutoTable, type FilterMode } from "./auto-table";
+import type { BatchUpdateField } from "./auto-table-action-bar";
+import { CrudFormModal } from "./crud-form-modal";
+import { Button } from "@pixpilot/shadcn";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@pixpilot/shadcn";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@pixpilot/shadcn";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@pixpilot/shadcn";
+import { parseZodField } from "@/lib/schema-bridge/zod-to-columns";
+import { formatDate } from "@/lib/format";
+import { humanize } from "@/lib/humanize";
+import { Badge } from "@pixpilot/shadcn";
+
+/**
+ * 统一字段配置
+ * 支持共用配置 + 表格/表单特定配置
+ */
+export interface Field {
+  /** 字段标签（表格和表单共用） */
+  label?: string;
+  /** 是否隐藏（表格和表单都隐藏） */
+  hidden?: boolean;
+  /** 表格特定配置 */
+  table?: {
+    /** 是否在表格中隐藏 */
+    hidden?: boolean;
+    /** 筛选器配置 */
+    meta?: Record<string, unknown>;
+    /** 其他列配置 */
+    [key: string]: unknown;
+  };
+  /** 表单特定配置 */
+  form?: {
+    /** 是否在表单中隐藏 */
+    "x-hidden"?: boolean;
+    /** 组件类型 */
+    "x-component"?: string;
+    /** 组件属性 */
+    "x-component-props"?: Record<string, unknown>;
+    /** 其他表单配置 */
+    [key: string]: unknown;
+  };
+}
+
+export type Fields = Record<string, Field>;
+
+/**
+ * AutoCrudTable Props 接口
+ */
+export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> {
+  /** 页面标题 */
+  title?: string;
+  /** 页面描述 */
+  description?: string;
+  /** Zod schema */
+  schema: TSchema;
+  /** useAutoCrudResource hook 返回值 */
+  resource: UseAutoCrudResourceReturn<TSchema, z.output<TSchema>>;
+  /**
+   * 统一字段配置
+   * 支持共用配置（label, hidden）+ 表格/表单特定配置
+   */
+  fields?: Fields;
+  /** 表格配置 */
+  table?: {
+    /** 隐藏的列 */
+    hidden?: string[];
+    /** 列覆盖配置 */
+    overrides?: Record<string, any>;
+    /**
+     * 过滤模式配置
+     * - 单个值: 只使用该模式，不显示切换按钮
+     * - 数组: 第一个为默认值，显示切换按钮
+     */
+    filterModes?: FilterMode | FilterMode[];
+    /**
+     * 批量更新字段配置
+     * - 只需传字段名数组，options 自动从 schema enum 推导
+     * - 也可以传完整配置覆盖 label 或 options
+     */
+    batchFields?: (string | BatchUpdateField)[];
+    /** 默认排序 */
+    defaultSort?: any[];
+  };
+  /** 表单配置 */
+  form?: {
+    /** 表单覆盖配置 */
+    overrides?: Record<string, any>;
+    /** 表单列数 */
+    columns?: number;
+  };
+  /** 扩展点 */
+  slots?: {
+    /** 工具栏左侧插槽 */
+    toolbarStart?: React.ReactNode;
+    /** 工具栏右侧插槽 */
+    toolbarEnd?: React.ReactNode;
+    /** 自定义行操作 */
+    rowActions?: (row: z.output<TSchema>) => Array<{
+      label: string;
+      onClick: () => void;
+    }>;
+  };
+}
+
+/**
+ * 从统一配置生成表格 overrides
+ */
+function buildTableOverrides(fields?: Fields, legacyOverrides?: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = { ...legacyOverrides };
+
+  if (fields) {
+    for (const [key, config] of Object.entries(fields)) {
+      result[key] = {
+        ...result[key],
+        ...(config.label && { label: config.label }),
+        ...(config.hidden && { hidden: true }),
+        ...config.table,
+      };
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 从统一配置生成表单 overrides
+ */
+function buildFormOverrides(fields?: Fields, legacyOverrides?: Record<string, any>): Record<string, any> {
+  const result: Record<string, any> = { ...legacyOverrides };
+
+  if (fields) {
+    for (const [key, config] of Object.entries(fields)) {
+      result[key] = {
+        ...result[key],
+        ...(config.label && { title: config.label }),
+        ...(config.hidden && { "x-hidden": true }),
+        ...config.form,
+      };
+    }
+  }
+
+  return result;
+}
+
+/**
+ * 从统一配置生成隐藏列列表
+ */
+function buildHiddenColumns(fields?: Fields, legacyHidden?: string[]): string[] {
+  const hidden = new Set(legacyHidden ?? []);
+
+  if (fields) {
+    for (const [key, config] of Object.entries(fields)) {
+      if (config.hidden || config.table?.hidden) {
+        hidden.add(key);
+      }
+    }
+  }
+
+  return Array.from(hidden);
+}
+
+/**
+ * 从 schema 构建批量更新字段配置
+ */
+function buildBatchUpdateFields<T extends z.ZodObject<z.ZodRawShape>>(
+  schema: T,
+  batchFields?: (string | BatchUpdateField)[],
+  fields?: Fields
+): BatchUpdateField[] {
+  if (!batchFields || batchFields.length === 0) return [];
+
+  const shape = schema.shape;
+
+  return batchFields.map((field) => {
+    // 如果是完整配置，直接使用
+    if (typeof field !== "string") {
+      return field;
+    }
+
+    // 从 schema 推导 options
+    const fieldSchema = shape[field];
+    if (!fieldSchema) {
+      console.warn(`[AutoCrudTable] Field "${field}" not found in schema`);
+      return { field, label: humanize(field), options: [] };
+    }
+
+    const parsed = parseZodField(fieldSchema as z.ZodType);
+    const label = fields?.[field]?.label ?? humanize(field);
+
+    // 如果是 enum 类型，自动生成 options
+    if (parsed.type === "enum" && parsed.enumValues) {
+      return {
+        field,
+        label,
+        options: parsed.enumValues.map((v) => ({
+          label: humanize(v),
+          value: v,
+        })),
+      };
+    }
+
+    // 非 enum 类型，返回空 options（需要手动配置）
+    console.warn(`[AutoCrudTable] Field "${field}" is not an enum type, options must be provided manually`);
+    return { field, label, options: [] };
+  }).filter((f) => f.options.length > 0);
+}
+
+/**
+ * 渲染字段值
+ */
+function renderFieldValue(value: unknown, type: string): React.ReactNode {
+  if (value === null || value === undefined) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  switch (type) {
+    case "boolean":
+      return value ? "是" : "否";
+    case "date":
+      return formatDate(value as Date);
+    case "enum":
+      return (
+        <Badge variant="outline" className="capitalize">
+          {String(value)}
+        </Badge>
+      );
+    case "array":
+      return Array.isArray(value) ? (
+        <div className="flex gap-1 flex-wrap">
+          {value.slice(0, 5).map((v, i) => (
+            <Badge key={i} variant="secondary">
+              {String(v)}
+            </Badge>
+          ))}
+          {value.length > 5 && (
+            <Badge variant="outline">+{value.length - 5}</Badge>
+          )}
+        </div>
+      ) : null;
+    default:
+      return String(value);
+  }
+}
+
+/**
+ * ViewModal 组件 - 详情查看弹窗
+ */
+function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
+  open,
+  onOpenChange,
+  variant,
+  data,
+  schema,
+  fields: fieldConfig,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  variant: ModalVariant;
+  data: z.output<TSchema> | null;
+  schema: TSchema;
+  fields?: Fields;
+}) {
+  if (!data) return null;
+
+  const shape = schema.shape;
+  const fields = Object.entries(shape).filter(([key]) => {
+    const override = fieldConfig?.[key];
+    return !override?.hidden;
+  });
+
+  const content = (
+    <dl className="grid gap-4 py-4">
+      {fields.map(([key, fieldSchema]) => {
+        const parsed = parseZodField(fieldSchema as z.ZodType);
+        const label = fieldConfig?.[key]?.label ?? humanize(key);
+        const value = (data as Record<string, unknown>)[key];
+
+        return (
+          <div key={key} className="grid grid-cols-3 items-start gap-4">
+            <dt className="text-sm font-medium text-muted-foreground">
+              {label}
+            </dt>
+            <dd className="col-span-2 text-sm">
+              {renderFieldValue(value, parsed.type)}
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+
+  if (variant === "sheet") {
+    return (
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent>
+          <SheetHeader>
+            <SheetTitle>详情</SheetTitle>
+          </SheetHeader>
+          {content}
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>详情</DialogTitle>
+        </DialogHeader>
+        {content}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * AutoCrudTable 组件
+ *
+ * 高级 CRUD 表格组件，封装了完整的增删改查流程
+ */
+export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
+  title,
+  description,
+  schema,
+  resource,
+  fields,
+  table: tableConfig,
+  form: formConfig,
+  slots,
+}: AutoCrudTableProps<TSchema>) {
+  // 构建表格和表单的 overrides
+  const tableOverrides = buildTableOverrides(fields, tableConfig?.overrides);
+  const formOverrides = buildFormOverrides(fields, formConfig?.overrides);
+  const hiddenColumns = buildHiddenColumns(fields, tableConfig?.hidden);
+  const batchFields = buildBatchUpdateFields(schema, tableConfig?.batchFields, fields);
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      {(title || description) && (
+        <div className="space-y-2">
+          {title && <h2 className="text-2xl font-bold tracking-tight">{title}</h2>}
+          {description && <p className="text-muted-foreground">{description}</p>}
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          {slots?.toolbarStart}
+        </div>
+        <div className="flex items-center gap-2">
+          {slots?.toolbarEnd}
+          <Button onClick={resource.handlers.openCreate}>
+            新建
+          </Button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <AutoTable
+        data={resource.tableData.data}
+        schema={schema}
+        pageCount={resource.tableData.pageCount}
+        overrides={tableOverrides as any}
+        exclude={hiddenColumns as any}
+        filterMode={tableConfig?.filterModes}
+        actions={{
+          onView: resource.handlers.openView,
+          onEdit: resource.handlers.openEdit,
+          onCopy: resource.handlers.copyRow,
+          onDelete: resource.handlers.openDelete,
+        }}
+        onDeleteSelected={resource.handlers.deleteMany}
+        onUpdateSelected={resource.handlers.updateMany}
+        batchUpdateFields={batchFields}
+        initialSorting={tableConfig?.defaultSort}
+      />
+
+      {/* Modals */}
+      {/* Create/Edit Modal */}
+      <CrudFormModal
+        open={resource.modal.createOpen || resource.modal.editOpen}
+        onOpenChange={(open) => !open && resource.handlers.closeModals()}
+        mode={resource.modal.createOpen ? "create" : "edit"}
+        schema={schema}
+        initialValues={
+          resource.modal.createOpen
+            ? (resource.modal.copySource ?? undefined)
+            : (resource.modal.selected ?? undefined)
+        }
+        onSubmit={(values) => {
+          if (resource.modal.createOpen) {
+            resource.handlers.submitCreate(values as z.output<TSchema>);
+          } else {
+            resource.handlers.submitUpdate(values as z.output<TSchema>);
+          }
+        }}
+        loading={resource.mutations.isCreating || resource.mutations.isUpdating}
+        variant={resource.modal.variant}
+        overrides={formOverrides}
+      />
+
+      {/* View Modal */}
+      <ViewModal
+        open={resource.modal.viewOpen}
+        onOpenChange={(open) => !open && resource.handlers.closeModals()}
+        variant={resource.modal.variant}
+        data={resource.modal.selected}
+        schema={schema}
+        fields={fields}
+      />
+
+      {/* Delete Confirmation */}
+      <AlertDialog
+        open={resource.modal.deleteOpen}
+        onOpenChange={(open) => !open && resource.handlers.closeModals()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogDescription>
+              此操作无法撤销。确定要删除这条记录吗？
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={resource.handlers.confirmDelete}
+              disabled={resource.mutations.isDeleting}
+            >
+              {resource.mutations.isDeleting ? "删除中..." : "确认删除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

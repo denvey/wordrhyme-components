@@ -1,8 +1,8 @@
 import type { ComponentSize } from './types';
+import { cn } from '@pixpilot/shadcn';
 import { Pencil } from 'lucide-react';
 
 import React from 'react';
-import { cn } from '@/lib';
 
 export const MessageComponent: React.FC<{ message: string; className?: string }> = ({
   message,

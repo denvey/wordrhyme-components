@@ -1,7 +1,6 @@
-import { AlertDescription, AlertTitle, Alert as ShadAlert } from '@pixpilot/shadcn';
+import { AlertDescription, AlertTitle, Alert as ShadAlert, cn } from '@pixpilot/shadcn';
 import { CircleAlertIcon, CircleCheckBigIcon, OctagonAlertIcon } from 'lucide-react';
 import React from 'react';
-import { cn } from '@/lib';
 
 const iconClass = cn('t-0 size-4');
 

@@ -1,11 +1,14 @@
 import { connect, mapProps } from '@formily/react';
 import { Checkbox as ShadcnCheckbox } from '@pixpilot/shadcn';
+import type * as React from 'react';
 
 /**
  * Formily-connected Checkbox component
  * Maps Formily field checked state to shadcn Checkbox
  */
-export const Checkbox = connect(
+export const Checkbox: React.ComponentType<
+  React.ComponentProps<typeof ShadcnCheckbox>
+> = connect(
   ShadcnCheckbox,
   mapProps(
     {

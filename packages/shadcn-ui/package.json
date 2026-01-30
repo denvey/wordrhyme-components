@@ -11,7 +11,16 @@
     "url": "https://github.com/pixpilot/shadcn-components.git",
     "directory": "packages/shadcn-ui"
   },
-  "exports": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "files": [
     "dist"
   ],
@@ -63,7 +72,7 @@
     "next-themes": "catalog:prod",
     "pretty-bytes": "^7.1.0",
     "react-responsive": "^10.0.1",
-    "sonner": "2.0.7"
+    "sonner": "catalog:prod"
   },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
