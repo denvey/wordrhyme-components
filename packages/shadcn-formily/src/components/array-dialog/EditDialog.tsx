@@ -1,8 +1,7 @@
-import type { ArrayField } from '@formily/core';
 import type { Schema } from '@formily/react';
 
 import type { ActiveItemManager } from '../array-common/create-active-item-manager';
-import { observer, useField } from '@formily/react';
+import { observer } from '@formily/react';
 import {
   Button,
   cn,
@@ -17,12 +16,12 @@ import {
 import React from 'react';
 import { ArrayItemDraftFields } from '../array-common/ArrayItemDraftFields';
 import { ShakeStyles } from '../array-common/ShakeStyles';
-import { useArrayItemDraftForm } from '../array-common/use-array-item-draft-form';
-import { useArrayItemEditLabels } from '../array-common/use-array-item-edit-labels';
-import { useEditHandlers } from '../array-common/use-edit-handlers';
-import { useShakeAnimation } from '../array-common/use-shake-animation';
+import { useArrayItemEditState } from '../array-common/use-array-item-edit-state';
 
-export interface ArrayItemsEditDialogProps {
+export interface ArrayItemsEditDialogProps extends Omit<
+  React.HTMLAttributes<HTMLDivElement>,
+  'autoSave'
+> {
   schema: Schema;
   onSave: (index: number, value: unknown) => void;
   onAutoSave?: (index: number, value: unknown) => void;
@@ -49,43 +48,28 @@ export const EditDialog = observer(
     onCancel,
     activeItemManager,
     autoSave,
+    className,
+    ...rest
   }: ArrayItemsEditDialogProps) => {
-    const arrayField = useField<ArrayField>();
-    const itemIndex = activeItemManager.activeItem;
-    const { isNew } = activeItemManager;
-    const open = itemIndex !== undefined;
-
-    const handleDraftChange = React.useCallback(
-      (nextValue: unknown) => {
-        if (!autoSave) return;
-        if (itemIndex === undefined) return;
-        onAutoSave?.(itemIndex, nextValue);
-      },
-      [itemIndex, autoSave, onAutoSave],
-    );
-
-    const draftForm = useArrayItemDraftForm({
-      arrayField,
-      index: itemIndex,
-      autoSave,
-      onDraftChange: autoSave ? handleDraftChange : undefined,
-    });
-
-    const isDirty = !autoSave && draftForm.modified;
-
-    const { shouldShake, triggerShake } = useShakeAnimation();
-    const { handleSave, handleCancel } = useEditHandlers({
-      itemIndex,
+    const {
+      activeIndex: itemIndex,
+      open,
+      normalizedAutoSave,
       draftForm,
+      isDirty,
+      title,
+      description,
+      shouldShake,
+      triggerShake,
+      handleSave,
+      handleCancel,
+    } = useArrayItemEditState({
+      schema,
+      activeItemManager,
       onSave,
       onCancel,
-    });
-
-    const { title, description } = useArrayItemEditLabels({
-      schema,
-      isNew,
+      onAutoSave,
       autoSave,
-      itemIndex,
     });
 
     return (
@@ -98,7 +82,8 @@ export const EditDialog = observer(
         }}
       >
         <DialogContent
-          className={cn('sm:max-w-[525px]', shouldShake && 'pp-shake')}
+          {...rest}
+          className={cn('sm:max-w-[525px]', shouldShake && 'pp-shake', className)}
           onInteractOutside={(event) => {
             if (!isDirty) return;
             event.preventDefault();
@@ -125,7 +110,7 @@ export const EditDialog = observer(
             />
           )}
 
-          {!autoSave && (
+          {!normalizedAutoSave && (
             <DialogFooter>
               <Button type="button" variant="outline" onClick={handleCancel}>
                 Cancel

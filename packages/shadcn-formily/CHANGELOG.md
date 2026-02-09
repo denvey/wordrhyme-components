@@ -1,5 +1,56 @@
 # @pixpilot/formily-shadcn
 
+## 0.49.0
+
+### Minor Changes
+
+- implement draft-only mode for array item insertion
+
+## 0.48.0
+
+### Minor Changes
+
+- replace overlay prop with modal behavior
+
+## 0.47.0
+
+### Minor Changes
+
+- add overlay prop to ArrayItemsEditPopover
+
+## 0.46.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.50.0
+
+## 0.46.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.49.0
+
+## 0.46.0
+
+### Minor Changes
+
+- add className prop to DialogContent
+
+## 0.45.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.48.0
+
+## 0.45.0
+
+### Minor Changes
+
+- pass prop to array editable components
+
 ## 0.44.3
 
 ### Patch Changes

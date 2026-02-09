@@ -1,5 +1,67 @@
 # @internal/storybook
 
+## 0.0.120
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/formily-shadcn@0.49.0
+
+## 0.0.119
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/formily-shadcn@0.48.0
+
+## 0.0.118
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/formily-shadcn@0.47.0
+
+## 0.0.117
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.50.0
+  - @pixpilot/shadcn-auth@0.1.54
+  - @pixpilot/formily-shadcn@0.46.2
+
+## 0.0.116
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.49.0
+  - @pixpilot/shadcn-auth@0.1.53
+  - @pixpilot/formily-shadcn@0.46.1
+
+## 0.0.115
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/formily-shadcn@0.46.0
+
+## 0.0.114
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.48.0
+  - @pixpilot/shadcn-auth@0.1.52
+  - @pixpilot/formily-shadcn@0.45.1
+
+## 0.0.113
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/formily-shadcn@0.45.0
+
 ## 0.0.112
 
 ### Patch Changes

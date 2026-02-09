@@ -1,7 +1,6 @@
 import type { AlertBaseProps, AlertVariant } from '@pixpilot/shadcn-ui';
 
-import type { AlertToastProps } from './AlertToast';
-
+import type { AlertToastProps } from './types';
 import { simpleHash } from '@pixpilot/hash';
 import { toast as sonnerToast } from 'sonner';
 import { AlertToast } from './AlertToast';
@@ -10,6 +9,7 @@ export const DEFAULT_ALERT_DURATION = 10_000;
 
 interface ToastProps extends AlertBaseProps {
   duration?: number;
+  description?: string;
 }
 
 // Track toast instances with counter

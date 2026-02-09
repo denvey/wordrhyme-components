@@ -8,6 +8,7 @@
 
 import type { StoryObj } from '@storybook/react';
 import type { ISchema } from '../src';
+import { isArrayField, onFieldInputValueChange } from '@formily/core';
 import { Button } from '@pixpilot/shadcn';
 import { InfoIcon, PinIcon } from 'lucide-react';
 import { createForm, Form, JsonSchemaFormExtended, SchemaField } from '../src';
@@ -48,6 +49,7 @@ export function createStories(config: StoryConfig) {
     SortableDisabledForArray: createSortableDisabledForArrayStory(config),
     AutoSave: createAutoSaveStory(config),
     ManualSave: createManualSaveStory(config),
+    WithMaxMinItems: createWithMaxMinItemsStory(config),
   };
 }
 
@@ -59,7 +61,17 @@ export function createEmptyArrayStory(config: StoryConfig): Story {
 
   return {
     render: () => {
-      const form = createForm({});
+      const form = createForm({
+        effects: () => {
+          onFieldInputValueChange('*', (field) => {
+            if (isArrayField(field)) {
+              // use console.warn to avoid eslint no-console error in stories
+              // eslint-disable-next-line no-console
+              console.log(JSON.stringify(field.value, null, 2));
+            }
+          });
+        },
+      });
 
       return (
         <Form
@@ -1652,6 +1664,75 @@ export function createManualSaveStory(config: StoryConfig): Story {
                 View Current Values
               </Button>
             </div>
+          </div>
+        </Form>
+      );
+    },
+  };
+}
+
+export function createWithMaxMinItemsStory(config: StoryConfig): Story {
+  const { componentName, displayTitle } = config;
+
+  return {
+    render: () => {
+      const form = createForm({
+        values: {
+          contacts: [
+            {
+              name: 'John Doe',
+            },
+          ],
+        },
+      });
+
+      const schema = {
+        type: 'object',
+        properties: {
+          contacts: {
+            type: 'array',
+            title: 'Contacts',
+            minItems: 2,
+            maxItems: 3,
+            'x-decorator': 'FormItem',
+            'x-component': componentName,
+            'x-component-props': config.componentProps,
+            items: {
+              type: 'object',
+              properties: {
+                name: {
+                  type: 'string',
+                  title: 'Name',
+                  'x-decorator': 'FormItem',
+                  'x-component': 'Input',
+                  'x-component-props': { placeholder: 'Enter name' },
+                  required: true,
+                },
+              },
+            },
+          },
+        },
+      };
+
+      return (
+        <Form form={form} className="space-y-6">
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold">{displayTitle} (Max/Min Items)</h2>
+            <p className="text-muted-foreground">
+              This story demonstrates the enforcement of maximum and minimum item counts
+              in the array.
+            </p>
+          </div>
+
+          <SchemaField schema={schema} />
+
+          <div className="pt-4">
+            <Button
+              type="button"
+              onClick={() => alert(JSON.stringify(form.values, null, 2))}
+            >
+              View Values
+            </Button>
           </div>
         </Form>
       );
