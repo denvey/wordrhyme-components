@@ -1,7 +1,7 @@
 "use client";
 
 import { z } from "zod";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CommandIcon, FileSpreadsheetIcon, ListFilterIcon } from "lucide-react";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
@@ -20,7 +20,7 @@ import { AutoTableSimpleFilters } from "./auto-table-simple-filters";
 import { AutoTableActionBar, type BatchUpdateField } from "./auto-table-action-bar";
 import { useDataTable } from "@/hooks/use-data-table";
 import {
-  createColumns,
+  createTableSchema,
   createSelectColumn,
   createActionsColumn,
   type ActionsColumnConfig,
@@ -82,6 +82,12 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
   actionBarExtra?: React.ReactNode;
   /** 初始排序 */
   initialSorting?: any[];
+  /** 是否启用导出功能 (默认 true) */
+  enableExport?: boolean;
+  /** 选中行数变化回调（用于外层组件获知选中状态） */
+  onSelectedCountChange?: (count: number) => void;
+  /** 获取选中行数据的回调（由外层组件调用） */
+  getSelectedRows?: React.MutableRefObject<(() => z.infer<T>[]) | null>;
 }
 
 export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
@@ -93,12 +99,15 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   exclude,
   actions,
   pinnedColumns,
-  filterMode = "advanced",
+  filterMode = "simple",
   onDeleteSelected,
   onUpdateSelected,
   batchUpdateFields,
   actionBarExtra,
   initialSorting,
+  enableExport = true,
+  onSelectedCountChange,
+  getSelectedRows,
 }: AutoTableProps<T>) {
   // 解析过滤模式配置，默认显示全部 3 个模式
   const defaultModes: FilterMode[] = ["simple", "advanced", "command"];
@@ -112,7 +121,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   // 区别只在于 UI 展示方式
   const enableAdvancedFilter = true;
   const columns = useMemo(() => {
-    const dataColumns = createColumns(schema, { overrides, exclude });
+    const dataColumns = createTableSchema(schema, { overrides, exclude });
     const result = enableRowSelection
       ? [createSelectColumn<z.infer<T>>(), ...dataColumns]
       : dataColumns;
@@ -140,6 +149,29 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     shallow: false,
     clearOnDefault: true,
   });
+
+  // 暴露选中行数据给外层组件
+  const getSelectedRowsFn = useCallback(
+    () => table.getFilteredSelectedRowModel().rows.map((row) => row.original),
+    [table]
+  );
+
+  useEffect(() => {
+    if (getSelectedRows) {
+      getSelectedRows.current = getSelectedRowsFn;
+    }
+    return () => {
+      if (getSelectedRows) {
+        getSelectedRows.current = null;
+      }
+    };
+  }, [getSelectedRows, getSelectedRowsFn]);
+
+  // 通知外层选中行数变化
+  const selectedRowCount = table.getFilteredSelectedRowModel().rows.length;
+  useEffect(() => {
+    onSelectedCountChange?.(selectedRowCount);
+  }, [selectedRowCount, onSelectedCountChange]);
 
   // 过滤模式切换组件（放在 View 旁边）
   const FilterModeSelect = showToggle ? (
@@ -221,6 +253,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           onUpdateSelected={onUpdateSelected}
           batchUpdateFields={batchUpdateFields}
           enableDelete={!!onDeleteSelected}
+          enableExport={enableExport}
           extraActions={actionBarExtra}
         />
       )}

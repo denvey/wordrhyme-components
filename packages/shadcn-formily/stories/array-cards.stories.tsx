@@ -1,5 +1,8 @@
+/* eslint-disable no-alert */
+
 import type { Meta, StoryObj } from '@storybook/react';
 import { createForm, Form, SchemaField } from '../src';
+import { createStories } from './array-stories';
 
 const meta: Meta<typeof Form> = {
   title: 'Formily/Array Cards',
@@ -13,58 +16,48 @@ const meta: Meta<typeof Form> = {
 export default meta;
 type Story = StoryObj<typeof Form>;
 
-export const EmptyArray: Story = {
-  render: () => {
-    const form = createForm({});
-
-    const JSON_INDENT = 2;
-
-    return (
-      <Form
-        form={form}
-        className="w-[600px]"
-        onSubmit={(values) => {
-          // eslint-disable-next-line no-console
-          console.log('Form submitted:', values);
-          // eslint-disable-next-line no-alert
-          alert(JSON.stringify(values, null, JSON_INDENT));
-        }}
-      >
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Contacts</h3>
-
-          <SchemaField>
-            <SchemaField.Array
-              name="contacts"
-              title="Contacts"
-              x-component="ArrayCards"
-              x-component-props={{
-                className: 'space-y-4',
-              }}
-            >
-              <SchemaField.Object>
-                <SchemaField.String
-                  name="name"
-                  title="Name"
-                  required
-                  x-decorator="FormItem"
-                  x-component="Input"
-                  x-component-props={{ placeholder: 'Enter name' }}
-                />
-              </SchemaField.Object>
-            </SchemaField.Array>
-          </SchemaField>
-        </div>
-
-        <button
-          type="submit"
-          className="mt-6 w-full rounded-md bg-primary px-4 py-2 text-primary-foreground"
-        >
-          Submit
-        </button>
-      </Form>
-    );
+const storyConfig = {
+  componentName: 'ArrayCards',
+  displayTitle: 'ArrayCards',
+  componentProps: {
+    className: 'space-y-4',
   },
+};
+
+const {
+  Declarative,
+  EmptyArray,
+  Sortable,
+  SortableDisabledInForm,
+  SortableNested,
+  SortableDisabledForArray,
+  WithActions,
+  WithComponentClassName,
+  WithDescription,
+  WithItemReactionTitle,
+  WithJSONSchema,
+  WithJsonSchemaForm,
+  WithTruncatedLabels,
+  AutoSave,
+  ManualSave,
+} = createStories(storyConfig);
+
+export {
+  AutoSave,
+  Declarative,
+  EmptyArray,
+  ManualSave,
+  Sortable,
+  SortableDisabledForArray,
+  SortableDisabledInForm,
+  SortableNested,
+  WithActions,
+  WithComponentClassName,
+  WithDescription,
+  WithItemReactionTitle,
+  WithJSONSchema,
+  WithJsonSchemaForm,
+  WithTruncatedLabels,
 };
 
 export const WithCustomComponent: Story = {
@@ -86,7 +79,7 @@ export const WithCustomComponent: Story = {
         onSubmit={(values) => {
           // eslint-disable-next-line no-console
           console.log('Form submitted:', values);
-          // eslint-disable-next-line no-alert
+
           alert(JSON.stringify(values, null, JSON_INDENT));
         }}
       >
@@ -100,7 +93,8 @@ export const WithCustomComponent: Story = {
               x-component-props={{
                 className: 'space-y-4',
                 title: ' Custom Contacts',
-                operations: false,
+                // Disable default built-in header actions, and render operations from schema.
+                actions: false,
               }}
             >
               <SchemaField.Object>
@@ -128,7 +122,6 @@ export const WithCustomComponent: Story = {
                     icon: <span>Del</span>,
                   }}
                 />
-
                 <SchemaField.Void x-component="ArrayCards.Index" />
 
                 <SchemaField.String
@@ -175,7 +168,7 @@ export const WithOverrideComponent: Story = {
         onSubmit={(values) => {
           // eslint-disable-next-line no-console
           console.log('Form submitted:', values);
-          // eslint-disable-next-line no-alert
+
           alert(JSON.stringify(values, null, JSON_INDENT));
         }}
       >
@@ -189,16 +182,13 @@ export const WithOverrideComponent: Story = {
               x-component-props={{
                 className: 'space-y-4',
                 title: ' Custom Contacts',
+                transformActions: (actions) =>
+                  actions.map((a) =>
+                    a === 'remove' ? { type: 'remove', icon: <span>Del</span> } : a,
+                  ),
               }}
             >
               <SchemaField.Object>
-                <SchemaField.Void
-                  x-component="ArrayCards.Remove"
-                  x-component-props={{
-                    icon: <span>Del</span>,
-                  }}
-                />
-
                 <SchemaField.String
                   name="name"
                   title="Name"
@@ -225,7 +215,7 @@ export const WithOverrideComponent: Story = {
 };
 
 /**
- * Array field using JSON Schema with custom operations (similar to WithCustomComponent)
+ * Array field using JSON Schema with custom actions (similar to WithCustomComponent)
  */
 export const WithCustomComponentJsonSchema: Story = {
   render: () => {
@@ -246,7 +236,8 @@ export const WithCustomComponentJsonSchema: Story = {
           'x-component-props': {
             className: 'space-y-4',
             title: ' Custom Contacts',
-            operations: false,
+            // Disable default built-in header actions, and render operations from schema.
+            actions: false,
           },
           items: {
             type: 'object',
@@ -315,102 +306,12 @@ export const WithCustomComponentJsonSchema: Story = {
         onSubmit={(values) => {
           // eslint-disable-next-line no-console
           console.log('Form submitted:', values);
-          // eslint-disable-next-line no-alert
+
           alert(JSON.stringify(values, null, JSON_INDENT));
         }}
       >
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Contacts (Custom JSON Schema)</h3>
-
-          <SchemaField schema={schema} />
-        </div>
-
-        <button
-          type="submit"
-          className="mt-6 w-full rounded-md bg-primary px-4 py-2 text-primary-foreground"
-        >
-          Submit
-        </button>
-      </Form>
-    );
-  },
-};
-
-export const WithJSONSchema: Story = {
-  render: () => {
-    const form = createForm({
-      values: {
-        contacts: [
-          { name: 'John Doe', email: 'john@example.com' },
-          { name: 'Jane Smith', email: 'jane@example.com' },
-        ],
-      },
-    });
-
-    const schema = {
-      type: 'object',
-      properties: {
-        contacts: {
-          type: 'array',
-          'x-component': 'ArrayCards',
-          'x-component-props': {
-            className: 'space-y-4',
-          },
-          items: {
-            type: 'object',
-            properties: {
-              name: {
-                type: 'string',
-                title: 'Name',
-                required: true,
-                'x-decorator': 'FormItem',
-                'x-component': 'Input',
-                'x-component-props': {
-                  placeholder: 'Enter name',
-                },
-              },
-              email: {
-                type: 'string',
-                title: 'Email',
-                required: true,
-                'x-decorator': 'FormItem',
-                'x-component': 'Input',
-                'x-component-props': {
-                  placeholder: 'Enter email',
-                  type: 'email',
-                },
-              },
-            },
-          },
-          properties: {
-            addition: {
-              type: 'void',
-              title: 'Add Contact',
-              'x-component': 'ArrayCards.Addition',
-              'x-component-props': {
-                defaultValue: { name: '', email: '' },
-              },
-            },
-          },
-        },
-      },
-    };
-
-    const JSON_INDENT = 2;
-
-    return (
-      <Form
-        form={form}
-        className="w-[600px]"
-        onSubmit={(values) => {
-          // eslint-disable-next-line no-console
-          console.log('Form submitted:', values);
-          // eslint-disable-next-line no-alert
-          alert(JSON.stringify(values, null, JSON_INDENT));
-        }}
-      >
-        <div className="space-y-4">
-          <h3 className="text-lg font-medium">Contacts (JSON Schema)</h3>
 
           <SchemaField schema={schema} />
         </div>
@@ -545,7 +446,7 @@ export const NestedArraysJsonSchema: Story = {
         onSubmit={(values) => {
           // eslint-disable-next-line no-console
           console.log('Form submitted:', values);
-          // eslint-disable-next-line no-alert
+
           alert(JSON.stringify(values, null, JSON_INDENT));
         }}
       >
@@ -594,7 +495,7 @@ export const NestedArraysDeclarative: Story = {
         onSubmit={(values) => {
           // eslint-disable-next-line no-console
           console.log('Form submitted:', values);
-          // eslint-disable-next-line no-alert
+
           alert(JSON.stringify(values, null, JSON_INDENT));
         }}
       >

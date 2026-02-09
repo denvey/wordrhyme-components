@@ -165,7 +165,7 @@ export function DataTableFilterList<TData>({
   );
 
   const onFiltersReset = React.useCallback(() => {
-    void setFilters(null);
+    void setFilters([]);
     void setJoinOperator("and");
   }, [setFilters, setJoinOperator]);
 

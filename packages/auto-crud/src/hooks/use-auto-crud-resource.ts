@@ -2,6 +2,11 @@ import { useReducer, useCallback, useMemo } from "react";
 import { z } from "zod";
 import { toast as sonnerToast } from "sonner";
 import { keepPreviousData } from "@tanstack/react-query";
+import { useQueryStates, parseAsInteger, parseAsStringEnum } from "@/hooks/use-url-state";
+import { useReadableFilters } from "@/hooks/use-readable-filters";
+import { createTableSchema } from "@/lib/schema-bridge/zod-to-columns";
+import { getSortingStateParser } from "@/lib/parsers";
+import { coerceRowValues } from "@/lib/import";
 
 /**
  * Toast 适配器接口
@@ -112,6 +117,27 @@ export interface UseAutoCrudResourceOptions<TSchema extends z.ZodObject<z.ZodRaw
    * - ToastAdapter: 注入自定义 toast 实现
    */
   toast?: ToastAdapter | false;
+  /**
+   * 自定义导出数据获取函数（escape hatch）
+   *
+   * 通常不需要传此参数：
+   * - 导出选中行：纯客户端，零配置
+   * - 导出筛选结果：router 有 export procedure 时自动可用
+   *
+   * 仅当需要完全自定义导出逻辑时才使用（如队列导出、自定义接口等）
+   * 传入后优先级高于 router.export
+   */
+  exportFetcher?: (params: any) => Promise<{ data: Record<string, unknown>[]; total: number; hasMore: boolean }>;
+}
+
+/**
+ * 导入结果类型（与服务端保持一致）
+ */
+export interface ImportResult {
+  success: number;
+  updated: number;
+  skipped: number;
+  failed: Array<{ row: number; errors: string[] }>;
 }
 
 /**
@@ -130,6 +156,7 @@ export interface UseAutoCrudResourceReturn<TSchema extends z.ZodObject<z.ZodRawS
     isCreating: boolean;
     isUpdating: boolean;
     isDeleting: boolean;
+    isImporting: boolean;
   };
   handlers: {
     openCreate: () => void;
@@ -144,6 +171,10 @@ export interface UseAutoCrudResourceReturn<TSchema extends z.ZodObject<z.ZodRawS
     deleteMany: (rows: TListItem[]) => void;
     updateMany: (rows: TListItem[], data: Record<string, unknown>) => void;
     setVariant: (variant: ModalVariant) => void;
+    /** 导入数据（router 有 import 路由时自动可用） */
+    import: ((rows: Record<string, unknown>[]) => Promise<ImportResult>) | null;
+    /** 导出筛选结果（router 有 export procedure 或传入 exportFetcher 时自动可用）。导出选中行由 AutoCrudTable 内部处理 */
+    export: (() => Promise<Record<string, unknown>[]>) | null;
   };
 }
 
@@ -173,6 +204,7 @@ function modalReducer<T>(state: ModalState<T>, action: ModalAction<T>): ModalSta
 
 /**
  * tRPC Router 接口定义（宽松类型以兼容实际 tRPC router）
+ * import 为可选 — 传入 router 时自动检测是否存在
  */
 interface CrudRouter {
   list: {
@@ -193,6 +225,25 @@ interface CrudRouter {
   updateMany?: {
     useMutation: (opts?: any) => any;
   };
+  /** 导入路由（mutation，由 createCrudRouter 自动生成） */
+  import?: {
+    useMutation: (opts?: any) => any;
+  };
+  /** 导出路由（query，由 createCrudRouter 自动生成） */
+  export?: {
+    useQuery: (input?: any, opts?: any) => any;
+  };
+}
+
+/**
+ * 自动生成的查询参数（由内部 URL 状态管理生成）
+ */
+export interface AutoQueryParams {
+  page: number;
+  perPage: number;
+  sort: Array<{ id: string; desc: boolean }>;
+  filters: any[];
+  joinOperator: "and" | "or";
 }
 
 /**
@@ -201,10 +252,24 @@ interface CrudRouter {
 export interface UseAutoCrudResourceParams<TSchema extends z.ZodObject<z.ZodRawShape>, TListItem> {
   /** tRPC router (如 trpc.tasks) */
   router: CrudRouter;
-  /** 列表查询参数 */
-  queryInput?: any;
   /** Zod schema */
   schema: TSchema;
+  /**
+   * 查询参数变换函数
+   *
+   * 默认零配置：hook 内部自动管理 URL 状态（分页、排序、筛选），
+   * 传入此函数可注入额外参数或修改自动生成的参数。
+   *
+   * @example
+   * ```tsx
+   * // 注入租户 ID
+   * query: (params) => ({ ...params, tenantId: currentTenant.id })
+   *
+   * // 覆盖默认分页
+   * query: (params) => ({ ...params, perPage: 20 })
+   * ```
+   */
+  query?: (params: AutoQueryParams) => Record<string, unknown>;
   /** 其他配置选项 */
   options?: UseAutoCrudResourceOptions<TSchema, TListItem>;
 }
@@ -217,7 +282,8 @@ export function useAutoCrudResource<
   TListItem = z.output<TSchema>
 >({
   router,
-  queryInput,
+  schema,
+  query: queryTransform,
   options = {},
 }: UseAutoCrudResourceParams<TSchema, TListItem>): UseAutoCrudResourceReturn<TSchema, TListItem> {
   const {
@@ -225,6 +291,7 @@ export function useAutoCrudResource<
     defaultVariant = "dialog",
     hooks,
     toast: toastAdapter,
+    exportFetcher,
   } = options;
 
   // 使用注入的 toast 或默认 sonner
@@ -232,6 +299,39 @@ export function useAutoCrudResource<
     () => toastAdapter === false ? noopToastAdapter : (toastAdapter ?? defaultToastAdapter),
     [toastAdapter]
   );
+
+  // ========== URL 状态管理（内部自动 or 外部传入） ==========
+  // 从 schema 推导 columns（用于 useReadableFilters）
+  const columns = useMemo(
+    () => createTableSchema(schema as any),
+    [schema],
+  );
+
+  // 内部 URL 状态：分页、排序、joinOperator
+  const [urlParams] = useQueryStates(
+    {
+      page: parseAsInteger.withDefault(1),
+      perPage: parseAsInteger.withDefault(10),
+      sort: getSortingStateParser().withDefault([]),
+      joinOperator: parseAsStringEnum(["and", "or"]).withDefault("and"),
+    },
+    { shallow: false },
+  );
+
+  // 内部 URL 状态：筛选
+  const [filters] = useReadableFilters(columns, { shallow: false });
+
+  // 构建查询参数
+  const queryInput = useMemo(() => {
+    const autoParams: AutoQueryParams = {
+      page: urlParams.page,
+      perPage: urlParams.perPage,
+      sort: urlParams.sort,
+      filters,
+      joinOperator: urlParams.joinOperator,
+    };
+    return queryTransform ? queryTransform(autoParams) : autoParams;
+  }, [urlParams, filters, queryTransform]);
 
   // tRPC Query 和 Mutations
   // 使用 keepPreviousData 保持旧数据显示，避免分页时的闪烁
@@ -243,6 +343,15 @@ export function useAutoCrudResource<
   const deleteMutation = router.delete.useMutation();
   const deleteManyMutation = router.deleteMany?.useMutation();
   const updateManyMutation = router.updateMany?.useMutation();
+  const importMutation = router.import?.useMutation();
+
+  // Export query（enabled: false = 不自动执行，通过 refetch() 按需触发）
+  const exportInput = useMemo(() => {
+    if (!queryInput) return {};
+    const { page: _p, perPage: _pp, ...rest } = queryInput;
+    return rest;
+  }, [queryInput]);
+  const exportQuery = router.export?.useQuery(exportInput, { enabled: false });
 
   // Modal 状态管理
   const [modal, dispatch] = useReducer(modalReducer<TListItem>, {
@@ -458,6 +567,46 @@ export function useAutoCrudResource<
     []
   );
 
+  // Handlers: Import (如果 router 支持)
+  const handleImport = useCallback(
+    async (rows: Record<string, unknown>[]): Promise<ImportResult> => {
+      if (!importMutation) {
+        throw new Error("Import not supported: router has no import procedure");
+      }
+      // CSV 解析后所有值都是 string，根据 schema 做类型转换
+      const coercedRows = coerceRowValues(rows, schema);
+      const result = await importMutation.mutateAsync({
+        rows: coercedRows,
+        onConflict: "upsert",
+      });
+      listQuery.refetch();
+      return result as ImportResult;
+    },
+    [importMutation, listQuery, schema]
+  );
+
+  // Handlers: Export — 导出筛选结果
+  // 优先级：exportFetcher（自定义） > router.export（自动检测）
+  const handleExport = useCallback(
+    async (): Promise<Record<string, unknown>[]> => {
+      // 优先使用自定义 exportFetcher
+      if (exportFetcher) {
+        const { page: _p, perPage: _pp, ...exportParams } = queryInput ?? {};
+        const result = await exportFetcher(exportParams);
+        return (result?.data ?? []) as Record<string, unknown>[];
+      }
+      // 自动检测 router.export
+      if (exportQuery) {
+        const result = await exportQuery.refetch();
+        return (result?.data?.data ?? []) as Record<string, unknown>[];
+      }
+      throw new Error("Export not supported");
+    },
+    [exportFetcher, exportQuery, queryInput]
+  );
+
+  const canExport = !!(exportFetcher || exportQuery);
+
   // 返回值
   return {
     tableData: {
@@ -471,6 +620,7 @@ export function useAutoCrudResource<
       isCreating: createMutation.isPending,
       isUpdating: updateMutation.isPending,
       isDeleting: deleteMutation.isPending,
+      isImporting: importMutation?.isPending ?? false,
     },
     handlers: {
       openCreate,
@@ -485,6 +635,8 @@ export function useAutoCrudResource<
       deleteMany,
       updateMany,
       setVariant,
+      import: importMutation ? handleImport : null,
+      export: canExport ? handleExport : null,
     },
   };
 }

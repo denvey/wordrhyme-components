@@ -6,6 +6,10 @@ export { AutoTable } from "./components/auto-crud/auto-table";
 export { AutoTableActionBar } from "./components/auto-crud/auto-table-action-bar";
 export { AutoTableSimpleFilters } from "./components/auto-crud/auto-table-simple-filters";
 export { CrudFormModal } from "./components/auto-crud/crud-form-modal";
+export { ImportDialog } from "./components/auto-crud/import-dialog";
+export type { ImportDialogProps } from "./components/auto-crud/import-dialog";
+export { ExportDialog } from "./components/auto-crud/export-dialog";
+export type { ExportDialogProps, ExportMode } from "./components/auto-crud/export-dialog";
 
 // Data Table Components
 export { DataTable } from "./components/data-table/data-table";
@@ -18,7 +22,7 @@ export { DataTableViewOptions } from "./components/data-table/data-table-view-op
 
 // Hooks
 export { useAutoCrudResource, noopToastAdapter } from "./hooks/use-auto-crud-resource";
-export type { ToastAdapter, CrudHooks, UseAutoCrudResourceOptions } from "./hooks/use-auto-crud-resource";
+export type { ToastAdapter, CrudHooks, UseAutoCrudResourceOptions, UseAutoCrudResourceReturn, UseAutoCrudResourceParams, AutoQueryParams, ImportResult } from "./hooks/use-auto-crud-resource";
 export { useDataTable } from "./hooks/use-data-table";
 export { useReadableFilters } from "./hooks/use-readable-filters";
 export {
@@ -38,7 +42,7 @@ export type { Parser, UrlStateOptions } from "./hooks/use-url-state";
 // Schema Bridge - 核心工具和类型
 export {
   parseZodField,
-  createColumns,
+  createTableSchema,
   createSelectColumn,
   createActionsColumn,
 } from "./lib/schema-bridge/zod-to-columns";
@@ -53,7 +57,7 @@ export type {
   ParsedZodField,
   ColumnOverrides,
   FormSchemaOverrides,
-  CreateColumnsOptions,
+  CreateTableSchemaOptions,
   CreateFormSchemaOptions,
   EnumOption,
 } from "./lib/schema-bridge/types";
@@ -85,5 +89,14 @@ export { cn } from "./lib/utils";
 export { formatDate } from "./lib/format";
 export { humanize } from "./lib/humanize";
 
+// Import/Export Utils
+export { parseCSV, parseJSON, parseImportFile, generateCSVTemplate, dataToCSV, coerceRowValues } from "./lib/import";
+export type { ParsedImportData } from "./lib/import";
+export { exportTableToCSV, exportAllToCSV, downloadCSVTemplate } from "./lib/export";
+
 // Types
 export type * from "./types/data-table";
+export type {
+  CrudPermissions,
+  CrudOperationPermissions,
+} from "./types/permissions";

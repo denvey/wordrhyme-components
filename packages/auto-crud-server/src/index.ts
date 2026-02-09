@@ -1,10 +1,57 @@
+// ============================================================
 // Main exports
+// ============================================================
+
+// Factory
 export { createCrudRouter } from "./routers/_factory";
-export type { CrudRouterConfig, AuthorizeCallback } from "./routers/_factory";
+
+// Types
+export type {
+  // Config types (v2.0 统一 API)
+  CrudRouterConfig,
+  ProcedureConfig,
+  ProcedureMap,
+  ProcedureFactory,
+  CrudProcedures,
+  // Operation types
+  CrudOperation,
+  WriteOperation,
+  AnyProcedure,
+  // Soft delete types
+  SoftDeleteConfig,
+  SoftDeleteOption,
+  // Middleware types
+  CrudMiddleware,
+  ListMiddlewareParams,
+  GetMiddlewareParams,
+  CreateMiddlewareParams,
+  UpdateMiddlewareParams,
+  DeleteMiddlewareParams,
+  DeleteManyMiddlewareParams,
+  UpdateManyMiddlewareParams,
+  UpsertMiddlewareParams,
+  ExportMiddlewareParams,
+  ImportMiddlewareParams,
+  CreateManyMiddlewareParams,
+  // Input/Output types
+  ListInput,
+  ListResult,
+  ExportInput,
+  ExportResult,
+  ImportInput,
+  ImportResult,
+  ImportFailedRow,
+} from "./types/config";
+
+// Middleware helpers
+export {
+  afterMiddleware,
+  beforeMiddleware,
+  composeMiddleware,
+} from "./lib/middleware-helpers";
 
 // tRPC setup
 export { router, publicProcedure } from "./trpc";
-export type { AnyProcedure } from "./trpc";
 
 // Re-export example routers (optional)
 export { appRouter } from "./routers";

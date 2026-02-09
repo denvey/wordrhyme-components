@@ -5,6 +5,7 @@ import type {
 } from '@pixpilot/shadcn-ui';
 import type { FormSpace } from '../../types/form';
 import type { DescriptionPlacement, LabelPlacement } from '../../types/form-item';
+import type { ActionItem } from '../array-base';
 import React from 'react';
 
 export interface FomFileUpload {
@@ -30,6 +31,18 @@ export interface FormConfigProps {
   };
   fileUpload?: FomFileUpload;
   richTextEditor?: RichTextEditorProps;
+
+  /**
+   * Global defaults for Array components.
+   * Component-level props (e.g. x-component-props) still override these values.
+   */
+  array?: {
+    sortable?: boolean;
+    item?: {
+      /** Extra icon actions rendered in each array item header */
+      actions?: ActionItem[] | false;
+    };
+  };
 }
 
 /**
@@ -45,10 +58,10 @@ export interface FormLayoutOptions {
   labelPlacement?: LabelPlacement;
   /** Custom class names for FormItem elements */
   itemProps?: {
-    label?: React.HTMLAttributes<HTMLDivElement>;
-    description?: React.HTMLAttributes<HTMLDivElement>;
+    label?: React.LabelHTMLAttributes<HTMLLabelElement>;
+    description?: React.HTMLAttributes<HTMLParagraphElement>;
     inputWrapper?: React.HTMLAttributes<HTMLDivElement>;
-    error?: React.HTMLAttributes<HTMLDivElement>;
+    error?: React.HTMLAttributes<HTMLParagraphElement>;
     container?: React.HTMLAttributes<HTMLDivElement>;
   };
   /** Custom class names for ObjectContainer elements */

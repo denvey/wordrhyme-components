@@ -1,5 +1,24 @@
 # @pixpilot/shadcn
 
+## 0.9.0
+
+### Minor Changes
+
+- add ButtonGroup and ToggleGroup components
+- enhance component creation guidelines
+
+## 0.8.0
+
+### Minor Changes
+
+- add `Rating` component to default component registry
+
+## 0.7.1
+
+### Patch Changes
+
+- 2792697: new release
+
 ## 0.7.0
 
 ### Minor Changes

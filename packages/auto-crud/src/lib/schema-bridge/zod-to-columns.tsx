@@ -18,7 +18,7 @@ import { formatDate } from "@/lib/format";
 import { humanize } from "@/lib/humanize";
 import type {
   ColumnOverrides,
-  CreateColumnsOptions,
+  CreateTableSchemaOptions,
   FieldType,
   FilterVariant,
   ParsedZodField,
@@ -199,11 +199,11 @@ function renderCell(value: unknown, type: FieldType) {
 }
 
 /**
- * 从 Zod Schema 创建 ColumnDef 数组
+ * 从 Zod Schema 创建 Table Schema (ColumnDef 数组)
  */
-export function createColumns<T extends z.ZodObject<z.ZodRawShape>>(
+export function createTableSchema<T extends z.ZodObject<z.ZodRawShape>>(
   schema: T,
-  options?: CreateColumnsOptions<z.infer<T>>
+  options?: CreateTableSchemaOptions<z.infer<T>>
 ): ColumnDef<z.infer<T>>[] {
   const shape = schema.shape;
   const columns: ColumnDef<z.infer<T>>[] = [];

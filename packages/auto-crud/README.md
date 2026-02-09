@@ -26,13 +26,13 @@
 
 ```bash
 # pnpm
-pnpm add @wordrhyme/auto-crud zod
+pnpm add @wordrhyme/auto-crud zod sonner
 
 # npm
-npm install @wordrhyme/auto-crud zod
+npm install @wordrhyme/auto-crud zod sonner
 
 # yarn
-yarn add @wordrhyme/auto-crud zod
+yarn add @wordrhyme/auto-crud zod sonner
 ```
 
 ### Peer Dependencies
@@ -41,6 +41,7 @@ yarn add @wordrhyme/auto-crud zod
 {
   "react": "^18.0.0 || ^19.0.0",
   "react-dom": "^18.0.0 || ^19.0.0",
+  "sonner": "^2.0.0",
   "zod": "^3.0.0 || ^4.0.0"
 }
 ```
@@ -129,14 +130,14 @@ function TasksPage() {
       title="任务管理"
       schema={taskSchema}
       resource={resource}
-      fieldOverrides={{
+      fields={{
         id: { hidden: true },
         status: { label: "状态" },
         priority: { label: "优先级" },
       }}
-      tableProps={{
-        filterMode: ["simple", "advanced", "command"],
-        batchUpdateFields: ["status", "priority"],
+      table={{
+        filterModes: ["simple", "advanced", "command"],
+        batchFields: ["status", "priority"],
       }}
     />
   );
@@ -244,52 +245,32 @@ const dataSource: DataSource<Task> = {
 #### Props
 
 ```typescript
-interface AutoCrudTableProps<TData> {
+interface AutoCrudTableProps<TSchema> {
   // 必需
-  title: string;                    // 表格标题
-  schema: z.ZodType<TData>;         // Zod Schema
-  resource: AutoCrudResource<TData>; // useAutoCrudResource 返回值
+  schema: TSchema;                              // Zod Schema
+  resource: UseAutoCrudResourceReturn<TSchema>; // useAutoCrudResource 返回值
 
   // 可选
-  fieldOverrides?: FieldOverrides<TData>;  // 字段配置
-  tableProps?: {
-    filterMode?: FilterMode | FilterMode[];  // 过滤模式
-    batchUpdateFields?: (keyof TData)[];     // 批量更新字段
+  title?: string;
+  description?: string;
+  fields?: Fields;                              // 统一字段配置
+  table?: {
+    hidden?: string[];                          // 隐藏的列
+    overrides?: Record<string, any>;            // 列覆盖配置
+    filterModes?: FilterMode | FilterMode[];    // 过滤模式
+    batchFields?: (string | BatchUpdateField)[]; // 批量更新字段
+    defaultSort?: any[];                        // 默认排序
+  };
+  form?: {
+    overrides?: Record<string, any>;            // 表单覆盖配置
+    columns?: number;                           // 表单列数
   };
   slots?: {
-    toolbarEnd?: React.ReactNode;  // 工具栏右侧插槽
+    toolbarStart?: React.ReactNode;             // 工具栏左侧插槽
+    toolbarEnd?: React.ReactNode;               // 工具栏右侧插槽
+    rowActions?: (row) => Array<{ label: string; onClick: () => void }>;
   };
 }
-```
-
-#### 示例
-
-```typescript
-<AutoCrudTable
-  title="用户管理"
-  schema={userSchema}
-  resource={resource}
-  fieldOverrides={{
-    id: { hidden: true },
-    email: { label: "邮箱" },
-    role: {
-      label: "角色",
-      table: {
-        meta: {
-          variant: "select",
-          options: [
-            { label: "管理员", value: "admin" },
-            { label: "用户", value: "user" },
-          ],
-        },
-      },
-    },
-  }}
-  tableProps={{
-    filterMode: ["simple", "advanced"],
-    batchUpdateFields: ["role", "status"],
-  }}
-/>
 ```
 
 ### `useAutoCrudResource()`
@@ -308,30 +289,44 @@ interface UseAutoCrudResourceConfig<TData> {
 #### 返回值
 
 ```typescript
-interface AutoCrudResource<TData> {
-  // 数据
-  data: TData[];
-  total: number;
-  isLoading: boolean;
+interface UseAutoCrudResourceReturn<TSchema, TData> {
+  // 表格数据
+  tableData: {
+    data: TData[];
+    pageCount: number;
+  };
 
   // 模态框状态
   modal: {
     variant: "dialog" | "sheet";
-    isOpen: boolean;
-    mode: "create" | "edit";
-    editingItem: TData | null;
+    createOpen: boolean;
+    editOpen: boolean;
+    viewOpen: boolean;
+    deleteOpen: boolean;
+    selected: TData | null;
+    copySource: TData | null;
   };
 
   // 操作方法
   handlers: {
-    setVariant: (variant: "dialog" | "sheet") => void;
     openCreate: () => void;
     openEdit: (item: TData) => void;
-    closeModal: () => void;
-    handleCreate: (data: Partial<TData>) => Promise<void>;
-    handleUpdate: (id: string, data: Partial<TData>) => Promise<void>;
-    handleDelete: (id: string) => Promise<void>;
-    handleDeleteMany: (ids: string[]) => Promise<void>;
+    openView: (item: TData) => void;
+    openDelete: (item: TData) => void;
+    copyRow: (item: TData) => void;
+    closeModals: () => void;
+    submitCreate: (data: TData) => Promise<void>;
+    submitUpdate: (data: TData) => Promise<void>;
+    confirmDelete: () => Promise<void>;
+    deleteMany: (rows: TData[]) => Promise<void>;
+    updateMany: (rows: TData[], data: Record<string, unknown>) => Promise<void>;
+  };
+
+  // 加载状态
+  mutations: {
+    isCreating: boolean;
+    isUpdating: boolean;
+    isDeleting: boolean;
   };
 }
 ```
@@ -340,100 +335,147 @@ interface AutoCrudResource<TData> {
 
 ## 🔧 字段配置
 
+### Field 类型
+
+```typescript
+interface Field {
+  /** 字段标签（表格和表单共用） */
+  label?: string;
+  /** 是否隐藏（表格和表单都隐藏） */
+  hidden?: boolean;
+  /** 表格特定配置 */
+  table?: {
+    hidden?: boolean;                    // 仅表格隐藏
+    meta?: Record<string, unknown>;      // 筛选器配置
+    [key: string]: unknown;
+  };
+  /** 表单特定配置 */
+  form?: {
+    "x-hidden"?: boolean;                // 仅表单隐藏
+    "x-component"?: string;              // 组件类型
+    "x-component-props"?: Record<string, unknown>;  // 组件属性
+    "x-reactions"?: object;              // 字段联动
+    [key: string]: unknown;
+  };
+}
+
+type Fields = Record<string, Field>;
+```
+
 ### 基础配置
 
 ```typescript
-fieldOverrides={{
-  fieldName: {
-    label: "显示名称",      // 表格和表单共用
-    hidden: true,           // 表格和表单都隐藏
-  },
-}}
+<AutoCrudTable
+  schema={taskSchema}
+  resource={resource}
+  fields={{
+    id: { hidden: true },           // 表格和表单都隐藏
+    title: { label: "标题" },        // 自定义标签
+    createdAt: {
+      label: "创建时间",
+      form: { "x-hidden": true },    // 仅表单隐藏
+    },
+  }}
+/>
 ```
 
-### 表格特定配置
+### 表格筛选器配置
 
 ```typescript
-fieldOverrides={{
-  amount: {
-    label: "金额",
-    table: {
-      meta: {
-        unit: "¥",          // 单位显示
-        variant: "number",  // 筛选器类型
+<AutoCrudTable
+  schema={taskSchema}
+  resource={resource}
+  fields={{
+    status: {
+      label: "状态",
+      table: {
+        meta: {
+          variant: "select",  // "text" | "select" | "multiSelect" | "date" | "dateRange" | "range"
+          options: [
+            { label: "待处理", value: "pending" },
+            { label: "已完成", value: "completed" },
+          ],
+        },
       },
     },
-  },
-  status: {
-    label: "状态",
-    table: {
-      meta: {
-        variant: "select",
-        options: [
-          { label: "待处理", value: "pending" },
-          { label: "已完成", value: "completed" },
-        ],
+    amount: {
+      label: "金额",
+      table: {
+        meta: {
+          variant: "range",
+          range: [0, 10000],
+          unit: "¥",
+        },
       },
     },
-  },
-}}
+  }}
+/>
 ```
 
-### 表单特定配置
+### 表单组件配置
 
 ```typescript
-fieldOverrides={{
-  description: {
-    label: "描述",
-    form: {
-      "x-component": "Textarea",
-      "x-component-props": { rows: 5 },
+<AutoCrudTable
+  schema={taskSchema}
+  resource={resource}
+  fields={{
+    description: {
+      label: "描述",
+      form: {
+        "x-component": "Textarea",
+        "x-component-props": { rows: 5 },
+      },
     },
-  },
-  createdAt: {
-    label: "创建时间",
-    form: {
-      "x-hidden": true,  // 仅表单隐藏
+    assignee: {
+      label: "负责人",
+      form: {
+        "x-component": "Combobox",
+        "x-component-props": { placeholder: "选择负责人" },
+      },
     },
-  },
-}}
+  }}
+/>
 ```
 
 ### 字段联动
 
 ```typescript
-fieldOverrides={{
-  endDate: {
-    label: "结束日期",
-    form: {
-      "x-reactions": {
-        dependencies: ["startDate"],
-        when: "{{$deps[0] !== undefined}}",
-        fulfill: {
-          state: {
-            visible: true,
-            disabled: false,
+<AutoCrudTable
+  schema={taskSchema}
+  resource={resource}
+  fields={{
+    endDate: {
+      label: "结束日期",
+      form: {
+        "x-reactions": {
+          dependencies: ["startDate"],
+          when: "{{$deps[0] !== undefined}}",
+          fulfill: {
+            state: {
+              visible: true,
+              disabled: false,
+            },
           },
         },
       },
     },
-  },
-}}
+  }}
+/>
 ```
 
 ---
 
 ## 🎯 过滤模式
 
-### Simple 模式（简单筛选）
+### Simple 模式（默认）
 
 - 适合：快速筛选常用字段
 - 特点：下拉选择框，一键清除
 - 示例：状态筛选、优先级筛选
 
 ```typescript
-tableProps={{
-  filterMode: "simple",
+table={{
+  filterModes: "simple",
 }}
 ```
 
@@ -444,8 +486,8 @@ tableProps={{
 - 示例：`status = "done" AND priority = "high"`
 
 ```typescript
-tableProps={{
-  filterMode: "advanced",
+table={{
+  filterModes: "advanced",
 }}
 ```
 
@@ -456,16 +498,16 @@ tableProps={{
 - 示例：快速搜索并添加筛选条件
 
 ```typescript
-tableProps={{
-  filterMode: "command",
+table={{
+  filterModes: "command",
 }}
 ```
 
 ### 多模式切换
 
 ```typescript
-tableProps={{
-  filterMode: ["simple", "advanced", "command"],  // 第一个为默认模式
+table={{
+  filterModes: ["simple", "advanced", "command"],  // 第一个为默认模式
 }}
 ```
 
@@ -479,8 +521,8 @@ tableProps={{
 <AutoCrudTable
   schema={taskSchema}
   resource={resource}
-  tableProps={{
-    batchUpdateFields: ["status", "priority"],
+  table={{
+    batchFields: ["status", "priority"],
   }}
 />
 ```
@@ -506,90 +548,6 @@ tableProps={{
 
 ---
 
-## 🎨 自定义样式
-
-### 使用 Tailwind CSS
-
-```typescript
-<AutoCrudTable
-  schema={taskSchema}
-  resource={resource}
-  className="custom-table"
-/>
-```
-
-### 自定义工具栏
-
-```typescript
-<AutoCrudTable
-  schema={taskSchema}
-  resource={resource}
-  slots={{
-    toolbarEnd: (
-      <div className="flex gap-2">
-        <Button onClick={handleExport}>导出</Button>
-        <Button onClick={handleImport}>导入</Button>
-      </div>
-    ),
-  }}
-/>
-```
-
----
-
-## 📚 高级用法
-
-### 自定义列渲染
-
-```typescript
-import { createColumns } from "@wordrhyme/auto-crud";
-
-const columns = createColumns(taskSchema, {
-  overrides: {
-    status: {
-      cell: ({ row }) => (
-        <Badge variant={row.original.status === "done" ? "success" : "default"}>
-          {row.original.status}
-        </Badge>
-      ),
-    },
-  },
-});
-```
-
-### 自定义表单组件
-
-```typescript
-fieldOverrides={{
-  tags: {
-    label: "标签",
-    form: {
-      "x-component": "TagsInput",
-      "x-component-props": {
-        placeholder: "输入标签",
-        maxTags: 5,
-      },
-    },
-  },
-}}
-```
-
-### 服务端分页
-
-```typescript
-const [queryParams] = useQueryStates({
-  page: parseAsInteger.withDefault(1),
-  perPage: parseAsInteger.withDefault(10),
-});
-
-const dataSource = createTRPCDataSource({
-  router: trpc.tasks,
-  queryInput: queryParams,
-});
-```
-
----
-
 ## 🔌 与其他库集成
 
 ### 与 Drizzle ORM 集成
@@ -601,17 +559,6 @@ import { tasks } from "@/db/schema";
 const taskSchema = createSelectSchema(tasks);
 
 <AutoCrudTable schema={taskSchema} resource={resource} />
-```
-
-### 与 React Hook Form 集成
-
-```typescript
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-
-const form = useForm({
-  resolver: zodResolver(taskSchema),
-});
 ```
 
 ### 与 Next.js 集成
@@ -629,39 +576,306 @@ export default function TasksPage() {
 
 ---
 
-## 🛠️ 工具函数
+## 🧰 工具函数
 
-### `createColumns()`
-
-从 Zod Schema 自动生成表格列。
+### Schema Bridge - 核心转换函数
 
 ```typescript
-import { createColumns } from "@wordrhyme/auto-crud";
+import {
+  parseZodField,        // 解析 Zod 字段类型
+  createTableSchema,        // Zod Schema → TanStack Table 列定义
+  createSelectColumn,   // 创建选择列
+  createActionsColumn,  // 创建操作列
+  createFormSchema,     // Zod Schema → Formily Schema
+  createEditFormSchema, // 创建编辑表单 Schema（排除 id, createdAt, updatedAt）
+} from "@wordrhyme/auto-crud";
+```
 
-const columns = createColumns(taskSchema, {
-  exclude: ["id", "createdAt"],
+### 自定义列渲染
+
+使用 `createTableSchema` 的 `overrides` 参数自定义列渲染：
+
+```typescript
+import { createTableSchema } from "@wordrhyme/auto-crud";
+import { Badge } from "@shadcn/ui";
+
+const columns = createTableSchema(taskSchema, {
   overrides: {
     status: {
-      meta: {
-        label: "状态",
-        variant: "select",
+      label: "状态",
+      // 自定义 cell 渲染
+      cell: ({ row }) => {
+        const status = row.getValue("status");
+        return (
+          <Badge variant={status === "done" ? "success" : "secondary"}>
+            {status}
+          </Badge>
+        );
       },
     },
+    priority: {
+      label: "优先级",
+      // 自定义列配置
+      size: 100,
+      enableSorting: false,
+    },
   },
+  exclude: ["id", "createdAt"],  // 排除字段
 });
 ```
 
-### `createFormSchema()`
+### 自定义表单渲染
 
-从 Zod Schema 自动生成 Formily 表单 Schema。
+使用 `createFormSchema` 的 `overrides` 参数自定义表单组件：
 
 ```typescript
 import { createFormSchema } from "@wordrhyme/auto-crud";
 
 const formSchema = createFormSchema(taskSchema, {
+  overrides: {
+    description: {
+      "x-component": "Textarea",
+      "x-component-props": { rows: 5 },
+    },
+    status: {
+      "x-component": "Select",
+      "x-component-props": {
+        options: [
+          { label: "待办", value: "todo" },
+          { label: "完成", value: "done" },
+        ],
+      },
+    },
+    dueDate: {
+      "x-component": "DatePicker",
+      "x-component-props": { format: "YYYY-MM-DD" },
+    },
+  },
+  layout: "grid",
+  gridColumns: 2,
   exclude: ["id", "createdAt"],
-  layout: "vertical",
 });
+```
+
+---
+
+## 🔀 三种 Schema 类型
+
+`@wordrhyme/auto-crud` 支持三种 Schema 输入格式，通过 `SchemaAdapter` 统一处理：
+
+### 1. Zod Schema（推荐）
+
+```typescript
+import { z } from "zod";
+
+const taskSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  status: z.enum(["todo", "in-progress", "done"]),
+  priority: z.enum(["low", "medium", "high"]),
+  createdAt: z.date(),
+});
+```
+
+### 2. JSON Schema
+
+```typescript
+import type { JSONSchema } from "@wordrhyme/auto-crud";
+
+const taskSchema: JSONSchema = {
+  type: "object",
+  properties: {
+    id: { type: "string" },
+    title: { type: "string", title: "标题" },
+    status: {
+      type: "string",
+      enum: ["todo", "in-progress", "done"],
+      title: "状态",
+    },
+    createdAt: { type: "string", format: "date-time" },
+  },
+  required: ["id", "title"],
+};
+```
+
+### 3. 简化配置（Simple Config）
+
+```typescript
+import type { SimpleFieldsConfig } from "@wordrhyme/auto-crud";
+
+const taskSchema: SimpleFieldsConfig = {
+  id: { type: "string", required: true },
+  title: { type: "string", label: "标题", required: true },
+  status: {
+    type: "select",
+    label: "状态",
+    options: ["todo", "in-progress", "done"],
+  },
+  description: { type: "textarea", label: "描述" },
+  createdAt: { type: "datetime" },
+};
+```
+
+### SchemaAdapter 使用
+
+```typescript
+import { SchemaAdapter } from "@wordrhyme/auto-crud";
+
+// 自动检测 Schema 类型
+const type = SchemaAdapter.detectType(schema);  // "zod" | "json" | "simple"
+
+// 转换为统一的字段定义
+const fields = SchemaAdapter.toUnified(schema);
+
+// 转换为 Formily Schema
+const formilySchema = SchemaAdapter.toFormily(fields);
+```
+
+---
+
+## 🧩 基础组件（自定义组合）
+
+如果 `AutoCrudTable` 不能满足需求，可以使用基础组件自行组合：
+
+### 组件层级
+
+```
+AutoCrudTable         ← 高级封装，一站式 CRUD
+  ├── AutoTable       ← 表格 + 工具栏 + 筛选器
+  │   ├── DataTable   ← 纯表格组件（TanStack Table）
+  │   ├── AutoTableActionBar    ← 批量操作栏
+  │   └── AutoTableSimpleFilters ← 简单筛选器
+  ├── AutoForm        ← 表单组件（Formily）
+  └── CrudFormModal   ← 表单弹窗（创建/编辑/查看）
+```
+
+### 使用 DataTable 组件
+
+```typescript
+import { DataTable, createTableSchema, createSelectColumn, createActionsColumn } from "@wordrhyme/auto-crud";
+
+function CustomTable({ data }) {
+  const columns = [
+    createSelectColumn(),
+    ...createTableSchema(taskSchema, { exclude: ["id"] }),
+    createActionsColumn({
+      onEdit: (row) => console.log("Edit", row),
+      onDelete: (row) => console.log("Delete", row),
+      onView: (row) => console.log("View", row),
+      onCopy: (row) => console.log("Copy", row),
+    }),
+  ];
+
+  return (
+    <DataTable
+      columns={columns}
+      data={data}
+      pageCount={10}
+    />
+  );
+}
+```
+
+### 使用 AutoForm 组件
+
+```typescript
+import { AutoForm, createFormSchema } from "@wordrhyme/auto-crud";
+import { createForm } from "@formily/core";
+
+function CustomForm() {
+  const form = createForm();
+  const formSchema = createFormSchema(taskSchema, {
+    exclude: ["id", "createdAt"],
+    layout: "grid",
+    gridColumns: 2,
+  });
+
+  return (
+    <AutoForm
+      form={form}
+      schema={formSchema}
+      onSubmit={(values) => console.log(values)}
+    />
+  );
+}
+```
+
+### 使用 useDataTable Hook
+
+```typescript
+import { useDataTable, DataTable, DataTablePagination } from "@wordrhyme/auto-crud";
+
+function CustomDataTable({ data, pageCount }) {
+  const { table } = useDataTable({
+    data,
+    columns,
+    pageCount,
+    initialState: {
+      pagination: { pageIndex: 0, pageSize: 10 },
+      sorting: [{ id: "createdAt", desc: true }],
+    },
+  });
+
+  return (
+    <div>
+      <DataTable table={table} />
+      <DataTablePagination table={table} />
+    </div>
+  );
+}
+```
+
+### 组件组合示例
+
+```typescript
+import {
+  AutoTable,
+  AutoForm,
+  CrudFormModal,
+  useAutoCrudResource,
+  createTableSchema,
+  createFormSchema,
+} from "@wordrhyme/auto-crud";
+
+function CustomCrudPage() {
+  const resource = useAutoCrudResource({ dataSource, schema: taskSchema });
+
+  const columns = createTableSchema(taskSchema, {
+    overrides: {
+      status: {
+        cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+      },
+    },
+  });
+
+  const formSchema = createFormSchema(taskSchema, {
+    exclude: ["id", "createdAt", "updatedAt"],
+  });
+
+  return (
+    <div>
+      {/* 自定义表格 */}
+      <AutoTable
+        columns={columns}
+        data={resource.tableData.data}
+        pageCount={resource.tableData.pageCount}
+        filterMode="simple"
+      />
+
+      {/* 自定义表单弹窗 */}
+      <CrudFormModal
+        mode={resource.modal.editOpen ? "edit" : "create"}
+        open={resource.modal.createOpen || resource.modal.editOpen}
+        onClose={resource.handlers.closeModals}
+        schema={formSchema}
+        initialValues={resource.modal.selected}
+        onSubmit={resource.modal.editOpen
+          ? resource.handlers.submitUpdate
+          : resource.handlers.submitCreate}
+      />
+    </div>
+  );
+}
 ```
 
 ---
@@ -669,27 +883,49 @@ const formSchema = createFormSchema(taskSchema, {
 ## 📦 导出的类型
 
 ```typescript
-// 组件
+// Auto-CRUD 组件
 export { AutoCrudTable } from "./components/auto-crud/auto-crud-table";
+export type { Field, Fields, AutoCrudTableProps } from "./components/auto-crud/auto-crud-table";
 export { AutoForm } from "./components/auto-crud/auto-form";
 export { AutoTable } from "./components/auto-crud/auto-table";
+export { AutoTableActionBar } from "./components/auto-crud/auto-table-action-bar";
+export { AutoTableSimpleFilters } from "./components/auto-crud/auto-table-simple-filters";
+export { CrudFormModal } from "./components/auto-crud/crud-form-modal";
+
+// 数据表格组件
+export { DataTable } from "./components/data-table/data-table";
+export { DataTableAdvancedToolbar } from "./components/data-table/data-table-advanced-toolbar";
+export { DataTableColumnHeader } from "./components/data-table/data-table-column-header";
+export { DataTableFacetedFilter } from "./components/data-table/data-table-faceted-filter";
+export { DataTablePagination } from "./components/data-table/data-table-pagination";
+export { DataTableToolbar } from "./components/data-table/data-table-toolbar";
+export { DataTableViewOptions } from "./components/data-table/data-table-view-options";
 
 // Hooks
-export { useAutoCrudResource } from "./hooks/use-auto-crud-resource";
+export { useAutoCrudResource, noopToastAdapter } from "./hooks/use-auto-crud-resource";
+export type { ToastAdapter, CrudHooks, UseAutoCrudResourceOptions } from "./hooks/use-auto-crud-resource";
 export { useDataTable } from "./hooks/use-data-table";
+export { useReadableFilters } from "./hooks/use-readable-filters";
+export { useUrlState, useQueryState, useQueryStates } from "./hooks/use-url-state";
+
+// Schema Bridge - 核心工具
+export { parseZodField, createTableSchema, createSelectColumn, createActionsColumn } from "./lib/schema-bridge/zod-to-columns";
+export { createFormSchema, createEditFormSchema } from "./lib/schema-bridge/zod-to-formily";
+export { SchemaAdapter } from "./lib/schema-bridge/schema-adapter";
+export type {
+  ColumnOverrides, FormSchemaOverrides,
+  CreateTableSchemaOptions, CreateFormSchemaOptions,
+  UnifiedSchema, JSONSchema, SimpleFieldsConfig, UnifiedField,
+} from "./lib/schema-bridge";
 
 // 数据源
 export { createTRPCDataSource, createMemoryDataSource } from "./lib/data-source";
 export type { DataSource, ListParams, ListResult } from "./lib/data-source";
 
 // 工具函数
-export { createColumns, createFormSchema } from "./lib/schema-bridge";
-export type {
-  FieldOverrides,
-  FieldOverride,
-  CreateColumnsOptions,
-  CreateFormSchemaOptions,
-} from "./lib/schema-bridge";
+export { cn } from "./lib/utils";
+export { formatDate } from "./lib/format";
+export { humanize } from "./lib/humanize";
 ```
 
 ---

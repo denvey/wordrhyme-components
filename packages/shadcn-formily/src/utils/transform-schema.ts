@@ -55,14 +55,64 @@ export function transformSchema(
   }
   traverse(normalizedSchema, {
     allKeys: true,
-    cb: (currentSchema) => {
+    cb: (
+      currentSchema,
+      _jsonPtr,
+      _rootSchema,
+      _parentJSONPtr,
+      parentKeyword,
+      _parentSchema,
+      _keyIndex,
+    ) => {
       const { type } = currentSchema;
       const xComponent = currentSchema['x-component'] as string | undefined;
+
+      // WORKAROUND FOR FORMILY LIMITATION:
+      // Formily's core JSON Schema handling does NOT automatically propagate
+      // object-level `required: ['fieldName']` to child field validation.
+      // While @formily/react-schema-renderer has a fix (PR #928), we don't use that layer.
+      // See: https://github.com/alibaba/formily/issues/853
+      //      https://github.com/alibaba/formily/pull/928
+      // This manually converts `required: ['x']` → `properties.x.required = true`
+      // so Formily field validation enforces it.
+      // See also: packages/shadcn-formily/FORMILY_LIMITATIONS.md
+      if (type === 'object') {
+        const requiredKeys = Array.isArray(currentSchema.required)
+          ? (currentSchema.required as string[])
+          : [];
+        if (requiredKeys.length > 0 && currentSchema.properties != null) {
+          requiredKeys.forEach((key) => {
+            const propertySchema = (
+              currentSchema.properties as Record<string, ISchema>
+            )?.[key] as ISchema | undefined;
+            if (propertySchema && propertySchema.required !== true) {
+              propertySchema.required = true;
+            }
+          });
+        }
+      }
 
       if (typeof type === 'string' && type in inputSchemaMap) {
         const mapping = inputSchemaMap[type]!;
         if (currentSchema['x-component'] == null) {
-          currentSchema['x-component'] = mapping['x-component'];
+          // Don't set x-component for array items unless explicitly set
+          if (parentKeyword !== 'items') {
+            currentSchema['x-component'] = mapping['x-component'];
+          }
+        }
+      }
+
+      // Handle enum: if type is string and has enum, use Select component
+      if (
+        type === 'string' &&
+        Array.isArray(currentSchema.enum) &&
+        currentSchema.enum.length > 0
+      ) {
+        if (
+          currentSchema['x-component'] == null ||
+          currentSchema['x-component'] === 'Input'
+        ) {
+          currentSchema['x-component'] = 'Select';
         }
       }
 

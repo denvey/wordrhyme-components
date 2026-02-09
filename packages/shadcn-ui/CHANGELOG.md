@@ -1,5 +1,203 @@
 # @pixpilot/shadcn-ui
 
+## 0.47.0
+
+### Minor Changes
+
+- add ButtonGroup and ToggleGroup components
+- enhance component creation guidelines
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn@0.9.0
+
+## 0.46.1
+
+### Patch Changes
+
+- simplify color classes for better readability
+
+## 0.46.0
+
+### Minor Changes
+
+- refactor to use options instead of labels for rating component
+
+## 0.45.0
+
+### Minor Changes
+
+- add Rating component to shadcn-ui and shadcn-formily packages
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@0.8.0
+
+## 0.44.0
+
+### Minor Changes
+
+- add placeholder support to RichTextEditor
+
+## 0.43.0
+
+### Minor Changes
+
+- add TagsInput component for inline tag management
+
+## 0.42.0
+
+### Minor Changes
+
+- improve clearable button positioning in Select component
+
+## 0.41.0
+
+### Minor Changes
+
+- enhance Select component with position prop for SelectContent
+- enhance array item editing with titles and descriptions
+
+## 0.40.0
+
+### Minor Changes
+
+- add Popover component and related functionality
+
+## 0.39.0
+
+### Minor Changes
+
+- add tooltip mode for toolbar buttons
+
+### Patch Changes
+
+- ensure proper button functionality and accessibility
+
+## 0.38.1
+
+### Patch Changes
+
+- 2792697: new release
+- Updated dependencies [2792697]
+  - @pixpilot/shadcn@0.7.1
+
+## 0.38.0
+
+### Minor Changes
+
+- add `iconSize` prop for customizable icon dimensions
+
+### Patch Changes
+
+- update SVG mask class for improved sizing
+
+## 0.37.1
+
+### Patch Changes
+
+- update class name for SVG mask styling
+
+## 0.37.0
+
+### Minor Changes
+
+- add IconToggle component with customizable icons
+
+## 0.36.0
+
+### Minor Changes
+
+- add link and text alignment support
+
+## 0.35.0
+
+### Minor Changes
+
+- refactor editor component and add toolbar
+
+## 0.34.0
+
+### Minor Changes
+
+- rename toolbarOptions to toolbarItems and update related functionality
+
+## 0.33.0
+
+### Minor Changes
+
+- enhance editor functionality and add ToolbarButton component
+
+## 0.32.0
+
+### Minor Changes
+
+- add AlertToast stories
+
+## 0.31.1
+
+### Patch Changes
+
+- rename `popover` prop to `popoverProps` for consistency
+
+## 0.31.0
+
+### Minor Changes
+
+- enhance icon picker with improved button styling and icon display
+
+## 0.30.0
+
+### Minor Changes
+
+- add showValueText and emptyText props
+- add tooltips to Array operation buttons
+
+## 0.29.0
+
+### Minor Changes
+
+- refactor theme props in dropdown and switch components
+
+## 0.28.0
+
+### Minor Changes
+
+- remove ThemeToggle component and related stories
+
+## 0.27.0
+
+### Minor Changes
+
+- add theme toggle components and update exports
+
+## 0.26.0
+
+### Minor Changes
+
+- add data-slot attributes for improved accessibility
+
+## 0.25.1
+
+### Patch Changes
+
+- spread `rest` props to `ColorPickerContent`
+
+## 0.25.0
+
+### Minor Changes
+
+- add contentProps for customization and new story
+
+## 0.24.0
+
+### Minor Changes
+
+- fix focus issue and adds contentProps-width
+
 ## 0.23.0
 
 ### Minor Changes

@@ -53,9 +53,9 @@ export type ColumnOverrides<T> = Partial<{
 export type FormSchemaOverrides = Record<string, Partial<ISchema>>;
 
 /**
- * createColumns 选项
+ * createTableSchema 选项
  */
-export interface CreateColumnsOptions<T> {
+export interface CreateTableSchemaOptions<T> {
   overrides?: ColumnOverrides<T>;
   exclude?: (keyof T)[];
 }

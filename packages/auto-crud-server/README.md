@@ -75,27 +75,32 @@ export const tasks = pgTable("tasks", {
 // src/server/routers/tasks.ts
 import { createCrudRouter } from "@wordrhyme/auto-crud-server";
 import { tasks } from "@/db/schema";
+
+// 🚀 零配置！一行代码生成完整 CRUD 路由
+export const tasksRouter = createCrudRouter({
+  table: tasks,
+  // Schema 自动从 table 派生，排除 id, createdAt, updatedAt
+});
+```
+
+**或者，显式传入 Schema：**
+
+```typescript
+import { createCrudRouter } from "@wordrhyme/auto-crud-server";
+import { tasks } from "@/db/schema";
 import { createSelectSchema } from "drizzle-zod";
 
 // 从 Drizzle Schema 自动生成 Zod Schema
-const selectTaskSchema = createSelectSchema(tasks);
-
-// 创建输入 Schema
-const insertTaskSchema = selectTaskSchema.omit({
+const taskSchema = createSelectSchema(tasks).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
 
-const updateTaskSchema = insertTaskSchema.partial();
-
-// 🚀 一行代码生成完整 CRUD 路由
 export const tasksRouter = createCrudRouter({
   table: tasks,
-  selectSchema: selectTaskSchema,
-  insertSchema: insertTaskSchema,
-  updateSchema: updateTaskSchema,
-  idField: "id",  // 可选，默认为 "id"
+  schema: taskSchema,  // 主 Schema（用于 create/upsert）
+  // updateSchema 自动派生为 schema.partial()
 });
 ```
 
@@ -136,7 +141,7 @@ export { handler as GET, handler as POST };
 
 ## 📖 自动生成的路由
 
-`createCrudRouter` 会自动生成以下 6 个路由：
+`createCrudRouter` 会自动生成以下 8 个路由：
 
 ### 1. `list` - 列表查询
 
@@ -276,6 +281,65 @@ void
 await trpc.tasks.deleteMany({ ids: ["1", "2", "3"] });
 ```
 
+### 7. `updateMany` - 批量更新
+
+**输入**:
+```typescript
+{
+  ids: string[];
+  data: Partial<Omit<Task, "id" | "createdAt" | "updatedAt">>;
+}
+```
+
+**输出**:
+```typescript
+{ updated: number }
+```
+
+**示例**:
+```typescript
+await trpc.tasks.updateMany({
+  ids: ["1", "2", "3"],
+  data: { status: "done" },
+});
+```
+
+### 8. `upsert` - 存在则更新，不存在则创建
+
+**输入**:
+```typescript
+Omit<Task, "createdAt" | "updatedAt">  // 需要包含 id
+```
+
+**输出**:
+```typescript
+{
+  data: Task;       // 创建或更新后的记录
+  isNew: boolean;   // true = 新建, false = 更新
+}
+```
+
+**示例**:
+```typescript
+// 如果 id="123" 存在则更新，不存在则创建
+const { data, isNew } = await trpc.tasks.upsert({
+  id: "123",
+  title: "My Task",
+  status: "todo",
+});
+
+if (isNew) {
+  console.log("Created new task");
+} else {
+  console.log("Updated existing task");
+}
+```
+
+**适用场景**：
+- 同步外部数据
+- 幂等导入
+- 配置项更新
+
 ---
 
 ## 🎯 高级过滤
@@ -381,130 +445,182 @@ await trpc.tasks.list({
 
 ```typescript
 interface CrudRouterConfig<TTable, TSelect, TInsert, TUpdate> {
+  // ========== 必填 ==========
   table: TTable;                    // Drizzle 表定义
-  selectSchema: z.ZodType<TSelect>; // 查询返回 Schema
-  insertSchema: z.ZodType<TInsert>; // 创建输入 Schema
-  updateSchema: z.ZodType<TUpdate>; // 更新输入 Schema
+
+  // ========== Schema 配置（可选） ==========
+  schema?: z.ZodType<TInsert>;      // 主 Schema（用于 create/upsert）
+  updateSchema?: z.ZodType<TUpdate>;// 更新 Schema（覆盖自动派生）
+  selectSchema?: z.ZodType<TSelect>;// 查询返回 Schema
+
+  // ========== 其他配置 ==========
   idField?: string;                 // ID 字段名，默认 "id"
+  omitFields?: string[];            // 自动派生时排除的字段
+                                    // 默认 ["id", "createdAt", "updatedAt"]
 }
+```
+
+#### Schema 派生规则
+
+| 配置 | 派生行为 |
+|-----|---------|
+| 无 `schema` | 从 `table` 自动派生，排除 `omitFields` |
+| 无 `updateSchema` | 从 `schema.partial().refine(nonEmpty)` 派生 |
+| 无 `selectSchema` | 若有 `schema` 则使用它，否则从 `table` 派生 |
+
+#### 使用示例
+
+```typescript
+// 1. 零配置 - 全部自动派生
+const tasksRouter = createCrudRouter({
+  table: tasks,
+});
+
+// 2. 传入 schema，updateSchema 自动派生
+const postsRouter = createCrudRouter({
+  table: posts,
+  schema: postSchema,
+});
+
+// 3. 传入 schema + 自定义 updateSchema
+const usersRouter = createCrudRouter({
+  table: users,
+  schema: userSchema,
+  updateSchema: customUpdateSchema,
+});
+
+// 4. 自定义排除字段
+const ordersRouter = createCrudRouter({
+  table: orders,
+  omitFields: ["id", "createdAt", "updatedAt", "internalCode"],
+});
 ```
 
 #### 返回值
 
 ```typescript
+// 返回增强的 tRPC router，带有 .procedures 属性
 {
-  list: Procedure<ListInput, ListOutput>,
-  get: Procedure<{ id: string }, TSelect>,
-  create: Procedure<TInsert, TSelect>,
-  update: Procedure<{ id: string, data: TUpdate }, TSelect>,
-  delete: Procedure<{ id: string }, void>,
-  deleteMany: Procedure<{ ids: string[] }, void>,
+  // 标准 tRPC router（可直接嵌套到 appRouter）
+  ...routerMethods,
+
+  // 可 spread 的 procedures 对象（用于扩展自定义路由）
+  procedures: {
+    list: Procedure<ListInput, ListOutput>,
+    get: Procedure<string, TSelect>,
+    create: Procedure<TInsert, TSelect>,
+    update: Procedure<{ id: string, data: TUpdate }, TSelect>,
+    delete: Procedure<string, TSelect>,
+    deleteMany: Procedure<string[], { deleted: number }>,
+    updateMany: Procedure<{ ids: string[], data: TUpdate }, { updated: number }>,
+    upsert: Procedure<TInsert, { data: TSelect, isNew: boolean }>,
+  }
 }
-```
-
-#### 完整示例
-
-```typescript
-import { createCrudRouter } from "@wordrhyme/auto-crud-server";
-import { users } from "@/db/schema";
-import { createSelectSchema } from "drizzle-zod";
-import { z } from "zod";
-
-const selectUserSchema = createSelectSchema(users);
-
-const insertUserSchema = selectUserSchema.omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
-const updateUserSchema = insertUserSchema.partial();
-
-export const usersRouter = createCrudRouter({
-  table: users,
-  selectSchema: selectUserSchema,
-  insertSchema: insertUserSchema,
-  updateSchema: updateUserSchema,
-  idField: "id",
-});
 ```
 
 ---
 
 ## 🔐 权限控制
 
-### 使用 tRPC Middleware
+### 使用 procedure 配置
 
 ```typescript
-import { initTRPC, TRPCError } from "@trpc/server";
+import { createCrudRouter } from "@wordrhyme/auto-crud-server";
+import { protectedProcedure, adminProcedure, publicProcedure } from "../trpc";
 
-const t = initTRPC.context<Context>().create();
-
-// 创建受保护的 procedure
-const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
-  if (!ctx.user) {
-    throw new TRPCError({ code: "UNAUTHORIZED" });
-  }
-  return next({ ctx: { ...ctx, user: ctx.user } });
-});
-
-// 在 createCrudRouter 中使用
 export const tasksRouter = createCrudRouter({
   table: tasks,
-  selectSchema: selectTaskSchema,
-  insertSchema: insertTaskSchema,
-  updateSchema: updateTaskSchema,
-  // 注意：当前版本不支持直接传入 procedure
-  // 需要在路由层面添加权限控制
+  // 按操作指定不同的 procedure
+  procedure: {
+    list: publicProcedure,      // 公开读
+    get: publicProcedure,
+    create: protectedProcedure, // 需要登录
+    update: protectedProcedure,
+    delete: adminProcedure,     // 需要管理员
+    default: protectedProcedure,
+  },
 });
-
-// 包装路由添加权限
-export const protectedTasksRouter = {
-  list: protectedProcedure.query(async ({ input, ctx }) => {
-    return tasksRouter.list(input, ctx);
-  }),
-  // ... 其他路由
-};
 ```
 
-### 行级权限控制
+### 使用 guard（操作级守卫）
 
 ```typescript
-// 在 createContext 中添加用户信息
-export const createContext = async ({ req }: { req: Request }) => {
-  const user = await getUserFromRequest(req);
-  return { db, user };
-};
+export const tasksRouter = createCrudRouter({
+  table: tasks,
+  guard: (ctx, operation) => {
+    // 删除操作需要管理员权限
+    if (operation === "delete") {
+      return ctx.user.role === "admin";
+    }
+    // 其他操作需要登录
+    return !!ctx.user;
+  },
+});
+```
 
-// 在查询中添加过滤条件
-const result = await db
-  .select()
-  .from(tasks)
-  .where(eq(tasks.userId, ctx.user.id));  // 只查询当前用户的任务
+### 使用 scope（行级过滤 RLS）
+
+```typescript
+import { eq } from "drizzle-orm";
+
+export const tasksRouter = createCrudRouter({
+  table: tasks,
+  // 自动注入到所有查询的 WHERE 子句
+  scope: (ctx, table, operation) => {
+    return eq(table.tenantId, ctx.user.tenantId);
+  },
+});
+```
+
+### 使用 authorize（资源级检查 ABAC）
+
+```typescript
+export const tasksRouter = createCrudRouter({
+  table: tasks,
+  // 在 get/update/delete 时，预取资源后调用
+  authorize: (ctx, resource, operation) => {
+    return resource.ownerId === ctx.user.id;
+  },
+});
+```
+
+### 使用 inject（强制注入字段）
+
+```typescript
+export const tasksRouter = createCrudRouter({
+  table: tasks,
+  // 写入时强制覆盖字段（防止伪造）
+  inject: (ctx, operation) => ({
+    tenantId: ctx.user.tenantId,
+    ...(operation === "create" ? { createdBy: ctx.user.id } : { updatedBy: ctx.user.id }),
+  }),
+});
 ```
 
 ---
 
 ## 🎨 自定义扩展
 
-### 添加自定义路由
+### 添加自定义路由（推荐方式）
+
+使用 `.procedures` 属性 spread 出 CRUD 路由，然后添加自定义路由：
 
 ```typescript
-import { createCrudRouter } from "@wordrhyme/auto-crud-server";
-import { publicProcedure } from "../trpc";
+import { createCrudRouter, router } from "@wordrhyme/auto-crud-server";
+import { protectedProcedure } from "../trpc";
+import { z } from "zod";
 
-const baseCrudRouter = createCrudRouter({
+// 创建基础 CRUD
+const tasksCrud = createCrudRouter({
   table: tasks,
-  selectSchema: selectTaskSchema,
-  insertSchema: insertTaskSchema,
-  updateSchema: updateTaskSchema,
 });
 
-export const tasksRouter = {
-  ...baseCrudRouter,
+// 使用 .procedures spread 并添加自定义路由
+export const tasksRouter = router({
+  ...tasksCrud.procedures,
 
-  // 添加自定义路由
-  archive: publicProcedure
+  // 自定义路由：归档
+  archive: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
       return ctx.db
@@ -513,7 +629,8 @@ export const tasksRouter = {
         .where(eq(tasks.id, input.id));
     }),
 
-  unarchive: publicProcedure
+  // 自定义路由：取消归档
+  unarchive: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
       return ctx.db
@@ -521,31 +638,150 @@ export const tasksRouter = {
         .set({ archived: false })
         .where(eq(tasks.id, input.id));
     }),
-};
+});
+```
+
+### 直接使用（不需要扩展时）
+
+如果不需要添加自定义路由，可以直接使用返回的 router：
+
+```typescript
+const tasksCrud = createCrudRouter({
+  table: tasks,
+});
+
+// 直接嵌套到 appRouter
+export const appRouter = router({
+  tasks: tasksCrud,
+});
 ```
 
 ### 自定义过滤逻辑
 
 ```typescript
-// 在 createCrudRouter 之前预处理过滤条件
-const customList = publicProcedure
-  .input(listInputSchema)
-  .query(async ({ input, ctx }) => {
-    // 自定义过滤逻辑
-    const customFilters = input.filters?.map(filter => {
-      if (filter.id === "customField") {
-        // 自定义处理
-        return { ...filter, operator: "custom" };
-      }
-      return filter;
-    });
+// 覆盖 list 路由，添加自定义过滤逻辑
+const tasksCrud = createCrudRouter({ table: tasks });
 
-    return baseCrudRouter.list({
-      ...input,
-      filters: customFilters,
-    }, ctx);
-  });
+export const tasksRouter = router({
+  ...tasksCrud.procedures,
+
+  // 覆盖 list，添加自定义逻辑
+  list: protectedProcedure
+    .input(listInputSchema)
+    .query(async ({ input, ctx }) => {
+      // 自定义过滤逻辑
+      const customFilters = input.filters?.map(filter => {
+        if (filter.id === "customField") {
+          return { ...filter, operator: "custom" };
+        }
+        return filter;
+      });
+
+      // 调用原始 list（需要手动实现或使用 db 查询）
+      return ctx.db.select().from(tasks).where(...);
+    }),
+});
 ```
+
+---
+
+## 🔄 生命周期中间件
+
+使用 `middleware` 配置在 CRUD 操作前后注入自定义逻辑，类似 tRPC middleware 模式。
+
+### 完整控制模式
+
+```typescript
+import { createCrudRouter } from "@wordrhyme/auto-crud-server";
+
+const tasksRouter = createCrudRouter({
+  table: tasks,
+
+  // 中间件：完全控制操作流程
+  middleware: {
+    // 创建：修改输入 + 执行副作用
+    create: async ({ ctx, input, next }) => {
+      // 1. 修改输入数据
+      const data = { ...input, slug: slugify(input.title), createdBy: ctx.user.id };
+
+      // 2. 执行核心操作
+      const result = await next(data);
+
+      // 3. 执行副作用
+      await sendNotification(result);
+      await logAudit(ctx.user, "create", result);
+
+      // 4. 返回结果（可修改）
+      return result;
+    },
+
+    // 更新：可访问原记录
+    update: async ({ ctx, id, data, existing, next }) => {
+      // 检查权限
+      if (existing.ownerId !== ctx.user.id) {
+        throw new Error("Forbidden");
+      }
+      return next(data);
+    },
+
+    // 删除：条件拦截
+    delete: async ({ ctx, id, existing, next }) => {
+      if (existing.status === "locked") {
+        throw new Error("Cannot delete locked resource");
+      }
+      return next();
+    },
+  },
+});
+```
+
+### 使用便捷工具函数
+
+对于简单场景，使用工具函数简化代码：
+
+```typescript
+import {
+  createCrudRouter,
+  afterMiddleware,
+  beforeMiddleware,
+  afterCreate,
+  beforeCreate,
+} from "@wordrhyme/auto-crud-server";
+
+const tasksRouter = createCrudRouter({
+  table: tasks,
+
+  middleware: {
+    // 简单副作用：只在操作后执行
+    create: afterMiddleware(async (ctx, result) => {
+      await sendEmail(result);
+      await logAudit(ctx.user, "create", result);
+    }),
+
+    // 修改输入：只在操作前执行
+    update: beforeMiddleware(async (ctx, data) => {
+      return { ...data, updatedAt: new Date(), updatedBy: ctx.user.id };
+    }),
+
+    // 类型安全的便捷函数
+    delete: afterDelete(async (ctx, deleted) => {
+      await cleanupRelatedData(deleted.id);
+    }),
+  },
+});
+```
+
+### 可用的工具函数
+
+| 函数 | 用途 | 示例 |
+|------|------|------|
+| `afterMiddleware(fn)` | 操作后执行副作用 | 日志、通知、审计 |
+| `afterMiddlewareTransform(fn)` | 操作后修改返回值 | 添加计算字段 |
+| `beforeMiddleware(fn)` | 操作前修改输入 | 注入用户ID、生成slug |
+| `composeMiddleware(...fns)` | 组合多个中间件 | 复杂场景 |
+| `afterList`, `beforeList` | list 操作专用 | 分页后处理 |
+| `afterCreate`, `beforeCreate` | create 操作专用 | 创建通知 |
+| `afterUpdate`, `afterDelete` | update/delete 专用 | 更新/删除通知 |
 
 ---
 
@@ -612,24 +848,53 @@ app.listen(3000);
 ```typescript
 export const usersRouter = createCrudRouter({
   table: users,
-  selectSchema: selectUserSchema,
-  insertSchema: insertUserSchema,
-  updateSchema: updateUserSchema,
   idField: "userId",  // 使用自定义 ID 字段
 });
 ```
 
-### 自定义过滤器配置
+### 自定义排除字段
 
 ```typescript
-// src/config/data-table.ts
-export const filterVariants = {
-  text: ["eq", "ne", "like", "notLike"],
-  number: ["eq", "ne", "gt", "gte", "lt", "lte", "between"],
-  select: ["eq", "ne", "in", "notIn"],
-  date: ["eq", "ne", "gt", "gte", "lt", "lte", "between"],
-  boolean: ["eq"],
-};
+export const ordersRouter = createCrudRouter({
+  table: orders,
+  // 自动派生 schema 时排除这些字段
+  omitFields: ["id", "createdAt", "updatedAt", "internalCode"],
+});
+```
+
+### 软删除
+
+```typescript
+export const tasksRouter = createCrudRouter({
+  table: tasks,
+  // 方式 1：使用默认列名 'deletedAt'
+  softDelete: true,
+
+  // 方式 2：指定列名
+  softDelete: "deletedAt",
+
+  // 方式 3：完整配置（用于布尔字段）
+  softDelete: { column: "isDeleted", value: () => true },
+});
+```
+
+### 批量操作限制
+
+```typescript
+export const tasksRouter = createCrudRouter({
+  table: tasks,
+  maxBatchSize: 50,  // 默认 100
+});
+```
+
+### 列白名单
+
+```typescript
+export const tasksRouter = createCrudRouter({
+  table: tasks,
+  filterableColumns: ["title", "status", "priority"],  // 只允许这些列过滤
+  sortableColumns: ["title", "createdAt", "priority"], // 只允许这些列排序
+});
 ```
 
 ---
@@ -639,7 +904,26 @@ export const filterVariants = {
 ```typescript
 // 主要导出
 export { createCrudRouter } from "./routers/_factory";
-export type { CrudRouterConfig } from "./routers/_factory";
+export type {
+  CrudRouterConfig,
+  CrudMiddleware,
+  ListInput,
+  ListResult,
+} from "./types/config";
+
+// Middleware 工具函数
+export {
+  afterMiddleware,
+  afterMiddlewareTransform,
+  beforeMiddleware,
+  composeMiddleware,
+  afterList,
+  beforeList,
+  afterCreate,
+  beforeCreate,
+  afterUpdate,
+  afterDelete,
+} from "./lib/middleware-helpers";
 
 // tRPC 工具
 export { router, publicProcedure } from "./trpc";

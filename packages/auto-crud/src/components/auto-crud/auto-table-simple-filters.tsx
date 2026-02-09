@@ -3,7 +3,10 @@
 import type { Table } from "@tanstack/react-table";
 import { CalendarIcon, Check, PlusCircle, X, XCircle } from "lucide-react";
 import * as React from "react";
-import type { DateRange } from "react-day-picker";
+interface DateRange {
+  from: Date | undefined;
+  to?: Date | undefined;
+}
 
 import { Badge } from "@pixpilot/shadcn";
 import { Button } from "@pixpilot/shadcn";

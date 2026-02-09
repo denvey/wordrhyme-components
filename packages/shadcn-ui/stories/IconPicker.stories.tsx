@@ -62,12 +62,24 @@ const meta = {
     providers: {
       description: 'Array of icon providers with available icons',
     },
-    popover: {
+    popoverProps: {
       description: 'Popover configuration options (Partial<PopoverContent props>)',
     },
     isLoading: {
       control: 'boolean',
       description: 'Show loading state overlay',
+    },
+    showValueText: {
+      control: 'boolean',
+      description: 'Toggle rendering the selected icon text label',
+    },
+    emptyText: {
+      control: 'text',
+      description: 'Text to display when no icon is selected',
+    },
+    showClearButton: {
+      control: 'boolean',
+      description: 'Toggle the clear button when an icon is selected',
     },
   },
 } satisfies Meta<typeof IconPicker>;
@@ -192,6 +204,34 @@ export const WithSelectedIcon: Story = {
 };
 
 /**
+ * Hide value text and show dash when empty
+ */
+export const HideValueTextAndDash: Story = {
+  args: {
+    value: '',
+    pickerMode: 'dialog',
+    variant: 'default',
+    providers: createMockProviders(),
+    showValueText: false,
+    emptyText: '-',
+  },
+  render: function HideValueTextAndDashStory(args) {
+    const [value, setValue] = useState<string>(args.value ?? '');
+
+    return (
+      <IconPicker
+        {...args}
+        value={value}
+        onChange={(newValue) => {
+          setValue(newValue);
+          args.onChange?.(newValue);
+        }}
+      />
+    );
+  },
+};
+
+/**
  * Icon button variant - compact icon-only selector
  */
 export const IconButtonVariant: Story = {
@@ -239,6 +279,44 @@ export const IconButtonWithIcon: Story = {
           args.onChange?.(newValue);
         }}
       />
+    );
+  },
+};
+
+/**
+ * Clear button visible when value exists
+ */
+export const ClearButton: Story = {
+  args: {
+    pickerMode: 'dialog',
+    variant: 'default',
+    providers: createMockProviders(),
+    showClearButton: true,
+  },
+  render: function ClearButtonStory(args) {
+    const [defaultValue, setDefaultValue] = useState<string>('mdi:heart');
+    const [iconButtonValue, setIconButtonValue] = useState<string>('mdi:star');
+
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <IconPicker
+          {...args}
+          value={defaultValue}
+          onChange={(newValue) => {
+            setDefaultValue(newValue);
+            args.onChange?.(newValue);
+          }}
+        />
+        <IconPicker
+          {...args}
+          variant="icon-button"
+          value={iconButtonValue}
+          onChange={(newValue) => {
+            setIconButtonValue(newValue);
+            args.onChange?.(newValue);
+          }}
+        />
+      </div>
     );
   },
 };
@@ -369,7 +447,7 @@ export const WithPopoverConfig: Story = {
     pickerMode: 'popover',
     variant: 'default',
     providers: createMockProviders(),
-    popover: {
+    popoverProps: {
       align: 'start',
       side: 'right',
     },

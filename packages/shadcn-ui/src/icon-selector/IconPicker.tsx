@@ -4,6 +4,8 @@ import type { FC } from 'react';
 import type { IconProvider } from './types';
 
 import { Icon } from '@iconify/react';
+import { cn } from '@pixpilot/shadcn';
+import { Plus, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Button } from '../Button';
 import { useMediaQuery } from '../hooks';
@@ -12,14 +14,12 @@ import { IconPickerContainer } from './icon-picker-container';
 import IconPickerContent from './icon-picker-content';
 
 /**
- * Mount type for the icon selector picker
  * - 'dialog': Always display as a modal dialog
  * - 'popover': Always display as a popover anchored to the trigger button
  */
 type MountType = 'dialog' | 'popover';
 
 export type IconPickerVariant = 'default' | 'icon-button';
-
 /**
  * Icon Selector Component
  * Allows users to select an icon from multiple icon providers via a dialog or popover
@@ -29,21 +29,38 @@ export interface IconPickerProps {
   onChange?: (value: string) => void;
   onOpenChange?: (open: boolean) => void;
   pickerMode?: MountType;
-  popover?: Partial<React.ComponentProps<typeof PopoverContent>>;
+  popoverProps?: Partial<React.ComponentProps<typeof PopoverContent>>;
   variant?: IconPickerVariant;
   providers: IconProvider[];
   isLoading?: boolean;
   onProvidersLoaded?: (providers: Array<{ prefix: string; name: string }>) => void;
+  showValueText?: boolean;
+  emptyText?: React.ReactNode;
+  showClearButton?: boolean;
+  slots?: {
+    root?: { className?: string };
+    preview?: { className?: string };
+    trigger?: { className?: string };
+    clearButton?: { className?: string };
+    valueText?: { className?: string };
+    clearIcon?: { className?: string };
+  };
 }
+
+const ICON_SIZE = '!h-4 !w-4';
 
 export const IconPicker: FC<IconPickerProps> = ({
   value,
   onChange,
   onOpenChange,
   pickerMode = 'dialog',
-  popover,
+  popoverProps,
   variant = 'default',
   providers: providersProp,
+  showValueText = true,
+  emptyText = <Plus className={ICON_SIZE} />,
+  showClearButton = true,
+  slots,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -58,13 +75,33 @@ export const IconPicker: FC<IconPickerProps> = ({
     [onChange, onOpenChange],
   );
 
+  const handleClearIcon = useCallback(() => {
+    onChange?.('');
+    setIsOpen(false);
+    onOpenChange?.(false);
+  }, [onChange, onOpenChange]);
+
   const hasValue = typeof value === 'string' && value.length > 0;
 
-  const displayIcon = hasValue ? (
-    <Icon icon={value} width="20" height="20" />
-  ) : (
-    <span className="text-sm text-muted-foreground">No icon selected</span>
-  );
+  const renderIconDisplay = (emptyClassName: string, ariaHidden?: boolean) => {
+    if (hasValue) {
+      return <Icon icon={value} width="20" height="20" />;
+    }
+
+    return (
+      <span
+        aria-hidden={ariaHidden}
+        className={cn(
+          'min-w-6 text-muted-foreground flex items-center justify-center',
+          emptyClassName,
+        )}
+      >
+        {emptyText}
+      </span>
+    );
+  };
+
+  const displayIcon = renderIconDisplay('text-sm');
 
   const selectorContent = (
     <IconPickerContent
@@ -93,14 +130,9 @@ export const IconPicker: FC<IconPickerProps> = ({
 
   const isIconButtonVariant = variant === 'icon-button';
   const iconButtonLabel = hasValue ? `Change selected icon (${value})` : 'Select an icon';
+  const shouldShowClearButton = showClearButton && hasValue;
 
-  const iconButtonContent = hasValue ? (
-    <Icon icon={value} width="20" height="20" />
-  ) : (
-    <span aria-hidden="true" className="text-muted-foreground text-lg">
-      +
-    </span>
-  );
+  const iconButtonContent = renderIconDisplay('text-lg', true);
 
   if (isIconButtonVariant) {
     return (
@@ -109,25 +141,56 @@ export const IconPicker: FC<IconPickerProps> = ({
         isOpen={isOpen}
         setIsOpen={setIsOpen}
         selectorContent={selectorContent}
-        popover={popover}
+        popover={popoverProps}
       >
         <Button
           type="button"
           variant="outline"
-          className="p-2"
           aria-label={iconButtonLabel}
+          className={cn('p-2 min-w-10', slots?.preview?.className)}
         >
           {iconButtonContent}
+          {shouldShowClearButton && (
+            <Button
+              type="button"
+              title="Clear selected icon"
+              className={cn(
+                `absolute -right-1 -top-1 inline-flex ${ICON_SIZE} items-center justify-center rounded-full !p-1`,
+                'border border-border bg-background text-foreground',
+                'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                slots?.clearIcon?.className,
+              )}
+              aria-label="Clear icon"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                handleClearIcon();
+              }}
+            >
+              <X className="!h-3 !w-3" />
+            </Button>
+          )}
         </Button>
       </IconPickerContainer>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2">
+    <div className={cn('flex items-center gap-2', slots?.root?.className)}>
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2',
+          slots?.preview?.className,
+        )}
+      >
         {displayIcon}
-        {hasValue && <span className="text-sm text-muted-foreground">{value}</span>}
+        {showValueText && hasValue && (
+          <span
+            className={cn('text-sm text-muted-foreground', slots?.valueText?.className)}
+          >
+            {value}
+          </span>
+        )}
       </div>
 
       <IconPickerContainer
@@ -135,12 +198,27 @@ export const IconPicker: FC<IconPickerProps> = ({
         isOpen={isOpen}
         setIsOpen={setIsOpen}
         selectorContent={selectorContent}
-        popover={popover}
+        popover={popoverProps}
       >
-        <Button type="button" variant="outline" className="whitespace-nowrap">
+        <Button
+          type="button"
+          variant="outline"
+          className={cn('whitespace-nowrap', slots?.trigger?.className)}
+        >
           {hasValue ? 'Change Icon' : 'Select Icon'}
         </Button>
       </IconPickerContainer>
+
+      {shouldShowClearButton && (
+        <Button
+          type="button"
+          variant="outline"
+          className={cn('whitespace-nowrap', slots?.clearButton?.className)}
+          onClick={handleClearIcon}
+        >
+          Clear
+        </Button>
+      )}
     </div>
   );
 };

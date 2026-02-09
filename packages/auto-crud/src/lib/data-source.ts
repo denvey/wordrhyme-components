@@ -133,12 +133,12 @@ export function createMemoryDataSource<T extends { id: string | number }>(
 
       // 排序
       if (params.sort && params.sort.length > 0) {
-        const { id, desc } = params.sort[0];
+        const sortItem = params.sort[0]!;
         filtered.sort((a, b) => {
-          const aVal = (a as any)[id];
-          const bVal = (b as any)[id];
+          const aVal = (a as any)[sortItem.id];
+          const bVal = (b as any)[sortItem.id];
           const result = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-          return desc ? -result : result;
+          return sortItem.desc ? -result : result;
         });
       }
 
@@ -174,11 +174,12 @@ export function createMemoryDataSource<T extends { id: string | number }>(
       const index = data.findIndex((item) => item.id === id);
       if (index === -1) throw new Error(`Item with id ${id} not found`);
 
-      data[index] = {
-        ...data[index],
+      const updated = {
+        ...data[index]!,
         ...updateData,
-      };
-      return data[index];
+      } as T;
+      data[index] = updated;
+      return updated;
     },
 
     async delete(id: string | number): Promise<void> {

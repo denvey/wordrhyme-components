@@ -3,6 +3,7 @@
 import type { z } from "zod";
 import type { UseAutoCrudResourceReturn } from "@/hooks/use-auto-crud-resource";
 import type { ModalVariant } from "./form-modal";
+import type { CrudPermissions } from "@/types/permissions";
 import { AutoTable, type FilterMode } from "./auto-table";
 import type { BatchUpdateField } from "./auto-table-action-bar";
 import { CrudFormModal } from "./crud-form-modal";
@@ -33,6 +34,11 @@ import { parseZodField } from "@/lib/schema-bridge/zod-to-columns";
 import { formatDate } from "@/lib/format";
 import { humanize } from "@/lib/humanize";
 import { Badge } from "@pixpilot/shadcn";
+import { ImportDialog } from "./import-dialog";
+import { ExportDialog, type ExportMode } from "./export-dialog";
+import { Download, Upload } from "lucide-react";
+import { exportAllToCSV } from "@/lib/export";
+import * as React from "react";
 
 /**
  * 统一字段配置
@@ -124,6 +130,27 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
       onClick: () => void;
     }>;
   };
+  /**
+   * 权限配置
+   * 控制按钮显示和字段访问
+   *
+   * @example
+   * ```tsx
+   * const permissions = useMemo(() => ({
+   *   can: {
+   *     create: user.role === 'admin',
+   *     update: user.role === 'admin' || user.role === 'editor',
+   *     delete: user.role === 'admin',
+   *     export: true,
+   *     import: true,
+   *   },
+   *   deny: user.role === 'user' ? ['salary', 'ssn'] : [],
+   * }), [user.role]);
+   *
+   * <AutoCrudTable permissions={permissions} ... />
+   * ```
+   */
+  permissions?: CrudPermissions;
 }
 
 /**
@@ -148,9 +175,24 @@ function buildTableOverrides(fields?: Fields, legacyOverrides?: Record<string, a
 
 /**
  * 从统一配置生成表单 overrides
+ * Critical #2: 支持 denyFields 隐藏敏感字段
  */
-function buildFormOverrides(fields?: Fields, legacyOverrides?: Record<string, any>): Record<string, any> {
+function buildFormOverrides(
+  fields?: Fields,
+  legacyOverrides?: Record<string, any>,
+  denyFields?: string[]
+): Record<string, any> {
   const result: Record<string, any> = { ...legacyOverrides };
+
+  // 将 denyFields 添加到表单 overrides 中，设置 x-hidden
+  if (denyFields) {
+    for (const field of denyFields) {
+      result[field] = {
+        ...result[field],
+        "x-hidden": true,
+      };
+    }
+  }
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
@@ -169,8 +211,15 @@ function buildFormOverrides(fields?: Fields, legacyOverrides?: Record<string, an
 /**
  * 从统一配置生成隐藏列列表
  */
-function buildHiddenColumns(fields?: Fields, legacyHidden?: string[]): string[] {
-  const hidden = new Set(legacyHidden ?? []);
+function buildHiddenColumns(
+  fields?: Fields,
+  legacyHidden?: string[],
+  denyFields?: string[]
+): string[] {
+  const hidden = new Set([
+    ...(legacyHidden ?? []),
+    ...(denyFields ?? []),
+  ]);
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
@@ -276,6 +325,7 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   data,
   schema,
   fields: fieldConfig,
+  denyFields,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -283,11 +333,15 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   data: z.output<TSchema> | null;
   schema: TSchema;
   fields?: Fields;
+  denyFields?: string[];
 }) {
   if (!data) return null;
 
   const shape = schema.shape;
+  // Critical #2: 同时检查 hidden 和 deny 字段
+  const denySet = new Set(denyFields ?? []);
   const fields = Object.entries(shape).filter(([key]) => {
+    if (denySet.has(key)) return false; // deny 字段不显示
     const override = fieldConfig?.[key];
     return !override?.hidden;
   });
@@ -352,11 +406,65 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   table: tableConfig,
   form: formConfig,
   slots,
+  permissions,
 }: AutoCrudTableProps<TSchema>) {
+  // 解析权限配置（默认全部允许）
+  const can = {
+    create: permissions?.can?.create ?? true,
+    update: permissions?.can?.update ?? true,
+    delete: permissions?.can?.delete ?? true,
+    export: permissions?.can?.export ?? true,
+    import: permissions?.can?.import ?? true,
+  };
+  const denyFields = permissions?.deny;
+
+  // 从 resource.handlers 自动检测 import/export 能力
+  const canImport = can.import && !!resource.handlers.import;
+  // 导出：只要权限允许就显示按钮（选中导出始终可用，全量导出需要 handlers.export）
+  const canExport = can.export;
+
+  // Import/Export dialog state
+  const [importOpen, setImportOpen] = React.useState(false);
+  const [exportOpen, setExportOpen] = React.useState(false);
+  const [selectedCount, setSelectedCount] = React.useState(0);
+  const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
+
+  // 从 schema 提取可导入的列名（排除 deny 字段）
+  const importColumns = React.useMemo(() => {
+    const shape = schema.shape;
+    const denySet = new Set(denyFields ?? []);
+    return Object.keys(shape).filter((key) => !denySet.has(key));
+  }, [schema, denyFields]);
+
+  // 导出处理（支持选中/筛选两种模式）
+  const handleExport = React.useCallback(async (mode: ExportMode) => {
+    const filename = title ?? "export";
+    const excludeColumns = denyFields;
+
+    if (mode === "selected") {
+      // 导出选中行（纯客户端，不需要 exportFetcher）
+      const selectedRows = getSelectedRowsRef.current?.();
+      if (!selectedRows || selectedRows.length === 0) return;
+      exportAllToCSV(selectedRows as Record<string, unknown>[], {
+        filename,
+        excludeColumns,
+      });
+    } else {
+      // 导出筛选结果（通过服务端 export 接口获取）
+      if (!resource.handlers.export) return;
+      const data = await resource.handlers.export();
+      exportAllToCSV(data, {
+        filename,
+        excludeColumns,
+      });
+    }
+  }, [resource.handlers.export, title, denyFields]);
+
   // 构建表格和表单的 overrides
   const tableOverrides = buildTableOverrides(fields, tableConfig?.overrides);
-  const formOverrides = buildFormOverrides(fields, formConfig?.overrides);
-  const hiddenColumns = buildHiddenColumns(fields, tableConfig?.hidden);
+  // Critical #2: 传入 denyFields 到表单 overrides
+  const formOverrides = buildFormOverrides(fields, formConfig?.overrides, denyFields);
+  const hiddenColumns = buildHiddenColumns(fields, tableConfig?.hidden, denyFields);
   const batchFields = buildBatchUpdateFields(schema, tableConfig?.batchFields, fields);
 
   return (
@@ -376,9 +484,27 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         </div>
         <div className="flex items-center gap-2">
           {slots?.toolbarEnd}
-          <Button onClick={resource.handlers.openCreate}>
-            新建
-          </Button>
+          {canImport && (
+            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
+              <Download className="mr-2 h-4 w-4" />
+              导入
+            </Button>
+          )}
+          {canExport && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setExportOpen(true)}
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              导出
+            </Button>
+          )}
+          {can.create && (
+            <Button onClick={resource.handlers.openCreate}>
+              新建
+            </Button>
+          )}
         </div>
       </div>
 
@@ -392,14 +518,17 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         filterMode={tableConfig?.filterModes}
         actions={{
           onView: resource.handlers.openView,
-          onEdit: resource.handlers.openEdit,
-          onCopy: resource.handlers.copyRow,
-          onDelete: resource.handlers.openDelete,
+          onEdit: can.update ? resource.handlers.openEdit : undefined,
+          onCopy: can.create ? resource.handlers.copyRow : undefined,
+          onDelete: can.delete ? resource.handlers.openDelete : undefined,
         }}
-        onDeleteSelected={resource.handlers.deleteMany}
-        onUpdateSelected={resource.handlers.updateMany}
-        batchUpdateFields={batchFields}
+        onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
+        onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}
+        batchUpdateFields={can.update ? batchFields : undefined}
+        enableExport={false}
         initialSorting={tableConfig?.defaultSort}
+        onSelectedCountChange={setSelectedCount}
+        getSelectedRows={getSelectedRowsRef}
       />
 
       {/* Modals */}
@@ -434,6 +563,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.modal.selected}
         schema={schema}
         fields={fields}
+        denyFields={denyFields}
       />
 
       {/* Delete Confirmation */}
@@ -459,6 +589,27 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Import Dialog */}
+      {canImport && resource.handlers.import && (
+        <ImportDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImport={resource.handlers.import}
+          columns={importColumns}
+        />
+      )}
+
+      {/* Export Dialog */}
+      {canExport && (
+        <ExportDialog
+          open={exportOpen}
+          onOpenChange={setExportOpen}
+          selectedCount={selectedCount}
+          onExport={handleExport}
+          canExportFiltered={!!resource.handlers.export}
+        />
+      )}
     </div>
   );
 }

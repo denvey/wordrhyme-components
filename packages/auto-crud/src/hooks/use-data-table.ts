@@ -180,7 +180,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     if (enableAdvancedFilter) return {};
 
     return filterableColumns.reduce<
-      Record<string, Parser<string> & { defaultValue?: string } | Parser<string[]> & { defaultValue?: string[] }>
+      Record<string, (Parser<string> | Parser<string[]>) & { defaultValue?: string | string[] }>
     >((acc, column) => {
       if (column.meta?.options) {
         acc[column.id ?? ""] = parseAsArrayOf(
@@ -194,7 +194,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     }, {});
   }, [filterableColumns, enableAdvancedFilter]);
 
-  const [filterValues, setFilterValues] = useQueryStates(filterParsers);
+  const [filterValues, setFilterValues] = useQueryStates(filterParsers as Record<string, Parser<string | string[]> & { defaultValue?: string | string[] }>);
 
   const debouncedSetFilterValues = useDebouncedCallback(
     (values: typeof filterValues) => {
@@ -255,7 +255,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
           }
         }
 
-        debouncedSetFilterValues(filterUpdates);
+        debouncedSetFilterValues(filterUpdates as Record<string, string | string[]>);
         return next;
       });
     },

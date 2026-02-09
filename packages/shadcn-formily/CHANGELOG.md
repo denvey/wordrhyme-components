@@ -1,5 +1,380 @@
 # @pixpilot/formily-shadcn
 
+## 0.44.3
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn@0.9.0
+  - @pixpilot/shadcn-ui@0.47.0
+
+## 0.44.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.46.1
+
+## 0.44.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.46.0
+
+## 0.44.0
+
+### Minor Changes
+
+- enhance Formily-connected Rating component
+
+## 0.43.0
+
+### Minor Changes
+
+- add `Rating` component to default component registry
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn@0.8.0
+  - @pixpilot/shadcn-ui@0.45.0
+
+## 0.42.0
+
+### Minor Changes
+
+- prevent automatic setting of x-component for array items
+
+## 0.41.0
+
+### Minor Changes
+
+- add ArrayInline component with inline editing and sorting
+
+## 0.40.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.44.0
+
+## 0.40.0
+
+### Minor Changes
+
+- enhance Select component with dynamic options handling
+
+## 0.39.0
+
+### Minor Changes
+
+- implement Select component with option mapping
+
+## 0.38.0
+
+### Minor Changes
+
+- implement hidden item schema for optimized rendering
+
+### Patch Changes
+
+- restore drag handle node position
+
+## 0.37.1
+
+### Patch Changes
+
+- 79c3c54: new release
+
+## 0.37.0
+
+### Minor Changes
+
+- add discard and validation handling for new items
+
+### Patch Changes
+
+- prevent rendering when dialog is closed
+
+## 0.36.0
+
+### Minor Changes
+
+- add ArrayTags component for managing simple arrays
+- add TagsInput component for inline tag management
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.43.0
+
+## 0.35.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.42.0
+
+## 0.35.0
+
+### Minor Changes
+
+- add clearable option to Select component
+- enhance array item editing with titles and descriptions
+
+### Patch Changes
+
+- update default descriptions in useArrayItemEditLabels tests
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.41.0
+
+## 0.34.1
+
+### Patch Changes
+
+- improve type definition for useShakeAnimation hook
+
+## 0.34.0
+
+### Minor Changes
+
+- add x-reactions to SchemaField.Object for dynamic title updates
+
+### Patch Changes
+
+- rename remaining component files to PascalCase
+
+## 0.33.0
+
+### Minor Changes
+
+- generate stable unique IDs for array items
+- add drag-and-drop functionality for sortable arrays
+- refactor array popover stories to use shared story generation functions
+- add customizable header actions for array components
+
+## 0.32.0
+
+### Minor Changes
+
+- implement ArrayItemHeaderRow component and refactor item components
+
+## 0.31.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.40.0
+
+## 0.31.0
+
+### Minor Changes
+
+- refactor dialog components and add new LongDialog story
+
+### Patch Changes
+
+- ensure proper button functionality and accessibility
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.39.0
+
+## 0.30.5
+
+### Patch Changes
+
+- 2792697: new release
+- Updated dependencies [2792697]
+  - @pixpilot/shadcn@0.7.1
+  - @pixpilot/shadcn-ui@0.38.1
+
+## 0.30.4
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.38.0
+
+## 0.30.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.37.1
+
+## 0.30.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.37.0
+
+## 0.30.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.36.0
+
+## 0.30.0
+
+### Minor Changes
+
+- refactor editor component and add toolbar
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.35.0
+
+## 0.29.0
+
+### Minor Changes
+
+- rename toolbarOptions to toolbarItems and update related functionality
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.34.0
+
+## 0.28.0
+
+### Minor Changes
+
+- enhance editor functionality and add ToolbarButton component
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.33.0
+
+## 0.27.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.32.0
+
+## 0.27.0
+
+### Minor Changes
+
+- implement workaround for Formily's required array handling
+
+## 0.26.0
+
+### Minor Changes
+
+- enhance FormItem and Checkbox components with slot support
+
+## 0.25.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.31.1
+
+## 0.25.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.31.0
+
+## 0.25.0
+
+### Minor Changes
+
+- add clear button functionality and props
+- add tooltips to Array operation buttons
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.30.0
+
+## 0.24.0
+
+### Minor Changes
+
+- enhance Array components with item title reactions
+
+## 0.23.0
+
+### Minor Changes
+
+- add className support for Array components
+
+## 0.22.1
+
+### Patch Changes
+
+- update default message from 'No Data' to 'No items'
+
+## 0.22.0
+
+### Minor Changes
+
+- add variant prop for visual style customization
+
+## 0.21.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.29.0
+
+## 0.21.9
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.28.0
+
+## 0.21.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.27.0
+
+## 0.21.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.26.0
+
+## 0.21.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.25.1
+
+## 0.21.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.25.0
+
+## 0.21.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.24.0
+
 ## 0.21.3
 
 ### Patch Changes

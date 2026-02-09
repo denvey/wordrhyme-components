@@ -38,7 +38,7 @@ export interface ButtonProps
   /**
    * Loader configuration
    */
-  LoaderProps?: ButtonLoaderProps;
+  loaderProps?: ButtonLoaderProps;
   /**
    * Click handler for when disabled button is clicked
    */
@@ -46,7 +46,7 @@ export interface ButtonProps
   /**
    * Props to pass to the tooltip component
    */
-  TooltipProps?: Omit<React.ComponentProps<typeof Tooltip>, 'children' | 'delayDuration'>;
+  tooltipProps?: Omit<React.ComponentProps<typeof Tooltip>, 'children' | 'delayDuration'>;
 }
 
 const LOADER_SIZE_SM = 14;
@@ -57,9 +57,18 @@ const LOADER_SIZE_LG = 20;
  * Get loader size based on button size
  */
 function getLoaderSize(
-  size?: 'default' | 'sm' | 'lg' | 'icon' | 'icon-sm' | 'icon-lg' | null,
+  size?:
+    | 'default'
+    | 'xs'
+    | 'sm'
+    | 'lg'
+    | 'icon'
+    | 'icon-xs'
+    | 'icon-sm'
+    | 'icon-lg'
+    | null,
 ): number {
-  if (size === 'sm' || size === 'icon-sm') {
+  if (size === 'xs' || size === 'sm' || size === 'icon-xs' || size === 'icon-sm') {
     return LOADER_SIZE_SM;
   }
   if (size === 'lg' || size === 'icon-lg') {
@@ -75,11 +84,11 @@ function Button(props: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
     onClick,
     disabledTooltip,
     loading,
-    LoaderProps,
+    loaderProps,
     onDisabledClick,
     tooltip,
     title,
-    TooltipProps,
+    tooltipProps,
     className,
     variant,
     size,
@@ -87,7 +96,7 @@ function Button(props: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
     ...rest
   } = props;
 
-  const { placement: loaderPlacement = 'end' } = LoaderProps || {};
+  const { placement: loaderPlacement = 'end' } = loaderProps || {};
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -99,15 +108,14 @@ function Button(props: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
   );
 
   const isDisabled = disabled || loading;
-  const hasTooltip = Boolean(tooltip) || Boolean(title);
+  const hasTooltip = Boolean(tooltip);
   const hasDisabledTooltip = Boolean(disabledTooltip) && isDisabled;
   const showTooltip = hasTooltip || hasDisabledTooltip;
-  const tooltipContent = hasDisabledTooltip
-    ? (disabledTooltip ?? '')
-    : (tooltip ?? title ?? '');
+  const tooltipContent = hasDisabledTooltip ? (disabledTooltip ?? '') : (tooltip ?? '');
 
   const Loader = (
     <div
+      data-slot="button-loader"
       className={cn(
         'flex items-center justify-center',
         loaderPlacement === 'center' && 'rounded-0 absolute inset-0',
@@ -131,10 +139,11 @@ function Button(props: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
       className={cn('relative', className)}
       variant={variant}
       size={size}
+      title={title}
     >
       {/* Disabled tooltip overlay - enables tooltip on disabled button */}
       {Boolean(disabledTooltip) && isDisabled && (
-        <Tooltip {...TooltipProps}>
+        <Tooltip {...tooltipProps}>
           <TooltipTrigger asChild>
             <AbsoluteFill
               onClick={onDisabledClick}
@@ -157,7 +166,7 @@ function Button(props: ButtonProps & { ref?: React.Ref<HTMLButtonElement> }) {
   // If there's a tooltip and button is not disabled (or no disabled tooltip), wrap with tooltip
   if (showTooltip && !(Boolean(disabledTooltip) && isDisabled)) {
     return (
-      <Tooltip {...TooltipProps}>
+      <Tooltip {...tooltipProps}>
         <TooltipTrigger asChild>{buttonContent}</TooltipTrigger>
         <TooltipContent>
           <p>{tooltipContent}</p>
