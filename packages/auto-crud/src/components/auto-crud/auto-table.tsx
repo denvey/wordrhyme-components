@@ -1,7 +1,7 @@
 "use client";
 
 import { z } from "zod";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { CommandIcon, FileSpreadsheetIcon, ListFilterIcon } from "lucide-react";
 import { DataTable } from "@/components/data-table/data-table";
 import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
@@ -16,6 +16,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@pixpilot/shadcn";
+import { parseAsStringEnum, useQueryState } from "@/hooks/use-url-state";
 import { AutoTableSimpleFilters } from "./auto-table-simple-filters";
 import { AutoTableActionBar, type BatchUpdateField } from "./auto-table-action-bar";
 import { useDataTable } from "@/hooks/use-data-table";
@@ -114,7 +115,10 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   const modes = filterMode
     ? (Array.isArray(filterMode) ? filterMode : [filterMode])
     : defaultModes;
-  const [currentMode, setCurrentMode] = useState<FilterMode>(modes[0] ?? "simple");
+  const [currentMode, setCurrentMode] = useQueryState(
+    "filterMode",
+    parseAsStringEnum<FilterMode>(modes).withDefault(modes[0] ?? "simple"),
+  );
   const showToggle = modes.length > 1;
 
   // 所有模式都使用高级过滤的数据流（filters 数组同步到 URL）
@@ -235,7 +239,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   return (
     <div className="space-y-4">
       <div className="flex w-full items-start justify-between gap-2 p-1">
-        <div className="flex flex-1 flex-wrap items-center gap-2">
+        <div className="flex flex-1 items-start gap-2 min-h-[40px]" data-filter-parent>
           {currentMode !== "simple" && <DataTableSortList table={table} align="start" />}
           {renderFilters()}
         </div>

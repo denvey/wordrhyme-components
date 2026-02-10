@@ -41,6 +41,27 @@ import { exportAllToCSV } from "@/lib/export";
 import * as React from "react";
 
 /**
+ * 筛选器独立配置
+ * 可独立于 table.meta 配置筛选器行为
+ */
+export interface FilterConfig {
+  /** 是否启用筛选（默认跟随 table.meta.variant 推断） */
+  enabled?: boolean;
+  /** 筛选器类型 */
+  variant?: "text" | "number" | "range" | "date" | "dateRange" | "boolean" | "select" | "multiSelect";
+  /** select/multiSelect 的选项列表 */
+  options?: Array<{ label: string; value: string; count?: number; icon?: React.FC<React.SVGProps<SVGSVGElement>> }>;
+  /** range 的最小/最大值 */
+  range?: [number, number];
+  /** number 的单位 */
+  unit?: string;
+  /** 过滤器占位符 */
+  placeholder?: string;
+  /** 是否在筛选栏中隐藏（隐藏筛选但不影响表格列显示） */
+  hidden?: boolean;
+}
+
+/**
  * 统一字段配置
  * 支持共用配置 + 表格/表单特定配置
  */
@@ -49,6 +70,11 @@ export interface Field {
   label?: string;
   /** 是否隐藏（表格和表单都隐藏） */
   hidden?: boolean;
+  /**
+   * 筛选器独立配置
+   * 独立于 table.meta 控制筛选器行为，不影响表格列显示/隐藏
+   */
+  filter?: FilterConfig;
   /** 表格特定配置 */
   table?: {
     /** 是否在表格中隐藏 */
@@ -155,18 +181,44 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
 
 /**
  * 从统一配置生成表格 overrides
+ * 当 filter 配置存在时，合并到 meta 中（不影响列隐藏）
  */
 function buildTableOverrides(fields?: Fields, legacyOverrides?: Record<string, any>): Record<string, any> {
   const result: Record<string, any> = { ...legacyOverrides };
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
+      // 从 filter 配置构建 meta
+      let filterMeta: Record<string, unknown> | undefined;
+      if (config.filter && config.filter.enabled !== false && !config.filter.hidden) {
+        const { enabled: _, hidden: __, ...filterProps } = config.filter;
+        if (Object.keys(filterProps).length > 0) {
+          filterMeta = filterProps;
+        }
+      }
+
       result[key] = {
         ...result[key],
         ...(config.label && { label: config.label }),
         ...(config.hidden && { hidden: true }),
         ...config.table,
+        // filter.meta 优先级：filter 配置 > table.meta（filter 独立配置覆盖 table.meta）
+        ...(filterMeta && {
+          meta: {
+            ...(result[key]?.meta ?? {}),
+            ...(config.table?.meta as Record<string, unknown> ?? {}),
+            ...filterMeta,
+          },
+        }),
       };
+
+      // 当 filter.enabled === false 或 filter.hidden === true 时，禁用该列的筛选
+      if (config.filter?.enabled === false || config.filter?.hidden === true) {
+        result[key] = {
+          ...result[key],
+          enableColumnFilter: false,
+        };
+      }
     }
   }
 

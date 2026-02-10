@@ -104,10 +104,6 @@ export function parseReadableFilters<TData>(
       (params.get(opKey) as FilterOperator | null) ??
       getDefaultFilterOperator(variant);
 
-    if (!rawValue && operator !== "isEmpty" && operator !== "isNotEmpty") {
-      continue;
-    }
-
     const parsedValue =
       operator === "isEmpty" || operator === "isNotEmpty"
         ? ""

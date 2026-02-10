@@ -224,6 +224,16 @@ interface Field {
   label?: string;
   /** 是否隐藏（表格和表单都隐藏） */
   hidden?: boolean;
+  /** 筛选器独立配置（不影响表格列显示/隐藏） */
+  filter?: {
+    enabled?: boolean;    // 是否启用筛选（默认 true）
+    variant?: "text" | "number" | "range" | "date" | "dateRange" | "boolean" | "select" | "multiSelect";
+    options?: Option[];   // select/multiSelect 的选项
+    range?: [number, number]; // range 的范围
+    unit?: string;        // number 的单位
+    placeholder?: string; // 占位符
+    hidden?: boolean;     // 筛选栏中隐藏（不影响表格列）
+  };
   /** 表格特定配置 */
   table?: {
     hidden?: boolean;  // 仅表格隐藏
@@ -485,22 +495,22 @@ const fields: Fields = {
 
 ### Q: 如何配置表格筛选器？
 
-使用 `table.meta` 配置：
+使用 `table.meta` 配置（传统方式）或 `filter` 独立配置（推荐）：
 
 ```typescript
 const fields: Fields = {
+  // 方式 1: 使用 filter 独立配置（推荐）
   status: {
     label: "状态",
-    table: {
-      meta: {
-        variant: "select",  // "text" | "select" | "multiSelect" | "date" | "dateRange" | "range"
-        options: [
-          { label: "待办", value: "todo" },
-          { label: "完成", value: "done" },
-        ],
-      },
+    filter: {
+      variant: "select",
+      options: [
+        { label: "待办", value: "todo" },
+        { label: "完成", value: "done" },
+      ],
     },
   },
+  // 方式 2: 使用 table.meta 配置（传统方式，仍然支持）
   amount: {
     label: "金额",
     table: {
@@ -511,8 +521,16 @@ const fields: Fields = {
       },
     },
   },
+  // 筛选器隐藏但表格列保留
+  internalCode: {
+    label: "内部编码",
+    filter: { hidden: true },  // 筛选栏中不显示，但表格列正常显示
+  },
 };
 ```
+
+> **filter vs table.meta 优先级**: `filter` 配置会覆盖 `table.meta` 中的同名属性。
+> **自动折叠行**: 当 simple 模式下筛选项过多超出一行时，会自动折叠多余行并显示「+N 筛选」展开按钮。
 
 ### Q: 如何集成服务端（tRPC）？
 

@@ -31,11 +31,6 @@ function createParser<T>(config: {
   };
 }
 
-const sortingItemSchema = z.object({
-  id: z.string(),
-  desc: z.boolean(),
-});
-
 export const getSortingStateParser = <TData>(
   columnIds?: string[] | Set<string>,
 ) => {
@@ -48,21 +43,33 @@ export const getSortingStateParser = <TData>(
   return createParser({
     parse: (value) => {
       try {
-        const parsed = JSON.parse(value);
-        const result = z.array(sortingItemSchema).safeParse(parsed);
+        if (!value || value.trim() === "") return [];
 
-        if (!result.success) return null;
+        // Format: "id.desc,id2.asc" e.g. "createdAt.desc,name.asc"
+        const items = value.split(",").map((item) => {
+          const lastDot = item.lastIndexOf(".");
+          if (lastDot === -1) return null;
+          const id = item.slice(0, lastDot);
+          const dir = item.slice(lastDot + 1);
+          if (!id || (dir !== "asc" && dir !== "desc")) return null;
+          return { id, desc: dir === "desc" };
+        });
 
-        if (validKeys && result.data.some((item) => !validKeys.has(item.id))) {
+        if (items.some((item) => item === null)) return null;
+
+        const result = items as Array<{ id: string; desc: boolean }>;
+
+        if (validKeys && result.some((item) => !validKeys.has(item.id))) {
           return null;
         }
 
-        return result.data as ExtendedColumnSort<TData>[];
+        return result as ExtendedColumnSort<TData>[];
       } catch {
         return null;
       }
     },
-    serialize: (value) => JSON.stringify(value),
+    serialize: (value) =>
+      value.map((item) => `${item.id}.${item.desc ? "desc" : "asc"}`).join(","),
   });
 };
 

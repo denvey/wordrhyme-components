@@ -9,6 +9,7 @@ import {
   ListFilter,
   Trash2,
 } from "lucide-react";
+import { useReadableFilters } from "@/hooks/use-readable-filters";
 import { parseAsStringEnum, useQueryState } from "@/hooks/use-url-state";
 import * as React from "react";
 
@@ -60,7 +61,6 @@ import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { getDefaultFilterOperator, getFilterOperators } from "@/lib/data-table";
 import { formatDate } from "@/lib/format";
 import { generateId } from "@/lib/id";
-import { useReadableFilters } from "@/hooks/use-readable-filters";
 import { cn } from "@/lib/utils";
 import type {
   ExtendedColumnFilter,
@@ -102,10 +102,8 @@ export function DataTableFilterList<TData>({
       .filter((column) => column.columnDef.enableColumnFilter);
   }, [table]);
 
-  const queryStateOptions = table.options.meta?.queryStateOptions;
   const [filters, setFilters] = useReadableFilters<TData>(columns, {
-    ...queryStateOptions,
-    debounceMs: 0,
+    debounceMs,
   });
   const debouncedSetFilters = useDebouncedCallback(setFilters, debounceMs);
 

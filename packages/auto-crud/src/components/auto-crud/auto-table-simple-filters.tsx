@@ -1,7 +1,7 @@
 "use client";
 
 import type { Table } from "@tanstack/react-table";
-import { CalendarIcon, Check, PlusCircle, X, XCircle } from "lucide-react";
+import { CalendarIcon, Check, ChevronDown, ChevronUp, PlusCircle, X, XCircle } from "lucide-react";
 import * as React from "react";
 interface DateRange {
   from: Date | undefined;
@@ -122,76 +122,175 @@ export function AutoTableSimpleFilters<TData>({
 
   const hasFilters = filters.length > 0;
 
+  // 所有带 variant 且未禁用筛选的列
+  const filterColumns = React.useMemo(
+    () => columns.filter((col) => col.columnDef.meta?.variant && col.columnDef.enableColumnFilter !== false),
+    [columns]
+  );
+
+  // 自动折叠：计算第一行能放多少个项
+  const [expanded, setExpanded] = React.useState(false);
+  const [visibleCount, setVisibleCount] = React.useState<number | null>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // 计算函数：临时显示全部项+按钮，测量第一行能放多少个，然后恢复 hidden
+  const calcVisibleCount = React.useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const items = el.querySelectorAll("[data-filter-item]");
+    if (items.length === 0) return;
+
+    // 临时移除所有 hidden class 以便测量（包括筛选项和按钮）
+    const restoreList: HTMLElement[] = [];
+    el.querySelectorAll(".hidden").forEach((node) => {
+      const htmlNode = node as HTMLElement;
+      htmlNode.classList.remove("hidden");
+      restoreList.push(htmlNode);
+    });
+
+    // 临时 flex-1 撑满父级，让 flex-wrap 换行生效
+    el.style.flex = "1 1 0%";
+    void el.offsetHeight; // 强制同步布局
+
+    const firstTop = (items[0] as HTMLElement).offsetTop;
+    let count = 0;
+    for (const item of Array.from(items)) {
+      if ((item as HTMLElement).offsetTop > firstTop) break;
+      count++;
+    }
+
+    // 预留展开按钮空间：如果有溢出，检查按钮是否还在第一行
+    const btn = el.querySelector("[data-filter-toggle]") as HTMLElement | null;
+    if (btn && count < items.length && count > 0) {
+      if (btn.offsetTop > firstTop) count--;
+    }
+
+    // 还原
+    el.style.flex = "";
+    restoreList.forEach((node) => node.classList.add("hidden"));
+
+    setVisibleCount(count >= items.length ? null : count);
+  }, []);
+
+  // 挂载时同步测量（useLayoutEffect 在绘制前执行，避免闪烁）
+  React.useLayoutEffect(() => {
+    if (!mounted) return;
+    calcVisibleCount();
+  }, [mounted, filterColumns.length, calcVisibleCount]);
+
+  // 容器尺寸变化时重新计算（覆盖 window resize + 侧边栏折叠等场景）
+  // 观察父级容器，避免展开/收起自身尺寸变化导致循环
+  // 使用 rAF 节流避免快速 resize 下的 layout thrash
+  React.useEffect(() => {
+    const parent = containerRef.current?.closest("[data-filter-parent]") as HTMLElement | null;
+    if (!mounted || !parent) return;
+    let lastWidth = parent.offsetWidth;
+    let rafId = 0;
+    const ro = new ResizeObserver(() => {
+      const newWidth = parent.offsetWidth;
+      if (newWidth === lastWidth) return;
+      lastWidth = newWidth;
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(calcVisibleCount);
+    });
+    ro.observe(parent);
+    return () => {
+      cancelAnimationFrame(rafId);
+      ro.disconnect();
+    };
+  }, [mounted, filterColumns.length, calcVisibleCount]);
+
   if (!mounted) {
     return null;
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {columns.map((column) => {
-        const meta = column.columnDef.meta;
-        if (!meta?.variant) return null;
-
+    <div ref={containerRef} className="flex flex-wrap items-center gap-2 min-w-0">
+      {filterColumns.map((column, index) => {
+        const meta = column.columnDef.meta!;
         const value = getFilterValue(column.id);
+        const isHidden = !expanded && visibleCount !== null && index >= visibleCount;
 
         switch (meta.variant) {
           case "text":
             return (
-              <Input
-                key={column.id}
-                placeholder={meta.label ?? column.id}
-                value={typeof value === "string" ? value : ""}
-                onChange={(e) => updateFilter(column.id, e.target.value || undefined)}
-                className="h-8 w-36"
-              />
+              <div key={column.id} className={isHidden ? "hidden" : ""} data-filter-item>
+                <Input
+                  placeholder={meta.placeholder ?? meta.label ?? column.id}
+                  value={typeof value === "string" ? value : ""}
+                  onChange={(e) => updateFilter(column.id, e.target.value || undefined)}
+                  className="h-8 w-36 shrink-0"
+                />
+              </div>
             );
 
           case "select":
           case "multiSelect":
             return (
-              <SimpleFacetedFilter
-                key={column.id}
-                title={meta.label ?? column.id}
-                options={meta.options ?? []}
-                multiple={meta.variant === "multiSelect"}
-                value={Array.isArray(value) ? value : value ? [value] : []}
-                onChange={(v) => updateFilter(column.id, v.length ? v : undefined)}
-              />
+              <div key={column.id} className={isHidden ? "hidden" : ""} data-filter-item>
+                <SimpleFacetedFilter
+                  title={meta.label ?? column.id}
+                  options={meta.options ?? []}
+                  multiple={meta.variant === "multiSelect"}
+                  value={Array.isArray(value) ? value : value ? [value] : []}
+                  onChange={(v) => updateFilter(column.id, v.length ? v : undefined)}
+                />
+              </div>
             );
 
           case "range":
             return (
-              <SimpleSliderFilter
-                key={column.id}
-                title={meta.label ?? column.id}
-                range={meta.range as [number, number] | undefined}
-                unit={meta.unit}
-                value={Array.isArray(value) ? value.map(Number) as [number, number] : undefined}
-                onChange={(v) => updateFilter(column.id, v ? v.map(String) : undefined)}
-              />
+              <div key={column.id} className={isHidden ? "hidden" : ""} data-filter-item>
+                <SimpleSliderFilter
+                  title={meta.label ?? column.id}
+                  range={meta.range as [number, number] | undefined}
+                  unit={meta.unit}
+                  value={Array.isArray(value) ? value.map(Number) as [number, number] : undefined}
+                  onChange={(v) => updateFilter(column.id, v ? v.map(String) : undefined)}
+                />
+              </div>
             );
 
           case "date":
           case "dateRange":
             return (
-              <SimpleDateFilter
-                key={column.id}
-                title={meta.label ?? column.id}
-                multiple={meta.variant === "dateRange"}
-                value={value}
-                onChange={(v) => updateFilter(column.id, v)}
-              />
+              <div key={column.id} className={isHidden ? "hidden" : ""} data-filter-item>
+                <SimpleDateFilter
+                  title={meta.label ?? column.id}
+                  multiple={meta.variant === "dateRange"}
+                  value={value}
+                  onChange={(v) => updateFilter(column.id, v)}
+                />
+              </div>
             );
 
           default:
             return null;
         }
       })}
+
+      {/* 展开/收起按钮 - 始终渲染用于测量占位，不需要时隐藏 */}
+      <Button
+        data-filter-toggle
+        variant="ghost"
+        size="icon"
+        className={cn(
+          "h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground",
+          visibleCount === null && "hidden"
+        )}
+        onClick={() => setExpanded((prev) => !prev)}
+        aria-label={expanded ? "收起筛选" : "展开更多筛选"}
+        aria-expanded={expanded}
+      >
+        {expanded ? <ChevronUp className="size-4" /> : <ChevronDown className="size-4" />}
+      </Button>
+
       {hasFilters && (
         <Button
           variant="outline"
           size="sm"
-          className="h-8 border-dashed"
+          className="h-8 border-dashed shrink-0"
           onClick={() => setFilters([])}
         >
           <X className="size-4" />

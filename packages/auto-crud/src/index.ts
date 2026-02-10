@@ -1,6 +1,6 @@
 // Auto-CRUD Components
 export { AutoCrudTable } from "./components/auto-crud/auto-crud-table";
-export type { Field, Fields, AutoCrudTableProps } from "./components/auto-crud/auto-crud-table";
+export type { Field, Fields, FilterConfig, AutoCrudTableProps } from "./components/auto-crud/auto-crud-table";
 export { AutoForm } from "./components/auto-crud/auto-form";
 export { AutoTable } from "./components/auto-crud/auto-table";
 export { AutoTableActionBar } from "./components/auto-crud/auto-table-action-bar";

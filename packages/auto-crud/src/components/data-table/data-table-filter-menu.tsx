@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 
+import { useReadableFilters } from "@/hooks/use-readable-filters";
 import { DataTableRangeFilter } from "@/components/data-table/data-table-range-filter";
 import { Button } from "@pixpilot/shadcn";
 import { Calendar } from "@pixpilot/shadcn";
@@ -39,7 +40,6 @@ import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import { getDefaultFilterOperator, getFilterOperators } from "@/lib/data-table";
 import { formatDate } from "@/lib/format";
 import { generateId } from "@/lib/id";
-import { useReadableFilters } from "@/hooks/use-readable-filters";
 import { cn } from "@/lib/utils";
 import type { ExtendedColumnFilter, FilterOperator } from "@/types/data-table";
 
@@ -105,10 +105,8 @@ export function DataTableFilterMenu<TData>({
     [inputValue, selectedColumn],
   );
 
-  const queryStateOptions = table.options.meta?.queryStateOptions;
   const [filters, setFilters] = useReadableFilters<TData>(columns, {
-    ...queryStateOptions,
-    debounceMs: 0,
+    debounceMs,
   });
   const debouncedSetFilters = useDebouncedCallback(setFilters, debounceMs);
 

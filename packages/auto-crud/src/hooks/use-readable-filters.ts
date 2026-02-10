@@ -1,7 +1,6 @@
 import * as React from "react";
 import type { Column, ColumnDef } from "@tanstack/react-table";
 
-import { useDebouncedCallback } from "@/hooks/use-debounced-callback";
 import {
   applyReadableFilters,
   parseReadableFilters,
@@ -28,28 +27,38 @@ export function useReadableFilters<TData>(
   columns: ColumnLike<TData>[],
   options: UseReadableFiltersOptions = {},
 ): [
-    ExtendedColumnFilter<TData>[],
-    (
-      value:
-        | ExtendedColumnFilter<TData>[]
-        | ((
+  ExtendedColumnFilter<TData>[],
+  (
+    value:
+      | ExtendedColumnFilter<TData>[]
+      | ((
           prev: ExtendedColumnFilter<TData>[],
         ) => ExtendedColumnFilter<TData>[]),
-    ) => void,
-  ] {
-  const { debounceMs = 300, history = "replace", scroll = false } = options;
+  ) => void,
+] {
+  const { history = "replace", scroll = false } = options;
 
   const columnSnapshot = React.useMemo(() => columns, [columns]);
 
-  const skipWriteRef = React.useRef(true);
-  const [filters, setFilters] = React.useState<ExtendedColumnFilter<TData>[]>(() =>
-    parseReadableFilters(getUrlParams(), columnSnapshot),
-  );
+  // Snapshot of the last URL search string we wrote, used to skip self-triggered urlchange events
+  const lastWrittenUrlRef = React.useRef("");
+  const filtersRef = React.useRef<ExtendedColumnFilter<TData>[]>(null!);
+  const [filters, setFilters] = React.useState<ExtendedColumnFilter<TData>[]>(() => {
+    const initial = parseReadableFilters(getUrlParams(), columnSnapshot);
+    filtersRef.current = initial;
+    return initial;
+  });
 
+  // Listen for external URL changes (popstate, other hooks)
   React.useEffect(() => {
     const handleUrlChange = () => {
-      skipWriteRef.current = true;
-      setFilters(parseReadableFilters(getUrlParams(), columnSnapshot));
+      // Skip if current URL matches what we last wrote (self-triggered event)
+      if (window.location.search === lastWrittenUrlRef.current) {
+        return;
+      }
+      const next = parseReadableFilters(getUrlParams(), columnSnapshot);
+      filtersRef.current = next;
+      setFilters(next);
     };
 
     window.addEventListener("popstate", handleUrlChange);
@@ -60,11 +69,13 @@ export function useReadableFilters<TData>(
     };
   }, [columnSnapshot]);
 
-  const writeFilters = React.useCallback(
+  // Write filters to URL synchronously — caller controls debounce timing
+  const writeToUrl = React.useCallback(
     (next: ExtendedColumnFilter<TData>[]) => {
       const params = getUrlParams();
       applyReadableFilters(params, columnSnapshot, next);
       setSearchParams(params, { history, scroll });
+      lastWrittenUrlRef.current = `?${params.toString()}`;
     },
     [columnSnapshot, history, scroll],
   );
@@ -77,27 +88,13 @@ export function useReadableFilters<TData>(
           prev: ExtendedColumnFilter<TData>[],
         ) => ExtendedColumnFilter<TData>[]),
     ) => {
-      setFilters((prev) => {
-        const next = typeof updater === "function" ? updater(prev) : updater;
-        return next;
-      });
+      const next = typeof updater === "function" ? updater(filtersRef.current) : updater;
+      filtersRef.current = next;
+      setFilters(next);
+      writeToUrl(next);
     },
-    [],
+    [writeToUrl],
   );
-
-  const debouncedWrite = useDebouncedCallback(writeFilters, debounceMs);
-
-  React.useEffect(() => {
-    if (skipWriteRef.current) {
-      skipWriteRef.current = false;
-      return;
-    }
-    if (debounceMs > 0) {
-      debouncedWrite(filters);
-    } else {
-      writeFilters(filters);
-    }
-  }, [filters, debounceMs, debouncedWrite, writeFilters]);
 
   return [filters, updateFilters];
 }
