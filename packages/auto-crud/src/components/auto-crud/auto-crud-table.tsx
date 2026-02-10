@@ -35,8 +35,8 @@ import { formatDate } from "@/lib/format";
 import { humanize } from "@/lib/humanize";
 import { Badge } from "@pixpilot/shadcn";
 import { ImportDialog } from "./import-dialog";
-import { ExportDialog, type ExportMode } from "./export-dialog";
-import { Download, Upload } from "lucide-react";
+import type { ExportMode } from "./export-dialog";
+import { Download, Loader2, Upload } from "lucide-react";
 import { exportAllToCSV } from "@/lib/export";
 import * as React from "react";
 
@@ -475,10 +475,10 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   // 导出：只要权限允许就显示按钮（选中导出始终可用，全量导出需要 handlers.export）
   const canExport = can.export;
 
-  // Import/Export dialog state
+  // Import dialog state
   const [importOpen, setImportOpen] = React.useState(false);
-  const [exportOpen, setExportOpen] = React.useState(false);
   const [selectedCount, setSelectedCount] = React.useState(0);
+  const [exporting, setExporting] = React.useState(false);
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
 
   // 从 schema 提取可导入的列名（排除 deny 字段）
@@ -511,6 +511,17 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       });
     }
   }, [resource.handlers.export, title, denyFields]);
+
+  // 导出按钮点击：根据选中状态智能判断导出模式
+  const handleExportClick = React.useCallback(async () => {
+    const mode: ExportMode = selectedCount > 0 ? "selected" : "filtered";
+    setExporting(true);
+    try {
+      await handleExport(mode);
+    } finally {
+      setExporting(false);
+    }
+  }, [selectedCount, handleExport]);
 
   // 构建表格和表单的 overrides
   const tableOverrides = buildTableOverrides(fields, tableConfig?.overrides);
@@ -546,10 +557,15 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setExportOpen(true)}
+              onClick={handleExportClick}
+              disabled={exporting || (selectedCount === 0 && !resource.handlers.export)}
             >
-              <Upload className="mr-2 h-4 w-4" />
-              导出
+              {exporting ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              {selectedCount > 0 ? `导出(${selectedCount})` : "导出"}
             </Button>
           )}
           {can.create && (
@@ -652,16 +668,6 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         />
       )}
 
-      {/* Export Dialog */}
-      {canExport && (
-        <ExportDialog
-          open={exportOpen}
-          onOpenChange={setExportOpen}
-          selectedCount={selectedCount}
-          onExport={handleExport}
-          canExportFiltered={!!resource.handlers.export}
-        />
-      )}
     </div>
   );
 }
