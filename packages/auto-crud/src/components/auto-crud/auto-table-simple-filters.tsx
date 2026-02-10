@@ -50,7 +50,7 @@ export function AutoTableSimpleFilters<TData>({
   onFiltersChange,
 }: AutoTableSimpleFiltersProps<TData>) {
   const columns = React.useMemo(
-    () => table.getAllColumns().filter((col) => col.columnDef.enableColumnFilter),
+    () => table.getAllColumns().filter((col) => col.getCanFilter()),
     [table]
   );
 
@@ -122,9 +122,25 @@ export function AutoTableSimpleFilters<TData>({
 
   const hasFilters = filters.length > 0;
 
-  // 所有带 variant 且未禁用筛选的列
+  // 所有带 variant 且未禁用筛选的列，并且满足 modes 配置
   const filterColumns = React.useMemo(
-    () => columns.filter((col) => col.columnDef.meta?.variant && col.columnDef.enableColumnFilter !== false),
+    () => columns.filter((col) => {
+      const meta = col.columnDef.meta;
+      const enableFilter = col.columnDef.enableColumnFilter !== false;
+
+      // 必须有 variant 且未禁用筛选
+      if (!meta?.variant || !enableFilter) {
+        return false;
+      }
+
+      // 检查 modes 配置：如果配置了 modes，则必须包含 "simple"
+      const modes = meta.modes as Array<"simple" | "advanced" | "command"> | undefined;
+      if (modes && !modes.includes("simple")) {
+        return false;
+      }
+
+      return true;
+    }),
     [columns]
   );
 

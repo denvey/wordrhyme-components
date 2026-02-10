@@ -18,6 +18,8 @@ declare module "@tanstack/react-table" {
     range?: [number, number];
     unit?: string;
     icon?: React.FC<React.SVGProps<SVGSVGElement>>;
+    /** 控制在哪些筛选模式下显示（未设置则在所有模式显示） */
+    modes?: Array<"simple" | "advanced" | "command">;
   }
 }
 

@@ -49,7 +49,12 @@ function MyComponent({ value, defaultValue, onChange }) {
     onChange?.(newValue);
   };
 
-  return <input value={internalValue} onChange={(e) => handleChange(e.target.value)} />;
+  return (
+    <input
+      value={internalValue}
+      onChange={(e) => handleChange(e.target.value)}
+    />
+  );
 }
 ```
 

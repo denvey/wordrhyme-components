@@ -70,7 +70,18 @@ export function DataTableFilterMenu<TData>({
   const columns = React.useMemo(() => {
     return table
       .getAllColumns()
-      .filter((column) => column.columnDef.enableColumnFilter);
+      .filter((column) => {
+        const enableFilter = column.columnDef.enableColumnFilter;
+        if (!enableFilter) return false;
+
+        // 检查 modes 配置：如果配置了 modes，则必须包含 "command"
+        const modes = column.columnDef.meta?.modes;
+        if (modes && !modes.includes("command")) {
+          return false;
+        }
+
+        return true;
+      });
   }, [table]);
 
   const [open, setOpen] = React.useState(false);

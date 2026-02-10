@@ -80,6 +80,13 @@ function DataTableToolbarFilter<TData>({
     const onFilterRender = React.useCallback(() => {
       if (!columnMeta?.variant) return null;
 
+      // 检查 modes 配置：如果配置了 modes，则必须包含 "advanced"
+      // 注意：此组件默认对应 advanced 模式
+      const modes = columnMeta.modes;
+      if (modes && !modes.includes("advanced")) {
+        return null;
+      }
+
       switch (columnMeta.variant) {
         case "text":
           return (

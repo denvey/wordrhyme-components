@@ -99,7 +99,18 @@ export function DataTableFilterList<TData>({
   const columns = React.useMemo(() => {
     return table
       .getAllColumns()
-      .filter((column) => column.columnDef.enableColumnFilter);
+      .filter((column) => {
+        // 使用 getCanFilter() 保证默认启用的列不被排除
+        if (!column.getCanFilter()) return false;
+
+        // 检查 modes 配置：如果配置了 modes，则必须包含 "advanced"
+        const modes = column.columnDef.meta?.modes;
+        if (modes && !modes.includes("advanced")) {
+          return false;
+        }
+
+        return true;
+      });
   }, [table]);
 
   const [filters, setFilters] = useReadableFilters<TData>(columns, {

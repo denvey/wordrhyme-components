@@ -59,6 +59,8 @@ export interface FilterConfig {
   placeholder?: string;
   /** 是否在筛选栏中隐藏（隐藏筛选但不影响表格列显示） */
   hidden?: boolean;
+  /** 控制在哪些筛选模式下显示（未设置则在所有模式显示） */
+  modes?: Array<"simple" | "advanced" | "command">;
 }
 
 /**
@@ -72,10 +74,16 @@ export interface Field {
   hidden?: boolean;
   /**
    * 筛选器独立配置
+   * - FilterConfig: 详细配置
+   * - false: 禁用筛选（简写，等价于 { enabled: false }）
    * 独立于 table.meta 控制筛选器行为，不影响表格列显示/隐藏
    */
-  filter?: FilterConfig;
-  /** 表格特定配置 */
+  filter?: FilterConfig | false;
+  /**
+   * 表格特定配置
+   * - object: 详细配置
+   * - false: 隐藏表格列（简写，等价于 { hidden: true }）
+   */
   table?: {
     /** 是否在表格中隐藏 */
     hidden?: boolean;
@@ -83,8 +91,12 @@ export interface Field {
     meta?: Record<string, unknown>;
     /** 其他列配置 */
     [key: string]: unknown;
-  };
-  /** 表单特定配置 */
+  } | false;
+  /**
+   * 表单特定配置
+   * - object: 详细配置（Formily Schema）
+   * - false: 隐藏表单字段（简写，等价于 { "x-hidden": true }）
+   */
   form?: {
     /** 是否在表单中隐藏 */
     "x-hidden"?: boolean;
@@ -94,7 +106,7 @@ export interface Field {
     "x-component-props"?: Record<string, unknown>;
     /** 其他表单配置 */
     [key: string]: unknown;
-  };
+  } | false;
 }
 
 export type Fields = Record<string, Field>;
@@ -188,35 +200,79 @@ function buildTableOverrides(fields?: Fields, legacyOverrides?: Record<string, a
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
-      // 从 filter 配置构建 meta
+      // 提取 table.meta（无论 filter 配置如何都需要保留）
+      const tableMeta = config.table !== false && typeof config.table === 'object'
+        ? config.table.meta as Record<string, unknown> | undefined
+        : undefined;
+
+      // 提取 filter meta
       let filterMeta: Record<string, unknown> | undefined;
-      if (config.filter && config.filter.enabled !== false && !config.filter.hidden) {
-        const { enabled: _, hidden: __, ...filterProps } = config.filter;
-        if (Object.keys(filterProps).length > 0) {
-          filterMeta = filterProps;
+      if (config.filter && typeof config.filter === 'object') {
+        if (config.filter.enabled !== false && config.filter.hidden !== true) {
+          const { enabled: _, hidden: __, ...filterProps } = config.filter;
+          if (Object.keys(filterProps).length > 0) {
+            filterMeta = filterProps;
+          }
         }
       }
 
-      result[key] = {
-        ...result[key],
-        ...(config.label && { label: config.label }),
-        ...(config.hidden && { hidden: true }),
-        ...config.table,
-        // filter.meta 优先级：filter 配置 > table.meta（filter 独立配置覆盖 table.meta）
-        ...(filterMeta && {
-          meta: {
-            ...(result[key]?.meta ?? {}),
-            ...(config.table?.meta as Record<string, unknown> ?? {}),
-            ...filterMeta,
-          },
-        }),
-      };
-
-      // 当 filter.enabled === false 或 filter.hidden === true 时，禁用该列的筛选
-      if (config.filter?.enabled === false || config.filter?.hidden === true) {
+      // 处理 filter: false 简写
+      if (config.filter === false) {
         result[key] = {
           ...result[key],
           enableColumnFilter: false,
+        };
+      }
+      // 处理 filter 对象禁用
+      else if (config.filter && typeof config.filter === 'object') {
+        if (config.filter.enabled === false || config.filter.hidden === true) {
+          result[key] = {
+            ...result[key],
+            enableColumnFilter: false,
+          };
+        }
+      }
+
+      // 始终合并 meta（无论 filter 状态如何）
+      if (tableMeta || filterMeta) {
+        result[key] = {
+          ...result[key],
+          meta: {
+            ...(result[key]?.meta ?? {}),
+            ...(tableMeta ?? {}),
+            ...(filterMeta ?? {}),  // filter meta 优先级更高
+          },
+        };
+      }
+
+      // 处理共用配置
+      if (config.label) {
+        result[key] = {
+          ...result[key],
+          label: config.label,
+        };
+      }
+
+      if (config.hidden) {
+        result[key] = {
+          ...result[key],
+          hidden: true,
+        };
+      }
+
+      // 处理 table: false 简写
+      if (config.table === false) {
+        result[key] = {
+          ...result[key],
+          hidden: true,
+        };
+      }
+      // 处理 table 对象配置
+      else if (config.table && typeof config.table === 'object') {
+        const { meta, ...tableProps } = config.table;
+        result[key] = {
+          ...result[key],
+          ...tableProps,
         };
       }
     }
@@ -248,12 +304,35 @@ function buildFormOverrides(
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
-      result[key] = {
-        ...result[key],
-        ...(config.label && { title: config.label }),
-        ...(config.hidden && { "x-hidden": true }),
-        ...config.form,
-      };
+      // 处理共用配置
+      if (config.label) {
+        result[key] = {
+          ...result[key],
+          title: config.label,
+        };
+      }
+
+      if (config.hidden) {
+        result[key] = {
+          ...result[key],
+          "x-hidden": true,
+        };
+      }
+
+      // 处理 form: false 简写
+      if (config.form === false) {
+        result[key] = {
+          ...result[key],
+          "x-hidden": true,
+        };
+      }
+      // 处理 form 对象配置
+      else if (config.form && typeof config.form === 'object') {
+        result[key] = {
+          ...result[key],
+          ...config.form,
+        };
+      }
     }
   }
 
@@ -275,7 +354,16 @@ function buildHiddenColumns(
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
-      if (config.hidden || config.table?.hidden) {
+      // 检查全局隐藏
+      if (config.hidden) {
+        hidden.add(key);
+      }
+      // 检查 table: false 简写
+      else if (config.table === false) {
+        hidden.add(key);
+      }
+      // 检查 table.hidden 配置
+      else if (config.table && typeof config.table === 'object' && config.table.hidden) {
         hidden.add(key);
       }
     }
