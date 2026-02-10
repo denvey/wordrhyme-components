@@ -1,7 +1,7 @@
 {
   "name": "@wordrhyme/auto-crud",
   "type": "module",
-  "version": "0.10.0",
+  "version": "1.0.0",
   "packageManager": "pnpm@10.25.0",
   "description": "Schema-first CRUD components with auto-generated tables and forms",
   "author": "wordrhyme",
