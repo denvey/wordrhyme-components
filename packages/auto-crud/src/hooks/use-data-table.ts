@@ -262,7 +262,16 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     [debouncedSetFilterValues, filterableColumns, enableAdvancedFilter],
   );
 
-  const table = useReactTable({
+  // Memoize model factory functions to prevent new references on every render
+  const getCoreRowModelFn = React.useMemo(() => getCoreRowModel<TData>(), []);
+  const getFilteredRowModelFn = React.useMemo(() => getFilteredRowModel<TData>(), []);
+  const getPaginationRowModelFn = React.useMemo(() => getPaginationRowModel<TData>(), []);
+  const getSortedRowModelFn = React.useMemo(() => getSortedRowModel<TData>(), []);
+  const getFacetedRowModelFn = React.useMemo(() => getFacetedRowModel<TData>(), []);
+  const getFacetedUniqueValuesFn = React.useMemo(() => getFacetedUniqueValues<TData>(), []);
+  const getFacetedMinMaxValuesFn = React.useMemo(() => getFacetedMinMaxValues<TData>(), []);
+
+  const table = useReactTable<TData>({
     ...tableProps,
     columns,
     initialState,
@@ -284,13 +293,13 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     onSortingChange,
     onColumnFiltersChange,
     onColumnVisibilityChange: setColumnVisibility,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    getSortedRowModel: getSortedRowModel(),
-    getFacetedRowModel: getFacetedRowModel(),
-    getFacetedUniqueValues: getFacetedUniqueValues(),
-    getFacetedMinMaxValues: getFacetedMinMaxValues(),
+    getCoreRowModel: getCoreRowModelFn,
+    getFilteredRowModel: getFilteredRowModelFn,
+    getPaginationRowModel: getPaginationRowModelFn,
+    getSortedRowModel: getSortedRowModelFn,
+    getFacetedRowModel: getFacetedRowModelFn,
+    getFacetedUniqueValues: getFacetedUniqueValuesFn,
+    getFacetedMinMaxValues: getFacetedMinMaxValuesFn,
     manualPagination: true,
     manualSorting: true,
     manualFiltering: true,

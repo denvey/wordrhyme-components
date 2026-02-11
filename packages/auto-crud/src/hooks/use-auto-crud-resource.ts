@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useMemo } from "react";
+import { useReducer, useCallback, useMemo, useRef, useEffect } from "react";
 import { z } from "zod";
 import { toast as sonnerToast } from "sonner";
 import { keepPreviousData } from "@tanstack/react-query";
@@ -300,6 +300,12 @@ export function useAutoCrudResource<
     [toastAdapter]
   );
 
+  // Stabilize hooks reference to avoid handler rebuilds when hooks object changes
+  const hooksRef = useRef(hooks);
+  useEffect(() => {
+    hooksRef.current = hooks;
+  }, [hooks]);
+
   // ========== URL 状态管理（内部自动 or 外部传入） ==========
   // 从 schema 推导 columns（用于 useReadableFilters）
   const columns = useMemo(
@@ -375,10 +381,11 @@ export function useAutoCrudResource<
   // Handlers: Create
   const submitCreate = useCallback(
     async (values: z.infer<TSchema>) => {
+      const currentHooks = hooksRef.current;
       try {
         // 调用 beforeCreate 钩子
-        if (hooks?.beforeCreate) {
-          const result = await hooks.beforeCreate(values);
+        if (currentHooks?.beforeCreate) {
+          const result = await currentHooks.beforeCreate(values);
 
           // 返回 boolean = 完全自定义处理
           if (typeof result === "boolean") {
@@ -386,7 +393,7 @@ export function useAutoCrudResource<
               toast.success("创建成功");
               closeModals();
               listQuery.refetch();
-              hooks?.onSuccess?.("create", values);
+              currentHooks?.onSuccess?.("create", values);
             }
             return;
           }
@@ -400,32 +407,33 @@ export function useAutoCrudResource<
             toast.success("创建成功");
             closeModals();
             listQuery.refetch();
-            hooks?.onSuccess?.("create", data);
+            currentHooks?.onSuccess?.("create", data);
           },
           onError: (error: unknown) => {
             const err = error as Error;
             toast.error(`创建失败: ${err.message}`);
-            hooks?.onError?.("create", err);
+            currentHooks?.onError?.("create", err);
           },
         });
       } catch (error) {
         const err = error as Error;
         toast.error(`创建失败: ${err.message}`);
-        hooks?.onError?.("create", err);
+        currentHooks?.onError?.("create", err);
       }
     },
-    [createMutation, closeModals, listQuery, hooks]
+    [createMutation, closeModals, listQuery]
   );
 
   // Handlers: Update
   const submitUpdate = useCallback(
     async (values: z.infer<TSchema>) => {
+      const currentHooks = hooksRef.current;
       if (!modal.selected) return;
 
       try {
         // 调用 beforeUpdate 钩子
-        if (hooks?.beforeUpdate) {
-          const result = await hooks.beforeUpdate(values, modal.selected);
+        if (currentHooks?.beforeUpdate) {
+          const result = await currentHooks.beforeUpdate(values, modal.selected);
 
           // 返回 boolean = 完全自定义处理
           if (typeof result === "boolean") {
@@ -433,7 +441,7 @@ export function useAutoCrudResource<
               toast.success("更新成功");
               closeModals();
               listQuery.refetch();
-              hooks?.onSuccess?.("update", values);
+              currentHooks?.onSuccess?.("update", values);
             }
             return;
           }
@@ -450,32 +458,33 @@ export function useAutoCrudResource<
               toast.success("更新成功");
               closeModals();
               listQuery.refetch();
-              hooks?.onSuccess?.("update", data);
+              currentHooks?.onSuccess?.("update", data);
             },
             onError: (error: unknown) => {
               const err = error as Error;
               toast.error(`更新失败: ${err.message}`);
-              hooks?.onError?.("update", err);
+              currentHooks?.onError?.("update", err);
             },
           }
         );
       } catch (error) {
         const err = error as Error;
         toast.error(`更新失败: ${err.message}`);
-        hooks?.onError?.("update", err);
+        currentHooks?.onError?.("update", err);
       }
     },
-    [modal.selected, idKey, updateMutation, closeModals, listQuery, hooks]
+    [modal.selected, idKey, updateMutation, closeModals, listQuery]
   );
 
   // Handlers: Delete
   const confirmDelete = useCallback(async () => {
+    const currentHooks = hooksRef.current;
     if (!modal.selected) return;
 
     try {
       // 调用 beforeDelete 钩子
-      if (hooks?.beforeDelete) {
-        const result = await hooks.beforeDelete(modal.selected);
+      if (currentHooks?.beforeDelete) {
+        const result = await currentHooks.beforeDelete(modal.selected);
 
         // 返回 boolean = 完全自定义处理
         if (typeof result === "boolean") {
@@ -483,7 +492,7 @@ export function useAutoCrudResource<
             toast.success("删除成功");
             closeModals();
             listQuery.refetch();
-            hooks?.onSuccess?.("delete", modal.selected);
+            currentHooks?.onSuccess?.("delete", modal.selected);
           }
           return;
         }
@@ -496,24 +505,25 @@ export function useAutoCrudResource<
           toast.success("删除成功");
           closeModals();
           listQuery.refetch();
-          hooks?.onSuccess?.("delete", data);
+          currentHooks?.onSuccess?.("delete", data);
         },
         onError: (error: unknown) => {
           const err = error as Error;
           toast.error(`删除失败: ${err.message}`);
-          hooks?.onError?.("delete", err);
+          currentHooks?.onError?.("delete", err);
         },
       });
     } catch (error) {
       const err = error as Error;
       toast.error(`删除失败: ${err.message}`);
-      hooks?.onError?.("delete", err);
+      currentHooks?.onError?.("delete", err);
     }
-  }, [modal.selected, idKey, deleteMutation, closeModals, listQuery, hooks]);
+  }, [modal.selected, idKey, deleteMutation, closeModals, listQuery]);
 
   // Handlers: Delete Many
   const deleteMany = useCallback(
     (rows: TListItem[]) => {
+      const currentHooks = hooksRef.current;
       if (!deleteManyMutation) {
         toast.error("批量删除功能未启用");
         return;
@@ -523,21 +533,22 @@ export function useAutoCrudResource<
         onSuccess: (data: unknown) => {
           toast.success(`成功删除 ${ids.length} 条记录`);
           listQuery.refetch();
-          hooks?.onSuccess?.("delete", data);
+          currentHooks?.onSuccess?.("delete", data);
         },
         onError: (error: unknown) => {
           const err = error as Error;
           toast.error(`批量删除失败: ${err.message}`);
-          hooks?.onError?.("delete", err);
+          currentHooks?.onError?.("delete", err);
         },
       });
     },
-    [deleteManyMutation, idKey, listQuery, hooks]
+    [deleteManyMutation, idKey, listQuery]
   );
 
   // Handlers: Update Many
   const updateMany = useCallback(
     (rows: TListItem[], data: Record<string, unknown>) => {
+      const currentHooks = hooksRef.current;
       if (!updateManyMutation) {
         toast.error("批量更新功能未启用");
         return;
@@ -547,16 +558,16 @@ export function useAutoCrudResource<
         onSuccess: (result: unknown) => {
           toast.success(`成功更新 ${ids.length} 条记录`);
           listQuery.refetch();
-          hooks?.onSuccess?.("update", result);
+          currentHooks?.onSuccess?.("update", result);
         },
         onError: (error: unknown) => {
           const err = error as Error;
           toast.error(`批量更新失败: ${err.message}`);
-          hooks?.onError?.("update", err);
+          currentHooks?.onError?.("update", err);
         },
       });
     },
-    [updateManyMutation, idKey, listQuery, hooks]
+    [updateManyMutation, idKey, listQuery]
   );
 
   // Handlers: Copy Row (复制行并打开创建弹窗)

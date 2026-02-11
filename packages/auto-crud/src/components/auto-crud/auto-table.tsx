@@ -31,6 +31,8 @@ import type { ColumnOverrides } from "@/lib/schema-bridge/types";
 /** 过滤模式类型 */
 export type FilterMode = "simple" | "advanced" | "command";
 
+const DEFAULT_MODES: FilterMode[] = ["simple", "advanced", "command"];
+
 /** 过滤模式配置 */
 const filterModeConfig: Record<
   FilterMode,
@@ -111,10 +113,9 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   getSelectedRows,
 }: AutoTableProps<T>) {
   // 解析过滤模式配置，默认显示全部 3 个模式
-  const defaultModes: FilterMode[] = ["simple", "advanced", "command"];
   const modes = filterMode
     ? (Array.isArray(filterMode) ? filterMode : [filterMode])
-    : defaultModes;
+    : DEFAULT_MODES;
   const [currentMode, setCurrentMode] = useQueryState(
     "filterMode",
     parseAsStringEnum<FilterMode>(modes).withDefault(modes[0] ?? "simple"),
@@ -138,18 +139,20 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     return result;
   }, [schema, overrides, enableRowSelection, exclude, actions]);
 
+  const stableInitialState = useMemo(() => ({
+    sorting: initialSorting,
+    columnPinning: pinnedColumns ?? {
+      left: enableRowSelection ? ["select"] : [],
+      right: actions ? ["actions"] : [],
+    },
+  }), [initialSorting, pinnedColumns, enableRowSelection, actions]);
+
   const { table, shallow, debounceMs, throttleMs } = useDataTable({
     data,
     columns,
     pageCount,
     enableAdvancedFilter,
-    initialState: {
-      sorting: initialSorting,
-      columnPinning: pinnedColumns ?? {
-        left: enableRowSelection ? ["select"] : [],
-        right: actions ? ["actions"] : [],
-      },
-    },
+    initialState: stableInitialState,
     shallow: false,
     clearOnDefault: true,
   });
@@ -209,8 +212,8 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     </DropdownMenu>
   ) : null;
 
-  // 渲染过滤器组件
-  const renderFilters = () => {
+  // 渲染过滤器组件（memoized to avoid recreating on every render）
+  const filtersContent = useMemo(() => {
     switch (currentMode) {
       case "simple":
         return <AutoTableSimpleFilters table={table} shallow={shallow} />;
@@ -234,14 +237,14 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           />
         );
     }
-  };
+  }, [currentMode, table, shallow, debounceMs, throttleMs]);
 
   return (
     <div className="space-y-4">
       <div className="flex w-full items-start justify-between gap-2 p-1">
         <div className="flex flex-1 items-start gap-2 min-h-[40px]" data-filter-parent>
           {currentMode !== "simple" && <DataTableSortList table={table} align="start" />}
-          {renderFilters()}
+          {filtersContent}
         </div>
         <div className="flex items-center gap-2">
           {currentMode === "simple" && <DataTableSortList table={table} align="end" />}

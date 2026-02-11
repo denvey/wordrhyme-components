@@ -611,12 +611,24 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     }
   }, [selectedCount, handleExport]);
 
-  // 构建表格和表单的 overrides
-  const tableOverrides = buildTableOverrides(fields, tableConfig?.overrides);
+  // 构建表格和表单的 overrides（memoized）
+  const tableOverrides = React.useMemo(
+    () => buildTableOverrides(fields, tableConfig?.overrides),
+    [fields, tableConfig?.overrides],
+  );
   // Critical #2: 传入 denyFields 到表单 overrides
-  const formOverrides = buildFormOverrides(fields, formConfig?.overrides, denyFields);
-  const hiddenColumns = buildHiddenColumns(fields, tableConfig?.hidden, denyFields);
-  const batchFields = buildBatchUpdateFields(schema, tableConfig?.batchFields, fields);
+  const formOverrides = React.useMemo(
+    () => buildFormOverrides(fields, formConfig?.overrides, denyFields),
+    [fields, formConfig?.overrides, denyFields],
+  );
+  const hiddenColumns = React.useMemo(
+    () => buildHiddenColumns(fields, tableConfig?.hidden, denyFields),
+    [fields, tableConfig?.hidden, denyFields],
+  );
+  const batchFields = React.useMemo(
+    () => buildBatchUpdateFields(schema, tableConfig?.batchFields, fields),
+    [schema, tableConfig?.batchFields, fields],
+  );
 
   return (
     <div className="space-y-4">

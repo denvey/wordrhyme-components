@@ -79,11 +79,14 @@ export function AutoTableSimpleFilters<TData>({
     setMounted(true);
   }, []);
 
+  // O(1) filter lookup via Map instead of O(N) Array.find
+  const filterMap = React.useMemo(() => new Map(filters.map(f => [f.id, f])), [filters]);
+
   // 获取某列当前的过滤值
-  const getFilterValue = (columnId: string) => {
-    const filter = filters.find((f) => f.id === columnId);
+  const getFilterValue = React.useCallback((columnId: string) => {
+    const filter = filterMap.get(columnId as Extract<keyof TData, string>);
     return filter?.value;
-  };
+  }, [filterMap]);
 
   // 更新某列的过滤值
   const updateFilter = React.useCallback(
@@ -334,7 +337,7 @@ function SimpleFacetedFilter({
   onChange,
 }: SimpleFacetedFilterProps) {
   const [open, setOpen] = React.useState(false);
-  const selectedValues = new Set(value);
+  const selectedValues = React.useMemo(() => new Set(value), [value]);
 
   const onItemSelect = (option: Option, isSelected: boolean) => {
     if (multiple) {
@@ -366,6 +369,7 @@ function SimpleFacetedFilter({
               tabIndex={0}
               className="rounded-sm opacity-70 hover:opacity-100"
               onClick={onReset}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onReset(e as unknown as React.MouseEvent); } }}
             >
               <XCircle />
             </div>
@@ -481,7 +485,7 @@ function SimpleSliderFilter({ title, range, unit, value, onChange }: SimpleSlide
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="border-dashed font-normal">
           {value ? (
-            <div role="button" tabIndex={0} className="rounded-sm opacity-70 hover:opacity-100" onClick={onReset}>
+            <div role="button" tabIndex={0} className="rounded-sm opacity-70 hover:opacity-100" onClick={onReset} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onReset(e as unknown as React.MouseEvent); } }}>
               <XCircle />
             </div>
           ) : (
@@ -591,7 +595,7 @@ function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilter
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="border-dashed font-normal">
           {hasValue ? (
-            <div role="button" tabIndex={0} className="rounded-sm opacity-70 hover:opacity-100" onClick={onReset}>
+            <div role="button" tabIndex={0} className="rounded-sm opacity-70 hover:opacity-100" onClick={onReset} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onReset(e as unknown as React.MouseEvent); } }}>
               <XCircle />
             </div>
           ) : (

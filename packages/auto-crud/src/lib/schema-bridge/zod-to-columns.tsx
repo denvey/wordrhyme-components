@@ -25,41 +25,62 @@ import type {
 } from "./types";
 import { fieldTypeToFilterVariant, inferFilterVariantByFieldName } from "./types";
 
+const parsedFieldCache = new WeakMap<z.ZodType, ParsedZodField>();
+const baseTableSchemaCache = new WeakMap<
+  z.ZodObject<z.ZodRawShape>,
+  ColumnDef<any>[]
+>();
+
 /**
  * 解析 Zod 字段类型
  */
 export function parseZodField(schema: z.ZodType): ParsedZodField {
+  const cached = parsedFieldCache.get(schema);
+  if (cached) return cached;
+
+  const finalize = (result: ParsedZodField) => {
+    parsedFieldCache.set(schema, result);
+    return result;
+  };
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const def = (schema as any)._zod?.def ?? (schema as any)._def;
 
-  // 检查是否 optional
-  const testNull = schema.safeParse(null);
-  const testUndefined = schema.safeParse(undefined);
-  const required = !testUndefined.success && !testNull.success;
-
   // 优先检查 Zod 内部类型名称（更准确）
   const typeName = def?.typeName;
+  const isOptional = def?.type === "optional" || typeName === "ZodOptional";
+  const isNullable = def?.type === "nullable" || typeName === "ZodNullable";
 
   // 处理 nullable/optional 类型 - 解包获取内部类型
-  if (def?.type === 'nullable' || def?.type === 'optional' || typeName === 'ZodNullable' || typeName === 'ZodOptional') {
+  if (isOptional || isNullable) {
     const innerType = def?.innerType;
     if (innerType) {
       const innerParsed = parseZodField(innerType);
-      return { ...innerParsed, required: false };
+      return finalize({ ...innerParsed, required: false });
     }
+  }
+
+  // 检查是否 optional - 优先从类型结构判断，仅 fallback 时 safeParse
+  let required: boolean;
+  if (isOptional || isNullable) {
+    required = false;
+  } else {
+    const testNull = schema.safeParse(null);
+    const testUndefined = schema.safeParse(undefined);
+    required = !testUndefined.success && !testNull.success;
   }
 
   // 检查 drizzle-zod 生成的简化结构
   if (def?.type === 'boolean') {
-    return { type: "boolean", required };
+    return finalize({ type: "boolean", required });
   }
 
   if (def?.type === 'number') {
-    return { type: "number", required };
+    return finalize({ type: "number", required });
   }
 
   if (def?.type === 'date') {
-    return { type: "date", required };
+    return finalize({ type: "date", required });
   }
 
   // 检查 enum 类型
@@ -79,17 +100,17 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
       }
     }
     if (enumValues && enumValues.length > 0) {
-      return { type: "enum", required, enumValues };
+      return finalize({ type: "enum", required, enumValues });
     }
   }
 
   if (def?.type === 'string') {
-    return { type: "string", required };
+    return finalize({ type: "string", required });
   }
 
   // 显式检查标准 Zod 类型
   if (typeName === "ZodBoolean") {
-    return { type: "boolean", required };
+    return finalize({ type: "boolean", required });
   }
 
   // 尝试获取 enum 值 (Zod v3/v4 兼容)
@@ -112,24 +133,24 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
   }
 
   if (enumValues && Array.isArray(enumValues) && enumValues.length > 0) {
-    return { type: "enum", required, enumValues };
+    return finalize({ type: "enum", required, enumValues });
   }
 
   // 显式检查其他 Zod 类型
   if (typeName === "ZodNumber") {
-    return { type: "number", required };
+    return finalize({ type: "number", required });
   }
 
   if (typeName === "ZodDate") {
-    return { type: "date", required };
+    return finalize({ type: "date", required });
   }
 
   if (typeName === "ZodArray") {
-    return { type: "array", required };
+    return finalize({ type: "array", required });
   }
 
   if (typeName === "ZodObject") {
-    return { type: "object", required };
+    return finalize({ type: "object", required });
   }
 
   // 回退到 safeParse 检测（兼容性）
@@ -140,23 +161,23 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
   const testDate = schema.safeParse(1704067200000); // 2024-01-01 的时间戳
 
   if (testBoolean.success && !testString.success && !testNumber.success) {
-    return { type: "boolean", required };
+    return finalize({ type: "boolean", required });
   }
 
   if (testDate.success && !testString.success) {
-    return { type: "date", required };
+    return finalize({ type: "date", required });
   }
 
   if (testNumber.success && !testString.success) {
-    return { type: "number", required };
+    return finalize({ type: "number", required });
   }
 
   const testArray = schema.safeParse([]);
   if (testArray.success && !testString.success) {
-    return { type: "array", required };
+    return finalize({ type: "array", required });
   }
 
-  return { type: "string", required };
+  return finalize({ type: "string", required });
 }
 
 /**
@@ -205,9 +226,17 @@ export function createTableSchema<T extends z.ZodObject<z.ZodRawShape>>(
   schema: T,
   options?: CreateTableSchemaOptions<z.infer<T>>
 ): ColumnDef<z.infer<T>>[] {
+  const { overrides, exclude = [] } = options ?? {};
+  const hasOverrides = !!overrides && Object.keys(overrides).length > 0;
+  const canCache = !hasOverrides && exclude.length === 0;
+
+  if (canCache) {
+    const cached = baseTableSchemaCache.get(schema);
+    if (cached) return [...cached] as ColumnDef<z.infer<T>>[];
+  }
+
   const shape = schema.shape;
   const columns: ColumnDef<z.infer<T>>[] = [];
-  const { overrides, exclude = [] } = options ?? {};
 
   for (const [key, fieldSchema] of Object.entries(shape)) {
     if (exclude.includes(key as keyof z.infer<T>)) continue;
@@ -252,6 +281,10 @@ export function createTableSchema<T extends z.ZodObject<z.ZodRawShape>>(
       meta,
       ...restOverride,
     } as ColumnDef<z.infer<T>>);
+  }
+
+  if (canCache) {
+    baseTableSchemaCache.set(schema, columns as ColumnDef<any>[]);
   }
 
   return columns;
