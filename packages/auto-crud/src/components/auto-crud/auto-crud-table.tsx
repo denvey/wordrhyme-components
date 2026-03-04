@@ -30,7 +30,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@pixpilot/shadcn";
-import { parseZodField } from "@/lib/schema-bridge/zod-to-columns";
+import { parseZodField, type ResolvedActionItem } from "@/lib/schema-bridge/zod-to-columns";
 import { formatDate } from "@/lib/format";
 import { humanize } from "@/lib/humanize";
 import { Badge } from "@pixpilot/shadcn";
@@ -39,6 +39,7 @@ import type { ExportMode } from "./export-dialog";
 import { Download, Loader2, Upload } from "lucide-react";
 import { exportAllToCSV } from "@/lib/export";
 import * as React from "react";
+import { type LocaleProp, resolveLocale } from "@/i18n/locale";
 
 /**
  * 筛选器独立配置
@@ -111,6 +112,35 @@ export interface Field {
 
 export type Fields = Record<string, Field>;
 
+type BuiltinType = "view" | "edit" | "copy" | "delete";
+
+/** 内置操作项（覆盖默认行为或调整位置） */
+type BuiltinActionItem<T> = {
+  type: BuiltinType;
+  onClick?: (row: T) => void;
+  label?: string;
+  separator?: boolean;
+};
+
+/** 自定义操作项 */
+type CustomActionItem<T> = {
+  type: "custom";
+  label: string;
+  onClick: (row: T) => void;
+  /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
+  position?: "start" | "end";
+  separator?: boolean;
+  variant?: "default" | "destructive";
+};
+
+/**
+ * 行操作项
+ *
+ * - **只传 custom**：内置保持默认，custom 追加到首/尾
+ * - **包含任意内置 type**：数组完全接管，未列出的隐藏，顺序即渲染顺序
+ */
+export type ActionItem<T> = BuiltinActionItem<T> | CustomActionItem<T>;
+
 /**
  * AutoCrudTable Props 接口
  */
@@ -162,12 +192,9 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     toolbarStart?: React.ReactNode;
     /** 工具栏右侧插槽 */
     toolbarEnd?: React.ReactNode;
-    /** 自定义行操作 */
-    rowActions?: (row: z.output<TSchema>) => Array<{
-      label: string;
-      onClick: () => void;
-    }>;
   };
+  /** 行操作配置，见 {@link ActionItem} */
+  actions?: ActionItem<z.output<TSchema>>[];
   /**
    * 权限配置
    * 控制按钮显示和字段访问
@@ -189,6 +216,18 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
    * ```
    */
   permissions?: CrudPermissions;
+  /**
+   * 语言配置
+   * - 内置语言 key：`"zh-CN"`（默认）、`"en-US"`
+   * - 部分覆盖对象：以 zh-CN 为基础深合并
+   *
+   * @example
+   * ```tsx
+   * <AutoCrudTable locale="en-US" ... />
+   * <AutoCrudTable locale={{ toolbar: { create: "Add New" } }} ... />
+   * ```
+   */
+  locale?: LocaleProp;
 }
 
 /**
@@ -421,14 +460,18 @@ function buildBatchUpdateFields<T extends z.ZodObject<z.ZodRawShape>>(
 /**
  * 渲染字段值
  */
-function renderFieldValue(value: unknown, type: string): React.ReactNode {
+function renderFieldValue(
+  value: unknown,
+  type: string,
+  booleanLocale: { true: string; false: string },
+): React.ReactNode {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground">-</span>;
   }
 
   switch (type) {
     case "boolean":
-      return value ? "是" : "否";
+      return value ? booleanLocale.true : booleanLocale.false;
     case "date":
       return formatDate(value as Date);
     case "enum":
@@ -466,6 +509,7 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   schema,
   fields: fieldConfig,
   denyFields,
+  locale,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -474,6 +518,7 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   schema: TSchema;
   fields?: Fields;
   denyFields?: string[];
+  locale: { viewModal: { title: string }; boolean: { true: string; false: string } };
 }) {
   if (!data) return null;
 
@@ -499,7 +544,7 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
               {label}
             </dt>
             <dd className="col-span-2 text-sm">
-              {renderFieldValue(value, parsed.type)}
+              {renderFieldValue(value, parsed.type, locale.boolean)}
             </dd>
           </div>
         );
@@ -512,7 +557,7 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>详情</SheetTitle>
+          <SheetTitle>{locale.viewModal.title}</SheetTitle>
           </SheetHeader>
           {content}
         </SheetContent>
@@ -524,12 +569,63 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>详情</DialogTitle>
+          <DialogTitle>{locale.viewModal.title}</DialogTitle>
         </DialogHeader>
         {content}
       </DialogContent>
     </Dialog>
   );
+}
+
+function resolveActions<T>(
+  items: ActionItem<T>[] | undefined,
+  defaults: {
+    openView: (row: T) => void;
+    openEdit: ((row: T) => void) | undefined;
+    copyRow: ((row: T) => void) | undefined;
+    openDelete: ((row: T) => void) | undefined;
+  },
+  rowActionsLocale: { view: string; edit: string; copy: string; delete: string },
+): ResolvedActionItem<T>[] {
+  const defaultItems: ResolvedActionItem<T>[] = [
+    { label: rowActionsLocale.view, onClick: defaults.openView },
+    ...(defaults.openEdit ? [{ label: rowActionsLocale.edit, onClick: defaults.openEdit }] : []),
+    ...(defaults.copyRow ? [{ label: rowActionsLocale.copy, onClick: defaults.copyRow }] : []),
+    ...(defaults.openDelete ? [{ label: rowActionsLocale.delete, onClick: defaults.openDelete, separator: true, variant: "destructive" as const }] : []),
+  ];
+
+  if (!items || items.length === 0) return defaultItems;
+
+  const hasBuiltin = items.some((i) => i.type !== "custom");
+
+  if (!hasBuiltin) {
+    // 只有 custom 项 → 内置保持默认，custom 按 position 追加
+    const startItems = items
+      .filter((i): i is CustomActionItem<T> => i.type === "custom" && i.position === "start")
+      .map(({ label, onClick, separator, variant }) => ({ label, onClick, separator, variant }));
+    const endItems = items
+      .filter((i): i is CustomActionItem<T> => i.type === "custom" && i.position !== "start")
+      .map(({ label, onClick, separator, variant }) => ({ label, onClick, separator, variant }));
+    return [...startItems, ...defaultItems, ...endItems];
+  }
+
+  // 包含内置项 → 数组完全接管
+  const handlerMap: Record<string, ((row: T) => void) | undefined> = {
+    view: defaults.openView,
+    edit: defaults.openEdit,
+    copy: defaults.copyRow,
+    delete: defaults.openDelete,
+  };
+  const variantMap: Record<string, "destructive" | undefined> = { delete: "destructive" };
+
+  return items.flatMap((item): ResolvedActionItem<T>[] => {
+    if (item.type === "custom") {
+      return [{ label: item.label, onClick: item.onClick, separator: item.separator, variant: item.variant }];
+    }
+    const handler = item.onClick ?? handlerMap[item.type];
+    if (!handler) return [];
+    return [{ label: item.label ?? rowActionsLocale[item.type as keyof typeof rowActionsLocale], onClick: handler, separator: item.separator, variant: variantMap[item.type] }];
+  });
 }
 
 /**
@@ -547,7 +643,10 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   form: formConfig,
   slots,
   permissions,
+  actions: actionItems,
+  locale: localeProp,
 }: AutoCrudTableProps<TSchema>) {
+  const locale = resolveLocale(localeProp);
   // 解析权限配置（默认全部允许）
   const can = {
     create: permissions?.can?.create ?? true,
@@ -650,7 +749,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           {canImport && (
             <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
               <Download className="mr-2 h-4 w-4" />
-              导入
+              {locale.toolbar.import}
             </Button>
           )}
           {canExport && (
@@ -665,12 +764,12 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
               ) : (
                 <Upload className="mr-2 h-4 w-4" />
               )}
-              {selectedCount > 0 ? `导出(${selectedCount})` : "导出"}
+              {selectedCount > 0 ? locale.toolbar.exportSelected(selectedCount) : locale.toolbar.export}
             </Button>
           )}
           {can.create && (
             <Button onClick={resource.handlers.openCreate}>
-              新建
+              {locale.toolbar.create}
             </Button>
           )}
         </div>
@@ -684,12 +783,12 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         overrides={tableOverrides as any}
         exclude={hiddenColumns as any}
         filterMode={tableConfig?.filterModes}
-        actions={{
-          onView: resource.handlers.openView,
-          onEdit: can.update ? resource.handlers.openEdit : undefined,
-          onCopy: can.create ? resource.handlers.copyRow : undefined,
-          onDelete: can.delete ? resource.handlers.openDelete : undefined,
-        }}
+        actions={resolveActions(actionItems, {
+          openView: resource.handlers.openView,
+          openEdit: can.update ? resource.handlers.openEdit : undefined,
+          copyRow: can.create ? resource.handlers.copyRow : undefined,
+          openDelete: can.delete ? resource.handlers.openDelete : undefined,
+        }, locale.rowActions)}
         onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}
         batchUpdateFields={can.update ? batchFields : undefined}
@@ -721,6 +820,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         loading={resource.mutations.isCreating || resource.mutations.isUpdating}
         variant={resource.modal.variant}
         overrides={formOverrides}
+        locale={locale.formModal}
       />
 
       {/* View Modal */}
@@ -732,6 +832,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         schema={schema}
         fields={fields}
         denyFields={denyFields}
+        locale={locale}
       />
 
       {/* Delete Confirmation */}
@@ -741,18 +842,18 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除</AlertDialogTitle>
+            <AlertDialogTitle>{locale.deleteModal.title}</AlertDialogTitle>
             <AlertDialogDescription>
-              此操作无法撤销。确定要删除这条记录吗？
+              {locale.deleteModal.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogCancel>{locale.deleteModal.cancel}</AlertDialogCancel>
             <AlertDialogAction
               onClick={resource.handlers.confirmDelete}
               disabled={resource.mutations.isDeleting}
             >
-              {resource.mutations.isDeleting ? "删除中..." : "确认删除"}
+              {resource.mutations.isDeleting ? locale.deleteModal.confirming : locale.deleteModal.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -765,6 +866,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           onOpenChange={setImportOpen}
           onImport={resource.handlers.import}
           columns={importColumns}
+          locale={locale.importDialog}
         />
       )}
 

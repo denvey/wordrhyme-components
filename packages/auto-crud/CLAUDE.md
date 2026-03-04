@@ -276,8 +276,13 @@ interface AutoCrudTableProps<TSchema> {
   slots?: {
     toolbarStart?: React.ReactNode;
     toolbarEnd?: React.ReactNode;
-    rowActions?: (row) => Array<{ label: string; onClick: () => void }>;
   };
+  /**
+   * 行操作配置
+   * - 只传 custom 项：内置保持默认，custom 追加到首/尾
+   * - 包含任意内置 type：数组完全接管，未列出的隐藏，顺序即渲染顺序
+   */
+  actions?: ActionItem<z.output<TSchema>>[];
   permissions?: CrudPermissions;
 }
 ```

@@ -6,6 +6,8 @@ import { FormModal, type ModalVariant } from "./form-modal";
 import { AutoForm, type AutoFormRef } from "./auto-form";
 import { Button } from "@pixpilot/shadcn";
 import type { FormSchemaOverrides } from "@/lib/schema-bridge/types";
+import type { AutoCrudLocale } from "@/i18n/locale";
+import { zhCN } from "@/i18n/locale";
 
 interface CrudFormModalProps<T extends z.ZodObject<z.ZodRawShape>> {
   open: boolean;
@@ -18,6 +20,7 @@ interface CrudFormModalProps<T extends z.ZodObject<z.ZodRawShape>> {
   variant?: ModalVariant;
   overrides?: FormSchemaOverrides;
   title?: string;
+  locale?: AutoCrudLocale["formModal"];
   /** Label 对齐方式 */
   labelAlign?: "left" | "top" | "right";
   /** Label 宽度（labelAlign 为 left 时有效） */
@@ -35,10 +38,11 @@ export function CrudFormModal<T extends z.ZodObject<z.ZodRawShape>>({
   variant = "dialog",
   overrides,
   title,
+  locale = zhCN.formModal,
   labelAlign,
   labelWidth,
 }: CrudFormModalProps<T>) {
-  const defaultTitle = mode === "create" ? "新建" : "编辑";
+  const defaultTitle = mode === "create" ? locale.createTitle : locale.editTitle;
   const formRef = useRef<AutoFormRef>(null);
 
   const handleSubmit = async () => {
@@ -58,14 +62,14 @@ export function CrudFormModal<T extends z.ZodObject<z.ZodRawShape>>({
             variant="outline"
             onClick={() => onOpenChange(false)}
           >
-            取消
+            {locale.cancel}
           </Button>
           <Button
             type="button"
             onClick={handleSubmit}
             disabled={loading}
           >
-            {loading ? "处理中..." : mode === "create" ? "创建" : "保存"}
+            {loading ? locale.submitting : mode === "create" ? locale.create : locale.save}
           </Button>
         </div>
       }

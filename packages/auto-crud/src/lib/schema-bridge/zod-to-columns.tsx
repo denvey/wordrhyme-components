@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import type { ColumnDef, Row } from "@tanstack/react-table";
 import { z } from "zod";
 import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
@@ -324,21 +325,27 @@ export function createSelectColumn<T>(): ColumnDef<T> {
 /**
  * 操作列配置
  */
-export interface ActionsColumnConfig<T> {
-  onEdit?: (row: T) => void;
-  onDelete?: (row: T) => void;
-  onView?: (row: T) => void;
-  onCopy?: (row: T) => void;
+/**
+ * 已解析的操作项（渲染层使用）
+ */
+export interface ResolvedActionItem<T> {
+  label: string;
+  onClick: (row: T) => void;
+  separator?: boolean;
+  variant?: "default" | "destructive";
 }
+
+/**
+ * 操作列配置（ResolvedActionItem 数组）
+ */
+export type ActionsColumnConfig<T> = ResolvedActionItem<T>[];
 
 /**
  * 创建操作列
  */
 export function createActionsColumn<T>(
-  config: ActionsColumnConfig<T>
+  items: ActionsColumnConfig<T>
 ): ColumnDef<T> {
-  const { onEdit, onDelete, onView, onCopy } = config;
-
   return {
     id: "actions",
     cell: ({ row }) => (
@@ -353,30 +360,17 @@ export function createActionsColumn<T>(
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-40">
-          {onView && (
-            <DropdownMenuItem onClick={() => onView(row.original)}>
-              查看
-            </DropdownMenuItem>
-          )}
-          {onEdit && (
-            <DropdownMenuItem onClick={() => onEdit(row.original)}>
-              编辑
-            </DropdownMenuItem>
-          )}
-          {onCopy && (
-            <DropdownMenuItem onClick={() => onCopy(row.original)}>
-              复制
-            </DropdownMenuItem>
-          )}
-          {(onView || onEdit || onCopy) && onDelete && <DropdownMenuSeparator />}
-          {onDelete && (
-            <DropdownMenuItem
-              className="text-destructive"
-              onClick={() => onDelete(row.original)}
-            >
-              删除
-            </DropdownMenuItem>
-          )}
+          {items.map((item, i) => (
+            <React.Fragment key={i}>
+              {item.separator && <DropdownMenuSeparator />}
+              <DropdownMenuItem
+                className={item.variant === "destructive" ? "text-destructive" : ""}
+                onClick={() => item.onClick(row.original)}
+              >
+                {item.label}
+              </DropdownMenuItem>
+            </React.Fragment>
+          ))}
         </DropdownMenuContent>
       </DropdownMenu>
     ),

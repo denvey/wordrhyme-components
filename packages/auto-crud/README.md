@@ -268,8 +268,13 @@ interface AutoCrudTableProps<TSchema> {
   slots?: {
     toolbarStart?: React.ReactNode;             // 工具栏左侧插槽
     toolbarEnd?: React.ReactNode;               // 工具栏右侧插槽
-    rowActions?: (row) => Array<{ label: string; onClick: () => void }>;
   };
+  /**
+   * 行操作配置
+   * - 只传 custom 项：内置保持默认，custom 追加到首/尾
+   * - 包含任意内置 type：数组完全接管，未列出的隐藏，顺序即渲染顺序
+   */
+  actions?: ActionItem<z.output<TSchema>>[];
 }
 ```
 
@@ -512,6 +517,70 @@ table={{
 ```
 
 ---
+
+## 🎬 行操作配置
+
+`actions` 数组控制每行下拉菜单的操作项，支持覆盖内置操作、添加自定义操作、完全自定义顺序。
+
+### 只添加自定义项（内置不变）
+
+```tsx
+<AutoCrudTable
+  actions={[
+    { type: "custom", label: "分配", onClick: (row) => assign(row.id) },
+    { type: "custom", label: "预览", onClick: (row) => preview(row), position: "start" },
+  ]}
+/>
+// 渲染顺序: 预览 · 查看 · 编辑 · 复制 · 删除 · 分配
+```
+
+### 覆盖内置行为或隐藏某项
+
+数组中只要包含任意内置 `type`，数组就会完全接管 —— 未列出的内置项自动隐藏。
+
+```tsx
+<AutoCrudTable
+  actions={[
+    { type: "view", onClick: (row) => router.push(`/tasks/${row.id}`) }, // 覆盖跳转
+    { type: "custom", label: "分配", onClick: (row) => assign(row.id) },
+    { type: "edit" },   // 默认行为
+    // copy / delete 未列出 → 隐藏
+  ]}
+/>
+```
+
+### 完全自定义顺序
+
+```tsx
+<AutoCrudTable
+  actions={[
+    { type: "edit" },
+    { type: "copy" },
+    { type: "custom", label: "归档", onClick: archive, separator: true },
+    { type: "delete", separator: true },
+  ]}
+/>
+```
+
+### `ActionItem` 类型
+
+```typescript
+type ActionItem<T> =
+  | {
+      type: "view" | "edit" | "copy" | "delete";
+      onClick?: (row: T) => void;   // 不传则使用默认行为
+      label?: string;               // 不传则使用默认文案
+      separator?: boolean;          // 此项前加分隔线
+    }
+  | {
+      type: "custom";
+      label: string;
+      onClick: (row: T) => void;
+      position?: "start" | "end";   // 仅无内置项时生效，默认 end
+      separator?: boolean;
+      variant?: "default" | "destructive";
+    };
+```
 
 ## 🔄 批量操作
 
@@ -758,12 +827,12 @@ function CustomTable({ data }) {
   const columns = [
     createSelectColumn(),
     ...createTableSchema(taskSchema, { exclude: ["id"] }),
-    createActionsColumn({
-      onEdit: (row) => console.log("Edit", row),
-      onDelete: (row) => console.log("Delete", row),
-      onView: (row) => console.log("View", row),
-      onCopy: (row) => console.log("Copy", row),
-    }),
+    createActionsColumn([
+      { label: "查看", onClick: (row) => console.log("View", row) },
+      { label: "编辑", onClick: (row) => console.log("Edit", row) },
+      { label: "复制", onClick: (row) => console.log("Copy", row) },
+      { label: "删除", onClick: (row) => console.log("Delete", row), separator: true, variant: "destructive" },
+    ]),
   ];
 
   return (

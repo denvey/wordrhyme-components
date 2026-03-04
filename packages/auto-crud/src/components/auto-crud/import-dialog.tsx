@@ -11,6 +11,8 @@ import {
 import { Button } from "@pixpilot/shadcn";
 import { parseImportFile, generateCSVTemplate, type ParsedImportData } from "@/lib/import";
 import type { ImportResult } from "@/hooks/use-auto-crud-resource";
+import type { AutoCrudLocale } from "@/i18n/locale";
+import { zhCN } from "@/i18n/locale";
 
 type ImportStep = "upload" | "preview" | "importing" | "result";
 
@@ -21,8 +23,10 @@ export interface ImportDialogProps {
   onImport: (rows: Record<string, unknown>[]) => Promise<ImportResult>;
   /** 可用列名（用于生成模板） */
   columns?: string[];
-  /** 对话框标题 */
+  /** 对话框标题（优先于 locale.title） */
   title?: string;
+  /** 语言包，默认 zh-CN */
+  locale?: AutoCrudLocale["importDialog"];
 }
 
 export function ImportDialog({
@@ -30,7 +34,8 @@ export function ImportDialog({
   onOpenChange,
   onImport,
   columns = [],
-  title = "导入数据",
+  title,
+  locale = zhCN.importDialog,
 }: ImportDialogProps) {
   const [step, setStep] = React.useState<ImportStep>("upload");
   const [parsedData, setParsedData] = React.useState<ParsedImportData | null>(null);
@@ -60,13 +65,13 @@ export function ImportDialog({
     try {
       const data = await parseImportFile(file);
       if (data.rows.length === 0) {
-        setError("文件中没有数据行");
+        setError(locale.errorNoData);
         return;
       }
       setParsedData(data);
       setStep("preview");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "文件解析失败");
+      setError(e instanceof Error ? e.message : locale.errorParseFailed);
     }
   }, []);
 
@@ -96,7 +101,7 @@ export function ImportDialog({
       setResult(importResult);
       setStep("result");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "导入失败");
+      setError(e instanceof Error ? e.message : locale.errorImportFailed);
       setStep("preview");
     }
   }, [parsedData, onImport]);
@@ -117,12 +122,12 @@ export function ImportDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
+          <DialogTitle>{title ?? locale.title}</DialogTitle>
           <DialogDescription>
-            {step === "upload" && "上传 CSV 或 JSON 文件以批量导入数据"}
-            {step === "preview" && `已解析 ${parsedData?.rows.length ?? 0} 条数据，确认后开始导入`}
-            {step === "importing" && "正在导入数据..."}
-            {step === "result" && "导入完成"}
+            {step === "upload" && locale.uploadDescription}
+            {step === "preview" && locale.previewDescription(parsedData?.rows.length ?? 0)}
+            {step === "importing" && locale.importingDescription}
+            {step === "result" && locale.doneDescription}
           </DialogDescription>
         </DialogHeader>
 
@@ -160,10 +165,10 @@ export function ImportDialog({
                     />
                   </svg>
                   <p className="text-sm text-muted-foreground">
-                    拖拽文件到此处，或点击选择文件
+                    {locale.dragHint}
                   </p>
                   <p className="text-xs text-muted-foreground/60">
-                    支持 CSV、JSON 格式
+                    {locale.formatHint}
                   </p>
                 </div>
                 <input
@@ -182,7 +187,7 @@ export function ImportDialog({
                   className="w-full"
                   onClick={handleDownloadTemplate}
                 >
-                  下载 CSV 模板
+                  {locale.downloadTemplate}
                 </Button>
               )}
             </>
@@ -204,7 +209,7 @@ export function ImportDialog({
                         ))}
                         {parsedData.headers.length > 6 && (
                           <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                            +{parsedData.headers.length - 6} 列
+                            {locale.moreColumns(parsedData.headers.length - 6)}
                           </th>
                         )}
                       </tr>
@@ -229,18 +234,20 @@ export function ImportDialog({
               </div>
 
               <p className="text-sm text-muted-foreground">
-                共 {parsedData.rows.length} 条数据
-                {parsedData.rows.length > 10 && "（预览前 10 条）"}
-                ，{parsedData.headers.length} 个字段
-                ，格式: {parsedData.format.toUpperCase()}
+                {locale.previewSummary(
+                  parsedData.rows.length,
+                  parsedData.headers.length,
+                  parsedData.format,
+                  parsedData.rows.length > 10 ? 10 : undefined,
+                )}
               </p>
 
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={reset}>
-                  重新选择
+                  {locale.reselect}
                 </Button>
                 <Button onClick={handleImport}>
-                  确认导入
+                  {locale.confirmImport}
                 </Button>
               </div>
             </>
@@ -251,7 +258,7 @@ export function ImportDialog({
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
               <p className="text-sm text-muted-foreground">
-                正在导入 {parsedData?.rows.length ?? 0} 条数据...
+                {locale.importingRows(parsedData?.rows.length ?? 0)}
               </p>
             </div>
           )}
@@ -263,24 +270,24 @@ export function ImportDialog({
                 <div className="flex gap-4">
                   <div className="flex-1 rounded-lg bg-green-50 dark:bg-green-950/30 p-3 text-center">
                     <p className="text-2xl font-semibold text-green-600">{result.success}</p>
-                    <p className="text-xs text-green-600/80">新建</p>
+                    <p className="text-xs text-green-600/80">{locale.resultCreated}</p>
                   </div>
                   {(result.updated ?? 0) > 0 && (
                     <div className="flex-1 rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
                       <p className="text-2xl font-semibold text-blue-600">{result.updated}</p>
-                      <p className="text-xs text-blue-600/80">更新</p>
+                      <p className="text-xs text-blue-600/80">{locale.resultUpdated}</p>
                     </div>
                   )}
                   {result.skipped > 0 && (
                     <div className="flex-1 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 p-3 text-center">
                       <p className="text-2xl font-semibold text-yellow-600">{result.skipped}</p>
-                      <p className="text-xs text-yellow-600/80">跳过</p>
+                      <p className="text-xs text-yellow-600/80">{locale.resultSkipped}</p>
                     </div>
                   )}
                   {result.failed.length > 0 && (
                     <div className="flex-1 rounded-lg bg-red-50 dark:bg-red-950/30 p-3 text-center">
                       <p className="text-2xl font-semibold text-red-600">{result.failed.length}</p>
-                      <p className="text-xs text-red-600/80">验证失败</p>
+                      <p className="text-xs text-red-600/80">{locale.resultFailed}</p>
                     </div>
                   )}
                 </div>
@@ -292,8 +299,8 @@ export function ImportDialog({
                       <table className="w-full text-sm">
                         <thead className="sticky top-0 bg-red-50 dark:bg-red-950/30">
                           <tr>
-                            <th className="px-3 py-2 text-left font-medium text-red-600">行号</th>
-                            <th className="px-3 py-2 text-left font-medium text-red-600">错误</th>
+                            <th className="px-3 py-2 text-left font-medium text-red-600">{locale.failedRowHeader}</th>
+                            <th className="px-3 py-2 text-left font-medium text-red-600">{locale.failedErrorHeader}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -314,10 +321,10 @@ export function ImportDialog({
 
               <div className="flex gap-2 justify-end">
                 <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                  关闭
+                  {locale.close}
                 </Button>
                 <Button variant="outline" onClick={reset}>
-                  继续导入
+                  {locale.continueImport}
                 </Button>
               </div>
             </>
