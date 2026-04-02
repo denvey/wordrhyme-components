@@ -12,7 +12,7 @@ export const IconToggle = connect(
   mapProps(
     {
       value: 'checked',
-      onInput: 'onCheckedChange',
+      onInput: 'onChange',
     },
     (props, field) => {
       setCheckboxDefaultDecoratorProps(field);

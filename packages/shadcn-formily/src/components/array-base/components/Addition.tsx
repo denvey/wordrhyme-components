@@ -1,6 +1,6 @@
-import type { ButtonProps as UiButtonProps } from '@pixpilot/shadcn-ui';
+import type { ButtonExtendedProps as UiButtonProps } from '@pixpilot/shadcn-ui';
 import { useField } from '@formily/react';
-import { Button, cn } from '@pixpilot/shadcn-ui';
+import { ButtonExtended, cn } from '@pixpilot/shadcn-ui';
 import { PlusIcon } from 'lucide-react';
 import React from 'react';
 import { getDefaultValue } from '../../../utils';
@@ -40,7 +40,7 @@ export function ArrayAddition({
     : defaultLabel;
 
   return (
-    <Button
+    <ButtonExtended
       type="button"
       variant={fullWidth ? 'ghost' : 'outline'}
       {...props}
@@ -58,11 +58,16 @@ export function ArrayAddition({
         }
         const defaultValue = getDefaultValue(props.defaultValue, array.schema);
 
-        // Draft-only mode (manual save): open editor without mutating the array.
-        // Only explicit `true` enables immediate insertion.
-        const isAutoSave =
-          (array.props as { autoSave?: boolean } | undefined)?.autoSave === true;
-        if (!isAutoSave) {
+        /*
+         * Draft-only mode: delegate insertion to the editor component
+         * (e.g. ArrayDialog / ArrayPopover) when autoSave is explicitly false.
+         * Those components pass `handleAdd` as `onAdd` and push the item only
+         * after the user confirms in the dialog/popover.
+         * When autoSave is true or undefined (the default), add directly.
+         */
+        const isDraftOnly =
+          (array.props as { autoSave?: boolean } | undefined)?.autoSave === false;
+        if (isDraftOnly) {
           const method = props.method ?? 'push';
           const insertionIndex = method === 'unshift' ? 0 : currentLength;
 
@@ -86,7 +91,7 @@ export function ArrayAddition({
       {!isAtMax &&
         (props.icon !== undefined ? props.icon : <PlusIcon className="mr-2 size-4" />)}
       {buttonLabel}
-    </Button>
+    </ButtonExtended>
   );
 }
 ArrayAddition.displayName = 'ArrayAddition';

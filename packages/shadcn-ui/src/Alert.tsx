@@ -82,6 +82,7 @@ const Alert: React.FC<AlertProps> = (props) => {
   const msgIcon = getIcon(icon, variant);
 
   const hasTitle = title != null && title.trim() !== '';
+  const hasContent = hasTitle || description != null;
 
   const variantConfig = colors[variant] ?? colors.default;
 
@@ -91,6 +92,7 @@ const Alert: React.FC<AlertProps> = (props) => {
       variant="destructive"
       className={cn(
         'bg-card border-accent! flex justify-between rounded-sm border-0 border-l-4',
+        msgIcon ? 'flex-row' : 'flex-col',
         variantConfig.class,
         variantConfig.textClass,
         className,
@@ -98,24 +100,26 @@ const Alert: React.FC<AlertProps> = (props) => {
     >
       {/* {msgIcon} */}
       {msgIcon && <div className={cn('mr-3 flex items-start pt-0.5')}>{msgIcon}</div>}
-      <div className="flex flex-1 flex-col gap-1">
-        {hasTitle && (
-          <AlertTitle className={cn(variantConfig.textClass, { 'block!': !hasTitle })}>
-            {title}
-          </AlertTitle>
-        )}
-        {description != null && (
-          <AlertDescription
-            className={cn(
-              variantConfig.descClass,
-              !hasTitle && variantConfig.textClass,
-              'whitespace-pre-wrap',
-            )}
-          >
-            {description}
-          </AlertDescription>
-        )}
-      </div>
+      {hasContent && (
+        <div className="flex flex-1 flex-col gap-1">
+          {hasTitle && (
+            <AlertTitle className={cn(variantConfig.textClass, { 'block!': !hasTitle })}>
+              {title}
+            </AlertTitle>
+          )}
+          {description != null && (
+            <AlertDescription
+              className={cn(
+                variantConfig.descClass,
+                !hasTitle && variantConfig.textClass,
+                'whitespace-pre-wrap',
+              )}
+            >
+              {description}
+            </AlertDescription>
+          )}
+        </div>
+      )}
       {children}
     </ShadAlert>
   );

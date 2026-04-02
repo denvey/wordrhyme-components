@@ -1,5 +1,261 @@
 # @pixpilot/shadcn-auth
 
+## 1.0.9
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.4.0
+
+## 1.0.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@1.2.0
+  - @pixpilot/shadcn-ui@1.3.1
+
+## 1.0.7
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn@1.1.0
+  - @pixpilot/shadcn-ui@1.3.0
+
+## 1.0.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.2.2
+
+## 1.0.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.2.1
+
+## 1.0.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.2.0
+
+## 1.0.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.1.2
+
+## 1.0.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.1.1
+
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.1.0
+
+## 1.0.0
+
+### Major Changes
+
+- 47dbbfb: new release
+
+### Patch Changes
+
+- Updated dependencies [47dbbfb]
+  - @pixpilot/shadcn@1.0.0
+  - @pixpilot/shadcn-ui@1.0.0
+
+## 0.2.16
+
+### Patch Changes
+
+- ffaab2d: new release
+- Updated dependencies [ffaab2d]
+  - @pixpilot/shadcn@0.11.1
+  - @pixpilot/shadcn-ui@0.67.1
+
+## 0.2.15
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.67.0
+
+## 0.2.14
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.66.0
+
+## 0.2.13
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.65.0
+
+## 0.2.12
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.64.0
+
+## 0.2.11
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.63.1
+
+## 0.2.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.63.0
+
+## 0.2.9
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.62.0
+
+## 0.2.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.61.0
+
+## 0.2.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.60.1
+
+## 0.2.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.60.0
+
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.59.0
+
+## 0.2.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.58.0
+
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@0.11.0
+  - @pixpilot/shadcn-ui@0.57.2
+
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@0.10.1
+  - @pixpilot/shadcn-ui@0.57.1
+
+## 0.2.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.57.0
+
+## 0.2.0
+
+### Minor Changes
+
+- 5fe21ce: new release
+
+### Patch Changes
+
+- Updated dependencies [5fe21ce]
+  - @pixpilot/shadcn@0.10.0
+  - @pixpilot/shadcn-ui@0.56.0
+
+## 0.1.61
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.55.0
+
+## 0.1.60
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.54.0
+
+## 0.1.59
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.53.0
+
+## 0.1.58
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.52.2
+
+## 0.1.57
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.52.1
+
+## 0.1.56
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.52.0
+
+## 0.1.55
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.51.0
+
 ## 0.1.54
 
 ### Patch Changes

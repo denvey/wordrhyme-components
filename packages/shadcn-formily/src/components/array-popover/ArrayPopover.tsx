@@ -1,7 +1,8 @@
 import type { ArrayComponentProps } from '../array-base';
 import { observer } from '@formily/react';
-import { cn } from '@pixpilot/shadcn';
+import { cn, Popover, PopoverTrigger } from '@pixpilot/shadcn';
 import React from 'react';
+import { useFormContext } from '../../hooks';
 import { ArrayBase, ArrayComponentProvider } from '../array-base';
 import { ArrayItemsList, useArrayEditor, useArrayItemSchema } from '../array-common';
 import { ArrayItemsEditPopover } from './Popover';
@@ -25,7 +26,10 @@ const ArrayPopoverBase = observer((props: Props) => {
     ...rest
   } = props;
 
-  const autoSave: boolean = autoSaveProp === true;
+  const { settings = {} } = useFormContext();
+  const { autoSave: globalAutoSave } = settings.popover || {};
+
+  const autoSave = autoSaveProp ?? globalAutoSave ?? true;
 
   const {
     activeItemManager,
@@ -42,6 +46,7 @@ const ArrayPopoverBase = observer((props: Props) => {
   return (
     <ArrayBase
       {...props}
+      autoSave={autoSave}
       transformActions={transformActions}
       onAdd={handleAdd}
       onRemove={onRemove}
@@ -49,10 +54,19 @@ const ArrayPopoverBase = observer((props: Props) => {
       onMoveDown={onMoveDown}
       onEdit={handleEdit}
     >
-      <div {...rest} className={cn('space-y-2', className)}>
-        <ArrayItemsList isNewItem={isNewItem} />
+      <Popover open={activeItemManager.activeItem !== undefined} modal>
+        <div {...rest} className={cn('space-y-2', className)}>
+          <ArrayItemsList
+            isNewItem={isNewItem}
+            activeIndex={activeItemManager.activeItem}
+          />
 
-        <div className="pt-2">
+          <div className="pt-2">
+            <PopoverTrigger asChild>
+              <ArrayBase.Addition />
+            </PopoverTrigger>
+          </div>
+
           <ArrayItemsEditPopover
             activeItemManager={activeItemManager}
             onCancel={handleCancelClick}
@@ -61,11 +75,9 @@ const ArrayPopoverBase = observer((props: Props) => {
             schema={schema}
             onSave={handleSaveClick}
             {...popoverProps}
-          >
-            <ArrayBase.Addition />
-          </ArrayItemsEditPopover>
+          />
         </div>
-      </div>
+      </Popover>
     </ArrayBase>
   );
 });

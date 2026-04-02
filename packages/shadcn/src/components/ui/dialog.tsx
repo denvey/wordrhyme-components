@@ -4,8 +4,39 @@ import { XIcon } from 'lucide-react';
 
 import { cn } from '@/lib/index';
 
-function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+const dialogOverlayBaseClass =
+  'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50';
+
+const DialogContainerContext = React.createContext<{
+  hasContainer: boolean;
+  modal: boolean | undefined;
+  setHasContainer: React.Dispatch<React.SetStateAction<boolean>>;
+} | null>(null);
+
+const DialogContentPrimitive =
+  DialogPrimitive.Content as unknown as React.ForwardRefExoticComponent<
+    React.ComponentProps<typeof DialogPrimitive.Content> &
+      React.RefAttributes<HTMLDivElement> & {
+        disableOutsidePointerEvents?: boolean;
+      }
+  >;
+
+function Dialog({ modal, ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
+  const [hasContainer, setHasContainer] = React.useState(false);
+  const contextValue = React.useMemo(
+    () => ({ hasContainer, modal, setHasContainer }),
+    [hasContainer, modal],
+  );
+
+  return (
+    <DialogContainerContext.Provider value={contextValue}>
+      <DialogPrimitive.Root
+        data-slot="dialog"
+        modal={hasContainer ? false : modal}
+        {...props}
+      />
+    </DialogContainerContext.Provider>
+  );
 }
 
 function DialogTrigger({
@@ -29,10 +60,7 @@ function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
-      className={cn(
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50',
-        className,
-      )}
+      className={cn(dialogOverlayBaseClass, className)}
       {...props}
     />
   );
@@ -42,17 +70,62 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  disableOutsideClick = false,
+  /*
+   * CUSTOM ADDITION — not in the original shadcn/ui source.
+   * When provided, the dialog portal is mounted inside this element instead of
+   * document.body, and both the overlay and content switch from `fixed` to
+   * `absolute` positioning so they are clipped to the container.
+   * Restore this parameter whenever the component is updated from upstream.
+   */
+  container,
+  onPointerDownOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
+  disableOutsideClick?: boolean;
+  container?: HTMLElement | null;
 }) {
+  const dialogContainer = React.use(DialogContainerContext);
+
+  React.useEffect(() => {
+    if (!dialogContainer) {
+      return;
+    }
+
+    dialogContainer.setHasContainer(Boolean(container));
+  }, [container, dialogContainer]);
+
   return (
-    <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
-      <DialogPrimitive.Content
+    <DialogPortal container={container ?? undefined} data-slot="dialog-portal">
+      {container ? (
+        <div
+          aria-hidden="true"
+          data-slot="dialog-overlay"
+          data-state="open"
+          className={cn(dialogOverlayBaseClass, 'absolute')}
+        />
+      ) : (
+        <DialogOverlay />
+      )}
+      <DialogContentPrimitive
         data-slot="dialog-content"
+        disableOutsidePointerEvents={container ? false : undefined}
+        onPointerDownOutside={(event) => {
+          onPointerDownOutside?.(event);
+
+          if (disableOutsideClick) {
+            event.preventDefault();
+            return;
+          }
+
+          if (container && !container.contains(event.target as Node)) {
+            event.preventDefault();
+          }
+        }}
         className={cn(
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg',
+          container && 'absolute',
           className,
         )}
         {...props}
@@ -67,7 +140,7 @@ function DialogContent({
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
-      </DialogPrimitive.Content>
+      </DialogContentPrimitive>
     </DialogPortal>
   );
 }

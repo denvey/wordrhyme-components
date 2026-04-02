@@ -38,6 +38,11 @@ const meta = {
       control: 'number',
       description: 'Delay in milliseconds before showing the loader',
     },
+    scope: {
+      control: 'select',
+      options: ['container', 'fullscreen'],
+      description: 'Scope of the loader overlay',
+    },
   },
 } satisfies Meta<typeof LoadingOverlay>;
 
@@ -141,6 +146,130 @@ export const DelayedLoader: Story = {
 
     return (
       <div className="relative">
+        <Button onClick={() => setLoading(!loading)}>
+          {loading ? 'Stop Loading' : 'Start Loading'}
+        </Button>
+        <LoadingOverlay {...args} loading={loading} />
+      </div>
+    );
+  },
+};
+
+/**
+ * Fullscreen loader overlay
+ */
+export const Fullscreen: Story = {
+  args: {
+    loading: true,
+    backdrop: true,
+    placement: 'center',
+    scope: 'fullscreen',
+  },
+  render: function ContainerScope(args) {
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+      if (!loading) return;
+      const timeoutId = setTimeout(() => {
+        setLoading(false);
+      }, 4000);
+      // eslint-disable-next-line consistent-return
+      return () => clearTimeout(timeoutId);
+    }, [loading]);
+
+    return (
+      <div className="relative w-64 h-64 border">
+        <Button onClick={() => setLoading(!loading)}>
+          {loading ? 'Stop Loading' : 'Start Loading'}
+        </Button>
+        <LoadingOverlay {...args} loading={loading} />
+      </div>
+    );
+  },
+};
+
+/**
+ * Demonstrates that the loader shows immediately on mount (no fade-in) when
+ * delay is 0. Click "Show Component" to mount a container whose loader is
+ * active from the very first render, blocking the content instantly.
+ */
+export const LoadingOnMount: Story = {
+  args: {
+    loading: true,
+    backdrop: true,
+    placement: 'center',
+    scope: 'container',
+  },
+  render: function LoadingOnMountStory(args) {
+    const [show, setShow] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    const handleShow = () => {
+      setLoading(true);
+      setShow(true);
+    };
+
+    return (
+      <div className="flex flex-col gap-4 items-start">
+        <div className="flex gap-2">
+          <Button onClick={handleShow} disabled={show}>
+            Show Component
+          </Button>
+          {show && (
+            <Button variant="outline" onClick={() => setLoading((v) => !v)}>
+              {loading ? 'Stop Loading' : 'Start Loading'}
+            </Button>
+          )}
+          {show && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShow(false);
+                setLoading(true);
+              }}
+            >
+              Hide
+            </Button>
+          )}
+        </div>
+        {show && (
+          <div className="relative w-64 h-40 border rounded-md overflow-hidden">
+            <div className="p-4">
+              <p className="font-medium">Component content</p>
+              <p className="text-sm text-muted-foreground">
+                This content is blocked immediately on mount.
+              </p>
+            </div>
+            <LoadingOverlay {...args} loading={loading} />
+          </div>
+        )}
+      </div>
+    );
+  },
+};
+
+/**
+ * Fullscreen loader overlay
+ */
+export const ContainerScope: Story = {
+  args: {
+    loading: true,
+    scope: 'container',
+  },
+  render: function ContainerScope(args) {
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+      if (!loading) return;
+      const timeoutId = setTimeout(() => {
+        setLoading(false);
+      }, 4000);
+      // eslint-disable-next-line consistent-return
+      return () => clearTimeout(timeoutId);
+    }, [loading]);
+
+    return (
+      <div className="relative w-64 h-64 border">
         <Button onClick={() => setLoading(!loading)}>
           {loading ? 'Stop Loading' : 'Start Loading'}
         </Button>

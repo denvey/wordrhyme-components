@@ -1,7 +1,11 @@
 import type { Field } from '@formily/core';
-import type { ToggleGroupProps } from '@pixpilot/shadcn-ui';
+import type { ToggleGroupItemProps, ToggleGroupProps } from '@pixpilot/shadcn-ui';
 import { connect, mapProps } from '@formily/react';
-import { ToggleGroup as ShadcnToggleGroup, ToggleGroupItem } from '@pixpilot/shadcn-ui';
+import {
+  cn,
+  ToggleGroup as ShadcnToggleGroup,
+  ToggleGroupItem,
+} from '@pixpilot/shadcn-ui';
 import * as React from 'react';
 
 import { resolveFieldOptions } from '../utils/resolve-field-options';
@@ -61,18 +65,23 @@ export interface ToggleGroupBaseProps extends Omit<
   ToggleGroupProps,
   'type' | 'value' | 'defaultValue' | 'onValueChange' | 'children' | 'variant' | 'size'
 > {
+  type?: 'single' | 'multiple';
   options: readonly ToggleGroupOption[];
-  value?: ToggleGroupValue;
-  defaultValue?: ToggleGroupValue;
-  onValueChange?: (value: ToggleGroupValue | undefined) => void;
+  value?: ToggleGroupValue | ToggleGroupValue[];
+  defaultValue?: ToggleGroupValue | ToggleGroupValue[];
+  onValueChange?: (value: ToggleGroupValue | undefined | ToggleGroupValue[]) => void;
   allowEmptySelection?: boolean;
   variant?: ToggleGroupVariant;
   size?: ToggleGroupSize;
-  buttonClassName?: string;
+  slots: {
+    item?: ToggleGroupItemProps;
+  };
   ref?: React.Ref<HTMLDivElement>;
+  fullWidth?: boolean;
 }
 
 export function ToggleGroupBase({
+  type = 'single',
   options,
   value,
   defaultValue,
@@ -80,14 +89,11 @@ export function ToggleGroupBase({
   allowEmptySelection = false,
   variant = 'outline',
   size,
-  buttonClassName,
+  fullWidth = true,
+  slots,
   ref,
   ...props
 }: ToggleGroupBaseProps) {
-  const valueString = value === undefined ? undefined : String(value);
-  const defaultValueString =
-    defaultValue === undefined ? undefined : String(defaultValue);
-
   const valueByString = React.useMemo(() => {
     const map = new Map<string, ToggleGroupValue>();
     for (const option of options) {
@@ -96,15 +102,76 @@ export function ToggleGroupBase({
     return map;
   }, [options]);
 
+  const sharedProps = {
+    ...props,
+    className: cn({ 'w-full': fullWidth }, props.className),
+    ref,
+    variant: toVariant(variant),
+    size: toSize(size),
+  };
+
+  const itemNodes = options.map((option) => (
+    <ToggleGroupItem
+      {...slots?.item}
+      key={String(option.value)}
+      value={String(option.value)}
+      aria-label={String(option.value)}
+      disabled={option.disabled}
+      className={cn(
+        {
+          'flex-1': fullWidth,
+        },
+        slots?.item?.className,
+      )}
+    >
+      {option.label}
+    </ToggleGroupItem>
+  ));
+
+  if (type === 'multiple') {
+    let valueStrings: string[] | undefined;
+    if (Array.isArray(value)) {
+      valueStrings = value.map(String);
+    } else if (value !== undefined) {
+      valueStrings = [String(value)];
+    }
+
+    let defaultValueStrings: string[] | undefined;
+    if (Array.isArray(defaultValue)) {
+      defaultValueStrings = defaultValue.map(String);
+    } else if (defaultValue !== undefined) {
+      defaultValueStrings = [String(defaultValue)];
+    }
+
+    return (
+      <ShadcnToggleGroup
+        type="multiple"
+        {...sharedProps}
+        value={valueStrings}
+        defaultValue={defaultValueStrings}
+        onValueChange={(nextValues: string[]) => {
+          const mapped = nextValues.map((v) => valueByString.get(v) ?? v);
+          (onValueChange as ((v: ToggleGroupValue[]) => void) | undefined)?.(mapped);
+        }}
+      >
+        {itemNodes}
+      </ShadcnToggleGroup>
+    );
+  }
+
+  const valueString =
+    value === undefined || Array.isArray(value) ? undefined : String(value);
+  const defaultValueString =
+    defaultValue === undefined || Array.isArray(defaultValue)
+      ? undefined
+      : String(defaultValue);
+
   return (
     <ShadcnToggleGroup
-      {...props}
-      ref={ref}
       type="single"
+      {...sharedProps}
       value={valueString}
       defaultValue={defaultValueString}
-      variant={toVariant(variant)}
-      size={toSize(size)}
       onValueChange={(nextValue: string) => {
         if (nextValue === '') {
           if (allowEmptySelection !== true) {
@@ -118,17 +185,7 @@ export function ToggleGroupBase({
         onValueChange?.(valueByString.get(nextValue) ?? nextValue);
       }}
     >
-      {options.map((option) => (
-        <ToggleGroupItem
-          key={String(option.value)}
-          value={String(option.value)}
-          aria-label={String(option.value)}
-          disabled={option.disabled}
-          className={buttonClassName}
-        >
-          {option.label}
-        </ToggleGroupItem>
-      ))}
+      {itemNodes}
     </ShadcnToggleGroup>
   );
 }
@@ -181,16 +238,22 @@ export const ToggleGroup = connect(
         }),
       );
 
-      const value: ToggleGroupValue | undefined = isToggleGroupValue(fieldValue)
-        ? (fieldValue as ToggleGroupValue)
-        : undefined;
+      const isMultiple = (toggleGroupProps as { type?: string }).type === 'multiple';
+      let value: ToggleGroupValue | ToggleGroupValue[] | undefined;
+      if (isMultiple) {
+        value = Array.isArray(fieldValue)
+          ? (fieldValue as unknown[]).filter(isToggleGroupValue)
+          : [];
+      } else if (isToggleGroupValue(fieldValue)) {
+        value = fieldValue;
+      }
 
       // eslint-disable-next-line ts/no-unsafe-return
       return {
         ...toggleGroupProps,
         options: resolvedOptions,
         value,
-        onValueChange: (nextValue: ToggleGroupValue | undefined) => {
+        onValueChange: (nextValue: ToggleGroupValue | undefined | ToggleGroupValue[]) => {
           (field as Field).onInput(nextValue).catch(() => {});
         },
       };

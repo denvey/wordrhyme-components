@@ -1,5 +1,353 @@
 # @pixpilot/formily-shadcn
 
+## 1.7.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.4.0
+
+## 1.7.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@1.2.0
+  - @pixpilot/shadcn-ui@1.3.1
+
+## 1.7.0
+
+### Minor Changes
+
+- add className prop to EditDialog and ArrayItemsEditPopover
+
+## 1.6.0
+
+### Minor Changes
+
+- integrate global autoSave settings for dialogs and popovers
+
+## 1.5.0
+
+### Minor Changes
+
+- enhance array item editing with popover support
+
+## 1.4.5
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn@1.1.0
+  - @pixpilot/shadcn-ui@1.3.0
+
+## 1.4.4
+
+### Patch Changes
+
+- improve draft-only mode handling in ArrayAddition
+
+## 1.4.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.2.2
+
+## 1.4.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.2.1
+
+## 1.4.1
+
+### Patch Changes
+
+- update data attribute for input wrapper
+
+## 1.4.0
+
+### Minor Changes
+
+- add data attributes for slot identification
+
+## 1.3.0
+
+### Minor Changes
+
+- set default type to "single" and spread item slots
+
+## 1.2.0
+
+### Minor Changes
+
+- enhance component with item slots and refactor props
+
+## 1.1.0
+
+### Minor Changes
+
+- add support for multiple selection and update props
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.2.0
+
+## 1.0.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.1.2
+
+## 1.0.4
+
+### Patch Changes
+
+- improve asterisk handling logic
+
+## 1.0.3
+
+### Patch Changes
+
+- update data-slot attributes for consistency
+
+## 1.0.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.1.1
+
+## 1.0.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.1.0
+
+## 1.0.0
+
+### Major Changes
+
+- 47dbbfb: new release
+
+### Patch Changes
+
+- Updated dependencies [47dbbfb]
+  - @pixpilot/shadcn@1.0.0
+  - @pixpilot/shadcn-ui@1.0.0
+
+## 0.54.1
+
+### Patch Changes
+
+- ffaab2d: new release
+- Updated dependencies [ffaab2d]
+  - @pixpilot/shadcn@0.11.1
+  - @pixpilot/shadcn-ui@0.67.1
+
+## 0.54.0
+
+### Minor Changes
+
+- introduce `ButtonExtended` component and update related imports
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.67.0
+
+## 0.53.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.66.0
+
+## 0.53.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.65.0
+
+## 0.53.0
+
+### Minor Changes
+
+- re-export all from `ObjectContainer`
+
+## 0.52.0
+
+### Minor Changes
+
+- re-export `ObjectContainer` and `ToggleGroup` components
+
+## 0.51.12
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.64.0
+
+## 0.51.11
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.63.1
+
+## 0.51.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.63.0
+
+## 0.51.9
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.62.0
+
+## 0.51.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.61.0
+
+## 0.51.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.60.1
+
+## 0.51.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.60.0
+
+## 0.51.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.59.0
+
+## 0.51.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.58.0
+
+## 0.51.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@0.11.0
+  - @pixpilot/shadcn-ui@0.57.2
+
+## 0.51.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@0.10.1
+  - @pixpilot/shadcn-ui@0.57.1
+
+## 0.51.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.57.0
+
+## 0.51.0
+
+### Minor Changes
+
+- 5fe21ce: new release
+
+### Patch Changes
+
+- Updated dependencies [5fe21ce]
+  - @pixpilot/shadcn@0.10.0
+  - @pixpilot/shadcn-ui@0.56.0
+
+## 0.50.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.55.0
+
+## 0.50.6
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.54.0
+
+## 0.50.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.53.0
+
+## 0.50.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.52.2
+
+## 0.50.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.52.1
+
+## 0.50.2
+
+### Patch Changes
+
+- update package.json files for shadcn-auth, shadcn-formily, and shadcn-ui
+
+## 0.50.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.52.0
+
+## 0.50.0
+
+### Minor Changes
+
+- add flat variant support and enhance spacing configurations
+
+## 0.49.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@0.51.0
+
 ## 0.49.0
 
 ### Minor Changes

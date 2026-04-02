@@ -29,7 +29,7 @@ export { ColorSelect } from './components/ColorSelect';
 export { Column } from './components/Column';
 export { Combobox } from './components/Combobox';
 // Context and configuration types
-export type { FormLayoutOptions } from './components/context';
+export * from './components/context/types';
 export { DatePicker } from './components/DatePicker';
 export { AvatarUpload, FileUpload, FileUploadInline } from './components/file-upload';
 // Core components
@@ -39,11 +39,12 @@ export { FormGrid } from './components/FormGrid';
 // Input components
 export { IconPicker } from './components/IconPicker';
 export { IconToggle } from './components/IconToggle';
-
 export { Input } from './components/Input';
 
 export * from './components/json-schema-form-renderer';
+
 export { NumberInput } from './components/number';
+export * from './components/ObjectContainer';
 export { ConnectedRadio, Radio } from './components/Radio';
 export { Rating } from './components/Rating';
 export { RichTextEditor } from './components/RichTextEditor';
@@ -56,12 +57,15 @@ export { Switch } from './components/Switch';
 export { TagsInputInLine } from './components/TagsInputInline';
 export { Textarea } from './components/Textarea';
 
-export { ToggleGroup } from './components/ToggleGroup';
+export { ToggleButton } from './components/ToggleButton';
 
+export { ToggleGroup } from './components/ToggleGroup';
 export { transformSchema } from './utils';
 // Re-export Formily core exports for convenience
 export { createForm } from '@formily/core';
+
 export type { Form as IForm } from '@formily/core';
+
 export {
   Field,
   FormConsumer,

@@ -1,5 +1,233 @@
 # @pixpilot/shadcn-ui
 
+## 1.4.0
+
+### Minor Changes
+
+- removed iconSize
+
+## 1.3.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@1.2.0
+
+## 1.3.0
+
+### Minor Changes
+
+- enhance dialog component with container support and backdrop click prevention
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@1.1.0
+
+## 1.2.2
+
+### Patch Changes
+
+- ensure className is applied to PopoverContent
+
+## 1.2.1
+
+### Patch Changes
+
+- reorganize PopoverContent components and styles
+
+## 1.2.0
+
+### Minor Changes
+
+- add support for multiple selection and update props
+
+## 1.1.2
+
+### Patch Changes
+
+- enhance button selection handling and class management
+
+## 1.1.1
+
+### Patch Changes
+
+- extract button classes to a constant
+
+## 1.1.0
+
+### Minor Changes
+
+- export ColorPickerContent component
+
+## 1.0.0
+
+### Major Changes
+
+- 47dbbfb: new release
+
+### Patch Changes
+
+- Updated dependencies [47dbbfb]
+  - @pixpilot/shadcn@1.0.0
+
+## 0.67.1
+
+### Patch Changes
+
+- ffaab2d: new release
+- Updated dependencies [ffaab2d]
+  - @pixpilot/shadcn@0.11.1
+
+## 0.67.0
+
+### Minor Changes
+
+- introduce `ButtonExtended` component and update related imports
+
+## 0.66.0
+
+### Minor Changes
+
+- introduce `ToggleButton` component and update `IconToggle`
+
+## 0.65.0
+
+### Minor Changes
+
+- add `SetValueWithForm` story and improve controlled value handling
+
+## 0.64.0
+
+### Minor Changes
+
+- return ID from toast methods and update dismiss functionality
+
+## 0.63.1
+
+### Patch Changes
+
+- ensure variant is included in toast message options
+
+## 0.63.0
+
+### Minor Changes
+
+- simplify toast options handling
+
+## 0.62.0
+
+### Minor Changes
+
+- add non-dismissible toast option
+
+## 0.61.0
+
+### Minor Changes
+
+- enhance toast functionality with custom component support
+
+## 0.60.1
+
+### Patch Changes
+
+- update message prop type to support React nodes
+
+## 0.60.0
+
+### Minor Changes
+
+- enhance alert component with icon support and improved children rendering
+
+## 0.59.0
+
+### Minor Changes
+
+- add support for rendering alerts with children only
+
+## 0.58.0
+
+### Minor Changes
+
+- introduce `FileUploadRoot` and refactor `FileUploadInline`
+
+## 0.57.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@0.11.0
+
+## 0.57.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@0.10.1
+
+## 0.57.0
+
+### Minor Changes
+
+- improve loading behavior with immediate mount option
+
+## 0.56.0
+
+### Minor Changes
+
+- 5fe21ce: new release
+
+### Patch Changes
+
+- Updated dependencies [5fe21ce]
+  - @pixpilot/shadcn@0.10.0
+
+## 0.55.0
+
+### Minor Changes
+
+- add slots for customizable inner elements' props
+
+## 0.54.0
+
+### Minor Changes
+
+- add slots for customizable tooltip and loader props
+
+### Patch Changes
+
+- remove unnecessary file path from README
+
+## 0.53.0
+
+### Minor Changes
+
+- support React nodes for tooltips and enhance tooltip rendering
+
+## 0.52.2
+
+### Patch Changes
+
+- adjust loader placement for ghost variant
+
+## 0.52.1
+
+### Patch Changes
+
+- remove unnecessary class from Loader2 component
+
+## 0.52.0
+
+### Minor Changes
+
+- add variant methods for toast notifications
+
+## 0.51.0
+
+### Minor Changes
+
+- enhance component with additional props and fullscreen support
+
 ## 0.50.0
 
 ### Minor Changes

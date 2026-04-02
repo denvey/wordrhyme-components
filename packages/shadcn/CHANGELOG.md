@@ -1,5 +1,47 @@
 # @pixpilot/shadcn
 
+## 1.2.0
+
+### Minor Changes
+
+- enhance dialog component with container context and overlay behavior
+
+## 1.1.0
+
+### Minor Changes
+
+- enhance dialog component with container support and backdrop click prevention
+
+## 1.0.0
+
+### Major Changes
+
+- 47dbbfb: new release
+
+## 0.11.1
+
+### Patch Changes
+
+- ffaab2d: new release
+
+## 0.11.0
+
+### Minor Changes
+
+- restructure form exports and prevent accidental re-export
+
+## 0.10.1
+
+### Patch Changes
+
+- remove unused `form` export from index
+
+## 0.10.0
+
+### Minor Changes
+
+- 5fe21ce: new release
+
 ## 0.9.0
 
 ### Minor Changes

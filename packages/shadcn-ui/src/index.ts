@@ -10,6 +10,7 @@ export * from './AbsoluteFill';
 export * from './Alert';
 export * from './avatar-upload';
 export * from './Button';
+export * from './ButtonExtended';
 export * from './ButtonGroup';
 export * from './circle-loader';
 export * from './CloseButtonAbsolute';
@@ -23,6 +24,7 @@ export * from './ContentCard';
 export * from './DatePicker';
 export * from './dialog';
 export * from './file-upload-inline';
+export * from './file-upload-root';
 export * from './file-upload/types';
 export * from './hooks';
 export * from './icon-selector';
@@ -42,9 +44,9 @@ export * from './tags-input';
 export * from './theme-provider';
 export * from './theme-toggle';
 export * from './toast';
+export * from './ToggleButton';
 export * from './ToggleGroup';
 export * from './utils';
-
 export {
   cn,
   type FileMetadata,

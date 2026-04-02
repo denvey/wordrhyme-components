@@ -34,6 +34,10 @@ const meta = {
       control: 'boolean',
       description: 'Disables the toggle',
     },
+    checkedIcon: {
+      control: 'object',
+      description: 'Icon to display when checked (React node or SVG string)',
+    },
   },
 } satisfies Meta<typeof IconToggle>;
 
@@ -155,7 +159,7 @@ export const Controlled: Story = {
       <div className="flex flex-col items-center gap-4">
         <IconToggle
           checked={isVisible}
-          onCheckedChange={setIsVisible}
+          onChange={setIsVisible}
           checkedIcon={<Eye />}
           uncheckedIcon={<EyeOff />}
         />

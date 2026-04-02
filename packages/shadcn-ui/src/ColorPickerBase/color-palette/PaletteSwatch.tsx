@@ -1,15 +1,9 @@
-import type { PresetColor } from './types';
-import {
-  cn,
-  colorUtils,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@pixpilot/shadcn';
+import type { PresetColor } from '../types';
+import { colorUtils, Tooltip, TooltipContent, TooltipTrigger } from '@pixpilot/shadcn';
 import { useCallback } from 'react';
-import { PaletteButton } from './PaletteButton';
+import { ColorPickerPaletteButton } from './PaletteButton';
 
-export const PaletteSwatch: React.FC<{
+const ColorPickerPaletteSwatch: React.FC<{
   color?: PresetColor;
   onSelect?: (color: string) => void;
   className?: string;
@@ -44,14 +38,11 @@ export const PaletteSwatch: React.FC<{
   };
 
   const button = (
-    <PaletteButton
+    <ColorPickerPaletteButton
       style={style}
-      className={cn(
-        className,
-        isSelected && 'ring-2 ring-ring ring-offset-2 ring-offset-background border-ring',
-      )}
+      className={className}
+      selected={isSelected}
       onClick={handleClick}
-      aria-pressed={isSelected}
     />
   );
 
@@ -68,3 +59,7 @@ export const PaletteSwatch: React.FC<{
     </Tooltip>
   );
 };
+
+ColorPickerPaletteSwatch.displayName = 'ColorPickerPaletteSwatch';
+
+export { ColorPickerPaletteSwatch };
