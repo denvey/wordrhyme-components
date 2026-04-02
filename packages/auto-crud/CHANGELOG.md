@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.0.3
+
+### Patch Changes
+
+- 83ed986: Fix AutoForm default to single column.
+
 ## 1.0.0
 
 ### Major Changes
