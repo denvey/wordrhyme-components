@@ -21,6 +21,7 @@ interface CrudFormModalProps<T extends z.ZodObject<z.ZodRawShape>> {
   overrides?: FormSchemaOverrides;
   title?: string;
   locale?: AutoCrudLocale["formModal"];
+  gridColumns?: number;
   /** Label 对齐方式 */
   labelAlign?: "left" | "top" | "right";
   /** Label 宽度（labelAlign 为 left 时有效） */
@@ -39,6 +40,7 @@ export function CrudFormModal<T extends z.ZodObject<z.ZodRawShape>>({
   overrides,
   title,
   locale = zhCN.formModal,
+  gridColumns,
   labelAlign,
   labelWidth,
 }: CrudFormModalProps<T>) {
@@ -82,6 +84,7 @@ export function CrudFormModal<T extends z.ZodObject<z.ZodRawShape>>({
         loading={loading}
         onSubmit={onSubmit}
         overrides={overrides}
+        gridColumns={gridColumns}
         labelAlign={labelAlign}
         labelWidth={labelWidth}
         showSubmitButton={false}

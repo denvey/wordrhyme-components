@@ -821,6 +821,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         variant={resource.modal.variant}
         overrides={formOverrides}
         locale={locale.formModal}
+        gridColumns={formConfig?.columns}
       />
 
       {/* View Modal */}

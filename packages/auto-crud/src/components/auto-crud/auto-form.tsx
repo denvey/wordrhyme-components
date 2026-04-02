@@ -47,7 +47,7 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
     overrides,
     mode = "create",
     loading = false,
-    gridColumns = 2,
+    gridColumns = 1,
     labelAlign = "top",
     labelWidth,
     showSubmitButton = true,

@@ -72,7 +72,7 @@ export function createFormSchema<T extends z.ZodObject<z.ZodRawShape>>(
     overrides,
     exclude = [],
     layout = "vertical",
-    gridColumns = 2,
+    gridColumns = 1,
     labelAlign = "top",
     labelWidth,
     labelCol,
