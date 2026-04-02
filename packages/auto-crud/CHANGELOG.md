@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.0.4
+
+### Patch Changes
+
+- Fix workspace dependency resolution to force @pixpilot/shadcn back to exactly 1.2.0 properly.
+
 ## 1.0.3
 
 ### Patch Changes
