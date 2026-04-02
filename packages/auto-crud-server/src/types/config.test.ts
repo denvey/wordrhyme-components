@@ -154,8 +154,8 @@ describe("Type Definitions", () => {
   });
 
   describe("CrudProcedures", () => {
-    it("should have all 8 procedure types", () => {
-      type TestProcedures = CrudProcedures<Task, InsertTask, UpdateTask>;
+    it("should have all 11 procedure types", () => {
+      type TestProcedures = CrudProcedures;
 
       expectTypeOf<TestProcedures>().toHaveProperty("list");
       expectTypeOf<TestProcedures>().toHaveProperty("get");
@@ -165,6 +165,9 @@ describe("Type Definitions", () => {
       expectTypeOf<TestProcedures>().toHaveProperty("deleteMany");
       expectTypeOf<TestProcedures>().toHaveProperty("updateMany");
       expectTypeOf<TestProcedures>().toHaveProperty("upsert");
+      expectTypeOf<TestProcedures>().toHaveProperty("export");
+      expectTypeOf<TestProcedures>().toHaveProperty("import");
+      expectTypeOf<TestProcedures>().toHaveProperty("createMany");
     });
   });
 

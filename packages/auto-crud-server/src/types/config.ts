@@ -630,7 +630,7 @@ export interface CrudRouterConfig<
 // Procedures 返回类型（用于 createCrudRouter 返回类型）
 // ============================================================
 
-export interface CrudProcedures<TSelect, TInsert, TUpdate> {
+export interface CrudProcedures {
   list: AnyProcedure;
   get: AnyProcedure;
   create: AnyProcedure;

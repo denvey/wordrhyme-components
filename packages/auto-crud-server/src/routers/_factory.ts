@@ -10,7 +10,7 @@
 
 import { z } from "zod";
 import { eq, sql, inArray, asc, desc, and, isNull } from "drizzle-orm";
-import type { SQL, InferInsertModel, InferSelectModel } from "drizzle-orm";
+import type { SQL } from "drizzle-orm";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { createInsertSchema, createSelectSchema } from "drizzle-zod";
 import { TRPCError } from "@trpc/server";
@@ -40,6 +40,7 @@ import type {
 
 // Re-export types for backward compatibility
 export type { CrudRouterConfig, AnyProcedure, CrudProcedures } from "../types/config";
+export type { ListResult, ExportResult, ImportResult } from "../types/config";
 
 // ============================================================
 // 内部类型：统一的配置表示
@@ -47,9 +48,10 @@ export type { CrudRouterConfig, AnyProcedure, CrudProcedures } from "../types/co
 
 /**
  * createCrudRouter 返回类型
+ * 不携带泛型参数 — 类型安全由各 procedure 的 .output() 保证
  */
-type CrudRouterReturn<TSelect, TInsert, TUpdate> = ReturnType<typeof router> & {
-  procedures: CrudProcedures<TSelect, TInsert, TUpdate>;
+type CrudRouterReturn = ReturnType<typeof router> & {
+  procedures: CrudProcedures;
 };
 
 interface ResolvedConfig<TContext, TSelect> {
@@ -305,71 +307,21 @@ function validateColumn(
 }
 
 // ============================================================
-// createCrudRouter - 完整泛型支持
+// createCrudRouter - 类型防火墙版
 // ============================================================
 
 /**
  * 创建 CRUD Router
  *
+ * 类型安全由各 procedure 的 .output() 保证，
+ * 返回类型不携带深层 Drizzle 泛型，避免 TypeScript OOM。
+ *
+ * @typeParam TTable - Drizzle 表类型
  * @typeParam TContext - 上下文类型（包含 db）
  * @typeParam TSelect - 查询返回类型
- * @typeParam TInsert - 创建输入类型（从 schema 推断）
- * @typeParam TUpdate - 更新输入类型（从 updateSchema 或 schema.partial() 推断）
+ * @typeParam TInsert - 创建输入类型
+ * @typeParam TUpdate - 更新输入类型
  */
-
-// 重载 1: 显式传入 schema + updateSchema
-export function createCrudRouter<
-  TTable extends PgTable,
-  TContext,
-  TSelect,
-  TInsert,
-  TUpdate,
->(
-  config: CrudRouterConfig<TTable, TContext, TSelect, TInsert, TUpdate> & {
-    schema: z.ZodType<TInsert>;
-    updateSchema: z.ZodType<TUpdate>;
-  }
-): CrudRouterReturn<TSelect, TInsert, TUpdate>;
-
-// 重载 2: 自动派生 Schema（从 table）
-export function createCrudRouter<
-  TTable extends PgTable,
-  TContext = unknown,
->(
-  config: Omit<CrudRouterConfig<TTable, TContext>, "schema" | "updateSchema"> & {
-    schema?: undefined;
-    updateSchema?: undefined;
-  }
-): CrudRouterReturn<
-  InferSelectModel<TTable>,
-  InferInsertModel<TTable>,
-  Partial<InferInsertModel<TTable>>
->;
-
-// 重载 3: 仅传入 schema，自动派生 updateSchema
-export function createCrudRouter<
-  TTable extends PgTable,
-  TContext,
-  TInsert,
->(
-  config: Omit<CrudRouterConfig<TTable, TContext, unknown, TInsert, unknown>, "updateSchema"> & {
-    schema: z.ZodType<TInsert>;
-    updateSchema?: undefined;
-  }
-): CrudRouterReturn<unknown, TInsert, Partial<TInsert>>;
-
-// 重载 4: catch-all（接受任意 CrudRouterConfig）
-export function createCrudRouter<
-  TTable extends PgTable,
-  TContext = unknown,
-  TSelect = unknown,
-  TInsert = unknown,
-  TUpdate = unknown,
->(
-  config: CrudRouterConfig<TTable, TContext, TSelect, TInsert, TUpdate>
-): CrudRouterReturn<TSelect, TInsert, TUpdate>;
-
-// 实现
 export function createCrudRouter<
   TTable extends PgTable = PgTable,
   TContext = unknown,
@@ -378,7 +330,7 @@ export function createCrudRouter<
   TUpdate = unknown,
 >(
   config: CrudRouterConfig<TTable, TContext, TSelect, TInsert, TUpdate>
-): CrudRouterReturn<TSelect, TInsert, TUpdate> {
+): CrudRouterReturn {
   const {
     table,
     idField = "id",
@@ -392,7 +344,49 @@ export function createCrudRouter<
 
   // 解析 Schema（自动派生或使用显式传入的）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { schema, updateSchema } = resolveSchemas(config as CrudRouterConfig<TTable>);
+  const { selectSchema, schema, updateSchema } = resolveSchemas(config as CrudRouterConfig<TTable>);
+
+  // ===== 构建 output schemas（类型防火墙核心） =====
+  // .output() 让 tRPC 使用 Zod schema 推导的输出类型，
+  // 而非从 Drizzle 查询实现推导，切断深层泛型链
+  const entityOutputSchema = selectSchema;
+
+  const listOutputSchema = z.object({
+    data: z.array(selectSchema),
+    total: z.number(),
+    page: z.number(),
+    perPage: z.number(),
+    pageCount: z.number(),
+  });
+
+  const deleteManyOutputSchema = z.object({ deleted: z.number() });
+  const updateManyOutputSchema = z.object({ updated: z.number() });
+
+  const upsertOutputSchema = z.object({
+    data: selectSchema,
+    isNew: z.boolean(),
+  });
+
+  const exportOutputSchema = z.object({
+    data: z.array(selectSchema),
+    total: z.number(),
+    hasMore: z.boolean(),
+  });
+
+  const createManyOutputSchema = z.object({
+    created: z.array(selectSchema),
+    count: z.number(),
+  });
+
+  const importOutputSchema = z.object({
+    success: z.number(),
+    updated: z.number(),
+    skipped: z.number(),
+    failed: z.array(z.object({
+      row: z.number(),
+      errors: z.array(z.string()),
+    })),
+  });
 
   // 解析配置
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -486,6 +480,7 @@ export function createCrudRouter<
     list: resolved
       .procedureFactory("list")
       .input(listInputSchema)
+      .output(listOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .query(async ({ ctx, input }: { ctx: TContext & { db: any }; input: z.infer<typeof listInputSchema> }) => {
         await withGuard(ctx, "list");
@@ -564,6 +559,7 @@ export function createCrudRouter<
     get: resolved
       .procedureFactory("get")
       .input(z.string())
+      .output(entityOutputSchema.nullable())
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .query(async ({ ctx, input }: { ctx: TContext & { db: any }; input: string }) => {
         await withGuard(ctx, "get");
@@ -593,6 +589,7 @@ export function createCrudRouter<
     create: resolved
       .procedureFactory("create")
       .input(schema)
+      .output(entityOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: TInsert }) => {
         await withGuard(ctx, "create");
@@ -622,6 +619,7 @@ export function createCrudRouter<
     update: resolved
       .procedureFactory("update")
       .input(z.object({ id: z.string(), data: updateSchema }))
+      .output(entityOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: { id: string; data: TUpdate } }) => {
         await withGuard(ctx, "update");
@@ -667,6 +665,7 @@ export function createCrudRouter<
     delete: resolved
       .procedureFactory("delete")
       .input(z.string())
+      .output(entityOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: string }) => {
         await withGuard(ctx, "delete");
@@ -719,6 +718,7 @@ export function createCrudRouter<
     deleteMany: resolved
       .procedureFactory("deleteMany")
       .input(z.array(z.string()).max(maxBatchSize))
+      .output(deleteManyOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: string[] }) => {
         await withGuard(ctx, "deleteMany");
@@ -766,6 +766,7 @@ export function createCrudRouter<
           data: updateSchema,
         })
       )
+      .output(updateManyOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: { ids: string[]; data: TUpdate } }) => {
         await withGuard(ctx, "updateMany");
@@ -800,6 +801,7 @@ export function createCrudRouter<
     upsert: resolved
       .procedureFactory("upsert")
       .input(schema)
+      .output(upsertOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: TInsert }) => {
         await withGuard(ctx, "upsert");
@@ -863,6 +865,7 @@ export function createCrudRouter<
     export: resolved
       .procedureFactory("export")
       .input(exportInputSchema)
+      .output(exportOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .query(async ({ ctx, input }: { ctx: TContext & { db: any }; input: z.infer<typeof exportInputSchema> }) => {
         await withGuard(ctx, "export");
@@ -941,6 +944,7 @@ export function createCrudRouter<
     createMany: resolved
       .procedureFactory("createMany")
       .input(z.array(schema).min(1).max(maxBatchSize))
+      .output(createManyOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: TInsert[] }) => {
         await withGuard(ctx, "createMany");
@@ -968,6 +972,7 @@ export function createCrudRouter<
     import: resolved
       .procedureFactory("import")
       .input(importInputSchema)
+      .output(importOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: z.infer<typeof importInputSchema> }) => {
         await withGuard(ctx, "import");
@@ -1069,5 +1074,5 @@ export function createCrudRouter<
 
   // 返回增强的 router，带有 .procedures 属性
   const crudRouter = router(procedures);
-  return Object.assign(crudRouter, { procedures }) as CrudRouterReturn<TSelect, TInsert, TUpdate>;
+  return Object.assign(crudRouter, { procedures }) as CrudRouterReturn;
 }

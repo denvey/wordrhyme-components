@@ -61,6 +61,7 @@ const mockTable = {
 // Mock procedure
 const mockProcedure = {
   input: vi.fn().mockReturnThis(),
+  output: vi.fn().mockReturnThis(),
   query: vi.fn().mockReturnThis(),
   mutation: vi.fn().mockReturnThis(),
 };
