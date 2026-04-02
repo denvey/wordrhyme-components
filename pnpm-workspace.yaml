@@ -44,7 +44,7 @@ catalogs:
     eslint: ^9.39.2
     glob: ^11.1.0
     prettier: ^3.7.4
-    storybook: ^8.6.14
+    storybook: ^10.3.4
     tailwindcss: ^4.1.18
     tailwindcss-animate: ^1.0.7
     tsdown: ^0.15.12
