@@ -53,6 +53,9 @@ export {
 // tRPC setup
 export { router, publicProcedure } from "./trpc";
 
+// Hook types
+export type { CrudHookEventMap } from "./types/hook-types";
+
 // Re-export example routers (optional)
 export { appRouter } from "./routers";
 export type { AppRouter } from "./routers";
