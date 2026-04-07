@@ -26,6 +26,8 @@ interface CrudFormModalProps<T extends z.ZodObject<z.ZodRawShape>> {
   labelAlign?: "left" | "top" | "right";
   /** Label 宽度（labelAlign 为 left 时有效） */
   labelWidth?: number | string;
+  /** 弹窗自定义样式 */
+  className?: string;
 }
 
 export function CrudFormModal<T extends z.ZodObject<z.ZodRawShape>>({
@@ -43,6 +45,7 @@ export function CrudFormModal<T extends z.ZodObject<z.ZodRawShape>>({
   gridColumns,
   labelAlign,
   labelWidth,
+  className,
 }: CrudFormModalProps<T>) {
   const defaultTitle = mode === "create" ? locale.createTitle : locale.editTitle;
   const formRef = useRef<AutoFormRef>(null);
@@ -57,6 +60,7 @@ export function CrudFormModal<T extends z.ZodObject<z.ZodRawShape>>({
       onOpenChange={onOpenChange}
       title={title ?? defaultTitle}
       variant={variant}
+      className={className}
       footer={
         <div className="flex justify-end gap-2">
           <Button

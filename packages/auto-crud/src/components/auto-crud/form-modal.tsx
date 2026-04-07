@@ -15,6 +15,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@pixpilot/shadcn";
+import { cn } from "../../lib/utils";
 
 export type ModalVariant = "dialog" | "sheet";
 
@@ -47,14 +48,14 @@ export function FormModal({
   if (variant === "sheet") {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side={side} className={className ?? "sm:max-w-lg flex flex-col p-0"}>
+        <SheetContent side={side} className={cn("sm:max-w-lg flex flex-col p-0", className)}>
           <SheetHeader className="flex-shrink-0 px-6 pt-6">
             <SheetTitle>{title}</SheetTitle>
             {description && (
               <SheetDescription>{description}</SheetDescription>
             )}
           </SheetHeader>
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-y-auto min-h-0">
             <div className="px-6 py-4">{children}</div>
           </div>
           {footer && (
@@ -69,15 +70,15 @@ export function FormModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={className ?? "max-w-2xl flex flex-col max-h-[90vh] p-0"}>
+      <DialogContent className={cn("max-w-2xl sm:max-w-2xl flex flex-col max-h-[85vh] overflow-hidden p-0", className)}>
         <DialogHeader className="flex-shrink-0 px-6 pt-6">
           <DialogTitle>{title}</DialogTitle>
           {description && (
             <DialogDescription>{description}</DialogDescription>
           )}
         </DialogHeader>
-        <div className="flex-1 overflow-auto">
-          <div className="px-6 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="px-6 py-4 text-sm">{children}</div>
         </div>
         {footer && (
           <div className="flex-shrink-0 border-t px-6 py-4">

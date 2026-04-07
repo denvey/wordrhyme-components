@@ -181,10 +181,12 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   };
   /** 表单配置 */
   form?: {
-    /** 表单覆盖配置 */
+    /** 表单覆盖配置（兼容旧 API，优先级低于 fieldOverrides） */
     overrides?: Record<string, any>;
     /** 表单列数 */
     columns?: number;
+    /** 弹窗自定义容器类名（支持控制大小、最大高度等） */
+    className?: string;
   };
   /** 扩展点 */
   slots?: {
@@ -822,6 +824,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         overrides={formOverrides}
         locale={locale.formModal}
         gridColumns={formConfig?.columns}
+        className={formConfig?.className}
       />
 
       {/* View Modal */}
