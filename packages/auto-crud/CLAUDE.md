@@ -203,10 +203,10 @@ export default function TasksPage() {
         filterModes: ["simple", "advanced", "command"],  // 过滤模式，第一个为默认
         batchFields: ["status", "priority"],  // 批量更新字段
         defaultSort: [{ id: "createdAt", desc: true }],
-      }}
-      slots={{
-        toolbarEnd: <Button>导出</Button>,
-      }}
+      toolbarActions={[
+        { type: "export", label: "自定义导出按钮" },
+        // ...
+      ]}
     />
   );
 }
@@ -273,10 +273,12 @@ interface AutoCrudTableProps<TSchema> {
     overrides?: Record<string, any>;
     columns?: number;
   };
-  slots?: {
-    toolbarStart?: React.ReactNode;
-    toolbarEnd?: React.ReactNode;
-  };
+  /**
+   * 工具栏右侧操作配置
+   * - 只传 custom 项：内置保持默认，custom 追加到首/尾
+   * - 包含任意内置 type：数组完全接管，未列出的内置项自动隐藏
+   */
+  toolbarActions?: ToolbarActionItem[];
   /**
    * 行操作配置
    * - 只传 custom 项：内置保持默认，custom 追加到首/尾

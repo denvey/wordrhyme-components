@@ -265,10 +265,12 @@ interface AutoCrudTableProps<TSchema> {
     overrides?: Record<string, any>;            // 表单覆盖配置
     columns?: number;                           // 表单列数
   };
-  slots?: {
-    toolbarStart?: React.ReactNode;             // 工具栏左侧插槽
-    toolbarEnd?: React.ReactNode;               // 工具栏右侧插槽
-  };
+  /**
+   * 工具栏右侧操作配置
+   * - 只传 custom 项：内置保持默认，custom 追加到首/尾
+   * - 包含任意内置 type：数组完全接管，未列出的内置项自动隐藏
+   */
+  toolbarActions?: ToolbarActionItem[];
   /**
    * 行操作配置
    * - 只传 custom 项：内置保持默认，custom 追加到首/尾
@@ -514,6 +516,140 @@ table={{
 table={{
   filterModes: ["simple", "advanced", "command"],  // 第一个为默认模式
 }}
+```
+
+---
+
+## 🔧 工具栏操作配置
+
+`toolbarActions` 数组控制页面顶部右侧工具栏的按钮，设计思路完全对齐行操作 `actions`。
+
+内置操作类型：`create`（新建）、`import`（导入）、`export`（导出）。
+
+### 只添加自定义按钮（内置保持默认）
+
+只传 `type: "custom"` 项时，所有内置按钮（导入、导出、新建）保持原样，custom 项按 `position` 插入首部或尾部。
+
+```tsx
+<AutoCrudTable
+  toolbarActions={[
+    { type: "custom", component: <Button variant="outline">分类管理</Button>, position: "start" },
+    { type: "custom", component: <Button variant="outline">批量标签</Button> }, // 默认 position: "end"
+  ]}
+/>
+// 渲染顺序: 分类管理 · [导入] · [导出] · [新建] · 批量标签
+```
+
+### 调整内置按钮顺序
+
+数组中只要包含任意内置 `type`，就会**完全接管工具栏** —— 未列出的内置按钮**直接隐藏**，渲染顺序**严格按数组**。
+
+```tsx
+<AutoCrudTable
+  toolbarActions={[
+    { type: "create" },                    // 新建移到最前
+    { type: "export", label: "导出 CSV" }, // 覆盖文案
+    // import 未列出 → 隐藏
+  ]}
+/>
+// 渲染顺序: 新建 · 导出 CSV（导入按钮消失）
+```
+
+### 覆盖内置按钮行为
+
+```tsx
+<AutoCrudTable
+  toolbarActions={[
+    { type: "import" },
+    { type: "export" },
+    { 
+      type: "create", 
+      label: "发布商品", 
+      onClick: () => router.push('/products/new'),  // 跳转详情页而非弹窗
+    },
+  ]}
+/>
+```
+
+### 完全替换内置按钮组件
+
+```tsx
+<AutoCrudTable
+  toolbarActions={[
+    { type: "export" },
+    { 
+      type: "create", 
+      component: (                             // 整个按钮替换
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button><Plus className="mr-2 h-4 w-4" />新建</Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => create('simple')}>简易商品</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => create('sku')}>多规格商品</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ),
+    },
+  ]}
+/>
+```
+
+### 混合 custom 和内置
+
+```tsx
+<AutoCrudTable
+  toolbarActions={[
+    { type: "custom", component: <CategoryFilter onChange={setCategory} /> },
+    { type: "export" },
+    { type: "create", label: "发布", onClick: () => router.push('/products/new') },
+  ]}
+/>
+// 渲染顺序: 分类筛选 · 导出 · 发布（导入隐藏）
+```
+
+### 与 `permissions` 的交互
+
+`toolbarActions` 与 `permissions` 的交互规则如下：
+
+- `permissions.can.create = false` → 即使配置了 `{ type: "create" }`，新建按钮仍不渲染
+- `permissions.can.export = false` → 即使配置了 `{ type: "export" }`，导出按钮仍不渲染
+- 内置项即使使用 `component` 完全替换渲染，也仍然受对应权限控制
+- `type: "custom"` 不受 permissions 影响，由业务方自行控制
+
+```tsx
+<AutoCrudTable
+  permissions={{
+    can: { create: isAdmin, export: true, delete: isAdmin },
+  }}
+  toolbarActions={[
+    { type: "export" },                    // ✅ 始终渲染
+    { type: "create", label: "发布商品" }, // 🔒 仅 isAdmin 时渲染
+    { 
+      type: "custom",                     // ✅ 不受 permissions 影响
+      component: isEditor ? <Button>审核</Button> : null,  // 业务方自行守卫
+    },
+  ]}
+/>
+```
+
+### `ToolbarActionItem` 类型
+
+```typescript
+type ToolbarActionItem = ToolbarBuiltinActionItem | ToolbarCustomActionItem;
+
+type ToolbarBuiltinActionItem = {
+  type: "create" | "import" | "export";
+  onClick?: () => void;          // 覆盖默认行为
+  label?: string;                // 覆盖默认文案
+  component?: React.ReactNode;   // 完全替换按钮渲染
+};
+
+type ToolbarCustomActionItem = {
+  type: "custom";
+  component: React.ReactNode;    // 自定义渲染内容
+  position?: "start" | "end";    // 仅在无内置项时生效，默认 "end"
+};
 ```
 
 ---

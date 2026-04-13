@@ -142,6 +142,32 @@ type CustomActionItem<T> = {
 export type ActionItem<T> = BuiltinActionItem<T> | CustomActionItem<T>;
 
 /**
+ * 顶部工具栏内置操作项
+ */
+export type ToolbarBuiltinActionItem = {
+  type: "create" | "import" | "export";
+  /** 替代默认的行为 */
+  onClick?: () => void;
+  /** 替代默认的标签文本 */
+  label?: string;
+  /** 替代整个按钮的渲染 */
+  component?: React.ReactNode;
+};
+
+/**
+ * 顶部工具栏自定义操作项
+ */
+export type ToolbarCustomActionItem = {
+  type: "custom";
+  /** 渲染自定义内容 */
+  component: React.ReactNode;
+  /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
+  position?: "start" | "end";
+};
+
+export type ToolbarActionItem = ToolbarBuiltinActionItem | ToolbarCustomActionItem;
+
+/**
  * AutoCrudTable Props 接口
  */
 export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> {
@@ -188,17 +214,14 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     /** 弹窗自定义容器类名（支持控制大小、最大高度等） */
     className?: string;
   };
-  /** 扩展点 */
-  slots?: {
-    /** 工具栏左侧插槽 */
-    toolbarStart?: React.ReactNode;
-    /** 工具栏右侧插槽 */
-    toolbarEnd?: React.ReactNode;
-    /** 覆盖内置的新建按钮组件 */
-    createButton?: React.ReactNode;
-  };
+
   /** 行操作配置，见 {@link ActionItem} */
   actions?: ActionItem<z.output<TSchema>>[];
+  /** 
+   * 顶层工具栏操作配置 
+   * 用法类同 `actions` 行操作。一旦配置了包含内置 `type` 的数组，它将完全接管右侧工具栏！
+   */
+  toolbarActions?: ToolbarActionItem[];
   /**
    * 权限配置
    * 控制按钮显示和字段访问
@@ -650,9 +673,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   fields,
   table: tableConfig,
   form: formConfig,
-  slots,
   permissions,
   actions: actionItems,
+  toolbarActions,
   locale: localeProp,
   onCreate,
 }: AutoCrudTableProps<TSchema>) {
@@ -750,43 +773,106 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          {slots?.toolbarStart}
-        </div>
-        <div className="flex items-center gap-2">
-          {slots?.toolbarEnd}
-          {canImport && (
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)}>
-              <Download className="mr-2 h-4 w-4" />
-              {locale.toolbar.import}
-            </Button>
-          )}
-          {canExport && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportClick}
-              disabled={exporting || (selectedCount === 0 && !resource.handlers.export)}
-            >
-              {exporting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="mr-2 h-4 w-4" />
-              )}
-              {selectedCount > 0 ? locale.toolbar.exportSelected(selectedCount) : locale.toolbar.export}
-            </Button>
-          )}
-          {can.create && (
-            slots?.createButton ? (
-              slots.createButton
-            ) : (
-              <Button onClick={onCreate ?? resource.handlers.openCreate}>
-                {locale.toolbar.create}
-              </Button>
-            )
-          )}
-        </div>
+      <div className="flex items-center justify-end gap-4">
+        {(() => {
+          // --- 内置按钮工厂 ---
+          const renderBuiltinButton = (
+            type: "import" | "export" | "create",
+            overrides?: { onClick?: () => void; label?: string }
+          ): React.ReactNode => {
+            if (type === "import" && canImport) {
+              return (
+                <Button key="import" variant="outline" size="sm" onClick={overrides?.onClick ?? (() => setImportOpen(true))}>
+                  <Download className="mr-2 h-4 w-4" />
+                  {overrides?.label ?? locale.toolbar.import}
+                </Button>
+              );
+            }
+            if (type === "export" && canExport) {
+              return (
+                <Button
+                  key="export"
+                  variant="outline"
+                  size="sm"
+                  onClick={overrides?.onClick ?? handleExportClick}
+                  disabled={exporting || (selectedCount === 0 && !resource.handlers.export)}
+                >
+                  {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                  {overrides?.label ?? (selectedCount > 0 ? locale.toolbar.exportSelected(selectedCount) : locale.toolbar.export)}
+                </Button>
+              );
+            }
+            if (type === "create" && can.create) {
+              return (
+                <Button key="create" onClick={overrides?.onClick ?? onCreate ?? resource.handlers.openCreate}>
+                  {overrides?.label ?? locale.toolbar.create}
+                </Button>
+              );
+            }
+            return null;
+          };
+
+          // 1. 未配置 toolbarActions → 渲染默认内置按钮
+          if (!toolbarActions || toolbarActions.length === 0) {
+            return (
+              <div className="flex items-center gap-2">
+                {renderBuiltinButton("import")}
+                {renderBuiltinButton("export")}
+                {renderBuiltinButton("create")}
+              </div>
+            );
+          }
+
+          const hasBuiltin = toolbarActions.some((i) => i.type !== "custom");
+
+          // 2. 只有 custom 项 → 保留所有内置，custom 按 position 首尾拼接
+          if (!hasBuiltin) {
+            const startNodes = toolbarActions
+              .filter((i) => i.type === "custom" && i.position === "start")
+              .map((a, i) => <React.Fragment key={`start-${i}`}>{a.component}</React.Fragment>);
+            const endNodes = toolbarActions
+              .filter((i) => i.type === "custom" && i.position !== "start")
+              .map((a, i) => <React.Fragment key={`end-${i}`}>{a.component}</React.Fragment>);
+            return (
+              <div className="flex items-center gap-2">
+                {startNodes}
+                {renderBuiltinButton("import")}
+                {renderBuiltinButton("export")}
+                {renderBuiltinButton("create")}
+                {endNodes}
+              </div>
+            );
+          }
+
+          // 3. 包含内置项 → 完全接管：未列出的内置不渲染，顺序严格按数组
+          return (
+              <div className="flex items-center gap-2">
+              {toolbarActions.map((action, index) => {
+                if (action.type === "custom") {
+                  return <React.Fragment key={`custom-${index}`}>{action.component}</React.Fragment>;
+                }
+                const builtinVisible =
+                  action.type === "import"
+                    ? canImport
+                    : action.type === "export"
+                      ? canExport
+                      : can.create;
+                if (!builtinVisible) {
+                  return null;
+                }
+                // 内置项：支持完全替换组件
+                if (action.component) {
+                  return <React.Fragment key={action.type}>{action.component}</React.Fragment>;
+                }
+                // 内置项：复用工厂函数，传入用户覆盖
+                return renderBuiltinButton(action.type, {
+                  onClick: action.onClick,
+                  label: action.label,
+                });
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Table */}

@@ -1,6 +1,6 @@
 // Auto-CRUD Components
 export { AutoCrudTable } from "./components/auto-crud/auto-crud-table";
-export type { Field, Fields, FilterConfig, AutoCrudTableProps, ActionItem } from "./components/auto-crud/auto-crud-table";
+export type { Field, Fields, FilterConfig, AutoCrudTableProps, ActionItem, ToolbarActionItem, ToolbarBuiltinActionItem, ToolbarCustomActionItem } from "./components/auto-crud/auto-crud-table";
 
 // i18n
 export { zhCN, enUS, jaJP, koKR, frFR, deDE, esES, resolveLocale } from "./i18n/locale";
