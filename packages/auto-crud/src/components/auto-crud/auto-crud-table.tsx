@@ -141,6 +141,10 @@ type CustomActionItem<T> = {
  */
 export type ActionItem<T> = BuiltinActionItem<T> | CustomActionItem<T>;
 
+export type ActionConfig<T> =
+  | ActionItem<T>[]
+  | ((defaults: BuiltinActionItem<T>[]) => ActionItem<T>[]);
+
 /**
  * 顶部工具栏内置操作项
  */
@@ -166,6 +170,10 @@ export type ToolbarCustomActionItem = {
 };
 
 export type ToolbarActionItem = ToolbarBuiltinActionItem | ToolbarCustomActionItem;
+
+export type ToolbarActionConfig =
+  | ToolbarActionItem[]
+  | ((defaults: ToolbarBuiltinActionItem[]) => ToolbarActionItem[]);
 
 /**
  * AutoCrudTable Props 接口
@@ -216,12 +224,12 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   };
 
   /** 行操作配置，见 {@link ActionItem} */
-  actions?: ActionItem<z.output<TSchema>>[];
+  actions?: ActionConfig<z.output<TSchema>>;
   /** 
    * 顶层工具栏操作配置 
    * 用法类同 `actions` 行操作。一旦配置了包含内置 `type` 的数组，它将完全接管右侧工具栏！
    */
-  toolbarActions?: ToolbarActionItem[];
+  toolbarActions?: ToolbarActionConfig;
   /**
    * 权限配置
    * 控制按钮显示和字段访问
@@ -609,8 +617,11 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   );
 }
 
-function resolveActions<T>(
-  items: ActionItem<T>[] | undefined,
+/**
+ * 解析列表行操作
+ */
+export function resolveActions<T>(
+  actionsOrFn: ActionConfig<T> | undefined,
   defaults: {
     openView: (row: T) => void;
     openEdit: ((row: T) => void) | undefined;
@@ -619,6 +630,15 @@ function resolveActions<T>(
   },
   rowActionsLocale: { view: string; edit: string; copy: string; delete: string },
 ): ResolvedActionItem<T>[] {
+  const items = typeof actionsOrFn === "function"
+    ? actionsOrFn([
+        { type: "view" },
+        { type: "edit" },
+        { type: "copy" },
+        { type: "delete" },
+      ])
+    : actionsOrFn;
+
   const defaultItems: ResolvedActionItem<T>[] = [
     { label: rowActionsLocale.view, onClick: defaults.openView },
     ...(defaults.openEdit ? [{ label: rowActionsLocale.edit, onClick: defaults.openEdit }] : []),
@@ -812,8 +832,17 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             return null;
           };
 
-          // 1. 未配置 toolbarActions → 渲染默认内置按钮
-          if (!toolbarActions || toolbarActions.length === 0) {
+          // 1. 解析传入的 function
+          const resolvedToolbarActions = typeof toolbarActions === "function"
+            ? toolbarActions([
+                { type: "import" },
+                { type: "export" },
+                { type: "create" },
+              ])
+            : toolbarActions;
+
+          // 2. 未配置 toolbarActions → 渲染默认内置按钮
+          if (!resolvedToolbarActions || resolvedToolbarActions.length === 0) {
             return (
               <div className="flex items-center gap-2">
                 {renderBuiltinButton("import")}
@@ -823,14 +852,14 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             );
           }
 
-          const hasBuiltin = toolbarActions.some((i) => i.type !== "custom");
+          const hasBuiltin = resolvedToolbarActions.some((i) => i.type !== "custom");
 
-          // 2. 只有 custom 项 → 保留所有内置，custom 按 position 首尾拼接
+          // 3. 只有 custom 项 → 保留所有内置，custom 按 position 首尾拼接
           if (!hasBuiltin) {
-            const startNodes = toolbarActions
+            const startNodes = resolvedToolbarActions
               .filter((i) => i.type === "custom" && i.position === "start")
               .map((a, i) => <React.Fragment key={`start-${i}`}>{a.component}</React.Fragment>);
-            const endNodes = toolbarActions
+            const endNodes = resolvedToolbarActions
               .filter((i) => i.type === "custom" && i.position !== "start")
               .map((a, i) => <React.Fragment key={`end-${i}`}>{a.component}</React.Fragment>);
             return (
@@ -844,10 +873,10 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             );
           }
 
-          // 3. 包含内置项 → 完全接管：未列出的内置不渲染，顺序严格按数组
+          // 4. 包含内置项 → 完全接管：未列出的内置不渲染，顺序严格按数组
           return (
-              <div className="flex items-center gap-2">
-              {toolbarActions.map((action, index) => {
+            <div className="flex items-center gap-2">
+              {resolvedToolbarActions.map((action, index) => {
                 if (action.type === "custom") {
                   return <React.Fragment key={`custom-${index}`}>{action.component}</React.Fragment>;
                 }

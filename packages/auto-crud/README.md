@@ -633,6 +633,22 @@ table={{
 />
 ```
 
+### `toolbarActions` 传参高级语法（函数式）
+
+如果你的目标是拦截并修改基于原顺序的所有内容，你还可以传递一个函数：
+
+```tsx
+<AutoCrudTable
+  // defaults 即内置三个按钮的信息，在此数组里你可以随意 map、过滤或插值
+  toolbarActions={(defaults) => defaults.map(btn => 
+    btn.type === 'create' 
+      ? { ...btn, label: '发布商品', onClick: () => router.push('/products/new') }
+      : btn
+  )}
+/>
+// 非常适合“只盖头不换面”的场景，不会导致内置按钮丢失或顺序打乱
+```
+
 ### `ToolbarActionItem` 类型
 
 ```typescript
@@ -695,6 +711,20 @@ type ToolbarCustomActionItem = {
     { type: "custom", label: "归档", onClick: archive, separator: true },
     { type: "delete", separator: true },
   ]}
+/>
+```
+
+### 支持函数配置模式
+
+如果只需要在原来的基础上做细微拦截处理，传入一个函数更省事：
+
+```tsx
+<AutoCrudTable
+  actions={(defaults) => defaults.map(action =>
+    action.type === 'delete'
+      ? { ...action, label: "下架", variant: "default" }
+      : action
+  )}
 />
 ```
 
