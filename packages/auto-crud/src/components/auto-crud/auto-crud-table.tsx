@@ -194,6 +194,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     toolbarStart?: React.ReactNode;
     /** 工具栏右侧插槽 */
     toolbarEnd?: React.ReactNode;
+    /** 覆盖内置的新建按钮组件 */
+    createButton?: React.ReactNode;
   };
   /** 行操作配置，见 {@link ActionItem} */
   actions?: ActionItem<z.output<TSchema>>[];
@@ -230,6 +232,11 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
    * ```
    */
   locale?: LocaleProp;
+  /**
+   * 自定义新建按钮点击事件
+   * 如果提供，将覆盖默认的打开新建弹窗行为
+   */
+  onCreate?: () => void;
 }
 
 /**
@@ -647,6 +654,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   permissions,
   actions: actionItems,
   locale: localeProp,
+  onCreate,
 }: AutoCrudTableProps<TSchema>) {
   const locale = resolveLocale(localeProp);
   // 解析权限配置（默认全部允许）
@@ -770,9 +778,13 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             </Button>
           )}
           {can.create && (
-            <Button onClick={resource.handlers.openCreate}>
-              {locale.toolbar.create}
-            </Button>
+            slots?.createButton ? (
+              slots.createButton
+            ) : (
+              <Button onClick={onCreate ?? resource.handlers.openCreate}>
+                {locale.toolbar.create}
+              </Button>
+            )
           )}
         </div>
       </div>
