@@ -27,6 +27,8 @@
  * ```
  */
 
+import type { ExportInput, GetInput, ListInput } from './config';
+
 // ============================================================
 // CrudHookEventMap — 核心类型工具
 // ============================================================
@@ -43,6 +45,9 @@
  * @typeParam TCreate     - 创建输入类型（z.infer<typeof createSchema>）
  * @typeParam TUpdate     - 更新输入类型（z.infer<typeof updateSchema>）
  * @typeParam TSelect     - 查询返回类型（InferSelectModel<typeof table>）
+ * @typeParam TListInput  - list procedure 输入类型
+ * @typeParam TGetInput   - get procedure 输入类型
+ * @typeParam TExportInput - export procedure 输入类型
  */
 export type CrudHookEventMap<
   PluginId extends string,
@@ -50,59 +55,43 @@ export type CrudHookEventMap<
   TCreate,
   TUpdate,
   TSelect,
+  TListInput extends ListInput = ListInput,
+  TGetInput extends GetInput = string,
+  TExportInput extends ExportInput = ExportInput,
 > =
   // === 生命周期 Hooks（tRPC middleware 自动 emit） ===
   // before*: pipe 模式，允许修改数据或 throw 中止
   // after*: 并行模式，纯通知
 
   // Create
-  & { [K in `${PluginId}.${ResourceName}.beforeCreate`]: TCreate }
-  & { [K in `${PluginId}.${ResourceName}.afterCreate`]: TSelect }
-
-  // Update
-  & { [K in `${PluginId}.${ResourceName}.beforeUpdate`]: { id: string; data: TUpdate } }
-  & { [K in `${PluginId}.${ResourceName}.afterUpdate`]: TSelect }
-
-  // Delete
-  & { [K in `${PluginId}.${ResourceName}.beforeDelete`]: { id: string } }
-  & { [K in `${PluginId}.${ResourceName}.afterDelete`]: TSelect }
-
-  // === tRPC Procedure Hooks（emit 自动映射 tRPC 路由） ===
-
-  & { [K in `${PluginId}.${ResourceName}.create`]: TCreate }
-  & { [K in `${PluginId}.${ResourceName}.update`]: { id: string; data: TUpdate } }
-  & { [K in `${PluginId}.${ResourceName}.delete`]: string }
-  & { [K in `${PluginId}.${ResourceName}.deleteMany`]: string[] }
-  & { [K in `${PluginId}.${ResourceName}.updateMany`]: { ids: string[]; data: TUpdate } }
-  & { [K in `${PluginId}.${ResourceName}.upsert`]: TCreate }
-  & { [K in `${PluginId}.${ResourceName}.get`]: string }
-  & { [K in `${PluginId}.${ResourceName}.list`]: {
-    page: number;
-    perPage: number;
-    sort?: Array<{ id: string; desc: boolean }>;
-    filters?: Array<{
-      id: string;
-      value: string | string[];
-      variant: string;
-      operator: string;
-      filterId: string;
-    }>;
-    joinOperator: "and" | "or";
-  } }
-  & { [K in `${PluginId}.${ResourceName}.export`]: {
-    sort?: Array<{ id: string; desc: boolean }>;
-    filters?: Array<{
-      id: string;
-      value: string | string[];
-      variant: string;
-      operator: string;
-      filterId: string;
-    }>;
-    joinOperator?: "and" | "or";
-    limit?: number;
-  } }
-  & { [K in `${PluginId}.${ResourceName}.import`]: {
-    rows: unknown[];
-    onConflict?: "skip" | "upsert" | "error";
-  } }
-  & { [K in `${PluginId}.${ResourceName}.createMany`]: TCreate[] };
+  { [K in `${PluginId}.${ResourceName}.beforeCreate`]: TCreate } & {
+    [K in `${PluginId}.${ResourceName}.afterCreate`]: TSelect;
+  } & {
+    // Update
+    [K in `${PluginId}.${ResourceName}.beforeUpdate`]: { id: string; data: TUpdate };
+  } & {
+    [K in `${PluginId}.${ResourceName}.afterUpdate`]: TSelect;
+  } & {
+    // Delete
+    [K in `${PluginId}.${ResourceName}.beforeDelete`]: { id: string };
+  } & {
+    [K in `${PluginId}.${ResourceName}.afterDelete`]: TSelect;
+  } & {
+    // === tRPC Procedure Hooks（emit 自动映射 tRPC 路由） ===
+    [K in `${PluginId}.${ResourceName}.create`]: TCreate;
+  } & {
+    [K in `${PluginId}.${ResourceName}.update`]: { id: string; data: TUpdate };
+  } & { [K in `${PluginId}.${ResourceName}.delete`]: string } & {
+    [K in `${PluginId}.${ResourceName}.deleteMany`]: string[];
+  } & {
+    [K in `${PluginId}.${ResourceName}.updateMany`]: { ids: string[]; data: TUpdate };
+  } & { [K in `${PluginId}.${ResourceName}.upsert`]: TCreate } & {
+    [K in `${PluginId}.${ResourceName}.get`]: TGetInput;
+  } & { [K in `${PluginId}.${ResourceName}.list`]: TListInput } & {
+    [K in `${PluginId}.${ResourceName}.export`]: TExportInput;
+  } & {
+    [K in `${PluginId}.${ResourceName}.import`]: {
+      rows: unknown[];
+      onConflict?: 'skip' | 'upsert' | 'error';
+    };
+  } & { [K in `${PluginId}.${ResourceName}.createMany`]: TCreate[] };

@@ -3,7 +3,12 @@
 // ============================================================
 
 // Factory
-export { createCrudRouter } from "./routers/_factory";
+export {
+  baseExportInputSchema,
+  baseGetInputSchema,
+  baseListInputSchema,
+  createCrudRouter,
+} from './routers/_factory';
 
 // Types
 export type {
@@ -34,6 +39,7 @@ export type {
   ImportMiddlewareParams,
   CreateManyMiddlewareParams,
   // Input/Output types
+  GetInput,
   ListInput,
   ListResult,
   ExportInput,
@@ -41,21 +47,21 @@ export type {
   ImportInput,
   ImportResult,
   ImportFailedRow,
-} from "./types/config";
+} from './types/config';
 
 // Middleware helpers
 export {
   afterMiddleware,
   beforeMiddleware,
   composeMiddleware,
-} from "./lib/middleware-helpers";
+} from './lib/middleware-helpers';
 
 // tRPC setup
-export { router, publicProcedure } from "./trpc";
+export { router, publicProcedure } from './trpc';
 
 // Hook types
-export type { CrudHookEventMap } from "./types/hook-types";
+export type { CrudHookEventMap } from './types/hook-types';
 
 // Re-export example routers (optional)
-export { appRouter } from "./routers";
-export type { AppRouter } from "./routers";
+export { appRouter } from './routers';
+export type { AppRouter } from './routers';

@@ -4,34 +4,34 @@
  * 完整泛型支持：Schema → Config → Middleware → Procedures
  */
 
-import type { SQL } from "drizzle-orm";
-import type { PgTable } from "drizzle-orm/pg-core";
-import type { z } from "zod";
+import type { SQL } from 'drizzle-orm';
+import type { PgTable } from 'drizzle-orm/pg-core';
+import type { z } from 'zod';
 
 // ============================================================
 // 基础类型
 // ============================================================
 
 export type CrudOperation =
-  | "list"
-  | "get"
-  | "create"
-  | "update"
-  | "delete"
-  | "deleteMany"
-  | "updateMany"
-  | "upsert"
-  | "export"
-  | "import"
-  | "createMany";
+  | 'list'
+  | 'get'
+  | 'create'
+  | 'update'
+  | 'delete'
+  | 'deleteMany'
+  | 'updateMany'
+  | 'upsert'
+  | 'export'
+  | 'import'
+  | 'createMany';
 
-export type WriteOperation = "create" | "update";
+export type WriteOperation = 'create' | 'update';
 
 /**
  * 表字段键类型提取
  * 用于 omitFields 的强类型支持
  */
-export type TableColumnKeys<T extends PgTable> = keyof T["_"]["columns"];
+export type TableColumnKeys<T extends PgTable> = keyof T['_']['columns'];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyProcedure = any;
@@ -77,7 +77,7 @@ export interface ListInput {
     operator: string;
     filterId: string;
   }>;
-  joinOperator: "and" | "or";
+  joinOperator: 'and' | 'or';
 }
 
 /**
@@ -92,6 +92,13 @@ export interface ListResult<TSelect> {
 }
 
 /**
+ * 单条查询输入类型
+ * - string: 兼容旧的 get(id) 调用
+ * - object: 支持通过 getInputSchema 扩展 include 等控制参数
+ */
+export type GetInput = string | { id: string };
+
+/**
  * 导出查询输入类型（复用 ListInput 的筛选/排序，无分页）
  */
 export interface ExportInput {
@@ -103,7 +110,7 @@ export interface ExportInput {
     operator: string;
     filterId: string;
   }>;
-  joinOperator?: "and" | "or";
+  joinOperator?: 'and' | 'or';
   /** 导出数量限制，会被 clamp 到 [1, maxExportSize] */
   limit?: number;
 }
@@ -154,23 +161,32 @@ export interface ImportInput {
    * - "upsert": 存在则更新，不存在则新建
    * - "error": 冲突行计入失败
    */
-  onConflict?: "skip" | "upsert" | "error";
+  onConflict?: 'skip' | 'upsert' | 'error';
 }
 
 // ============================================================
 // Middleware 参数类型（导出供 helpers 使用）
 // ============================================================
 
-export interface ListMiddlewareParams<TContext, TSelect> {
+export interface ListMiddlewareParams<
+  TContext,
+  TSelect,
+  TListInput extends ListInput = ListInput,
+> {
   ctx: TContext;
-  input: ListInput;
-  next: (input?: ListInput) => Promise<ListResult<TSelect>>;
+  input: TListInput;
+  next: (input?: TListInput) => Promise<ListResult<TSelect>>;
 }
 
-export interface GetMiddlewareParams<TContext, TSelect> {
+export interface GetMiddlewareParams<
+  TContext,
+  TSelect,
+  TGetInput extends GetInput = GetInput,
+> {
   ctx: TContext;
   id: string;
-  next: () => Promise<TSelect | null>;
+  input: TGetInput;
+  next: (input?: TGetInput) => Promise<TSelect | null>;
 }
 
 export interface CreateMiddlewareParams<TContext, TSelect, TInsert> {
@@ -213,10 +229,14 @@ export interface UpsertMiddlewareParams<TContext, TSelect, TInsert> {
   next: (input?: TInsert) => Promise<{ data: TSelect; isNew: boolean }>;
 }
 
-export interface ExportMiddlewareParams<TContext, TSelect> {
+export interface ExportMiddlewareParams<
+  TContext,
+  TSelect,
+  TExportInput extends ExportInput = ExportInput,
+> {
   ctx: TContext;
-  input: ExportInput;
-  next: (input?: ExportInput) => Promise<ExportResult<TSelect>>;
+  input: TExportInput;
+  next: (input?: TExportInput) => Promise<ExportResult<TSelect>>;
 }
 
 export interface ImportMiddlewareParams<TContext> {
@@ -266,26 +286,29 @@ export interface CrudMiddleware<
   TSelect = unknown,
   TInsert = unknown,
   TUpdate = unknown,
+  TListInput extends ListInput = ListInput,
+  TGetInput extends GetInput = GetInput,
+  TExportInput extends ExportInput = ExportInput,
 > {
   /**
    * 列表查询包装器
    */
   list?: (
-    params: ListMiddlewareParams<TContext, TSelect>
+    params: ListMiddlewareParams<TContext, TSelect, TListInput>,
   ) => Promise<ListResult<TSelect>>;
 
   /**
    * 单条查询包装器
    */
   get?: (
-    params: GetMiddlewareParams<TContext, TSelect>
+    params: GetMiddlewareParams<TContext, TSelect, TGetInput>,
   ) => Promise<TSelect | null>;
 
   /**
    * 创建包装器
    */
   create?: (
-    params: CreateMiddlewareParams<TContext, TSelect, TInsert>
+    params: CreateMiddlewareParams<TContext, TSelect, TInsert>,
   ) => Promise<TSelect>;
 
   /**
@@ -293,29 +316,27 @@ export interface CrudMiddleware<
    * existing: 更新前的记录
    */
   update?: (
-    params: UpdateMiddlewareParams<TContext, TSelect, TUpdate>
+    params: UpdateMiddlewareParams<TContext, TSelect, TUpdate>,
   ) => Promise<TSelect>;
 
   /**
    * 删除包装器
    * existing: 删除前的记录
    */
-  delete?: (
-    params: DeleteMiddlewareParams<TContext, TSelect>
-  ) => Promise<TSelect>;
+  delete?: (params: DeleteMiddlewareParams<TContext, TSelect>) => Promise<TSelect>;
 
   /**
    * 批量删除包装器
    */
   deleteMany?: (
-    params: DeleteManyMiddlewareParams<TContext>
+    params: DeleteManyMiddlewareParams<TContext>,
   ) => Promise<{ deleted: number }>;
 
   /**
    * 批量更新包装器
    */
   updateMany?: (
-    params: UpdateManyMiddlewareParams<TContext, TUpdate>
+    params: UpdateManyMiddlewareParams<TContext, TUpdate>,
   ) => Promise<{ updated: number }>;
 
   /**
@@ -323,7 +344,7 @@ export interface CrudMiddleware<
    * isNew: 是否为新建（冲突检测后）
    */
   upsert?: (
-    params: UpsertMiddlewareParams<TContext, TSelect, TInsert>
+    params: UpsertMiddlewareParams<TContext, TSelect, TInsert>,
   ) => Promise<{ data: TSelect; isNew: boolean }>;
 
   /**
@@ -331,22 +352,20 @@ export interface CrudMiddleware<
    * 可用于审计日志、限流、异步队列调度
    */
   export?: (
-    params: ExportMiddlewareParams<TContext, TSelect>
+    params: ExportMiddlewareParams<TContext, TSelect, TExportInput>,
   ) => Promise<ExportResult<TSelect>>;
 
   /**
    * 导入包装器
    * 可用于审计日志、限流、异步队列调度
    */
-  import?: (
-    params: ImportMiddlewareParams<TContext>
-  ) => Promise<ImportResult>;
+  import?: (params: ImportMiddlewareParams<TContext>) => Promise<ImportResult>;
 
   /**
    * 批量创建包装器
    */
   createMany?: (
-    params: CreateManyMiddlewareParams<TContext, TSelect, TInsert>
+    params: CreateManyMiddlewareParams<TContext, TSelect, TInsert>,
   ) => Promise<{ created: TSelect[]; count: number }>;
 }
 
@@ -449,6 +468,9 @@ export interface CrudRouterConfig<
   TSelect = unknown,
   TInsert = unknown,
   TUpdate = unknown,
+  TListInput extends ListInput = ListInput,
+  TGetInput extends GetInput = GetInput,
+  TExportInput extends ExportInput = ExportInput,
 > {
   // ========== 必填配置 ==========
 
@@ -489,6 +511,36 @@ export interface CrudRouterConfig<
   selectSchema?: z.ZodType<TSelect>;
 
   /**
+   * 列表查询输入 Schema（可选）
+   * - 默认使用内置基础列表输入：page、perPage、sort、filters、joinOperator
+   * - 业务侧可以基于 baseListInputSchema.extend(...) 增加自定义参数
+   * - 默认查询逻辑只读取基础字段，额外字段会保留给 middleware.list 使用
+   *
+   * @example
+   * listInputSchema: baseListInputSchema.extend({
+   *   include: z.object({ skus: z.boolean().optional() }).optional(),
+   * })
+   */
+  listInputSchema?: z.ZodType<TListInput>;
+
+  /**
+   * 单条查询输入 Schema（可选）
+   * - 默认兼容 get(id) 和 get({ id })
+   * - 业务侧可以基于 baseGetInputSchema.extend(...) 增加 include 等控制参数
+   * - 配置后仍保留 get(id) 字符串调用兼容性
+   * - 默认查询逻辑只读取 id，额外字段会保留给 middleware.get 使用
+   */
+  getInputSchema?: z.ZodType<Extract<TGetInput, { id: string }>>;
+
+  /**
+   * 导出查询输入 Schema（可选）
+   * - 默认使用内置基础导出输入：sort、filters、joinOperator、limit
+   * - 业务侧可以基于 baseExportInputSchema.extend(...) 增加自定义参数
+   * - 默认查询逻辑只读取基础字段，额外字段会保留给 middleware.export 使用
+   */
+  exportInputSchema?: z.ZodType<TExportInput>;
+
+  /**
    * Procedure 配置（统一字段）
    *
    * 支持三种形式：
@@ -509,10 +561,7 @@ export interface CrudRouterConfig<
    * @example
    * guard: (ctx, op) => op === 'delete' ? ctx.user.role === 'admin' : true
    */
-  guard?: (
-    ctx: TContext,
-    operation: CrudOperation
-  ) => boolean | Promise<boolean>;
+  guard?: (ctx: TContext, operation: CrudOperation) => boolean | Promise<boolean>;
 
   /**
    * 行级过滤（RLS）
@@ -521,11 +570,7 @@ export interface CrudRouterConfig<
    * @example
    * scope: (ctx, table) => eq(table.tenantId, ctx.user.tenantId)
    */
-  scope?: (
-    ctx: TContext,
-    table: PgTable,
-    operation: CrudOperation
-  ) => SQL | undefined;
+  scope?: (ctx: TContext, table: PgTable, operation: CrudOperation) => SQL | undefined;
 
   /**
    * 强制注入字段（写入时）
@@ -534,10 +579,7 @@ export interface CrudRouterConfig<
    * @example
    * inject: (ctx) => ({ tenantId: ctx.user.tenantId, createdBy: ctx.user.id })
    */
-  inject?: (
-    ctx: TContext,
-    operation: WriteOperation
-  ) => Record<string, unknown>;
+  inject?: (ctx: TContext, operation: WriteOperation) => Record<string, unknown>;
 
   /**
    * 资源级检查（ABAC）
@@ -549,7 +591,7 @@ export interface CrudRouterConfig<
   authorize?: (
     ctx: TContext,
     resource: TSelect,
-    operation: CrudOperation
+    operation: CrudOperation,
   ) => boolean | Promise<boolean>;
 
   // ========== 其他配置 ==========
@@ -623,7 +665,15 @@ export interface CrudRouterConfig<
    *   }),
    * }
    */
-  middleware?: CrudMiddleware<TContext, TSelect, TInsert, TUpdate>;
+  middleware?: CrudMiddleware<
+    TContext,
+    TSelect,
+    TInsert,
+    TUpdate,
+    TListInput,
+    TGetInput,
+    TExportInput
+  >;
 }
 
 // ============================================================

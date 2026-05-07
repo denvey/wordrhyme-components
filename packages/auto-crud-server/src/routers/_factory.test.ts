@@ -1,7 +1,12 @@
-import { describe, it, expect, vi } from "vitest";
-import { z } from "zod";
-import { createCrudRouter } from "./_factory";
-import type { CrudRouterConfig } from "../types/config";
+import { describe, it, expect, vi } from 'vitest';
+import { z } from 'zod';
+import {
+  baseExportInputSchema,
+  baseGetInputSchema,
+  baseListInputSchema,
+  createCrudRouter,
+} from './_factory';
+import type { CrudRouterConfig } from '../types/config';
 
 // ============================================================
 // Mock 数据和 Schema
@@ -10,7 +15,7 @@ import type { CrudRouterConfig } from "../types/config";
 const taskSchema = z.object({
   id: z.string(),
   title: z.string(),
-  status: z.enum(["todo", "done"]),
+  status: z.enum(['todo', 'done']),
   createdAt: z.date().optional(),
 });
 
@@ -21,12 +26,20 @@ const insertTaskSchema = taskSchema.omit({ id: true, createdAt: true }).extend({
 const updateTaskSchema = taskSchema.partial().omit({ id: true, createdAt: true });
 
 type Task = z.infer<typeof taskSchema>;
+type ListCaller = {
+  list: (input: Record<string, unknown>) => Promise<any>;
+};
+type CrudCaller = {
+  export: (input: Record<string, unknown>) => Promise<any>;
+  get: (input: string | Record<string, unknown>) => Promise<any>;
+  list: (input: Record<string, unknown>) => Promise<any>;
+};
 
 // Mock 数据库
 function createMockDb() {
   const data: Task[] = [
-    { id: "1", title: "Task 1", status: "todo", createdAt: new Date() },
-    { id: "2", title: "Task 2", status: "done", createdAt: new Date() },
+    { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+    { id: '2', title: 'Task 2', status: 'done', createdAt: new Date() },
   ];
 
   return {
@@ -38,7 +51,9 @@ function createMockDb() {
     })),
     insert: vi.fn().mockReturnThis(),
     values: vi.fn().mockReturnThis(),
-    returning: vi.fn().mockImplementation(() => [{ id: "new-id", title: "New Task", status: "todo" }]),
+    returning: vi
+      .fn()
+      .mockImplementation(() => [{ id: 'new-id', title: 'New Task', status: 'todo' }]),
     update: vi.fn().mockReturnThis(),
     set: vi.fn().mockReturnThis(),
     delete: vi.fn().mockReturnThis(),
@@ -50,12 +65,53 @@ function createMockDb() {
   };
 }
 
+function createListMockDb(rows: Task[]) {
+  const createSelectBuilder = (getRows: () => unknown[]) => {
+    let limitValue: number | undefined;
+    let offsetValue = 0;
+
+    const builder = {
+      from: vi.fn(() => builder),
+      where: vi.fn(() => builder),
+      $dynamic: vi.fn(() => builder),
+      orderBy: vi.fn(() => builder),
+      limit: vi.fn((value: number) => {
+        limitValue = value;
+        return builder;
+      }),
+      offset: vi.fn((value: number) => {
+        offsetValue = value;
+        return builder;
+      }),
+      then: (resolve: (value: unknown[]) => void, reject: (reason: unknown) => void) => {
+        const result = getRows();
+        const paged =
+          limitValue === undefined
+            ? result
+            : result.slice(offsetValue, offsetValue + limitValue);
+        return Promise.resolve(paged).then(resolve, reject);
+      },
+    };
+
+    return builder;
+  };
+
+  return {
+    select: vi.fn((selection?: Record<string, unknown>) => {
+      if (selection && 'count' in selection) {
+        return createSelectBuilder(() => [{ count: rows.length }]);
+      }
+      return createSelectBuilder(() => rows);
+    }),
+  };
+}
+
 // Mock table
 const mockTable = {
-  id: { name: "id" },
-  title: { name: "title" },
-  status: { name: "status" },
-  deletedAt: { name: "deletedAt" },
+  id: { name: 'id' },
+  title: { name: 'title' },
+  status: { name: 'status' },
+  deletedAt: { name: 'deletedAt' },
 } as any;
 
 // Mock procedure
@@ -70,9 +126,9 @@ const mockProcedure = {
 // 测试套件
 // ============================================================
 
-describe("createCrudRouter", () => {
-  describe("基础配置", () => {
-    it("should create router with all 8 CRUD procedures", () => {
+describe('createCrudRouter', () => {
+  describe('基础配置', () => {
+    it('should create router with all 8 CRUD procedures', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -82,15 +138,15 @@ describe("createCrudRouter", () => {
       const router = createCrudRouter(config);
 
       // 验证返回的 router 有 procedures 属性
-      expect(router).toHaveProperty("procedures");
-      expect(router.procedures).toHaveProperty("list");
-      expect(router.procedures).toHaveProperty("get");
-      expect(router.procedures).toHaveProperty("create");
-      expect(router.procedures).toHaveProperty("update");
-      expect(router.procedures).toHaveProperty("delete");
-      expect(router.procedures).toHaveProperty("deleteMany");
-      expect(router.procedures).toHaveProperty("updateMany");
-      expect(router.procedures).toHaveProperty("upsert");
+      expect(router).toHaveProperty('procedures');
+      expect(router.procedures).toHaveProperty('list');
+      expect(router.procedures).toHaveProperty('get');
+      expect(router.procedures).toHaveProperty('create');
+      expect(router.procedures).toHaveProperty('update');
+      expect(router.procedures).toHaveProperty('delete');
+      expect(router.procedures).toHaveProperty('deleteMany');
+      expect(router.procedures).toHaveProperty('updateMany');
+      expect(router.procedures).toHaveProperty('upsert');
     });
 
     it("should use default idField as 'id'", () => {
@@ -104,20 +160,20 @@ describe("createCrudRouter", () => {
       expect(() => createCrudRouter(config)).not.toThrow();
     });
 
-    it("should accept custom idField", () => {
+    it('should accept custom idField', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
         updateSchema: updateTaskSchema,
-        idField: "customId",
+        idField: 'customId',
       };
 
       expect(() => createCrudRouter(config)).not.toThrow();
     });
   });
 
-  describe("统一 procedure 配置（v2.0）", () => {
-    it("should work without procedure config (default)", () => {
+  describe('统一 procedure 配置（v2.0）', () => {
+    it('should work without procedure config (default)', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -128,7 +184,7 @@ describe("createCrudRouter", () => {
       expect(router.procedures).toBeDefined();
     });
 
-    it("should work with single procedure", () => {
+    it('should work with single procedure', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -140,7 +196,7 @@ describe("createCrudRouter", () => {
       expect(router.procedures).toBeDefined();
     });
 
-    it("should work with procedure map", () => {
+    it('should work with procedure map', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -157,7 +213,7 @@ describe("createCrudRouter", () => {
       expect(router.procedures).toBeDefined();
     });
 
-    it("should work with procedure factory", () => {
+    it('should work with procedure factory', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -169,7 +225,7 @@ describe("createCrudRouter", () => {
       expect(router.procedures).toBeDefined();
     });
 
-    it("should combine procedure with guard/scope/authorize", () => {
+    it('should combine procedure with guard/scope/authorize', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -188,8 +244,8 @@ describe("createCrudRouter", () => {
     });
   });
 
-  describe("软删除配置", () => {
-    it("should accept softDelete: true", () => {
+  describe('软删除配置', () => {
+    it('should accept softDelete: true', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -200,24 +256,24 @@ describe("createCrudRouter", () => {
       expect(() => createCrudRouter(config)).not.toThrow();
     });
 
-    it("should accept softDelete as string (column name)", () => {
+    it('should accept softDelete as string (column name)', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
         updateSchema: updateTaskSchema,
-        softDelete: "deletedAt",
+        softDelete: 'deletedAt',
       };
 
       expect(() => createCrudRouter(config)).not.toThrow();
     });
 
-    it("should accept softDelete as full config", () => {
+    it('should accept softDelete as full config', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
         updateSchema: updateTaskSchema,
         softDelete: {
-          column: "isDeleted",
+          column: 'isDeleted',
           value: () => true,
         },
       };
@@ -226,8 +282,8 @@ describe("createCrudRouter", () => {
     });
   });
 
-  describe("Middleware 配置", () => {
-    it("should accept middleware config", () => {
+  describe('Middleware 配置', () => {
+    it('should accept middleware config', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -240,7 +296,7 @@ describe("createCrudRouter", () => {
       expect(() => createCrudRouter(config)).not.toThrow();
     });
 
-    it("should accept all middleware hooks", () => {
+    it('should accept all middleware hooks', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -261,8 +317,316 @@ describe("createCrudRouter", () => {
     });
   });
 
-  describe("批量操作配置", () => {
-    it("should accept maxBatchSize config", () => {
+  describe('可扩展 list 输入', () => {
+    it('should keep default list input behavior without custom listInputSchema', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+        { id: '2', title: 'Task 2', status: 'done', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      const result = await caller.list({ page: 1, perPage: 1 });
+
+      expect(result).toMatchObject({
+        total: 2,
+        page: 1,
+        perPage: 1,
+        pageCount: 2,
+      });
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]?.id).toBe('1');
+    });
+
+    it('should pass extended list input into list middleware', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const productListInputSchema = baseListInputSchema.extend({
+        include: z
+          .object({
+            skus: z.boolean().optional(),
+          })
+          .optional(),
+      });
+      type ProductListInput = z.infer<typeof productListInputSchema>;
+      let middlewareInput: ProductListInput | undefined;
+
+      const crudRouter = createCrudRouter<
+        typeof mockTable,
+        { db: any },
+        Task,
+        z.infer<typeof insertTaskSchema>,
+        z.infer<typeof updateTaskSchema>,
+        ProductListInput
+      >({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        listInputSchema: productListInputSchema,
+        middleware: {
+          list: async ({ input, next }) => {
+            middlewareInput = input;
+            return next(input);
+          },
+        },
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({ page: 1, perPage: 10, include: { skus: true } });
+
+      expect(middlewareInput?.include?.skus).toBe(true);
+    });
+
+    it('should let next(input) reuse default pagination and count logic', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+        { id: '2', title: 'Task 2', status: 'done', createdAt: new Date() },
+        { id: '3', title: 'Task 3', status: 'todo', createdAt: new Date() },
+      ]);
+      const productListInputSchema = baseListInputSchema.extend({
+        include: z.object({ skus: z.boolean().optional() }).optional(),
+      });
+
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        listInputSchema: productListInputSchema,
+        middleware: {
+          list: async ({ input, next }) => {
+            if (input.include?.skus) {
+              return next(input);
+            }
+            return next(input);
+          },
+        },
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      const result = await caller.list({
+        page: 2,
+        perPage: 1,
+        include: { skus: true },
+      });
+
+      expect(result).toMatchObject({
+        total: 3,
+        page: 2,
+        perPage: 1,
+        pageCount: 3,
+      });
+      expect(result.data).toHaveLength(1);
+      expect(result.data[0]?.id).toBe('2');
+    });
+
+    it('should ignore extended fields in the default list query', async () => {
+      const rows: Task[] = [
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+        { id: '2', title: 'Task 2', status: 'done', createdAt: new Date() },
+      ];
+      const productListInputSchema = baseListInputSchema.extend({
+        include: z.object({ skus: z.boolean().optional() }).optional(),
+      });
+      const createRouter = () =>
+        createCrudRouter({
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          selectSchema: taskSchema,
+          listInputSchema: productListInputSchema,
+        });
+
+      const withIncludeCaller = createRouter().createCaller({
+        db: createListMockDb(rows),
+      } as any) as ListCaller;
+      const withoutIncludeCaller = createRouter().createCaller({
+        db: createListMockDb(rows),
+      } as any) as ListCaller;
+
+      const withInclude = await withIncludeCaller.list({
+        page: 1,
+        perPage: 2,
+        include: { skus: true },
+      });
+      const withoutInclude = await withoutIncludeCaller.list({
+        page: 1,
+        perPage: 2,
+      });
+
+      expect(withInclude).toEqual(withoutInclude);
+    });
+  });
+
+  describe('可扩展 get 输入', () => {
+    it('should keep string id get input behavior without custom getInputSchema', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as CrudCaller;
+      const result = await caller.get('1');
+
+      expect(result).toMatchObject({ id: '1', title: 'Task 1' });
+    });
+
+    it('should pass extended get input into get middleware', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const productGetInputSchema = baseGetInputSchema.extend({
+        include: z.object({ skus: z.boolean().optional() }).optional(),
+      });
+      type ProductGetInput = string | z.infer<typeof productGetInputSchema>;
+      let middlewareInput: ProductGetInput | undefined;
+
+      const crudRouter = createCrudRouter<
+        typeof mockTable,
+        { db: any },
+        Task,
+        z.infer<typeof insertTaskSchema>,
+        z.infer<typeof updateTaskSchema>,
+        z.infer<typeof baseListInputSchema>,
+        ProductGetInput
+      >({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        getInputSchema: productGetInputSchema,
+        middleware: {
+          get: async ({ id, input, next }) => {
+            expect(id).toBe('1');
+            middlewareInput = input;
+            return next(input);
+          },
+        },
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as CrudCaller;
+      const stringResult = await caller.get('1');
+      const result = await caller.get({ id: '1', include: { skus: true } });
+
+      expect(stringResult).toMatchObject({ id: '1' });
+      expect(result).toMatchObject({ id: '1' });
+      expect(
+        typeof middlewareInput === 'string' ? undefined : middlewareInput?.include?.skus,
+      ).toBe(true);
+    });
+  });
+
+  describe('可扩展 export 输入', () => {
+    it('should keep default export input behavior without custom exportInputSchema', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+        { id: '2', title: 'Task 2', status: 'done', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as CrudCaller;
+      const result = await caller.export({ limit: 1 });
+
+      expect(result).toMatchObject({
+        total: 2,
+        hasMore: true,
+      });
+      expect(result.data).toHaveLength(1);
+    });
+
+    it('should pass extended export input into export middleware', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const productExportInputSchema = baseExportInputSchema.extend({
+        format: z.enum(['csv', 'xlsx']).optional(),
+      });
+      type ProductExportInput = z.infer<typeof productExportInputSchema>;
+      let middlewareInput: ProductExportInput | undefined;
+
+      const crudRouter = createCrudRouter<
+        typeof mockTable,
+        { db: any },
+        Task,
+        z.infer<typeof insertTaskSchema>,
+        z.infer<typeof updateTaskSchema>,
+        z.infer<typeof baseListInputSchema>,
+        string,
+        ProductExportInput
+      >({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        exportInputSchema: productExportInputSchema,
+        middleware: {
+          export: async ({ input, next }) => {
+            middlewareInput = input;
+            return next(input);
+          },
+        },
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as CrudCaller;
+      const result = await caller.export({ limit: 10, format: 'xlsx' });
+
+      expect(result).toMatchObject({ total: 1, hasMore: false });
+      expect(middlewareInput?.format).toBe('xlsx');
+    });
+
+    it('should ignore extended fields in the default export query', async () => {
+      const rows: Task[] = [
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+        { id: '2', title: 'Task 2', status: 'done', createdAt: new Date() },
+      ];
+      const productExportInputSchema = baseExportInputSchema.extend({
+        format: z.enum(['csv', 'xlsx']).optional(),
+      });
+      const createRouter = () =>
+        createCrudRouter({
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          selectSchema: taskSchema,
+          exportInputSchema: productExportInputSchema,
+        });
+
+      const withFormatCaller = createRouter().createCaller({
+        db: createListMockDb(rows),
+      } as any) as CrudCaller;
+      const withoutFormatCaller = createRouter().createCaller({
+        db: createListMockDb(rows),
+      } as any) as CrudCaller;
+
+      const withFormat = await withFormatCaller.export({
+        limit: 1,
+        format: 'csv',
+      });
+      const withoutFormat = await withoutFormatCaller.export({ limit: 1 });
+
+      expect(withFormat).toEqual(withoutFormat);
+    });
+  });
+
+  describe('批量操作配置', () => {
+    it('should accept maxBatchSize config', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -273,7 +637,7 @@ describe("createCrudRouter", () => {
       expect(() => createCrudRouter(config)).not.toThrow();
     });
 
-    it("should use default maxBatchSize of 100", () => {
+    it('should use default maxBatchSize of 100', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
@@ -285,24 +649,24 @@ describe("createCrudRouter", () => {
     });
   });
 
-  describe("列白名单配置", () => {
-    it("should accept filterableColumns config", () => {
+  describe('列白名单配置', () => {
+    it('should accept filterableColumns config', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
         updateSchema: updateTaskSchema,
-        filterableColumns: ["title", "status"],
+        filterableColumns: ['title', 'status'],
       };
 
       expect(() => createCrudRouter(config)).not.toThrow();
     });
 
-    it("should accept sortableColumns config", () => {
+    it('should accept sortableColumns config', () => {
       const config: CrudRouterConfig = {
         table: mockTable,
         schema: insertTaskSchema,
         updateSchema: updateTaskSchema,
-        sortableColumns: ["title", "createdAt"],
+        sortableColumns: ['title', 'createdAt'],
       };
 
       expect(() => createCrudRouter(config)).not.toThrow();

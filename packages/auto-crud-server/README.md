@@ -52,20 +52,24 @@ yarn add @wordrhyme/auto-crud-server
 
 ```typescript
 // src/db/schema.ts
-import { pgTable, varchar, real, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, varchar, real, boolean, timestamp } from 'drizzle-orm/pg-core';
 
-export const tasks = pgTable("tasks", {
-  id: varchar("id", { length: 30 }).primaryKey(),
-  title: varchar("title", { length: 128 }).notNull(),
-  status: varchar("status", {
-    enum: ["todo", "in-progress", "done", "canceled"],
-  }).notNull().default("todo"),
-  priority: varchar("priority", {
-    enum: ["low", "medium", "high"],
-  }).notNull().default("low"),
-  estimatedHours: real("estimated_hours").default(0),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+export const tasks = pgTable('tasks', {
+  id: varchar('id', { length: 30 }).primaryKey(),
+  title: varchar('title', { length: 128 }).notNull(),
+  status: varchar('status', {
+    enum: ['todo', 'in-progress', 'done', 'canceled'],
+  })
+    .notNull()
+    .default('todo'),
+  priority: varchar('priority', {
+    enum: ['low', 'medium', 'high'],
+  })
+    .notNull()
+    .default('low'),
+  estimatedHours: real('estimated_hours').default(0),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
 });
 ```
 
@@ -73,8 +77,8 @@ export const tasks = pgTable("tasks", {
 
 ```typescript
 // src/server/routers/tasks.ts
-import { createCrudRouter } from "@wordrhyme/auto-crud-server";
-import { tasks } from "@/db/schema";
+import { createCrudRouter } from '@wordrhyme/auto-crud-server';
+import { tasks } from '@/db/schema';
 
 // 🚀 零配置！一行代码生成完整 CRUD 路由
 export const tasksRouter = createCrudRouter({
@@ -86,9 +90,9 @@ export const tasksRouter = createCrudRouter({
 **或者，显式传入 Schema：**
 
 ```typescript
-import { createCrudRouter } from "@wordrhyme/auto-crud-server";
-import { tasks } from "@/db/schema";
-import { createSelectSchema } from "drizzle-zod";
+import { createCrudRouter } from '@wordrhyme/auto-crud-server';
+import { tasks } from '@/db/schema';
+import { createSelectSchema } from 'drizzle-zod';
 
 // 从 Drizzle Schema 自动生成 Zod Schema
 const taskSchema = createSelectSchema(tasks).omit({
@@ -99,7 +103,7 @@ const taskSchema = createSelectSchema(tasks).omit({
 
 export const tasksRouter = createCrudRouter({
   table: tasks,
-  schema: taskSchema,  // 主 Schema（用于 create/upsert）
+  schema: taskSchema, // 主 Schema（用于 create/upsert）
   // updateSchema 自动派生为 schema.partial()
 });
 ```
@@ -108,8 +112,8 @@ export const tasksRouter = createCrudRouter({
 
 ```typescript
 // src/server/routers/index.ts
-import { router } from "../trpc";
-import { tasksRouter } from "./tasks";
+import { router } from '../trpc';
+import { tasksRouter } from './tasks';
 
 export const appRouter = router({
   tasks: tasksRouter,
@@ -122,13 +126,13 @@ export type AppRouter = typeof appRouter;
 
 ```typescript
 // src/app/api/trpc/[trpc]/route.ts (Next.js App Router)
-import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { appRouter } from "@/server/routers";
-import { db } from "@/db";
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
+import { appRouter } from '@/server/routers';
+import { db } from '@/db';
 
 const handler = (req: Request) =>
   fetchRequestHandler({
-    endpoint: "/api/trpc",
+    endpoint: '/api/trpc',
     req,
     router: appRouter,
     createContext: () => ({ db }),
@@ -146,6 +150,7 @@ export { handler as GET, handler as POST };
 ### 1. `list` - 列表查询
 
 **输入**:
+
 ```typescript
 {
   page: number;           // 页码（从 1 开始）
@@ -165,6 +170,7 @@ export { handler as GET, handler as POST };
 ```
 
 **输出**:
+
 ```typescript
 {
   data: Task[];           // 数据列表
@@ -173,117 +179,138 @@ export { handler as GET, handler as POST };
 ```
 
 **示例**:
+
 ```typescript
 const result = await trpc.tasks.list({
   page: 1,
   perPage: 10,
-  sort: [{ id: "createdAt", desc: true }],
+  sort: [{ id: 'createdAt', desc: true }],
   filters: [
-    { id: "status", value: "done", operator: "eq", variant: "select" },
-    { id: "priority", value: "high", operator: "eq", variant: "select" },
+    { id: 'status', value: 'done', operator: 'eq', variant: 'select' },
+    { id: 'priority', value: 'high', operator: 'eq', variant: 'select' },
   ],
-  joinOperator: "and",
+  joinOperator: 'and',
 });
 ```
 
 ### 2. `get` - 单条查询
 
 **输入**:
+
 ```typescript
-{ id: string }
+{
+  id: string;
+}
 ```
 
 **输出**:
+
 ```typescript
-Task
+Task;
 ```
 
 **示例**:
+
 ```typescript
-const task = await trpc.tasks.get({ id: "123" });
+const task = await trpc.tasks.get({ id: '123' });
 ```
 
 ### 3. `create` - 创建
 
 **输入**:
+
 ```typescript
-Omit<Task, "id" | "createdAt" | "updatedAt">
+Omit<Task, 'id' | 'createdAt' | 'updatedAt'>;
 ```
 
 **输出**:
+
 ```typescript
-Task
+Task;
 ```
 
 **示例**:
+
 ```typescript
 const newTask = await trpc.tasks.create({
-  title: "New Task",
-  status: "todo",
-  priority: "high",
+  title: 'New Task',
+  status: 'todo',
+  priority: 'high',
 });
 ```
 
 ### 4. `update` - 更新
 
 **输入**:
+
 ```typescript
 {
   id: string;
-  data: Partial<Omit<Task, "id" | "createdAt" | "updatedAt">>;
+  data: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>;
 }
 ```
 
 **输出**:
+
 ```typescript
-Task
+Task;
 ```
 
 **示例**:
+
 ```typescript
 const updatedTask = await trpc.tasks.update({
-  id: "123",
-  data: { status: "done" },
+  id: '123',
+  data: { status: 'done' },
 });
 ```
 
 ### 5. `delete` - 删除
 
 **输入**:
+
 ```typescript
-{ id: string }
+{
+  id: string;
+}
 ```
 
 **输出**:
+
 ```typescript
 void
 ```
 
 **示例**:
+
 ```typescript
-await trpc.tasks.delete({ id: "123" });
+await trpc.tasks.delete({ id: '123' });
 ```
 
 ### 6. `deleteMany` - 批量删除
 
 **输入**:
+
 ```typescript
 { ids: string[] }
 ```
 
 **输出**:
+
 ```typescript
 void
 ```
 
 **示例**:
+
 ```typescript
-await trpc.tasks.deleteMany({ ids: ["1", "2", "3"] });
+await trpc.tasks.deleteMany({ ids: ['1', '2', '3'] });
 ```
 
 ### 7. `updateMany` - 批量更新
 
 **输入**:
+
 ```typescript
 {
   ids: string[];
@@ -292,50 +319,58 @@ await trpc.tasks.deleteMany({ ids: ["1", "2", "3"] });
 ```
 
 **输出**:
+
 ```typescript
-{ updated: number }
+{
+  updated: number;
+}
 ```
 
 **示例**:
+
 ```typescript
 await trpc.tasks.updateMany({
-  ids: ["1", "2", "3"],
-  data: { status: "done" },
+  ids: ['1', '2', '3'],
+  data: { status: 'done' },
 });
 ```
 
 ### 8. `upsert` - 存在则更新，不存在则创建
 
 **输入**:
+
 ```typescript
-Omit<Task, "createdAt" | "updatedAt">  // 需要包含 id
+Omit<Task, 'createdAt' | 'updatedAt'>; // 需要包含 id
 ```
 
 **输出**:
+
 ```typescript
 {
-  data: Task;       // 创建或更新后的记录
-  isNew: boolean;   // true = 新建, false = 更新
+  data: Task; // 创建或更新后的记录
+  isNew: boolean; // true = 新建, false = 更新
 }
 ```
 
 **示例**:
+
 ```typescript
 // 如果 id="123" 存在则更新，不存在则创建
 const { data, isNew } = await trpc.tasks.upsert({
-  id: "123",
-  title: "My Task",
-  status: "todo",
+  id: '123',
+  title: 'My Task',
+  status: 'todo',
 });
 
 if (isNew) {
-  console.log("Created new task");
+  console.log('Created new task');
 } else {
-  console.log("Updated existing task");
+  console.log('Updated existing task');
 }
 ```
 
 **适用场景**：
+
 - 同步外部数据
 - 幂等导入
 - 配置项更新
@@ -346,21 +381,21 @@ if (isNew) {
 
 ### 支持的操作符
 
-| 操作符 | 说明 | 示例 |
-|--------|------|------|
-| `eq` | 等于 | `status = "done"` |
-| `ne` | 不等于 | `status != "canceled"` |
-| `gt` | 大于 | `estimatedHours > 5` |
-| `gte` | 大于等于 | `estimatedHours >= 5` |
-| `lt` | 小于 | `estimatedHours < 10` |
-| `lte` | 小于等于 | `estimatedHours <= 10` |
-| `like` | 包含 | `title LIKE "%bug%"` |
-| `notLike` | 不包含 | `title NOT LIKE "%test%"` |
-| `in` | 在列表中 | `status IN ["todo", "in-progress"]` |
-| `notIn` | 不在列表中 | `status NOT IN ["canceled"]` |
-| `between` | 范围 | `createdAt BETWEEN "2024-01-01" AND "2024-12-31"` |
-| `isNull` | 为空 | `description IS NULL` |
-| `isNotNull` | 不为空 | `description IS NOT NULL` |
+| 操作符      | 说明       | 示例                                              |
+| ----------- | ---------- | ------------------------------------------------- |
+| `eq`        | 等于       | `status = "done"`                                 |
+| `ne`        | 不等于     | `status != "canceled"`                            |
+| `gt`        | 大于       | `estimatedHours > 5`                              |
+| `gte`       | 大于等于   | `estimatedHours >= 5`                             |
+| `lt`        | 小于       | `estimatedHours < 10`                             |
+| `lte`       | 小于等于   | `estimatedHours <= 10`                            |
+| `like`      | 包含       | `title LIKE "%bug%"`                              |
+| `notLike`   | 不包含     | `title NOT LIKE "%test%"`                         |
+| `in`        | 在列表中   | `status IN ["todo", "in-progress"]`               |
+| `notIn`     | 不在列表中 | `status NOT IN ["canceled"]`                      |
+| `between`   | 范围       | `createdAt BETWEEN "2024-01-01" AND "2024-12-31"` |
+| `isNull`    | 为空       | `description IS NULL`                             |
+| `isNotNull` | 不为空     | `description IS NOT NULL`                         |
 
 ### 过滤示例
 
@@ -370,9 +405,7 @@ if (isNew) {
 await trpc.tasks.list({
   page: 1,
   perPage: 10,
-  filters: [
-    { id: "status", value: "done", operator: "eq", variant: "select" },
-  ],
+  filters: [{ id: 'status', value: 'done', operator: 'eq', variant: 'select' }],
 });
 ```
 
@@ -383,10 +416,10 @@ await trpc.tasks.list({
   page: 1,
   perPage: 10,
   filters: [
-    { id: "status", value: "done", operator: "eq", variant: "select" },
-    { id: "priority", value: "high", operator: "eq", variant: "select" },
+    { id: 'status', value: 'done', operator: 'eq', variant: 'select' },
+    { id: 'priority', value: 'high', operator: 'eq', variant: 'select' },
   ],
-  joinOperator: "and",  // status = "done" AND priority = "high"
+  joinOperator: 'and', // status = "done" AND priority = "high"
 });
 ```
 
@@ -397,10 +430,10 @@ await trpc.tasks.list({
   page: 1,
   perPage: 10,
   filters: [
-    { id: "status", value: "todo", operator: "eq", variant: "select" },
-    { id: "status", value: "in-progress", operator: "eq", variant: "select" },
+    { id: 'status', value: 'todo', operator: 'eq', variant: 'select' },
+    { id: 'status', value: 'in-progress', operator: 'eq', variant: 'select' },
   ],
-  joinOperator: "or",  // status = "todo" OR status = "in-progress"
+  joinOperator: 'or', // status = "todo" OR status = "in-progress"
 });
 ```
 
@@ -412,10 +445,10 @@ await trpc.tasks.list({
   perPage: 10,
   filters: [
     {
-      id: "createdAt",
-      value: ["2024-01-01", "2024-12-31"],
-      operator: "between",
-      variant: "dateRange",
+      id: 'createdAt',
+      value: ['2024-01-01', '2024-12-31'],
+      operator: 'between',
+      variant: 'dateRange',
     },
   ],
 });
@@ -427,9 +460,7 @@ await trpc.tasks.list({
 await trpc.tasks.list({
   page: 1,
   perPage: 10,
-  filters: [
-    { id: "title", value: "bug", operator: "like", variant: "text" },
-  ],
+  filters: [{ id: 'title', value: 'bug', operator: 'like', variant: 'text' }],
 });
 ```
 
@@ -446,25 +477,28 @@ await trpc.tasks.list({
 ```typescript
 interface CrudRouterConfig<TTable, TSelect, TInsert, TUpdate> {
   // ========== 必填 ==========
-  table: TTable;                    // Drizzle 表定义
+  table: TTable; // Drizzle 表定义
 
   // ========== Schema 配置（可选） ==========
-  schema?: z.ZodType<TInsert>;      // 主 Schema（用于 create/upsert）
-  updateSchema?: z.ZodType<TUpdate>;// 更新 Schema（覆盖自动派生）
-  selectSchema?: z.ZodType<TSelect>;// 查询返回 Schema
+  schema?: z.ZodType<TInsert>; // 主 Schema（用于 create/upsert）
+  updateSchema?: z.ZodType<TUpdate>; // 更新 Schema（覆盖自动派生）
+  selectSchema?: z.ZodType<TSelect>; // 查询返回 Schema
+  listInputSchema?: z.ZodType; // list 输入 Schema（可扩展）
+  getInputSchema?: z.ZodType; // get 输入 Schema（可扩展）
+  exportInputSchema?: z.ZodType; // export 输入 Schema（可扩展）
 
   // ========== 其他配置 ==========
-  idField?: string;                 // ID 字段名，默认 "id"
-  omitFields?: string[];            // 自动派生时排除的字段
-                                    // 默认 ["id", "createdAt", "updatedAt"]
+  idField?: string; // ID 字段名，默认 "id"
+  omitFields?: string[]; // 自动派生时排除的字段
+  // 默认 ["id", "createdAt", "updatedAt"]
 }
 ```
 
 #### Schema 派生规则
 
-| 配置 | 派生行为 |
-|-----|---------|
-| 无 `schema` | 从 `table` 自动派生，排除 `omitFields` |
+| 配置              | 派生行为                                    |
+| ----------------- | ------------------------------------------- |
+| 无 `schema`       | 从 `table` 自动派生，排除 `omitFields`      |
 | 无 `updateSchema` | 从 `schema.partial().refine(nonEmpty)` 派生 |
 | 无 `selectSchema` | 若有 `schema` 则使用它，否则从 `table` 派生 |
 
@@ -492,9 +526,120 @@ const usersRouter = createCrudRouter({
 // 4. 自定义排除字段
 const ordersRouter = createCrudRouter({
   table: orders,
-  omitFields: ["id", "createdAt", "updatedAt", "internalCode"],
+  omitFields: ['id', 'createdAt', 'updatedAt', 'internalCode'],
 });
 ```
+
+### 扩展读取输入
+
+默认 `list` 输入为 `baseListInputSchema`：
+
+```typescript
+{
+  page: number;
+  perPage: number;
+  sort?: Array<{ id: string; desc: boolean }>;
+  filters?: Array<FilterItem>;
+  joinOperator: "and" | "or";
+}
+```
+
+业务侧可以用 `baseListInputSchema.extend(...)` 增加自定义参数，不需要覆盖
+`list` procedure。默认查询逻辑仍只读取分页、排序、过滤和 `joinOperator`，
+额外字段会保留在 `middleware.list` 的 `input` 中。
+
+```typescript
+import { baseListInputSchema, createCrudRouter } from '@wordrhyme/auto-crud-server';
+import { z } from 'zod';
+
+const productsRouter = createCrudRouter({
+  table: shopProducts,
+  idField: 'spuId',
+  schema: createProductSchema,
+  updateSchema: updateProductSchema,
+  listInputSchema: baseListInputSchema.extend({
+    include: z
+      .object({
+        skus: z.boolean().optional(),
+      })
+      .optional(),
+  }),
+  middleware: {
+    list: async ({ ctx, input, next }) => {
+      const result = await next(input);
+      if (!input.include?.skus) return result;
+      return attachSkus(ctx, result);
+    },
+  },
+});
+
+// 调用方
+await trpc.products.list.query({
+  page: 1,
+  perPage: 20,
+  include: { skus: true },
+});
+```
+
+`get` 也可以扩展。默认仍兼容 `get("spu_1")`，业务侧如需详情页按需挂载关联数据，可以改成对象输入：
+
+```typescript
+import { baseGetInputSchema, createCrudRouter } from '@wordrhyme/auto-crud-server';
+import { z } from 'zod';
+
+const productsRouter = createCrudRouter({
+  table: shopProducts,
+  idField: 'spuId',
+  schema: createProductSchema,
+  updateSchema: updateProductSchema,
+  getInputSchema: baseGetInputSchema.extend({
+    include: z.object({ skus: z.boolean().optional() }).optional(),
+  }),
+  middleware: {
+    get: async ({ ctx, input, next }) => {
+      const product = await next(input);
+      if (!product || typeof input === 'string' || !input.include?.skus) {
+        return product;
+      }
+      return attachProductSkus(ctx, product);
+    },
+  },
+});
+
+await trpc.products.get.query({
+  id: 'spu_1',
+  include: { skus: true },
+});
+```
+
+`export` 支持同样的扩展方式，默认导出逻辑只读取 `sort`、`filters`、`joinOperator` 和 `limit`：
+
+```typescript
+import { baseExportInputSchema, createCrudRouter } from '@wordrhyme/auto-crud-server';
+import { z } from 'zod';
+
+const productsRouter = createCrudRouter({
+  table: shopProducts,
+  schema: createProductSchema,
+  updateSchema: updateProductSchema,
+  exportInputSchema: baseExportInputSchema.extend({
+    format: z.enum(['csv', 'xlsx']).optional(),
+  }),
+  middleware: {
+    export: async ({ input, next }) => {
+      const result = await next(input);
+      return input.format === 'xlsx' ? toXlsxExport(result) : result;
+    },
+  },
+});
+
+await trpc.products.export.query({
+  limit: 1000,
+  format: 'xlsx',
+});
+```
+
+写入类内置方法（`create`、`update`、`upsert`、`createMany`）不提供通用控制参数扩展；它们的输入字段会进入默认写入逻辑。需要 `dryRun`、`notify` 等控制参数时，建议单独设计 envelope 或自定义业务 procedure。
 
 #### 返回值
 
@@ -507,7 +652,7 @@ const ordersRouter = createCrudRouter({
   // 可 spread 的 procedures 对象（用于扩展自定义路由）
   procedures: {
     list: Procedure<ListInput, ListOutput>,
-    get: Procedure<string, TSelect>,
+    get: Procedure<string | { id: string, ...extra }, TSelect>,
     create: Procedure<TInsert, TSelect>,
     update: Procedure<{ id: string, data: TUpdate }, TSelect>,
     delete: Procedure<string, TSelect>,
@@ -525,18 +670,18 @@ const ordersRouter = createCrudRouter({
 ### 使用 procedure 配置
 
 ```typescript
-import { createCrudRouter } from "@wordrhyme/auto-crud-server";
-import { protectedProcedure, adminProcedure, publicProcedure } from "../trpc";
+import { createCrudRouter } from '@wordrhyme/auto-crud-server';
+import { protectedProcedure, adminProcedure, publicProcedure } from '../trpc';
 
 export const tasksRouter = createCrudRouter({
   table: tasks,
   // 按操作指定不同的 procedure
   procedure: {
-    list: publicProcedure,      // 公开读
+    list: publicProcedure, // 公开读
     get: publicProcedure,
     create: protectedProcedure, // 需要登录
     update: protectedProcedure,
-    delete: adminProcedure,     // 需要管理员
+    delete: adminProcedure, // 需要管理员
     default: protectedProcedure,
   },
 });
@@ -549,8 +694,8 @@ export const tasksRouter = createCrudRouter({
   table: tasks,
   guard: (ctx, operation) => {
     // 删除操作需要管理员权限
-    if (operation === "delete") {
-      return ctx.user.role === "admin";
+    if (operation === 'delete') {
+      return ctx.user.role === 'admin';
     }
     // 其他操作需要登录
     return !!ctx.user;
@@ -561,7 +706,7 @@ export const tasksRouter = createCrudRouter({
 ### 使用 scope（行级过滤 RLS）
 
 ```typescript
-import { eq } from "drizzle-orm";
+import { eq } from 'drizzle-orm';
 
 export const tasksRouter = createCrudRouter({
   table: tasks,
@@ -592,7 +737,7 @@ export const tasksRouter = createCrudRouter({
   // 写入时强制覆盖字段（防止伪造）
   inject: (ctx, operation) => ({
     tenantId: ctx.user.tenantId,
-    ...(operation === "create" ? { createdBy: ctx.user.id } : { updatedBy: ctx.user.id }),
+    ...(operation === 'create' ? { createdBy: ctx.user.id } : { updatedBy: ctx.user.id }),
   }),
 });
 ```
@@ -606,9 +751,9 @@ export const tasksRouter = createCrudRouter({
 使用 `.procedures` 属性 spread 出 CRUD 路由，然后添加自定义路由：
 
 ```typescript
-import { createCrudRouter, router } from "@wordrhyme/auto-crud-server";
-import { protectedProcedure } from "../trpc";
-import { z } from "zod";
+import { createCrudRouter, router } from '@wordrhyme/auto-crud-server';
+import { protectedProcedure } from '../trpc';
+import { z } from 'zod';
 
 // 创建基础 CRUD
 const tasksCrud = createCrudRouter({
@@ -623,20 +768,14 @@ export const tasksRouter = router({
   archive: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      return ctx.db
-        .update(tasks)
-        .set({ archived: true })
-        .where(eq(tasks.id, input.id));
+      return ctx.db.update(tasks).set({ archived: true }).where(eq(tasks.id, input.id));
     }),
 
   // 自定义路由：取消归档
   unarchive: protectedProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input, ctx }) => {
-      return ctx.db
-        .update(tasks)
-        .set({ archived: false })
-        .where(eq(tasks.id, input.id));
+      return ctx.db.update(tasks).set({ archived: false }).where(eq(tasks.id, input.id));
     }),
 });
 ```
@@ -659,27 +798,21 @@ export const appRouter = router({
 ### 自定义过滤逻辑
 
 ```typescript
-// 覆盖 list 路由，添加自定义过滤逻辑
-const tasksCrud = createCrudRouter({ table: tasks });
-
-export const tasksRouter = router({
-  ...tasksCrud.procedures,
-
-  // 覆盖 list，添加自定义逻辑
-  list: protectedProcedure
-    .input(listInputSchema)
-    .query(async ({ input, ctx }) => {
-      // 自定义过滤逻辑
-      const customFilters = input.filters?.map(filter => {
-        if (filter.id === "customField") {
-          return { ...filter, operator: "custom" };
+// 通过 middleware 调整输入，继续复用内置分页/排序/过滤/count/scope/guard
+const tasksCrud = createCrudRouter({
+  table: tasks,
+  middleware: {
+    list: async ({ input, next }) => {
+      const filters = input.filters?.map((filter) => {
+        if (filter.id === 'customField') {
+          return { ...filter, operator: 'custom' };
         }
         return filter;
       });
 
-      // 调用原始 list（需要手动实现或使用 db 查询）
-      return ctx.db.select().from(tasks).where(...);
-    }),
+      return next({ ...input, filters });
+    },
+  },
 });
 ```
 
@@ -692,7 +825,7 @@ export const tasksRouter = router({
 ### 完整控制模式
 
 ```typescript
-import { createCrudRouter } from "@wordrhyme/auto-crud-server";
+import { createCrudRouter } from '@wordrhyme/auto-crud-server';
 
 const tasksRouter = createCrudRouter({
   table: tasks,
@@ -709,7 +842,7 @@ const tasksRouter = createCrudRouter({
 
       // 3. 执行副作用
       await sendNotification(result);
-      await logAudit(ctx.user, "create", result);
+      await logAudit(ctx.user, 'create', result);
 
       // 4. 返回结果（可修改）
       return result;
@@ -719,15 +852,15 @@ const tasksRouter = createCrudRouter({
     update: async ({ ctx, id, data, existing, next }) => {
       // 检查权限
       if (existing.ownerId !== ctx.user.id) {
-        throw new Error("Forbidden");
+        throw new Error('Forbidden');
       }
       return next(data);
     },
 
     // 删除：条件拦截
     delete: async ({ ctx, id, existing, next }) => {
-      if (existing.status === "locked") {
-        throw new Error("Cannot delete locked resource");
+      if (existing.status === 'locked') {
+        throw new Error('Cannot delete locked resource');
       }
       return next();
     },
@@ -746,7 +879,7 @@ import {
   beforeMiddleware,
   afterCreate,
   beforeCreate,
-} from "@wordrhyme/auto-crud-server";
+} from '@wordrhyme/auto-crud-server';
 
 const tasksRouter = createCrudRouter({
   table: tasks,
@@ -755,7 +888,7 @@ const tasksRouter = createCrudRouter({
     // 简单副作用：只在操作后执行
     create: afterMiddleware(async (ctx, result) => {
       await sendEmail(result);
-      await logAudit(ctx.user, "create", result);
+      await logAudit(ctx.user, 'create', result);
     }),
 
     // 修改输入：只在操作前执行
@@ -773,15 +906,15 @@ const tasksRouter = createCrudRouter({
 
 ### 可用的工具函数
 
-| 函数 | 用途 | 示例 |
-|------|------|------|
-| `afterMiddleware(fn)` | 操作后执行副作用 | 日志、通知、审计 |
-| `afterMiddlewareTransform(fn)` | 操作后修改返回值 | 添加计算字段 |
-| `beforeMiddleware(fn)` | 操作前修改输入 | 注入用户ID、生成slug |
-| `composeMiddleware(...fns)` | 组合多个中间件 | 复杂场景 |
-| `afterList`, `beforeList` | list 操作专用 | 分页后处理 |
-| `afterCreate`, `beforeCreate` | create 操作专用 | 创建通知 |
-| `afterUpdate`, `afterDelete` | update/delete 专用 | 更新/删除通知 |
+| 函数                           | 用途               | 示例                 |
+| ------------------------------ | ------------------ | -------------------- |
+| `afterMiddleware(fn)`          | 操作后执行副作用   | 日志、通知、审计     |
+| `afterMiddlewareTransform(fn)` | 操作后修改返回值   | 添加计算字段         |
+| `beforeMiddleware(fn)`         | 操作前修改输入     | 注入用户ID、生成slug |
+| `composeMiddleware(...fns)`    | 组合多个中间件     | 复杂场景             |
+| `afterList`, `beforeList`      | list 操作专用      | 分页后处理           |
+| `afterCreate`, `beforeCreate`  | create 操作专用    | 创建通知             |
+| `afterUpdate`, `afterDelete`   | update/delete 专用 | 更新/删除通知        |
 
 ---
 
@@ -790,9 +923,9 @@ const tasksRouter = createCrudRouter({
 ### 与 Drizzle ORM 集成
 
 ```typescript
-import { drizzle } from "drizzle-orm/postgres-js";
-import postgres from "postgres";
-import * as schema from "./schema";
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from './schema';
 
 const client = postgres(process.env.DATABASE_URL!);
 export const db = drizzle(client, { schema });
@@ -805,12 +938,12 @@ export const createContext = () => ({ db });
 
 ```typescript
 // app/api/trpc/[trpc]/route.ts
-import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
-import { appRouter } from "@/server/routers";
+import { fetchRequestHandler } from '@trpc/server/adapters/fetch';
+import { appRouter } from '@/server/routers';
 
 const handler = (req: Request) =>
   fetchRequestHandler({
-    endpoint: "/api/trpc",
+    endpoint: '/api/trpc',
     req,
     router: appRouter,
     createContext: () => ({ db }),
@@ -822,18 +955,18 @@ export { handler as GET, handler as POST };
 ### 与 Express 集成
 
 ```typescript
-import express from "express";
-import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "./server/routers";
+import express from 'express';
+import { createExpressMiddleware } from '@trpc/server/adapters/express';
+import { appRouter } from './server/routers';
 
 const app = express();
 
 app.use(
-  "/trpc",
+  '/trpc',
   createExpressMiddleware({
     router: appRouter,
     createContext: () => ({ db }),
-  })
+  }),
 );
 
 app.listen(3000);
@@ -848,7 +981,7 @@ app.listen(3000);
 ```typescript
 export const usersRouter = createCrudRouter({
   table: users,
-  idField: "userId",  // 使用自定义 ID 字段
+  idField: 'userId', // 使用自定义 ID 字段
 });
 ```
 
@@ -858,7 +991,7 @@ export const usersRouter = createCrudRouter({
 export const ordersRouter = createCrudRouter({
   table: orders,
   // 自动派生 schema 时排除这些字段
-  omitFields: ["id", "createdAt", "updatedAt", "internalCode"],
+  omitFields: ['id', 'createdAt', 'updatedAt', 'internalCode'],
 });
 ```
 
@@ -871,10 +1004,10 @@ export const tasksRouter = createCrudRouter({
   softDelete: true,
 
   // 方式 2：指定列名
-  softDelete: "deletedAt",
+  softDelete: 'deletedAt',
 
   // 方式 3：完整配置（用于布尔字段）
-  softDelete: { column: "isDeleted", value: () => true },
+  softDelete: { column: 'isDeleted', value: () => true },
 });
 ```
 
@@ -883,7 +1016,7 @@ export const tasksRouter = createCrudRouter({
 ```typescript
 export const tasksRouter = createCrudRouter({
   table: tasks,
-  maxBatchSize: 50,  // 默认 100
+  maxBatchSize: 50, // 默认 100
 });
 ```
 
@@ -892,8 +1025,8 @@ export const tasksRouter = createCrudRouter({
 ```typescript
 export const tasksRouter = createCrudRouter({
   table: tasks,
-  filterableColumns: ["title", "status", "priority"],  // 只允许这些列过滤
-  sortableColumns: ["title", "createdAt", "priority"], // 只允许这些列排序
+  filterableColumns: ['title', 'status', 'priority'], // 只允许这些列过滤
+  sortableColumns: ['title', 'createdAt', 'priority'], // 只允许这些列排序
 });
 ```
 
@@ -903,13 +1036,21 @@ export const tasksRouter = createCrudRouter({
 
 ```typescript
 // 主要导出
-export { createCrudRouter } from "./routers/_factory";
+export {
+  baseExportInputSchema,
+  baseGetInputSchema,
+  baseListInputSchema,
+  createCrudRouter,
+} from './routers/_factory';
 export type {
   CrudRouterConfig,
   CrudMiddleware,
+  GetInput,
   ListInput,
   ListResult,
-} from "./types/config";
+  ExportInput,
+  ExportResult,
+} from './types/config';
 
 // Middleware 工具函数
 export {
@@ -923,14 +1064,14 @@ export {
   beforeCreate,
   afterUpdate,
   afterDelete,
-} from "./lib/middleware-helpers";
+} from './lib/middleware-helpers';
 
 // tRPC 工具
-export { router, publicProcedure } from "./trpc";
+export { router, publicProcedure } from './trpc';
 
 // 示例路由（可选）
-export { appRouter } from "./routers";
-export type { AppRouter } from "./routers";
+export { appRouter } from './routers';
+export type { AppRouter } from './routers';
 ```
 
 ---
@@ -942,6 +1083,7 @@ export type { AppRouter } from "./routers";
 **错误**: `Cannot find module '@wordrhyme/auto-crud-server'`
 
 **解决方案**:
+
 ```bash
 pnpm install @wordrhyme/auto-crud-server
 ```
@@ -951,6 +1093,7 @@ pnpm install @wordrhyme/auto-crud-server
 **错误**: `Type 'X' is not assignable to type 'Y'`
 
 **解决方案**: 确保 Zod 版本一致
+
 ```bash
 pnpm list zod
 # 确保所有包使用相同的 Zod 版本
@@ -961,9 +1104,10 @@ pnpm list zod
 **错误**: `connect ECONNREFUSED`
 
 **解决方案**: 检查数据库连接字符串
+
 ```typescript
 // .env
-DATABASE_URL="postgresql://user:password@localhost:5432/dbname"
+DATABASE_URL = 'postgresql://user:password@localhost:5432/dbname';
 ```
 
 ---

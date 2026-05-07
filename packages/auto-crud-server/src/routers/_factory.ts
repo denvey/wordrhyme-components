@@ -8,16 +8,16 @@
  * - 所有配置项可自由组合，无互斥模式
  */
 
-import { z } from "zod";
-import { eq, sql, inArray, asc, desc, and, isNull } from "drizzle-orm";
-import type { SQL } from "drizzle-orm";
-import type { PgTable } from "drizzle-orm/pg-core";
-import { createInsertSchema, createSelectSchema } from "drizzle-zod";
-import { TRPCError } from "@trpc/server";
-import { router, publicProcedure } from "../trpc";
-import { filterColumns } from "../lib/filter-columns";
-import { dataTableConfig } from "../config/data-table";
-import { isZodObject, nonEmpty } from "../lib/schema-utils";
+import { z } from 'zod';
+import { eq, sql, inArray, asc, desc, and, isNull } from 'drizzle-orm';
+import type { SQL } from 'drizzle-orm';
+import type { PgTable } from 'drizzle-orm/pg-core';
+import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
+import { TRPCError } from '@trpc/server';
+import { router, publicProcedure } from '../trpc';
+import { filterColumns } from '../lib/filter-columns';
+import { dataTableConfig } from '../config/data-table';
+import { isZodObject, nonEmpty } from '../lib/schema-utils';
 import type {
   CrudRouterConfig,
   CrudOperation,
@@ -27,6 +27,7 @@ import type {
   SoftDeleteConfig,
   CrudMiddleware,
   CrudProcedures,
+  GetInput,
   ListInput,
   ListResult,
   ExportInput,
@@ -36,11 +37,11 @@ import type {
   ProcedureConfig,
   ProcedureMap,
   ProcedureFactory,
-} from "../types/config";
+} from '../types/config';
 
 // Re-export types for backward compatibility
-export type { CrudRouterConfig, AnyProcedure, CrudProcedures } from "../types/config";
-export type { ListResult, ExportResult, ImportResult } from "../types/config";
+export type { CrudRouterConfig, AnyProcedure, CrudProcedures } from '../types/config';
+export type { ListResult, ExportResult, ImportResult } from '../types/config';
 
 // ============================================================
 // 内部类型：统一的配置表示
@@ -56,23 +57,13 @@ type CrudRouterReturn = ReturnType<typeof router> & {
 
 interface ResolvedConfig<TContext, TSelect> {
   procedureFactory: (operation: CrudOperation) => AnyProcedure;
-  guard?: (
-    ctx: TContext,
-    operation: CrudOperation
-  ) => boolean | Promise<boolean>;
-  getScope: (
-    ctx: TContext,
-    table: PgTable,
-    operation: CrudOperation
-  ) => SQL | undefined;
-  getInject: (
-    ctx: TContext,
-    operation: WriteOperation
-  ) => Record<string, unknown>;
+  guard?: (ctx: TContext, operation: CrudOperation) => boolean | Promise<boolean>;
+  getScope: (ctx: TContext, table: PgTable, operation: CrudOperation) => SQL | undefined;
+  getInject: (ctx: TContext, operation: WriteOperation) => Record<string, unknown>;
   checkAuthorize: (
     ctx: TContext,
     resource: TSelect,
-    operation: CrudOperation
+    operation: CrudOperation,
   ) => Promise<boolean>;
 }
 
@@ -86,15 +77,15 @@ interface ResolvedSoftDelete {
 // ============================================================
 
 function resolveSoftDelete(
-  option: SoftDeleteOption | undefined
+  option: SoftDeleteOption | undefined,
 ): ResolvedSoftDelete | null {
   if (!option) return null;
 
   if (option === true) {
-    return { column: "deletedAt", getValue: () => new Date() };
+    return { column: 'deletedAt', getValue: () => new Date() };
   }
 
-  if (typeof option === "string") {
+  if (typeof option === 'string') {
     return { column: option, getValue: () => new Date() };
   }
 
@@ -114,24 +105,41 @@ function resolveSoftDelete(
  */
 function isProcedureMap(config: ProcedureConfig | undefined): config is ProcedureMap {
   if (!config) return false;
-  if (typeof config === "function") return false;
+  if (typeof config === 'function') return false;
   // 检查是否是对象且包含已知的操作键
-  if (typeof config === "object" && config !== null) {
+  if (typeof config === 'object' && config !== null) {
     const keys = Object.keys(config);
-    const validKeys = ["list", "get", "create", "update", "delete", "deleteMany", "updateMany", "upsert", "export", "import", "createMany", "default"];
+    const validKeys = [
+      'list',
+      'get',
+      'create',
+      'update',
+      'delete',
+      'deleteMany',
+      'updateMany',
+      'upsert',
+      'export',
+      'import',
+      'createMany',
+      'default',
+    ];
     return keys.some((k) => validKeys.includes(k));
   }
   return false;
 }
 
-function isProcedureFactory(config: ProcedureConfig | undefined): config is ProcedureFactory {
-  return typeof config === "function";
+function isProcedureFactory(
+  config: ProcedureConfig | undefined,
+): config is ProcedureFactory {
+  return typeof config === 'function';
 }
 
 /**
  * 解析 procedure 配置为工厂函数
  */
-function resolveProcedureFactory(config: ProcedureConfig | undefined): (op: CrudOperation) => AnyProcedure {
+function resolveProcedureFactory(
+  config: ProcedureConfig | undefined,
+): (op: CrudOperation) => AnyProcedure {
   // 未配置：使用默认 publicProcedure
   if (!config) {
     return () => publicProcedure;
@@ -154,7 +162,7 @@ function resolveProcedureFactory(config: ProcedureConfig | undefined): (op: Crud
 }
 
 function resolveConfig<TTable extends PgTable, TContext, TSelect, TInsert, TUpdate>(
-  config: CrudRouterConfig<TTable, TContext, TSelect, TInsert, TUpdate>
+  config: CrudRouterConfig<TTable, TContext, TSelect, TInsert, TUpdate>,
 ): ResolvedConfig<TContext, TSelect> {
   // v2.0 统一 API：所有配置项可自由组合
   const procedureFactory = resolveProcedureFactory(config.procedure);
@@ -185,7 +193,7 @@ const filterItemSchema = z.object({
   filterId: z.string(),
 });
 
-const listInputSchema = z.object({
+export const baseListInputSchema = z.object({
   page: z.number().min(1).default(1),
   perPage: z.number().min(1).max(100).default(10),
   sort: z
@@ -193,37 +201,43 @@ const listInputSchema = z.object({
       z.object({
         id: z.string(),
         desc: z.boolean(),
-      })
+      }),
     )
     .optional(),
   filters: z.array(filterItemSchema).optional(),
-  joinOperator: z.enum(["and", "or"]).default("and"),
+  joinOperator: z.enum(['and', 'or']).default('and'),
 });
 
-const exportInputSchema = z.object({
+export const baseGetInputSchema = z.object({
+  id: z.string(),
+});
+
+const defaultGetInputSchema = z.union([z.string(), baseGetInputSchema]);
+
+export const baseExportInputSchema = z.object({
   sort: z
     .array(
       z.object({
         id: z.string(),
         desc: z.boolean(),
-      })
+      }),
     )
     .optional(),
   filters: z.array(filterItemSchema).optional(),
-  joinOperator: z.enum(["and", "or"]).default("and"),
+  joinOperator: z.enum(['and', 'or']).default('and'),
   limit: z.number().min(1).optional(),
 });
 
 const importInputSchema = z.object({
   rows: z.array(z.unknown()).min(1).max(1000),
-  onConflict: z.enum(["skip", "upsert", "error"]).default("skip"),
+  onConflict: z.enum(['skip', 'upsert', 'error']).default('skip'),
 });
 
 // ============================================================
 // Schema 解析
 // ============================================================
 
-const DEFAULT_OMIT_FIELDS = ["id", "createdAt", "updatedAt"] as const;
+const DEFAULT_OMIT_FIELDS = ['id', 'createdAt', 'updatedAt'] as const;
 
 /**
  * 解析并派生 Schema
@@ -231,7 +245,7 @@ const DEFAULT_OMIT_FIELDS = ["id", "createdAt", "updatedAt"] as const;
  * - 否则从 Drizzle table 自动派生
  */
 function resolveSchemas<TTable extends PgTable>(
-  config: CrudRouterConfig<TTable>
+  config: CrudRouterConfig<TTable>,
 ): {
   selectSchema: z.ZodTypeAny;
   schema: z.ZodObject<z.ZodRawShape>;
@@ -245,8 +259,8 @@ function resolveSchemas<TTable extends PgTable>(
     // 严格模式：验证是否为 ZodObject
     if (!isZodObject(config.schema)) {
       throw new Error(
-        "[createCrudRouter] schema must be a ZodObject (not ZodEffects or other types). " +
-          "If you're using .refine() or .transform(), please remove them from schema."
+        '[createCrudRouter] schema must be a ZodObject (not ZodEffects or other types). ' +
+          "If you're using .refine() or .transform(), please remove them from schema.",
       );
     }
     schema = config.schema as z.ZodObject<z.ZodRawShape>;
@@ -256,15 +270,15 @@ function resolveSchemas<TTable extends PgTable>(
     // 严格模式：检查 drizzle-zod 返回类型
     if (!isZodObject(rawSchema)) {
       throw new Error(
-        "[createCrudRouter] drizzle-zod returned non-ZodObject schema. " +
-          "This may be due to table refinements. " +
-          "Please provide schema explicitly."
+        '[createCrudRouter] drizzle-zod returned non-ZodObject schema. ' +
+          'This may be due to table refinements. ' +
+          'Please provide schema explicitly.',
       );
     }
 
     // 构建 omit 配置
     const omitConfig = Object.fromEntries(
-      (omitFields as string[]).map((f) => [f, true as const])
+      (omitFields as string[]).map((f) => [f, true as const]),
     ) as Record<string, true>;
 
     schema = rawSchema.omit(omitConfig);
@@ -286,7 +300,7 @@ function resolveSchemas<TTable extends PgTable>(
   const updateSchema =
     config.updateSchema ??
     schema.partial().refine(nonEmpty, {
-      message: "Update payload cannot be empty. At least one field is required.",
+      message: 'Update payload cannot be empty. At least one field is required.',
     });
 
   return { selectSchema, schema, updateSchema };
@@ -296,10 +310,7 @@ function resolveSchemas<TTable extends PgTable>(
 // 辅助函数
 // ============================================================
 
-function validateColumn(
-  columnId: string,
-  allowedColumns: string[] | undefined
-): boolean {
+function validateColumn(columnId: string, allowedColumns: string[] | undefined): boolean {
   if (!allowedColumns || allowedColumns.length === 0) {
     return true;
   }
@@ -328,12 +339,24 @@ export function createCrudRouter<
   TSelect = unknown,
   TInsert = unknown,
   TUpdate = unknown,
+  TListInput extends ListInput = ListInput,
+  TGetInput extends GetInput = GetInput,
+  TExportInput extends ExportInput = ExportInput,
 >(
-  config: CrudRouterConfig<TTable, TContext, TSelect, TInsert, TUpdate>
+  config: CrudRouterConfig<
+    TTable,
+    TContext,
+    TSelect,
+    TInsert,
+    TUpdate,
+    TListInput,
+    TGetInput,
+    TExportInput
+  >,
 ): CrudRouterReturn {
   const {
     table,
-    idField = "id",
+    idField = 'id',
     filterableColumns,
     sortableColumns,
     maxBatchSize = 100,
@@ -344,7 +367,9 @@ export function createCrudRouter<
 
   // 解析 Schema（自动派生或使用显式传入的）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { selectSchema, schema, updateSchema } = resolveSchemas(config as CrudRouterConfig<TTable>);
+  const { selectSchema, schema, updateSchema } = resolveSchemas(
+    config as unknown as CrudRouterConfig<TTable>,
+  );
 
   // ===== 构建 output schemas（类型防火墙核心） =====
   // .output() 让 tRPC 使用 Zod schema 推导的输出类型，
@@ -382,30 +407,51 @@ export function createCrudRouter<
     success: z.number(),
     updated: z.number(),
     skipped: z.number(),
-    failed: z.array(z.object({
-      row: z.number(),
-      errors: z.array(z.string()),
-    })),
+    failed: z.array(
+      z.object({
+        row: z.number(),
+        errors: z.array(z.string()),
+      }),
+    ),
   });
 
   // 解析配置
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const resolved = resolveConfig(config as any) as ResolvedConfig<TContext, TSelect>;
   const softDelete = resolveSoftDelete(softDeleteOption);
+  const resolvedListInputSchema = (config.listInputSchema ??
+    baseListInputSchema) as z.ZodType<TListInput>;
+  const resolvedGetInputSchema = config.getInputSchema
+    ? (z.union([
+        z.string(),
+        config.getInputSchema as z.ZodTypeAny,
+      ]) as z.ZodType<TGetInput>)
+    : (defaultGetInputSchema as unknown as z.ZodType<TGetInput>);
+  const resolvedExportInputSchema = (config.exportInputSchema ??
+    baseExportInputSchema) as z.ZodType<TExportInput>;
 
   // 类型断言 - 使用完整泛型
-  const m = middleware as CrudMiddleware<TContext, TSelect, TInsert, TUpdate>;
+  const m = middleware as CrudMiddleware<
+    TContext,
+    TSelect,
+    TInsert,
+    TUpdate,
+    TListInput,
+    TGetInput,
+    TExportInput
+  >;
 
   // 辅助函数
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getIdColumn = () => (table as any)[idField];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const getSoftDeleteColumn = () => softDelete ? (table as any)[softDelete.column] : null;
+  const getSoftDeleteColumn = () =>
+    softDelete ? (table as any)[softDelete.column] : null;
 
   const buildWhere = (
     ctx: TContext,
     operation: CrudOperation,
-    additionalCondition?: SQL
+    additionalCondition?: SQL,
   ): SQL | undefined => {
     const conditions: SQL[] = [];
 
@@ -437,13 +483,13 @@ export function createCrudRouter<
   const withGuard = async (ctx: TContext, operation: CrudOperation) => {
     if (resolved.guard) {
       // upsert 需要同时具备 create 和 update 权限
-      if (operation === "upsert") {
-        const canCreate = await resolved.guard(ctx, "create");
-        const canUpdate = await resolved.guard(ctx, "update");
+      if (operation === 'upsert') {
+        const canCreate = await resolved.guard(ctx, 'create');
+        const canUpdate = await resolved.guard(ctx, 'update');
         if (!canCreate || !canUpdate) {
           throw new TRPCError({
-            code: "FORBIDDEN",
-            message: "Forbidden: upsert requires both create and update permissions",
+            code: 'FORBIDDEN',
+            message: 'Forbidden: upsert requires both create and update permissions',
           });
         }
         return;
@@ -452,7 +498,7 @@ export function createCrudRouter<
       const allowed = await resolved.guard(ctx, operation);
       if (!allowed) {
         throw new TRPCError({
-          code: "FORBIDDEN",
+          code: 'FORBIDDEN',
           message: `Forbidden: ${operation} not allowed`,
         });
       }
@@ -462,13 +508,13 @@ export function createCrudRouter<
   const withAuthorize = async (
     ctx: TContext,
     resource: TSelect | null | undefined,
-    operation: CrudOperation
+    operation: CrudOperation,
   ) => {
     if (!resource) return;
     const allowed = await resolved.checkAuthorize(ctx, resource, operation);
     if (!allowed) {
       throw new TRPCError({
-        code: "FORBIDDEN",
+        code: 'FORBIDDEN',
         message: `Forbidden: Cannot ${operation} this resource`,
       });
     }
@@ -478,598 +524,693 @@ export function createCrudRouter<
   const procedures = {
     // 列表查询
     list: resolved
-      .procedureFactory("list")
-      .input(listInputSchema)
+      .procedureFactory('list')
+      .input(resolvedListInputSchema)
       .output(listOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .query(async ({ ctx, input }: { ctx: TContext & { db: any }; input: z.infer<typeof listInputSchema> }) => {
-        await withGuard(ctx, "list");
+      .query(
+        async ({ ctx, input }: { ctx: TContext & { db: any }; input: TListInput }) => {
+          await withGuard(ctx, 'list');
 
-        // 核心查询逻辑
-        const doList = async (listInput: ListInput): Promise<ListResult<TSelect>> => {
-          const offset = (listInput.page - 1) * listInput.perPage;
+          // 核心查询逻辑
+          const doList = async (listInput: ListInput): Promise<ListResult<TSelect>> => {
+            const offset = (listInput.page - 1) * listInput.perPage;
 
-          const validatedFilters = listInput.filters?.filter((filter) =>
-            validateColumn(filter.id, filterableColumns)
-          );
+            const validatedFilters = listInput.filters?.filter((filter) =>
+              validateColumn(filter.id, filterableColumns),
+            );
 
-          const filterCondition = validatedFilters?.length
-            ? filterColumns({
-                table,
+            const filterCondition = validatedFilters?.length
+              ? filterColumns({
+                  table,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  filters: validatedFilters as any,
+                  joinOperator: listInput.joinOperator,
+                })
+              : undefined;
+
+            const where = buildWhere(ctx, 'list', filterCondition);
+
+            let query = ctx.db.select().from(table).$dynamic();
+            if (where) {
+              query = query.where(where);
+            }
+
+            if (listInput.sort?.length) {
+              const sortField = listInput.sort[0];
+              if (sortField && validateColumn(sortField.id, sortableColumns)) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                filters: validatedFilters as any,
-                joinOperator: listInput.joinOperator,
-              })
-            : undefined;
-
-          const where = buildWhere(ctx, "list", filterCondition);
-
-          let query = ctx.db.select().from(table).$dynamic();
-          if (where) {
-            query = query.where(where);
-          }
-
-          if (listInput.sort?.length) {
-            const sortField = listInput.sort[0];
-            if (sortField && validateColumn(sortField.id, sortableColumns)) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const column = (table as any)[sortField.id];
-              if (column) {
-                query = query.orderBy(sortField.desc ? desc(column) : asc(column));
+                const column = (table as any)[sortField.id];
+                if (column) {
+                  query = query.orderBy(sortField.desc ? desc(column) : asc(column));
+                }
               }
             }
-          }
 
-          const data = await query.limit(listInput.perPage).offset(offset);
+            const data = await query.limit(listInput.perPage).offset(offset);
 
-          let countQuery = ctx.db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(table)
-            .$dynamic();
-          if (where) {
-            countQuery = countQuery.where(where);
-          }
-          const countResult = await countQuery;
-          const count = countResult[0]?.count ?? 0;
+            let countQuery = ctx.db
+              .select({ count: sql<number>`count(*)::int` })
+              .from(table)
+              .$dynamic();
+            if (where) {
+              countQuery = countQuery.where(where);
+            }
+            const countResult = await countQuery;
+            const count = countResult[0]?.count ?? 0;
 
-          return {
-            data,
-            total: count,
-            page: listInput.page,
-            perPage: listInput.perPage,
-            pageCount: Math.ceil(count / listInput.perPage),
+            return {
+              data,
+              total: count,
+              page: listInput.page,
+              perPage: listInput.perPage,
+              pageCount: Math.ceil(count / listInput.perPage),
+            };
           };
-        };
 
-        const listInput = input as ListInput;
+          const listInput = input;
 
-        // middleware 模式
-        if (m.list) {
-          return m.list({
-            ctx,
-            input: listInput,
-            next: async (modifiedInput?: ListInput) => doList(modifiedInput ?? listInput),
-          });
-        }
+          // middleware 模式
+          if (m.list) {
+            return m.list({
+              ctx,
+              input: listInput,
+              next: async (modifiedInput?: TListInput) =>
+                doList(modifiedInput ?? listInput),
+            });
+          }
 
-        return doList(listInput);
-      }),
+          return doList(listInput);
+        },
+      ),
 
     // 单条查询
     get: resolved
-      .procedureFactory("get")
-      .input(z.string())
+      .procedureFactory('get')
+      .input(resolvedGetInputSchema)
       .output(entityOutputSchema.nullable())
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .query(async ({ ctx, input }: { ctx: TContext & { db: any }; input: string }) => {
-        await withGuard(ctx, "get");
+      .query(
+        async ({ ctx, input }: { ctx: TContext & { db: any }; input: TGetInput }) => {
+          await withGuard(ctx, 'get');
 
-        // 核心查询逻辑
-        const doGet = async (): Promise<TSelect | null> => {
-          const idCondition = eq(getIdColumn(), input);
-          const where = buildWhere(ctx, "get", idCondition);
-          const [item] = await ctx.db.select().from(table).where(where!);
-          await withAuthorize(ctx, item as TSelect, "get");
-          return (item as TSelect) ?? null;
-        };
+          // 核心查询逻辑
+          const doGet = async (getInput: TGetInput): Promise<TSelect | null> => {
+            const id = typeof getInput === 'string' ? getInput : getInput.id;
+            const idCondition = eq(getIdColumn(), id);
+            const where = buildWhere(ctx, 'get', idCondition);
+            const [item] = await ctx.db.select().from(table).where(where!);
+            await withAuthorize(ctx, item as TSelect, 'get');
+            return (item as TSelect) ?? null;
+          };
 
-        // middleware 模式
-        if (m.get) {
-          return m.get({
-            ctx,
-            id: input,
-            next: doGet,
-          });
-        }
+          const id = typeof input === 'string' ? input : input.id;
 
-        return doGet();
-      }),
+          // middleware 模式
+          if (m.get) {
+            return m.get({
+              ctx,
+              id,
+              input,
+              next: async (modifiedInput?: TGetInput) => doGet(modifiedInput ?? input),
+            });
+          }
+
+          return doGet(input);
+        },
+      ),
 
     // 创建
     create: resolved
-      .procedureFactory("create")
+      .procedureFactory('create')
       .input(schema)
       .output(entityOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: TInsert }) => {
-        await withGuard(ctx, "create");
+      .mutation(
+        async ({ ctx, input }: { ctx: TContext & { db: any }; input: TInsert }) => {
+          await withGuard(ctx, 'create');
 
-        // 核心创建逻辑
-        const doCreate = async (inputData: TInsert): Promise<TSelect> => {
-          const injectData = resolved.getInject(ctx, "create");
-          const data = { ...(inputData as object), ...injectData };
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const [created] = await ctx.db.insert(table).values(data as any).returning();
-          return created as TSelect;
-        };
+          // 核心创建逻辑
+          const doCreate = async (inputData: TInsert): Promise<TSelect> => {
+            const injectData = resolved.getInject(ctx, 'create');
+            const data = { ...(inputData as object), ...injectData };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const [created] = await ctx.db
+              .insert(table)
+              .values(data as any)
+              .returning();
+            return created as TSelect;
+          };
 
-        // middleware 模式
-        if (m.create) {
-          return m.create({
-            ctx,
-            input,
-            next: async (modifiedInput?: TInsert) => doCreate(modifiedInput ?? input),
-          });
-        }
+          // middleware 模式
+          if (m.create) {
+            return m.create({
+              ctx,
+              input,
+              next: async (modifiedInput?: TInsert) => doCreate(modifiedInput ?? input),
+            });
+          }
 
-        return doCreate(input);
-      }),
+          return doCreate(input);
+        },
+      ),
 
     // 更新
     update: resolved
-      .procedureFactory("update")
+      .procedureFactory('update')
       .input(z.object({ id: z.string(), data: updateSchema }))
       .output(entityOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: { id: string; data: TUpdate } }) => {
-        await withGuard(ctx, "update");
+      .mutation(
+        async ({
+          ctx,
+          input,
+        }: {
+          ctx: TContext & { db: any };
+          input: { id: string; data: TUpdate };
+        }) => {
+          await withGuard(ctx, 'update');
 
-        const idCondition = eq(getIdColumn(), input.id);
-        const where = buildWhere(ctx, "update", idCondition);
+          const idCondition = eq(getIdColumn(), input.id);
+          const where = buildWhere(ctx, 'update', idCondition);
 
-        // 预取资源用于 authorize
-        const [existing] = await ctx.db.select().from(table).where(where!);
-        await withAuthorize(ctx, existing as TSelect, "update");
+          // 预取资源用于 authorize
+          const [existing] = await ctx.db.select().from(table).where(where!);
+          await withAuthorize(ctx, existing as TSelect, 'update');
 
-        if (!existing) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Resource not found or access denied",
-          });
-        }
+          if (!existing) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Resource not found or access denied',
+            });
+          }
 
-        // 核心更新逻辑
-        const doUpdate = async (updateData: TUpdate): Promise<TSelect> => {
-          const injectData = resolved.getInject(ctx, "update");
-          const data = { ...(updateData as object), ...injectData };
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const [updated] = await ctx.db.update(table).set(data as any).where(where!).returning();
-          return updated as TSelect;
-        };
+          // 核心更新逻辑
+          const doUpdate = async (updateData: TUpdate): Promise<TSelect> => {
+            const injectData = resolved.getInject(ctx, 'update');
+            const data = { ...(updateData as object), ...injectData };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const [updated] = await ctx.db
+              .update(table)
+              .set(data as any)
+              .where(where!)
+              .returning();
+            return updated as TSelect;
+          };
 
-        // middleware 模式
-        if (m.update) {
-          return m.update({
-            ctx,
-            id: input.id,
-            data: input.data,
-            existing: existing as TSelect,
-            next: async (modifiedData?: TUpdate) => doUpdate(modifiedData ?? input.data),
-          });
-        }
+          // middleware 模式
+          if (m.update) {
+            return m.update({
+              ctx,
+              id: input.id,
+              data: input.data,
+              existing: existing as TSelect,
+              next: async (modifiedData?: TUpdate) =>
+                doUpdate(modifiedData ?? input.data),
+            });
+          }
 
-        return doUpdate(input.data);
-      }),
+          return doUpdate(input.data);
+        },
+      ),
 
     // 删除（支持软删除）
     delete: resolved
-      .procedureFactory("delete")
+      .procedureFactory('delete')
       .input(z.string())
       .output(entityOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: string }) => {
-        await withGuard(ctx, "delete");
+      .mutation(
+        async ({ ctx, input }: { ctx: TContext & { db: any }; input: string }) => {
+          await withGuard(ctx, 'delete');
 
-        const idCondition = eq(getIdColumn(), input);
-        const where = buildWhere(ctx, "delete", idCondition);
+          const idCondition = eq(getIdColumn(), input);
+          const where = buildWhere(ctx, 'delete', idCondition);
 
-        const [existing] = await ctx.db.select().from(table).where(where!);
-        await withAuthorize(ctx, existing as TSelect, "delete");
+          const [existing] = await ctx.db.select().from(table).where(where!);
+          await withAuthorize(ctx, existing as TSelect, 'delete');
 
-        if (!existing) {
-          throw new TRPCError({
-            code: "NOT_FOUND",
-            message: "Resource not found or access denied",
-          });
-        }
-
-        // 核心删除逻辑
-        const doDelete = async (): Promise<TSelect> => {
-          let deleted;
-          if (softDelete) {
-            [deleted] = await ctx.db
-              .update(table)
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .set({ [softDelete.column]: softDelete.getValue() } as any)
-              .where(where!)
-              .returning();
-          } else {
-            [deleted] = await ctx.db.delete(table).where(where!).returning();
+          if (!existing) {
+            throw new TRPCError({
+              code: 'NOT_FOUND',
+              message: 'Resource not found or access denied',
+            });
           }
-          return deleted as TSelect;
-        };
 
-        // middleware 模式
-        if (m.delete) {
-          return m.delete({
-            ctx,
-            id: input,
-            existing: existing as TSelect,
-            next: doDelete,
-          });
-        }
+          // 核心删除逻辑
+          const doDelete = async (): Promise<TSelect> => {
+            let deleted;
+            if (softDelete) {
+              [deleted] = await ctx.db
+                .update(table)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .set({ [softDelete.column]: softDelete.getValue() } as any)
+                .where(where!)
+                .returning();
+            } else {
+              [deleted] = await ctx.db.delete(table).where(where!).returning();
+            }
+            return deleted as TSelect;
+          };
 
-        return doDelete();
-      }),
+          // middleware 模式
+          if (m.delete) {
+            return m.delete({
+              ctx,
+              id: input,
+              existing: existing as TSelect,
+              next: doDelete,
+            });
+          }
+
+          return doDelete();
+        },
+      ),
 
     // 批量删除（支持软删除）
     // Note: 批量操作仅执行 guard 和 scope 校验，不执行逐条 authorize
     // 如需 ABAC 逐条校验，请使用 middleware 自行实现
     deleteMany: resolved
-      .procedureFactory("deleteMany")
+      .procedureFactory('deleteMany')
       .input(z.array(z.string()).max(maxBatchSize))
       .output(deleteManyOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: string[] }) => {
-        await withGuard(ctx, "deleteMany");
+      .mutation(
+        async ({ ctx, input }: { ctx: TContext & { db: any }; input: string[] }) => {
+          await withGuard(ctx, 'deleteMany');
 
-        const idsCondition = inArray(getIdColumn(), input);
-        const where = buildWhere(ctx, "deleteMany", idsCondition);
+          const idsCondition = inArray(getIdColumn(), input);
+          const where = buildWhere(ctx, 'deleteMany', idsCondition);
 
-        // 核心删除逻辑
-        // Performance: 只返回 id 以减少数据传输
-        const doDeleteMany = async (): Promise<{ deleted: number }> => {
-          if (softDelete) {
-            const deleted = await ctx.db
-              .update(table)
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .set({ [softDelete.column]: softDelete.getValue() } as any)
-              .where(where!)
-              .returning({ id: getIdColumn() });
-            return { deleted: deleted.length };
-          } else {
-            const deleted = await ctx.db.delete(table).where(where!).returning({ id: getIdColumn() });
-            return { deleted: deleted.length };
+          // 核心删除逻辑
+          // Performance: 只返回 id 以减少数据传输
+          const doDeleteMany = async (): Promise<{ deleted: number }> => {
+            if (softDelete) {
+              const deleted = await ctx.db
+                .update(table)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                .set({ [softDelete.column]: softDelete.getValue() } as any)
+                .where(where!)
+                .returning({ id: getIdColumn() });
+              return { deleted: deleted.length };
+            } else {
+              const deleted = await ctx.db
+                .delete(table)
+                .where(where!)
+                .returning({ id: getIdColumn() });
+              return { deleted: deleted.length };
+            }
+          };
+
+          // middleware 模式
+          if (m.deleteMany) {
+            return m.deleteMany({
+              ctx,
+              ids: input,
+              next: doDeleteMany,
+            });
           }
-        };
 
-        // middleware 模式
-        if (m.deleteMany) {
-          return m.deleteMany({
-            ctx,
-            ids: input,
-            next: doDeleteMany,
-          });
-        }
-
-        return doDeleteMany();
-      }),
+          return doDeleteMany();
+        },
+      ),
 
     // 批量更新
     // Note: 批量操作仅执行 guard 和 scope 校验，不执行逐条 authorize
     // 如需 ABAC 逐条校验，请使用 middleware 自行实现
     updateMany: resolved
-      .procedureFactory("updateMany")
+      .procedureFactory('updateMany')
       .input(
         z.object({
           ids: z.array(z.string()).max(maxBatchSize),
           data: updateSchema,
-        })
+        }),
       )
       .output(updateManyOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: { ids: string[]; data: TUpdate } }) => {
-        await withGuard(ctx, "updateMany");
+      .mutation(
+        async ({
+          ctx,
+          input,
+        }: {
+          ctx: TContext & { db: any };
+          input: { ids: string[]; data: TUpdate };
+        }) => {
+          await withGuard(ctx, 'updateMany');
 
-        const idsCondition = inArray(getIdColumn(), input.ids);
-        const where = buildWhere(ctx, "updateMany", idsCondition);
+          const idsCondition = inArray(getIdColumn(), input.ids);
+          const where = buildWhere(ctx, 'updateMany', idsCondition);
 
-        // 核心更新逻辑
-        // Performance: 只返回 id 以减少数据传输
-        const doUpdateMany = async (updateData: TUpdate): Promise<{ updated: number }> => {
-          const injectData = resolved.getInject(ctx, "update");
-          const data = { ...(updateData as object), ...injectData };
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const updated = await ctx.db.update(table).set(data as any).where(where!).returning({ id: getIdColumn() });
-          return { updated: updated.length };
-        };
+          // 核心更新逻辑
+          // Performance: 只返回 id 以减少数据传输
+          const doUpdateMany = async (
+            updateData: TUpdate,
+          ): Promise<{ updated: number }> => {
+            const injectData = resolved.getInject(ctx, 'update');
+            const data = { ...(updateData as object), ...injectData };
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const updated = await ctx.db
+              .update(table)
+              .set(data as any)
+              .where(where!)
+              .returning({ id: getIdColumn() });
+            return { updated: updated.length };
+          };
 
-        // middleware 模式
-        if (m.updateMany) {
-          return m.updateMany({
-            ctx,
-            ids: input.ids,
-            data: input.data,
-            next: async (modifiedData?: TUpdate) => doUpdateMany(modifiedData ?? input.data),
-          });
-        }
+          // middleware 模式
+          if (m.updateMany) {
+            return m.updateMany({
+              ctx,
+              ids: input.ids,
+              data: input.data,
+              next: async (modifiedData?: TUpdate) =>
+                doUpdateMany(modifiedData ?? input.data),
+            });
+          }
 
-        return doUpdateMany(input.data);
-      }),
+          return doUpdateMany(input.data);
+        },
+      ),
 
     // Upsert（存在则更新，不存在则创建）
     upsert: resolved
-      .procedureFactory("upsert")
+      .procedureFactory('upsert')
       .input(schema)
       .output(upsertOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: TInsert }) => {
-        await withGuard(ctx, "upsert");
+      .mutation(
+        async ({ ctx, input }: { ctx: TContext & { db: any }; input: TInsert }) => {
+          await withGuard(ctx, 'upsert');
 
-        // 核心 upsert 逻辑
-        const doUpsert = async (inputData: TInsert): Promise<{ data: TSelect; isNew: boolean }> => {
-          // 先尝试查询是否存在
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const inputId = (inputData as any)[idField];
-          let isNew = true;
-          let existing: TSelect | null = null;
+          // 核心 upsert 逻辑
+          const doUpsert = async (
+            inputData: TInsert,
+          ): Promise<{ data: TSelect; isNew: boolean }> => {
+            // 先尝试查询是否存在
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const inputId = (inputData as any)[idField];
+            let isNew = true;
+            let existing: TSelect | null = null;
 
-          if (inputId) {
-            const idCondition = eq(getIdColumn(), inputId);
-            // 软删除模式下，upsert 也应该排除已删除记录
-            const where = buildWhere(ctx, "get", idCondition);
-            const [found] = await ctx.db.select().from(table).where(where!);
-            existing = found as TSelect | null;
-            isNew = !existing;
+            if (inputId) {
+              const idCondition = eq(getIdColumn(), inputId);
+              // 软删除模式下，upsert 也应该排除已删除记录
+              const where = buildWhere(ctx, 'get', idCondition);
+              const [found] = await ctx.db.select().from(table).where(where!);
+              existing = found as TSelect | null;
+              isNew = !existing;
 
-            // Critical #1: 如果是更新，执行 authorize 校验
-            if (!isNew && existing) {
-              await withAuthorize(ctx, existing, "update");
+              // Critical #1: 如果是更新，执行 authorize 校验
+              if (!isNew && existing) {
+                await withAuthorize(ctx, existing, 'update');
+              }
             }
+
+            // Major #5: 根据 isNew 决定使用 create 还是 update 的 inject
+            const injectData = resolved.getInject(ctx, isNew ? 'create' : 'update');
+            const data = { ...(inputData as object), ...injectData };
+
+            // 使用 onConflictDoUpdate
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const [result] = await ctx.db
+              .insert(table)
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              .values(data as any)
+              .onConflictDoUpdate({
+                target: getIdColumn(),
+                // 更新时只使用 update 的 inject
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                set: {
+                  ...(inputData as object),
+                  ...resolved.getInject(ctx, 'update'),
+                } as any,
+              })
+              .returning();
+
+            return { data: result as TSelect, isNew };
+          };
+
+          // middleware 模式
+          if (m.upsert) {
+            return m.upsert({
+              ctx,
+              input,
+              next: async (modifiedInput?: TInsert) => doUpsert(modifiedInput ?? input),
+            });
           }
 
-          // Major #5: 根据 isNew 决定使用 create 还是 update 的 inject
-          const injectData = resolved.getInject(ctx, isNew ? "create" : "update");
-          const data = { ...(inputData as object), ...injectData };
-
-          // 使用 onConflictDoUpdate
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const [result] = await ctx.db
-            .insert(table)
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            .values(data as any)
-            .onConflictDoUpdate({
-              target: getIdColumn(),
-              // 更新时只使用 update 的 inject
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              set: { ...(inputData as object), ...resolved.getInject(ctx, "update") } as any,
-            })
-            .returning();
-
-          return { data: result as TSelect, isNew };
-        };
-
-        // middleware 模式
-        if (m.upsert) {
-          return m.upsert({
-            ctx,
-            input,
-            next: async (modifiedInput?: TInsert) => doUpsert(modifiedInput ?? input),
-          });
-        }
-
-        return doUpsert(input);
-      }),
+          return doUpsert(input);
+        },
+      ),
 
     // 导出（限量查询，无分页）
     export: resolved
-      .procedureFactory("export")
-      .input(exportInputSchema)
+      .procedureFactory('export')
+      .input(resolvedExportInputSchema)
       .output(exportOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .query(async ({ ctx, input }: { ctx: TContext & { db: any }; input: z.infer<typeof exportInputSchema> }) => {
-        await withGuard(ctx, "export");
+      .query(
+        async ({ ctx, input }: { ctx: TContext & { db: any }; input: TExportInput }) => {
+          await withGuard(ctx, 'export');
 
-        const doExport = async (exportInput: ExportInput): Promise<ExportResult<TSelect>> => {
-          const effectiveLimit = Math.min(
-            Math.max(exportInput.limit ?? maxExportSize, 1),
-            maxExportSize
-          );
+          const doExport = async (
+            exportInput: ExportInput,
+          ): Promise<ExportResult<TSelect>> => {
+            const effectiveLimit = Math.min(
+              Math.max(exportInput.limit ?? maxExportSize, 1),
+              maxExportSize,
+            );
 
-          const validatedFilters = exportInput.filters?.filter((filter) =>
-            validateColumn(filter.id, filterableColumns)
-          );
+            const validatedFilters = exportInput.filters?.filter((filter) =>
+              validateColumn(filter.id, filterableColumns),
+            );
 
-          const filterCondition = validatedFilters?.length
-            ? filterColumns({
-                table,
+            const filterCondition = validatedFilters?.length
+              ? filterColumns({
+                  table,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  filters: validatedFilters as any,
+                  joinOperator: exportInput.joinOperator ?? 'and',
+                })
+              : undefined;
+
+            const where = buildWhere(ctx, 'export', filterCondition);
+
+            let query = ctx.db.select().from(table).$dynamic();
+            if (where) {
+              query = query.where(where);
+            }
+
+            if (exportInput.sort?.length) {
+              const sortField = exportInput.sort[0];
+              if (sortField && validateColumn(sortField.id, sortableColumns)) {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                filters: validatedFilters as any,
-                joinOperator: exportInput.joinOperator ?? "and",
-              })
-            : undefined;
-
-          const where = buildWhere(ctx, "export", filterCondition);
-
-          let query = ctx.db.select().from(table).$dynamic();
-          if (where) {
-            query = query.where(where);
-          }
-
-          if (exportInput.sort?.length) {
-            const sortField = exportInput.sort[0];
-            if (sortField && validateColumn(sortField.id, sortableColumns)) {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const column = (table as any)[sortField.id];
-              if (column) {
-                query = query.orderBy(sortField.desc ? desc(column) : asc(column));
+                const column = (table as any)[sortField.id];
+                if (column) {
+                  query = query.orderBy(sortField.desc ? desc(column) : asc(column));
+                }
               }
             }
-          }
 
-          const data = await query.limit(effectiveLimit);
+            const data = await query.limit(effectiveLimit);
 
-          // 查询总数以计算 hasMore
-          let countQuery = ctx.db
-            .select({ count: sql<number>`count(*)::int` })
-            .from(table)
-            .$dynamic();
-          if (where) {
-            countQuery = countQuery.where(where);
-          }
-          const countResult = await countQuery;
-          const total = countResult[0]?.count ?? 0;
+            // 查询总数以计算 hasMore
+            let countQuery = ctx.db
+              .select({ count: sql<number>`count(*)::int` })
+              .from(table)
+              .$dynamic();
+            if (where) {
+              countQuery = countQuery.where(where);
+            }
+            const countResult = await countQuery;
+            const total = countResult[0]?.count ?? 0;
 
-          return {
-            data: data as TSelect[],
-            total,
-            hasMore: total > data.length,
+            return {
+              data: data as TSelect[],
+              total,
+              hasMore: total > data.length,
+            };
           };
-        };
 
-        const exportInput = input as ExportInput;
+          const exportInput = input;
 
-        if (m.export) {
-          return m.export({
-            ctx,
-            input: exportInput,
-            next: async (modifiedInput?: ExportInput) => doExport(modifiedInput ?? exportInput),
-          });
-        }
+          if (m.export) {
+            return m.export({
+              ctx,
+              input: exportInput,
+              next: async (modifiedInput?: TExportInput) =>
+                doExport(modifiedInput ?? exportInput),
+            });
+          }
 
-        return doExport(exportInput);
-      }),
+          return doExport(exportInput);
+        },
+      ),
 
     // 批量创建
     createMany: resolved
-      .procedureFactory("createMany")
+      .procedureFactory('createMany')
       .input(z.array(schema).min(1).max(maxBatchSize))
       .output(createManyOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: TInsert[] }) => {
-        await withGuard(ctx, "createMany");
+      .mutation(
+        async ({ ctx, input }: { ctx: TContext & { db: any }; input: TInsert[] }) => {
+          await withGuard(ctx, 'createMany');
 
-        const doCreateMany = async (items: TInsert[]): Promise<{ created: TSelect[]; count: number }> => {
-          const injectData = resolved.getInject(ctx, "create");
-          const values = items.map((item) => ({ ...(item as object), ...injectData }));
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const created = await ctx.db.insert(table).values(values as any).onConflictDoNothing().returning();
-          return { created: created as TSelect[], count: created.length };
-        };
+          const doCreateMany = async (
+            items: TInsert[],
+          ): Promise<{ created: TSelect[]; count: number }> => {
+            const injectData = resolved.getInject(ctx, 'create');
+            const values = items.map((item) => ({ ...(item as object), ...injectData }));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const created = await ctx.db
+              .insert(table)
+              .values(values as any)
+              .onConflictDoNothing()
+              .returning();
+            return { created: created as TSelect[], count: created.length };
+          };
 
-        if (m.createMany) {
-          return m.createMany({
-            ctx,
-            input,
-            next: async (modifiedInput?: TInsert[]) => doCreateMany(modifiedInput ?? input),
-          });
-        }
+          if (m.createMany) {
+            return m.createMany({
+              ctx,
+              input,
+              next: async (modifiedInput?: TInsert[]) =>
+                doCreateMany(modifiedInput ?? input),
+            });
+          }
 
-        return doCreateMany(input);
-      }),
+          return doCreateMany(input);
+        },
+      ),
 
     // 导入（接受 unknown[] 逐行验证）
     import: resolved
-      .procedureFactory("import")
+      .procedureFactory('import')
       .input(importInputSchema)
       .output(importOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .mutation(async ({ ctx, input }: { ctx: TContext & { db: any }; input: z.infer<typeof importInputSchema> }) => {
-        await withGuard(ctx, "import");
+      .mutation(
+        async ({
+          ctx,
+          input,
+        }: {
+          ctx: TContext & { db: any };
+          input: z.infer<typeof importInputSchema>;
+        }) => {
+          await withGuard(ctx, 'import');
 
-        const doImport = async (importData: ImportInput): Promise<ImportResult> => {
-          const validRows: TInsert[] = [];
-          const failed: ImportResult["failed"] = [];
+          const doImport = async (importData: ImportInput): Promise<ImportResult> => {
+            const validRows: TInsert[] = [];
+            const failed: ImportResult['failed'] = [];
 
-          // 逐行验证
-          for (let i = 0; i < importData.rows.length; i++) {
-            const row = importData.rows[i];
-            const result = schema.safeParse(row);
-            if (result.success) {
-              validRows.push(result.data as TInsert);
-            } else {
-              const errors = result.error.issues.map(
-                (issue) => `${issue.path.join(".")}: ${issue.message}`
-              );
-              failed.push({ row: i, errors });
+            // 逐行验证
+            for (let i = 0; i < importData.rows.length; i++) {
+              const row = importData.rows[i];
+              const result = schema.safeParse(row);
+              if (result.success) {
+                validRows.push(result.data as TInsert);
+              } else {
+                const errors = result.error.issues.map(
+                  (issue) => `${issue.path.join('.')}: ${issue.message}`,
+                );
+                failed.push({ row: i, errors });
 
-              // onConflict="error" 时遇到验证失败直接中止
-              if (importData.onConflict === "error") {
-                return { success: 0, updated: 0, skipped: 0, failed };
+                // onConflict="error" 时遇到验证失败直接中止
+                if (importData.onConflict === 'error') {
+                  return { success: 0, updated: 0, skipped: 0, failed };
+                }
               }
             }
-          }
 
-          if (validRows.length === 0) {
-            return { success: 0, updated: 0, skipped: 0, failed };
-          }
-
-          // 批量插入有效行
-          const injectData = resolved.getInject(ctx, "create");
-          const values = validRows.map((row) => ({ ...(row as object), ...injectData }));
-
-          let insertedCount = 0;
-          let updatedCount = 0;
-
-          if (importData.onConflict === "upsert") {
-            // upsert: 存在则更新，不存在则新建
-            // 先查已存在的 ID 数量，用于区分 insert vs update
-            const existingIds = await ctx.db
-              .select({ id: getIdColumn() })
-              .from(table)
-              .where(inArray(getIdColumn(), values.map((v: any) => (v as any)[idField]).filter(Boolean)));
-            const existingCount = existingIds.length;
-
-            // 构建 set: 用 sql`excluded."col"` 引用待插入行的值
-            const updateFields = Object.keys(validRows[0] as object);
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const setClause: Record<string, any> = {
-              // 注入 update 时的额外字段（如 updatedAt）
-              ...resolved.getInject(ctx, "update"),
-            };
-            for (const key of updateFields) {
-              setClause[key] = sql.raw(`excluded."${key}"`);
+            if (validRows.length === 0) {
+              return { success: 0, updated: 0, skipped: 0, failed };
             }
 
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const results = await ctx.db.insert(table).values(values as any).onConflictDoUpdate({
-              target: getIdColumn(),
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              set: setClause as any,
-            }).returning({ id: getIdColumn() });
+            // 批量插入有效行
+            const injectData = resolved.getInject(ctx, 'create');
+            const values = validRows.map((row) => ({
+              ...(row as object),
+              ...injectData,
+            }));
 
-            updatedCount = Math.min(existingCount, results.length);
-            insertedCount = results.length - updatedCount;
-          } else {
-            // skip: 跳过冲突行
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const inserted = await ctx.db.insert(table).values(values as any).onConflictDoNothing().returning({ id: getIdColumn() });
-            insertedCount = inserted.length;
-            updatedCount = 0;
+            let insertedCount = 0;
+            let updatedCount = 0;
+
+            if (importData.onConflict === 'upsert') {
+              // upsert: 存在则更新，不存在则新建
+              // 先查已存在的 ID 数量，用于区分 insert vs update
+              const existingIds = await ctx.db
+                .select({ id: getIdColumn() })
+                .from(table)
+                .where(
+                  inArray(
+                    getIdColumn(),
+                    values.map((v: any) => (v as any)[idField]).filter(Boolean),
+                  ),
+                );
+              const existingCount = existingIds.length;
+
+              // 构建 set: 用 sql`excluded."col"` 引用待插入行的值
+              const updateFields = Object.keys(validRows[0] as object);
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const setClause: Record<string, any> = {
+                // 注入 update 时的额外字段（如 updatedAt）
+                ...resolved.getInject(ctx, 'update'),
+              };
+              for (const key of updateFields) {
+                setClause[key] = sql.raw(`excluded."${key}"`);
+              }
+
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const results = await ctx.db
+                .insert(table)
+                .values(values as any)
+                .onConflictDoUpdate({
+                  target: getIdColumn(),
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  set: setClause as any,
+                })
+                .returning({ id: getIdColumn() });
+
+              updatedCount = Math.min(existingCount, results.length);
+              insertedCount = results.length - updatedCount;
+            } else {
+              // skip: 跳过冲突行
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              const inserted = await ctx.db
+                .insert(table)
+                .values(values as any)
+                .onConflictDoNothing()
+                .returning({ id: getIdColumn() });
+              insertedCount = inserted.length;
+              updatedCount = 0;
+            }
+
+            const skipped = validRows.length - insertedCount - updatedCount;
+
+            return {
+              success: insertedCount,
+              updated: updatedCount,
+              skipped,
+              failed,
+            };
+          };
+
+          const importData = input as ImportInput;
+
+          if (m.import) {
+            return m.import({
+              ctx,
+              input: importData,
+              next: async (modifiedInput?: ImportInput) =>
+                doImport(modifiedInput ?? importData),
+            });
           }
 
-          const skipped = validRows.length - insertedCount - updatedCount;
-
-          return {
-            success: insertedCount,
-            updated: updatedCount,
-            skipped,
-            failed,
-          };
-        };
-
-        const importData = input as ImportInput;
-
-        if (m.import) {
-          return m.import({
-            ctx,
-            input: importData,
-            next: async (modifiedInput?: ImportInput) => doImport(modifiedInput ?? importData),
-          });
-        }
-
-        return doImport(importData);
-      }),
+          return doImport(importData);
+        },
+      ),
   };
 
   // 返回增强的 router，带有 .procedures 属性
