@@ -17,6 +17,9 @@ export type {
   ProcedureConfig,
   ProcedureMap,
   ProcedureFactory,
+  CrudColumnConfig,
+  CrudColumnExpression,
+  CrudColumnRef,
   CrudProcedures,
   // Operation types
   CrudOperation,

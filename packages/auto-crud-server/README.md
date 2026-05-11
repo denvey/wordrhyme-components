@@ -489,6 +489,8 @@ interface CrudRouterConfig<TTable, TSelect, TInsert, TUpdate> {
 
   // ========== 其他配置 ==========
   idField?: string; // ID 字段名，默认 "id"
+  filterableColumns?: CrudColumnRef<TTable>[]; // 可过滤字段白名单
+  sortableColumns?: CrudColumnRef<TTable>[]; // 可排序字段白名单
   omitFields?: string[]; // 自动派生时排除的字段
   // 默认 ["id", "createdAt", "updatedAt"]
 }
@@ -1030,6 +1032,55 @@ export const tasksRouter = createCrudRouter({
 });
 ```
 
+普通字段不需要特殊配置，前端仍然传字段 id：
+
+```typescript
+filters: [{ id: 'title', value: 'bug', operator: 'iLike', variant: 'text', filterId: 'title' }],
+sort: [{ id: 'createdAt', desc: true }],
+```
+
+jsonb/i18n 字段可以在对应字段配置里声明读取哪个 JSON field。服务端会显式生成
+text expression，不会自动把所有 jsonb 字段都 cast 成 text：
+
+```typescript
+export const productsRouter = createCrudRouter({
+  table: shopProducts,
+  idField: 'spuId',
+  filterableColumns: [
+    { id: 'name', jsonField: ['zh-CN', 'en-US', 'en', 'zh'] },
+    'status',
+    'categoryId',
+  ],
+  sortableColumns: [
+    { id: 'name', jsonField: ['zh-CN', 'en-US', 'en', 'zh'] },
+    'createdAt',
+  ],
+});
+```
+
+上面的 `name` 过滤会生成类似 SQL：
+
+```sql
+case jsonb_typeof(name)
+  when 'object' then coalesce(name ->> 'zh-CN', name ->> 'en-US', name ->> 'en', name ->> 'zh', '')
+  when 'string' then name #>> '{}'
+  else ''
+end ilike '%关键词%'
+```
+
+复杂业务仍可用 `expression` 显式接管查询目标：
+
+```typescript
+import { sql } from 'drizzle-orm';
+
+createCrudRouter({
+  table: products,
+  filterableColumns: [
+    { id: 'displayName', expression: ({ table }) => sql<string>`lower(${table.name})` },
+  ],
+});
+```
+
 ---
 
 ## 📦 导出的类型
@@ -1043,6 +1094,9 @@ export {
   createCrudRouter,
 } from './routers/_factory';
 export type {
+  CrudColumnConfig,
+  CrudColumnExpression,
+  CrudColumnRef,
   CrudRouterConfig,
   CrudMiddleware,
   GetInput,

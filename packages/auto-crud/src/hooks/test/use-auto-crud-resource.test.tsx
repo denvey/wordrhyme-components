@@ -1,0 +1,93 @@
+import { keepPreviousData } from "@tanstack/react-query";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { z } from "zod";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useAutoCrudResource } from "../use-auto-crud-resource";
+
+vi.mock("sonner", () => ({
+  toast: {
+    success: vi.fn(),
+    error: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn(),
+  },
+}));
+
+const schema = z.object({
+  id: z.string(),
+  status: z.enum(["draft", "published"]),
+});
+
+function createRouter() {
+  return {
+    list: {
+      useQuery: vi.fn(() => ({
+        data: { data: [], pageCount: 0 },
+        isLoading: false,
+        isFetching: false,
+        refetch: vi.fn(),
+      })),
+    },
+    create: { useMutation: vi.fn(() => ({ isPending: false, mutate: vi.fn() })) },
+    update: { useMutation: vi.fn(() => ({ isPending: false, mutate: vi.fn() })) },
+    delete: { useMutation: vi.fn(() => ({ isPending: false, mutate: vi.fn() })) },
+  };
+}
+
+function renderResourceHook(router: ReturnType<typeof createRouter>) {
+  const container = document.createElement("div");
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  function TestComponent() {
+    useAutoCrudResource({
+      router,
+      schema,
+    });
+    return null;
+  }
+
+  act(() => {
+    root.render(<TestComponent />);
+  });
+
+  return () => {
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+  };
+}
+
+describe("useAutoCrudResource", () => {
+  let cleanup: (() => void) | undefined;
+
+  beforeEach(() => {
+    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    window.history.replaceState(null, "", "/products");
+  });
+
+  afterEach(() => {
+    cleanup?.();
+    cleanup = undefined;
+    vi.clearAllMocks();
+  });
+
+  it("marks list queries stale so clearing filters refetches cached list data", () => {
+    const router = createRouter();
+
+    cleanup = renderResourceHook(router);
+
+    expect(router.list.useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filters: [],
+      }),
+      {
+        placeholderData: keepPreviousData,
+        staleTime: 0,
+      },
+    );
+  });
+});

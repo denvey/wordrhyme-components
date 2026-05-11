@@ -10,7 +10,7 @@
 
 import { z } from 'zod';
 import { eq, sql, inArray, asc, desc, and, isNull } from 'drizzle-orm';
-import type { SQL } from 'drizzle-orm';
+import type { AnyColumn, SQL } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { TRPCError } from '@trpc/server';
@@ -37,10 +37,18 @@ import type {
   ProcedureConfig,
   ProcedureMap,
   ProcedureFactory,
+  CrudColumnRef,
 } from '../types/config';
 
 // Re-export types for backward compatibility
-export type { CrudRouterConfig, AnyProcedure, CrudProcedures } from '../types/config';
+export type {
+  CrudColumnConfig,
+  CrudColumnExpression,
+  CrudColumnRef,
+  CrudRouterConfig,
+  AnyProcedure,
+  CrudProcedures,
+} from '../types/config';
 export type { ListResult, ExportResult, ImportResult } from '../types/config';
 
 // ============================================================
@@ -310,11 +318,96 @@ function resolveSchemas<TTable extends PgTable>(
 // 辅助函数
 // ============================================================
 
-function validateColumn(columnId: string, allowedColumns: string[] | undefined): boolean {
+type ColumnTarget = AnyColumn | SQL;
+
+function getColumnRefId<TTable extends PgTable>(
+  columnRef: CrudColumnRef<TTable>,
+): string {
+  return typeof columnRef === 'string' ? columnRef : columnRef.id;
+}
+
+function findColumnRef<TTable extends PgTable>(
+  columnId: string,
+  allowedColumns: CrudColumnRef<TTable>[] | undefined,
+): CrudColumnRef<TTable> | undefined {
+  return allowedColumns?.find((columnRef) => getColumnRefId(columnRef) === columnId);
+}
+
+function validateColumn<TTable extends PgTable>(
+  columnId: string,
+  allowedColumns: CrudColumnRef<TTable>[] | undefined,
+): boolean {
   if (!allowedColumns || allowedColumns.length === 0) {
     return true;
   }
-  return allowedColumns.includes(columnId);
+  return findColumnRef(columnId, allowedColumns) !== undefined;
+}
+
+function getTableColumn<TTable extends PgTable>(
+  table: TTable,
+  columnId: string,
+): AnyColumn | undefined {
+  return table[columnId as keyof TTable] as AnyColumn | undefined;
+}
+
+function normalizeJsonFields(jsonField: string | string[]): string[] {
+  return (Array.isArray(jsonField) ? jsonField : [jsonField]).filter(
+    (field) => field.length > 0,
+  );
+}
+
+function buildJsonFieldTextExpression(
+  column: AnyColumn,
+  jsonField: string | string[],
+): SQL {
+  const fields = normalizeJsonFields(jsonField);
+
+  if (fields.length === 0) {
+    throw new Error(
+      '[createCrudRouter] jsonField must include at least one json key.',
+    );
+  }
+
+  const objectFields = fields.map((field) => sql`${column} ->> ${field}`);
+
+  return sql<string>`case jsonb_typeof(${column})
+    when 'object' then coalesce(${sql.join(objectFields, sql`, `)}, '')
+    when 'string' then ${column} #>> '{}'
+    else ''
+  end`;
+}
+
+function resolveColumnTarget<TTable extends PgTable>({
+  table,
+  columnId,
+  allowedColumns,
+}: {
+  table: TTable;
+  columnId: string;
+  allowedColumns: CrudColumnRef<TTable>[] | undefined;
+}): ColumnTarget | undefined {
+  const columnRef = findColumnRef(columnId, allowedColumns);
+
+  if ((allowedColumns?.length ?? 0) > 0 && columnRef === undefined) {
+    return undefined;
+  }
+
+  if (columnRef && typeof columnRef !== 'string') {
+    if (columnRef.expression) {
+      return columnRef.expression({ table });
+    }
+
+    const column = getTableColumn(table, columnRef.id);
+    if (!column) return undefined;
+
+    if (columnRef.jsonField) {
+      return buildJsonFieldTextExpression(column, columnRef.jsonField);
+    }
+
+    return column;
+  }
+
+  return getTableColumn(table, columnId);
 }
 
 // ============================================================
@@ -546,6 +639,12 @@ export function createCrudRouter<
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   filters: validatedFilters as any,
                   joinOperator: listInput.joinOperator,
+                  resolveColumn: (columnId) =>
+                    resolveColumnTarget({
+                      table,
+                      columnId: String(columnId),
+                      allowedColumns: filterableColumns,
+                    }),
                 })
               : undefined;
 
@@ -559,8 +658,11 @@ export function createCrudRouter<
             if (listInput.sort?.length) {
               const sortField = listInput.sort[0];
               if (sortField && validateColumn(sortField.id, sortableColumns)) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const column = (table as any)[sortField.id];
+                const column = resolveColumnTarget({
+                  table,
+                  columnId: sortField.id,
+                  allowedColumns: sortableColumns,
+                });
                 if (column) {
                   query = query.orderBy(sortField.desc ? desc(column) : asc(column));
                 }
@@ -991,6 +1093,12 @@ export function createCrudRouter<
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   filters: validatedFilters as any,
                   joinOperator: exportInput.joinOperator ?? 'and',
+                  resolveColumn: (columnId) =>
+                    resolveColumnTarget({
+                      table,
+                      columnId: String(columnId),
+                      allowedColumns: filterableColumns,
+                    }),
                 })
               : undefined;
 
@@ -1004,8 +1112,11 @@ export function createCrudRouter<
             if (exportInput.sort?.length) {
               const sortField = exportInput.sort[0];
               if (sortField && validateColumn(sortField.id, sortableColumns)) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const column = (table as any)[sortField.id];
+                const column = resolveColumnTarget({
+                  table,
+                  columnId: sortField.id,
+                  allowedColumns: sortableColumns,
+                });
                 if (column) {
                   query = query.orderBy(sortField.desc ? desc(column) : asc(column));
                 }

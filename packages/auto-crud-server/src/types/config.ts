@@ -4,7 +4,7 @@
  * 完整泛型支持：Schema → Config → Middleware → Procedures
  */
 
-import type { SQL } from 'drizzle-orm';
+import type { AnyColumn, SQL } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type { z } from 'zod';
 
@@ -35,6 +35,36 @@ export type TableColumnKeys<T extends PgTable> = keyof T['_']['columns'];
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyProcedure = any;
+
+/**
+ * 过滤/排序字段的自定义 SQL expression。
+ *
+ * 普通字段无需配置 expression，直接使用字段名即可；jsonb、i18n、派生字段等
+ * 需要自定义查询目标时，可通过 expression 显式返回 Drizzle SQL 片段或列对象。
+ */
+export type CrudColumnExpression<TTable extends PgTable = PgTable> = (params: {
+  table: TTable;
+}) => SQL | AnyColumn;
+
+/**
+ * 过滤/排序字段配置。
+ *
+ * - string: 普通表字段，继续使用 table[id]
+ * - object.jsonField: 从 jsonb 字段中提取一个或多个 key 作为文本查询目标
+ * - object.expression: 高级场景自定义 SQL expression
+ */
+export interface CrudColumnConfig<TTable extends PgTable = PgTable> {
+  /** 前端传入的逻辑字段名，同时默认对应 table 上的列名 */
+  id: string;
+  /** jsonb 对象内部要读取的字段；数组按顺序 coalesce 作为 fallback */
+  jsonField?: string | string[];
+  /** 高级场景自定义查询目标，优先级高于 jsonField */
+  expression?: CrudColumnExpression<TTable>;
+}
+
+export type CrudColumnRef<TTable extends PgTable = PgTable> =
+  | string
+  | CrudColumnConfig<TTable>;
 
 // ============================================================
 // 软删除配置
@@ -604,10 +634,25 @@ export interface CrudRouterConfig<
 
   /** ID 字段名，默认 "id" */
   idField?: string;
-  /** 可过滤的列白名单 */
-  filterableColumns?: string[];
-  /** 可排序的列白名单 */
-  sortableColumns?: string[];
+  /**
+   * 可过滤的列白名单。
+   *
+   * 普通字段使用字符串；jsonb/i18n 字段可用对象配置 jsonField，
+   * 由服务端显式生成 text expression，前端仍然传 id。
+   *
+   * @example
+   * filterableColumns: [
+   *   'status',
+   *   { id: 'name', jsonField: ['zh-CN', 'en-US', 'en', 'zh'] },
+   * ]
+   */
+  filterableColumns?: CrudColumnRef<TTable>[];
+  /**
+   * 可排序的列白名单。
+   *
+   * 与 filterableColumns 相同，普通字段使用字符串，jsonb/i18n 字段可配置 jsonField。
+   */
+  sortableColumns?: CrudColumnRef<TTable>[];
   /** 批量操作的最大数量限制，默认 100 */
   maxBatchSize?: number;
 

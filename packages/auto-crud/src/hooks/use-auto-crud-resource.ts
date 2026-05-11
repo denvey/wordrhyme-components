@@ -343,6 +343,7 @@ export function useAutoCrudResource<
   // 使用 keepPreviousData 保持旧数据显示，避免分页时的闪烁
   const listQuery = router.list.useQuery(queryInput, {
     placeholderData: keepPreviousData,
+    staleTime: 0,
   });
   const createMutation = router.create.useMutation();
   const updateMutation = router.update.useMutation();

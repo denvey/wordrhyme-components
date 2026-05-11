@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
+import { sql } from 'drizzle-orm';
 import {
   baseExportInputSchema,
   baseGetInputSchema,
@@ -66,6 +67,8 @@ function createMockDb() {
 }
 
 function createListMockDb(rows: Task[]) {
+  const builders: any[] = [];
+
   const createSelectBuilder = (getRows: () => unknown[]) => {
     let limitValue: number | undefined;
     let offsetValue = 0;
@@ -93,10 +96,12 @@ function createListMockDb(rows: Task[]) {
       },
     };
 
+    builders.push(builder);
     return builder;
   };
 
   return {
+    builders,
     select: vi.fn((selection?: Record<string, unknown>) => {
       if (selection && 'count' in selection) {
         return createSelectBuilder(() => [{ count: rows.length }]);
@@ -104,6 +109,25 @@ function createListMockDb(rows: Task[]) {
       return createSelectBuilder(() => rows);
     }),
   };
+}
+
+function collectSqlText(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value.map(collectSqlText).join('');
+  if (typeof value !== 'object') return '';
+
+  const object = value as { value?: unknown; queryChunks?: unknown };
+
+  if (Array.isArray(object.value)) {
+    return collectSqlText(object.value);
+  }
+
+  if (Array.isArray(object.queryChunks)) {
+    return collectSqlText(object.queryChunks);
+  }
+
+  return '';
 }
 
 // Mock table
@@ -670,6 +694,172 @@ describe('createCrudRouter', () => {
       };
 
       expect(() => createCrudRouter(config)).not.toThrow();
+    });
+
+    it('should apply ordinary text filters through the table column', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        filterableColumns: ['title'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        filters: [
+          {
+            id: 'title',
+            value: 'Task',
+            operator: 'iLike',
+            variant: 'text',
+            filterId: 'title',
+          },
+        ],
+        joinOperator: 'and',
+      });
+
+      const whereArg = db.builders[0]?.where.mock.calls[0]?.[0];
+      const sqlText = collectSqlText(whereArg);
+
+      expect(db.builders[0]?.where).toHaveBeenCalledTimes(1);
+      expect(sqlText).toContain('ilike');
+      expect(sqlText).not.toContain('jsonb_typeof');
+    });
+
+    it('should apply jsonField filters as a jsonb text expression', async () => {
+      const db = createListMockDb([
+        { id: '1', title: '任务 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        filterableColumns: [
+          { id: 'title', jsonField: ['zh-CN', 'en-US', 'en', 'zh'] },
+        ],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        filters: [
+          {
+            id: 'title',
+            value: '任务',
+            operator: 'iLike',
+            variant: 'text',
+            filterId: 'title',
+          },
+        ],
+        joinOperator: 'and',
+      });
+
+      const whereArg = db.builders[0]?.where.mock.calls[0]?.[0];
+      const sqlText = collectSqlText(whereArg);
+
+      expect(sqlText).toContain('jsonb_typeof');
+      expect(sqlText).toContain('->>');
+      expect(sqlText).toContain('zh-CN');
+      expect(sqlText).toContain('ilike');
+    });
+
+    it('should apply jsonField sortable columns as orderBy expressions', async () => {
+      const db = createListMockDb([
+        { id: '1', title: '任务 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        sortableColumns: [{ id: 'title', jsonField: ['zh-CN', 'en-US'] }],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        sort: [{ id: 'title', desc: false }],
+      });
+
+      const orderByArg = db.builders[0]?.orderBy.mock.calls[0]?.[0];
+      const sqlText = collectSqlText(orderByArg);
+
+      expect(sqlText).toContain('jsonb_typeof');
+      expect(sqlText).toContain('->>');
+      expect(sqlText).toContain('zh-CN');
+      expect(sqlText).toContain(' asc');
+    });
+
+    it('should apply custom expression columns for advanced orderBy cases', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        sortableColumns: [
+          {
+            id: 'title',
+            expression: ({ table }) => sql<string>`lower(${table.title})`,
+          },
+        ],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        sort: [{ id: 'title', desc: true }],
+      });
+
+      const orderByArg = db.builders[0]?.orderBy.mock.calls[0]?.[0];
+      const sqlText = collectSqlText(orderByArg);
+
+      expect(sqlText).toContain('lower(');
+      expect(sqlText).toContain(' desc');
+    });
+
+    it('should not filter expression columns that are not allowed', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        filterableColumns: ['status'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        filters: [
+          {
+            id: 'title',
+            value: 'Task',
+            operator: 'iLike',
+            variant: 'text',
+            filterId: 'title',
+          },
+        ],
+        joinOperator: 'and',
+      });
+
+      expect(db.builders[0]?.where).not.toHaveBeenCalled();
+      expect(db.builders[1]?.where).not.toHaveBeenCalled();
     });
   });
 });

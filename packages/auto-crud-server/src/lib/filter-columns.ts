@@ -15,9 +15,12 @@ import {
   notIlike,
   notInArray,
   or,
+  sql,
   type SQL,
   type Table,
 } from "drizzle-orm";
+
+type ColumnTarget = AnyColumn | SQL;
 
 /** 过滤器变体类型 */
 export type FilterVariant =
@@ -52,7 +55,7 @@ export type JoinOperator = "and" | "or";
 
 /** 扩展的列过滤器 */
 export interface ExtendedColumnFilter<T extends Table = Table> {
-  id: keyof T;
+  id: keyof T | string;
   value: unknown;
   variant: FilterVariant;
   operator: FilterOperator;
@@ -61,8 +64,17 @@ export interface ExtendedColumnFilter<T extends Table = Table> {
 /**
  * 检查列是否为空
  */
-function isEmpty(column: AnyColumn): SQL {
-  return or(isNull(column), eq(column, "")) as SQL;
+function toSqlTarget(column: ColumnTarget): SQL {
+  return sql`${column}`;
+}
+
+function isBooleanColumn(column: ColumnTarget): boolean {
+  return "dataType" in column && column.dataType === "boolean";
+}
+
+function isEmpty(column: ColumnTarget): SQL {
+  const expr = toSqlTarget(column);
+  return or(isNull(expr), eq(expr, "")) as SQL;
 }
 
 /**
@@ -108,30 +120,37 @@ export function filterColumns<T extends Table>({
   table,
   filters,
   joinOperator,
+  resolveColumn,
 }: {
   table: T;
   filters: ExtendedColumnFilter<T>[];
   joinOperator: JoinOperator;
+  resolveColumn?: (columnId: keyof T | string) => ColumnTarget | undefined;
 }): SQL | undefined {
   const joinFn = joinOperator === "and" ? and : or;
 
   const conditions = filters.map((filter) => {
-    const column = getColumn(table, filter.id);
+    const column = resolveColumn ? resolveColumn(filter.id) : getColumn(table, filter.id);
+    if (!column) return undefined;
+    const expr = toSqlTarget(column);
 
     switch (filter.operator) {
       case "iLike":
         return filter.variant === "text" && typeof filter.value === "string"
-          ? ilike(column, `%${filter.value}%`)
+          ? ilike(expr, `%${filter.value}%`)
           : undefined;
 
       case "notILike":
         return filter.variant === "text" && typeof filter.value === "string"
-          ? notIlike(column, `%${filter.value}%`)
+          ? notIlike(expr, `%${filter.value}%`)
           : undefined;
 
       case "eq":
-        if (column.dataType === "boolean" && typeof filter.value === "string") {
-          return eq(column, filter.value === "true");
+        if (
+          isBooleanColumn(column) &&
+          typeof filter.value === "string"
+        ) {
+          return eq(expr, filter.value === "true");
         }
         if (filter.variant === "dateRange" && Array.isArray(filter.value) && filter.value.length === 2) {
           // dateRange with eq operator should be treated as isBetween
@@ -141,8 +160,8 @@ export function filterColumns<T extends Table>({
           if (startDate) startDate.setHours(0, 0, 0, 0);
           if (endDate) endDate.setHours(23, 59, 59, 999);
           return and(
-            startDate ? gte(column, startDate) : undefined,
-            endDate ? lte(column, endDate) : undefined,
+            startDate ? gte(expr, startDate) : undefined,
+            endDate ? lte(expr, endDate) : undefined,
           );
         }
         if (filter.variant === "date" && typeof filter.value === "string") {
@@ -151,13 +170,16 @@ export function filterColumns<T extends Table>({
           date.setHours(0, 0, 0, 0);
           const end = new Date(date);
           end.setHours(23, 59, 59, 999);
-          return and(gte(column, date), lte(column, end));
+          return and(gte(expr, date), lte(expr, end));
         }
-        return eq(column, filter.value);
+        return eq(expr, filter.value);
 
       case "ne":
-        if (column.dataType === "boolean" && typeof filter.value === "string") {
-          return ne(column, filter.value === "true");
+        if (
+          isBooleanColumn(column) &&
+          typeof filter.value === "string"
+        ) {
+          return ne(expr, filter.value === "true");
         }
         if (filter.variant === "date" || filter.variant === "dateRange") {
           const date = safeParseDate(filter.value as string);
@@ -165,71 +187,71 @@ export function filterColumns<T extends Table>({
           date.setHours(0, 0, 0, 0);
           const end = new Date(date);
           end.setHours(23, 59, 59, 999);
-          return or(lt(column, date), gt(column, end));
+          return or(lt(expr, date), gt(expr, end));
         }
-        return ne(column, filter.value);
+        return ne(expr, filter.value);
 
       case "inArray":
         if (Array.isArray(filter.value)) {
-          return inArray(column, filter.value);
+          return inArray(expr, filter.value);
         }
         return undefined;
 
       case "notInArray":
         if (Array.isArray(filter.value)) {
-          return notInArray(column, filter.value);
+          return notInArray(expr, filter.value);
         }
         return undefined;
 
       case "lt":
         if (filter.variant === "number" || filter.variant === "range") {
           const num = safeParseNumber(filter.value as string);
-          return num !== null ? lt(column, num) : undefined;
+          return num !== null ? lt(expr, num) : undefined;
         }
         if (filter.variant === "date" && typeof filter.value === "string") {
           const date = safeParseDate(filter.value);
           if (!date) return undefined;
           date.setHours(23, 59, 59, 999);
-          return lt(column, date);
+          return lt(expr, date);
         }
         return undefined;
 
       case "lte":
         if (filter.variant === "number" || filter.variant === "range") {
           const num = safeParseNumber(filter.value as string);
-          return num !== null ? lte(column, num) : undefined;
+          return num !== null ? lte(expr, num) : undefined;
         }
         if (filter.variant === "date" && typeof filter.value === "string") {
           const date = safeParseDate(filter.value);
           if (!date) return undefined;
           date.setHours(23, 59, 59, 999);
-          return lte(column, date);
+          return lte(expr, date);
         }
         return undefined;
 
       case "gt":
         if (filter.variant === "number" || filter.variant === "range") {
           const num = safeParseNumber(filter.value as string);
-          return num !== null ? gt(column, num) : undefined;
+          return num !== null ? gt(expr, num) : undefined;
         }
         if (filter.variant === "date" && typeof filter.value === "string") {
           const date = safeParseDate(filter.value);
           if (!date) return undefined;
           date.setHours(0, 0, 0, 0);
-          return gt(column, date);
+          return gt(expr, date);
         }
         return undefined;
 
       case "gte":
         if (filter.variant === "number" || filter.variant === "range") {
           const num = safeParseNumber(filter.value as string);
-          return num !== null ? gte(column, num) : undefined;
+          return num !== null ? gte(expr, num) : undefined;
         }
         if (filter.variant === "date" && typeof filter.value === "string") {
           const date = safeParseDate(filter.value);
           if (!date) return undefined;
           date.setHours(0, 0, 0, 0);
-          return gte(column, date);
+          return gte(expr, date);
         }
         return undefined;
 
@@ -245,8 +267,8 @@ export function filterColumns<T extends Table>({
           if (startDate) startDate.setHours(0, 0, 0, 0);
           if (endDate) endDate.setHours(23, 59, 59, 999);
           return and(
-            startDate ? gte(column, startDate) : undefined,
-            endDate ? lte(column, endDate) : undefined,
+            startDate ? gte(expr, startDate) : undefined,
+            endDate ? lte(expr, endDate) : undefined,
           );
         }
 
@@ -263,16 +285,16 @@ export function filterColumns<T extends Table>({
           }
 
           if (firstValue !== null && secondValue === null) {
-            return eq(column, firstValue);
+            return eq(expr, firstValue);
           }
 
           if (firstValue === null && secondValue !== null) {
-            return eq(column, secondValue);
+            return eq(expr, secondValue);
           }
 
           return and(
-            firstValue !== null ? gte(column, firstValue) : undefined,
-            secondValue !== null ? lte(column, secondValue) : undefined,
+            firstValue !== null ? gte(expr, firstValue) : undefined,
+            secondValue !== null ? lte(expr, secondValue) : undefined,
           );
         }
         return undefined;
@@ -312,15 +334,15 @@ export function filterColumns<T extends Table>({
               return undefined;
           }
 
-          return and(gte(column, startDate), lte(column, endDate));
+          return and(gte(expr, startDate), lte(expr, endDate));
         }
         return undefined;
 
       case "isEmpty":
-        return isEmpty(column);
+        return isEmpty(expr);
 
       case "isNotEmpty":
-        return not(isEmpty(column));
+        return not(isEmpty(expr));
 
       default:
         throw new Error(`Unsupported operator: ${filter.operator}`);
@@ -336,7 +358,7 @@ export function filterColumns<T extends Table>({
 
 export function getColumn<T extends Table>(
   table: T,
-  columnKey: keyof T,
-): AnyColumn {
-  return table[columnKey] as AnyColumn;
+  columnKey: keyof T | string,
+): AnyColumn | undefined {
+  return table[columnKey as keyof T] as AnyColumn | undefined;
 }
