@@ -14,6 +14,11 @@ import type { ExtendedColumnFilter, FilterVariant } from "@/types/data-table";
 
 const URL_CHANGE_EVENT = "urlchange";
 
+function toSearchString(params: URLSearchParams): string {
+  const queryString = params.toString().replace(/%2C/g, ",");
+  return queryString ? `?${queryString}` : "";
+}
+
 type ColumnLike<TData> =
   | Column<TData>
   | ColumnDef<TData, unknown>
@@ -41,7 +46,7 @@ export function useReadableFilters<TData>(
   const columnSnapshot = React.useMemo(() => columns, [columns]);
 
   // Snapshot of the last URL search string we wrote, used to skip self-triggered urlchange events
-  const lastWrittenUrlRef = React.useRef("");
+  const lastWrittenUrlRef = React.useRef<string | null>(null);
   const filtersRef = React.useRef<ExtendedColumnFilter<TData>[]>(null!);
   const [filters, setFilters] = React.useState<ExtendedColumnFilter<TData>[]>(() => {
     const initial = parseReadableFilters(getUrlParams(), columnSnapshot);
@@ -53,7 +58,8 @@ export function useReadableFilters<TData>(
   React.useEffect(() => {
     const handleUrlChange = () => {
       // Skip if current URL matches what we last wrote (self-triggered event)
-      if (window.location.search === lastWrittenUrlRef.current) {
+      if (lastWrittenUrlRef.current !== null && window.location.search === lastWrittenUrlRef.current) {
+        lastWrittenUrlRef.current = null;
         return;
       }
       const next = parseReadableFilters(getUrlParams(), columnSnapshot);
@@ -74,8 +80,8 @@ export function useReadableFilters<TData>(
     (next: ExtendedColumnFilter<TData>[]) => {
       const params = getUrlParams();
       applyReadableFilters(params, columnSnapshot, next);
+      lastWrittenUrlRef.current = toSearchString(params);
       setSearchParams(params, { history, scroll });
-      lastWrittenUrlRef.current = `?${params.toString()}`;
     },
     [columnSnapshot, history, scroll],
   );

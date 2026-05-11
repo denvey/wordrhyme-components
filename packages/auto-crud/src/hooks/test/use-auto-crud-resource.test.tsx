@@ -90,4 +90,36 @@ describe("useAutoCrudResource", () => {
       },
     );
   });
+
+  it("updates list query input when a readable filter is cleared from the URL", async () => {
+    const router = createRouter();
+    window.history.replaceState(null, "", "/products?status=published");
+
+    cleanup = renderResourceHook(router);
+
+    expect(router.list.useQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        filters: [
+          expect.objectContaining({
+            id: "status",
+            value: ["published"],
+          }),
+        ],
+      }),
+      expect.any(Object),
+    );
+
+    await act(async () => {
+      window.history.replaceState(null, "", "/products");
+      window.dispatchEvent(new Event("urlchange"));
+      await Promise.resolve();
+    });
+
+    expect(router.list.useQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        filters: [],
+      }),
+      expect.any(Object),
+    );
+  });
 });
