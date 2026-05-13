@@ -26,7 +26,14 @@ export default defineConfig({
     })(),
   },
   optimizeDeps: {
-    include: ['react', 'react-dom'],
+    include: [
+      'react',
+      'react-dom',
+      '@pixpilot/shadcn',
+      '@pixpilot/shadcn-ui',
+      '@pixpilot/formily-shadcn',
+      '@pixpilot/shadcn-auth',
+    ],
   },
   server: {
     fs: {

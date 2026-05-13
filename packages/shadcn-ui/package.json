@@ -81,8 +81,10 @@
     "@types/react": "catalog:dev",
     "eslint": "catalog:dev",
     "jsdom": "catalog:dev",
+    "postcss": "catalog:dev",
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
+    "tailwindcss": "catalog:dev",
     "tsdown": "catalog:dev",
     "typescript": "catalog:dev"
   },

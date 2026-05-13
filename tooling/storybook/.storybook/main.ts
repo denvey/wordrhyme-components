@@ -12,6 +12,7 @@ const config: StorybookConfig = {
     '@storybook/addon-essentials',
     '@storybook/addon-interactions',
     '@storybook/addon-themes',
+    'storybook-addon-playwright/register',
   ],
   staticDirs: ['public'],
   framework: {

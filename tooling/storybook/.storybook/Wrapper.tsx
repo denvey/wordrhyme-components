@@ -1,8 +1,8 @@
-import { ThemeProvider } from '@pixpilot/shadcn-ui';
 import { useTheme } from 'next-themes';
 import React, { useEffect, useRef } from 'react';
 
-import { Toaster } from 'sonner';
+import { ThemeProvider } from '../../../packages/shadcn-ui/src/theme-provider/ThemeProvider';
+import { Toaster } from '../../../packages/shadcn-ui/src/toast/ToastProvider';
 
 export interface WrapperProps {
   children: React.ReactNode;

@@ -51,15 +51,14 @@
     "gen:package": "npx @pixpilot/scaffoldfy --config ./generators/package/scaffoldfy.json"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.30.0",
-    "@commitlint/cli": "^20.5.0",
-    "@commitlint/config-conventional": "^20.5.0",
+    "@changesets/cli": "^2.31.0",
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
     "@internal/prettier-config": "workspace:*",
     "@pixpilot/changeset": "^0.1.3",
     "@pixpilot/dev-config": "catalog:dev",
     "@pixpilot/workspace-package-generator": "^2.1.2",
     "@testing-library/jest-dom": "catalog:dev",
-    "@turbo/gen": "^2.9.6",
     "@types/node": "catalog:dev",
     "@vitest/coverage-v8": "catalog:dev",
     "@vitest/ui": "catalog:dev",
