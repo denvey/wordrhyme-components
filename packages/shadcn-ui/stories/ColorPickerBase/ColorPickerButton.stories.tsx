@@ -25,6 +25,8 @@ function ColorPickerButtonPreview(props: {
   showClearButton?: boolean;
   onClear?: () => void;
   slots?: React.ComponentProps<typeof ColorPickerButton>['slots'];
+  className?: string;
+  style?: React.CSSProperties;
 }) {
   const {
     initialValue = 'hsl(217, 91%, 60%)',
@@ -33,13 +35,19 @@ function ColorPickerButtonPreview(props: {
     showClearButton = false,
     onClear,
     slots,
+    className,
+    style,
   } = props;
   const [value, setValue] = React.useState(initialValue);
 
   const handleClear = onClear ?? (() => setValue(''));
 
   return (
-    <div data-testid="color-picker-button-preview" className="w-80 space-y-3">
+    <div
+      data-testid="color-picker-button-preview"
+      className={`w-80 space-y-3 ${className ?? ''}`}
+      style={style}
+    >
       <div className="text-sm text-muted-foreground">
         Selected color: <span className="font-mono">{value || 'none'}</span>
       </div>
@@ -78,6 +86,35 @@ export const WithCustomDisplayValue: Story = {
             style={{ backgroundColor: value }}
           />
           <span>{value.toUpperCase()}</span>
+        </span>
+      )}
+    />
+  ),
+};
+
+export const WithTruncatedDisplayValue: Story = {
+  render: () => (
+    <ColorPickerButtonPreview
+      className="w-56"
+      initialValue="hsl(217, 91%, 60%)"
+      formatDisplayValue={(value) => (
+        <span>
+          {`This is a very long color label for ${value} that should truncate instead of wrapping`}
+        </span>
+      )}
+    />
+  ),
+};
+
+export const WithTruncatedDisplayValueAndClearButton: Story = {
+  render: () => (
+    <ColorPickerButtonPreview
+      showClearButton
+      style={{ width: '14rem' }}
+      initialValue="hsl(217, 91%, 60%)"
+      formatDisplayValue={(value) => (
+        <span>
+          {`This is a very long color label for ${value} that should truncate instead of wrapping`}
         </span>
       )}
     />

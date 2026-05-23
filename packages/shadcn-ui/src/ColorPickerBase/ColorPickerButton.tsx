@@ -4,7 +4,6 @@ import {
   ColorPickerTrigger,
   InputGroup,
   InputGroupAddon,
-  InputGroupText,
 } from '@pixpilot/shadcn';
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from 'lucide-react';
 import React from 'react';
@@ -62,9 +61,9 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
         <InputGroupAddon align="inline-start">
           <ColorPickerSwatch color={currentcolor} {...slots?.swatch} />
         </InputGroupAddon>
-        <InputGroupText className="flex-1 text-left text-foreground pl-2">
+        <span className="flex-1 min-w-0 block truncate text-left text-foreground pl-2">
           {renderDisplayValue()}
-        </InputGroupText>
+        </span>
         <InputGroupAddon align="inline-end" className="gap-1">
           {onClear != null && (
             <Button

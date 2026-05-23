@@ -1,0 +1,51 @@
+{
+  "version": "0",
+  "stories": {
+    "shadcn-ui-colorpickerbase-colorpickerbutton--with-truncated-display-value-and-clear-button": {
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "XdgO0RgPYCvD",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "MpONBFZRBkaC",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "35Zc_mdJe4Vv",
+          "browserType": "chromium",
+          "id": "ZWpq3Dd-bu8t",
+          "index": 0,
+          "screenshotOptionsId": "KIyeC3adcAJW",
+          "title": "ColorPickerButton with truncated display value and clear button"
+        }
+      ]
+    }
+  },
+  "browserOptions": {
+    "35Zc_mdJe4Vv": {
+      "viewport": {
+        "height": 424,
+        "width": 836
+      },
+      "cursor": true
+    }
+  },
+  "screenshotOptions": {
+    "KIyeC3adcAJW": {
+      "clip": {
+        "height": 60,
+        "width": 116,
+        "x": 360,
+        "y": 183
+      }
+    }
+  }
+}
