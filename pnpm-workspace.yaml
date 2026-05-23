@@ -10,7 +10,7 @@ catalogs:
   prod:
     'pretty-bytes': ^7.1.0
     '@pixpilot/hash': ^0.2.0
-    '@pixpilot/string': ^2.5.0
+    '@pixpilot/string': ^3.0.0
     '@pixpilot/env': ^0.2.3
     '@pixpilot/object': ^2.4.2
     class-variance-authority: ^0.7.1

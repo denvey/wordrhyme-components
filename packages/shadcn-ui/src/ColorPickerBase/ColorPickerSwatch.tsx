@@ -10,7 +10,10 @@ const ColorPickerSwatch: React.FC<ColorPickerSwatchProps> = (props) => {
   return (
     <OrgColorPickerSwatch
       {...props}
-      className={cn('rounded-sm w-6.5 h-6.5 p-0 -ml-1 cursor-pointer', props.className)}
+      className={cn(
+        'rounded-sm w-6.5 h-6.5 p-0 -ml-1 cursor-pointer relative flex items-center justify-center',
+        props.className,
+      )}
     />
   );
 };

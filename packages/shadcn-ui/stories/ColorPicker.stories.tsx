@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { RotateCcwIcon } from 'lucide-react';
 
 import React from 'react';
 import { ColorPicker } from '../src/ColorPicker';
@@ -43,6 +44,11 @@ const meta = {
     contentProps: {
       control: 'object',
       description: 'Props to customize the color picker content wrapper',
+    },
+    resetOptions: {
+      control: 'object',
+      description:
+        'Optional reset behavior. When provided, the clear (x) action resets to resetOptions.value.',
     },
   },
   decorators: [
@@ -235,4 +241,50 @@ export const WithContentWidth: Story = {
   args: {
     contentProps: { width: 180 },
   },
+};
+
+export const ButtonWithResetOptions: React.FC = () => {
+  const [color, setColor] = React.useState('#3b82f6');
+
+  return (
+    <div className="space-y-4 w-60">
+      <div className="text-sm text-muted-foreground">
+        Selected color: <span className="font-mono">{color || 'Automatic'}</span>
+      </div>
+      <ColorPicker
+        value={color}
+        onChange={setColor}
+        variant="button"
+        resetOptions={{
+          value: '',
+          label: 'Automatic',
+          tooltip: 'Use automatic theme color',
+          icon: <RotateCcwIcon size={14} aria-hidden="true" />,
+        }}
+      />
+    </div>
+  );
+};
+
+export const InputWithResetOptions: React.FC = () => {
+  const [color, setColor] = React.useState('#f97316');
+
+  return (
+    <div className="space-y-4 w-60">
+      <div className="text-sm text-muted-foreground">
+        Selected color: <span className="font-mono">{color || 'Automatic'}</span>
+      </div>
+      <ColorPicker
+        value={color}
+        onChange={setColor}
+        variant="input"
+        resetOptions={{
+          value: '',
+          label: 'Automatic',
+          tooltip: 'Use automatic theme color',
+          icon: <RotateCcwIcon size={14} aria-hidden="true" />,
+        }}
+      />
+    </div>
+  );
 };

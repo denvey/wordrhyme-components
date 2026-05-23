@@ -53,6 +53,7 @@
     "@iconify/react": "catalog:prod",
     "@pixpilot/hash": "catalog:prod",
     "@pixpilot/shadcn": "workspace:*",
+    "@pixpilot/string": "catalog:prod",
     "@tailwindcss/typography": "^0.5.19",
     "@tanstack/react-virtual": "^3.13.23",
     "@tiptap/core": "^3.22.3",

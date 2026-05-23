@@ -1,5 +1,6 @@
 export * from './color-palette';
 export * from './color-picker-context';
+
 export * from './ColorPickerBase';
 export * from './ColorPickerButton';
 export * from './ColorPickerCompactControls';
@@ -14,6 +15,8 @@ export { ColorPickerRoot } from './ColorPickerRoot';
 export {
   type ColorPickerBaseProps,
   type ColorPickerBaseSection,
+  type ColorPickerContentProps,
+  type ColorPickerResetOptions,
   type ColorPickerRootProps,
   type PresetColor,
 } from './types';

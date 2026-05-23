@@ -2,6 +2,7 @@ import type {
   ColorPickerContent as BaseColorPickerContent,
   ColorPickerProps,
 } from '@pixpilot/shadcn';
+import type { ReactNode } from 'react';
 
 export interface PresetColor {
   label: string;
@@ -53,4 +54,11 @@ export interface ColorPickerBaseProps extends Omit<
         onValueChange: (value: string) => void;
         isPickerOpen: boolean;
       }) => React.ReactNode);
+}
+
+export interface ColorPickerResetOptions {
+  value: string;
+  label?: string;
+  icon?: ReactNode;
+  tooltip?: string;
 }

@@ -1,3 +1,4 @@
+import type { ColorPickerResetOptions } from './types';
 import {
   Button,
   cn,
@@ -9,6 +10,7 @@ import { ChevronDownIcon, ChevronUpIcon, XIcon } from 'lucide-react';
 import React from 'react';
 import { useColorPickerContext } from './color-picker-context';
 import { ColorPickerSwatch } from './ColorPickerSwatch';
+import { useColorPickerResetOptions } from './hooks/use-color-picker-reset-options';
 
 export interface ColorPickerButtonProps extends Omit<
   React.ComponentPropsWithoutRef<'div'>,
@@ -17,6 +19,7 @@ export interface ColorPickerButtonProps extends Omit<
   formatDisplayValue?: (value: string) => React.ReactNode;
   placeholder?: string;
   onClear?: () => void;
+  resetOptions?: ColorPickerResetOptions;
   slots?: {
     swatch?: React.ComponentProps<typeof ColorPickerSwatch>;
     clearButton?: React.ComponentProps<typeof Button>;
@@ -29,10 +32,26 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
     formatDisplayValue,
     placeholder = 'Pick a color',
     onClear,
+    resetOptions,
+    title,
     ...rest
   } = props;
 
-  const { isPickerOpen, value, onValueChange } = useColorPickerContext();
+  const { isPickerOpen, onValueChange } = useColorPickerContext();
+
+  const {
+    value,
+    isResettable,
+    isResetValue,
+    resetLabel,
+    resetTooltip,
+    resetIcon,
+    handleClear,
+    showClearButton,
+  } = useColorPickerResetOptions({
+    resetOptions,
+    onClear,
+  });
 
   // eslint-disable-next-line no-restricted-properties, node/prefer-global/process
   if (process.env.NODE_ENV !== 'production') {
@@ -44,28 +63,36 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
   }
 
   const renderDisplayValue = (): React.ReactNode => {
+    if (isResetValue) return resetLabel;
     if (value == null || value === '') return placeholder;
     return formatDisplayValue != null ? formatDisplayValue(value) : value;
   };
 
-  const currentcolor = value != null && value !== '' ? value : undefined;
+  const currentcolor = !isResetValue && value != null && value !== '' ? value : undefined;
+  const swatchChildren = isResetValue
+    ? (resetIcon ?? slots?.swatch?.children)
+    : undefined;
+
   return (
     <ColorPickerTrigger asChild>
       <InputGroup
         {...rest}
+        title={isResettable ? resetTooltip : title}
         className={cn(
           'dark:hover:bg-input/50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer',
           rest.className,
         )}
       >
         <InputGroupAddon align="inline-start">
-          <ColorPickerSwatch color={currentcolor} {...slots?.swatch} />
+          <ColorPickerSwatch color={currentcolor} {...slots?.swatch}>
+            {swatchChildren}
+          </ColorPickerSwatch>
         </InputGroupAddon>
         <span className="flex-1 min-w-0 block truncate text-left text-foreground pl-2">
           {renderDisplayValue()}
         </span>
         <InputGroupAddon align="inline-end" className="gap-1">
-          {onClear != null && (
+          {showClearButton && (
             <Button
               type="button"
               variant="ghost"
@@ -76,12 +103,18 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
                 'size-6 shrink-0 rounded-full',
                 slots?.clearButton?.className,
               )}
+              onPointerDown={(e) => {
+                slots?.clearButton?.onPointerDown?.(e);
+                if (e.defaultPrevented) return;
+                e.preventDefault();
+                e.stopPropagation();
+              }}
               onClick={(e) => {
                 slots?.clearButton?.onClick?.(e);
                 if (e.defaultPrevented) return;
                 e.preventDefault();
                 e.stopPropagation();
-                onClear();
+                handleClear?.();
               }}
             >
               <XIcon className="size-4 opacity-50" />

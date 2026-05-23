@@ -28,6 +28,7 @@
     "@pixpilot/shadcn": "workspace:*",
     "@pixpilot/shadcn-auth": "workspace:*",
     "@pixpilot/shadcn-ui": "workspace:*",
+    "@pixpilot/string": "catalog:prod",
     "next-themes": "catalog:prod"
   },
   "devDependencies": {
@@ -53,7 +54,7 @@
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
     "storybook": "catalog:dev",
-    "storybook-addon-playwright": "7.8.4",
+    "storybook-addon-playwright": "7.8.5",
     "tailwindcss": "catalog:dev",
     "tailwindcss-animate": "catalog:dev",
     "tsx": "catalog:dev",
