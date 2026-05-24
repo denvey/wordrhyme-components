@@ -41,7 +41,6 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
 
   const {
     value,
-    isResettable,
     isResetValue,
     resetLabel,
     resetTooltip,
@@ -77,7 +76,7 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
     <ColorPickerTrigger asChild>
       <InputGroup
         {...rest}
-        title={isResettable ? resetTooltip : title}
+        title={title}
         className={cn(
           'dark:hover:bg-input/50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer',
           rest.className,
@@ -95,6 +94,7 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
           {showClearButton && (
             <Button
               type="button"
+              title={resetTooltip}
               variant="ghost"
               size="icon"
               aria-label="Clear color"

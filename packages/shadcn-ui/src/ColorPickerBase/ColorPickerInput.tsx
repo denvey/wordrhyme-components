@@ -32,7 +32,6 @@ const ColorPickerInput: React.FC<ColorPickerInputProps> = (props) => {
 
   const {
     value,
-    isResettable,
     isResetValue,
     resetLabel,
     resetTooltip,
@@ -69,7 +68,7 @@ const ColorPickerInput: React.FC<ColorPickerInputProps> = (props) => {
         <InputGroupInput
           value={inputValue}
           {...rest}
-          title={isResettable ? resetTooltip : title}
+          title={title}
           placeholder={inputPlaceholder}
           onPointerDown={(e: React.PointerEvent<HTMLInputElement>) => {
             rest.onPointerDown?.(e);
@@ -93,6 +92,7 @@ const ColorPickerInput: React.FC<ColorPickerInputProps> = (props) => {
               variant="ghost"
               size="icon"
               aria-label="Clear color"
+              title={resetTooltip}
               {...slots?.clearButton}
               className={cn(
                 'size-6 shrink-0 rounded-full',
