@@ -1,8 +1,10 @@
 import type {
   ColorPickerContent as BaseColorPickerContent,
+  ColorPickerSwatch as BaseColorPickerSwatch,
+  Button,
   ColorPickerProps,
 } from '@pixpilot/shadcn';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 export interface PresetColor {
   label: string;
@@ -62,4 +64,9 @@ export interface ColorPickerResetOptions {
   icon?: ReactNode;
   tooltip?: string;
   swatchColor?: string;
+}
+
+export interface ColorPickerSlots {
+  swatch?: ComponentProps<typeof BaseColorPickerSwatch>;
+  clearButton?: ComponentProps<typeof Button>;
 }

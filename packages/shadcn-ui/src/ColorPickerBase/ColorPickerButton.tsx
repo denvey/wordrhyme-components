@@ -1,4 +1,4 @@
-import type { ColorPickerResetOptions } from './types';
+import type { ColorPickerResetOptions, ColorPickerSlots } from './types';
 import {
   Button,
   cn,
@@ -20,10 +20,7 @@ export interface ColorPickerButtonProps extends Omit<
   placeholder?: string;
   onClear?: () => void;
   resetOptions?: ColorPickerResetOptions;
-  slots?: {
-    swatch?: React.ComponentProps<typeof ColorPickerSwatch>;
-    clearButton?: React.ComponentProps<typeof Button>;
-  };
+  slots?: ColorPickerSlots;
 }
 
 const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
@@ -82,7 +79,11 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
         )}
       >
         <InputGroupAddon align="inline-start">
-          <ColorPickerSwatch color={swatchColor} {...slots?.swatch}>
+          <ColorPickerSwatch
+            color={swatchColor}
+            resetOptions={resetOptions}
+            {...slots?.swatch}
+          >
             {swatchChildren}
           </ColorPickerSwatch>
         </InputGroupAddon>

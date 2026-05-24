@@ -259,6 +259,70 @@
           "title": "Button With Reset Swatch Color"
         }
       ]
+    },
+    "shadcn-ui-colorpicker--button-with-reset-to-inherit": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"button\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "SfaqHwAfUUoz",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"color-picker-trigger\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "yDTvfYZRvjxq",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"button\"]"
+                  },
+                  "id": "5QebtOFnbXzk",
+                  "name": "click"
+                }
+              ],
+              "id": "vl7PevDwA2jq",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "H71rc_EU3Mth",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "29qjIIp9Aak9",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserType": "chromium",
+          "id": "PkgoGU1d2RbO",
+          "index": 0,
+          "title": "Button With Reset To Inherit color"
+        }
+      ]
     }
   }
 }

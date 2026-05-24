@@ -1,15 +1,24 @@
-import { cn, ColorPickerSwatch as OrgColorPickerSwatch } from '@pixpilot/shadcn';
+import type { ColorPickerResetOptions } from './types';
 
+import { cn, ColorPickerSwatch as OrgColorPickerSwatch } from '@pixpilot/shadcn';
 import React from 'react';
 
 export interface ColorPickerSwatchProps extends React.ComponentProps<
   typeof OrgColorPickerSwatch
-> {}
+> {
+  resetOptions: ColorPickerResetOptions | undefined;
+}
 
 const ColorPickerSwatch: React.FC<ColorPickerSwatchProps> = (props) => {
+  const { resetOptions } = props;
+
   return (
     <OrgColorPickerSwatch
       {...props}
+      style={{
+        backgroundColor:
+          props.color === resetOptions?.value ? resetOptions?.swatchColor : props.color,
+      }}
       className={cn(
         'rounded-sm w-6.5 h-6.5 p-0 -ml-1 cursor-pointer relative flex items-center justify-center',
         props.className,
