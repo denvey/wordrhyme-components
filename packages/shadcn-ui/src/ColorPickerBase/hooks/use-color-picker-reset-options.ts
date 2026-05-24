@@ -1,6 +1,6 @@
 import type { ColorPickerResetOptions } from '../types';
 
-import { capitalize } from '@pixpilot/string';
+import { capitalize, isEmptyStringOrNil } from '@pixpilot/string';
 import React from 'react';
 import { useColorPickerContext } from '../color-picker-context';
 
@@ -18,7 +18,7 @@ export function useColorPickerResetOptions(params: UseColorPickerResetOptionsPar
   resetIcon: React.ReactNode;
   handleClear?: () => void;
   showClearButton: boolean;
-  currentcolor?: string;
+  swatchColor?: string;
 } {
   const { resetOptions, onClear } = params;
   const { value, onValueChange } = useColorPickerContext();
@@ -28,7 +28,7 @@ export function useColorPickerResetOptions(params: UseColorPickerResetOptionsPar
   const resetLabel = resetOptions?.label ?? capitalize(resetOptions?.value ?? '');
   const resetIcon = resetOptions?.icon;
   const resetTooltip = resetOptions?.tooltip ?? capitalize(resetLabel);
-  const currentcolor = !isResetValue && value != null && value !== '' ? value : undefined;
+  const currentcolor = !isResetValue && !isEmptyStringOrNil(value) ? value : undefined;
   const handleReset = React.useCallback(() => {
     if (resetOptions != null) {
       onValueChange(resetOptions.value);
@@ -39,6 +39,10 @@ export function useColorPickerResetOptions(params: UseColorPickerResetOptionsPar
   const showClearButton =
     handleClear != null && (onClear != null || isResetValue === false);
 
+  const swatchColor = isResetValue
+    ? (resetOptions?.swatchColor ?? 'transparent')
+    : currentcolor;
+
   return {
     value,
     isResettable,
@@ -48,6 +52,6 @@ export function useColorPickerResetOptions(params: UseColorPickerResetOptionsPar
     resetIcon,
     handleClear,
     showClearButton,
-    currentcolor,
+    swatchColor,
   };
 }

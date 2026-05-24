@@ -38,7 +38,7 @@ const ColorPickerInput: React.FC<ColorPickerInputProps> = (props) => {
     resetIcon,
     handleClear,
     showClearButton,
-    currentcolor,
+    swatchColor,
   } = useColorPickerResetOptions({
     resetOptions,
     onClear,
@@ -60,7 +60,7 @@ const ColorPickerInput: React.FC<ColorPickerInputProps> = (props) => {
     <ColorPickerTrigger asChild>
       <InputGroup className="w-full">
         <InputGroupAddon align="inline-start">
-          <ColorPickerSwatch color={currentcolor} {...slots?.swatch}>
+          <ColorPickerSwatch color={swatchColor} {...slots?.swatch}>
             {swatchChildren}
           </ColorPickerSwatch>
         </InputGroupAddon>

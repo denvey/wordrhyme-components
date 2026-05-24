@@ -61,4 +61,5 @@ export interface ColorPickerResetOptions {
   label?: string;
   icon?: ReactNode;
   tooltip?: string;
+  swatchColor?: string;
 }
