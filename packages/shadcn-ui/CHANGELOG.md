@@ -1,5 +1,11 @@
 # @pixpilot/shadcn-ui
 
+## 1.21.0
+
+### Minor Changes
+
+- enhance ColorPickerSwatch functionality and update tests
+
 ## 1.20.0
 
 ### Minor Changes
