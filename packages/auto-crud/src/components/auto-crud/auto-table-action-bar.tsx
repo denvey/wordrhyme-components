@@ -44,7 +44,11 @@ export type BatchBuiltinActionType = 'batchUpdate' | 'export' | 'delete';
 export type BatchBuiltinActionItem<TData> = {
   type: BatchBuiltinActionType;
   /** 替代默认行为 */
-  onClick?: (rows: TData[], context: BatchActionContext<TData>) => void;
+  onClick?: (
+    rows: TData[],
+    context: BatchActionContext<TData>,
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => void;
   /** 替代默认标签，仅对 export/delete 生效 */
   label?: string;
   /** 替代整个内置操作的渲染 */
@@ -56,7 +60,11 @@ export type BatchCustomActionItem<TData> = {
   /** 操作文本。传 component 时可省略 */
   label?: string;
   /** 自定义点击行为。传 component 时可省略 */
-  onClick?: (rows: TData[], context: BatchActionContext<TData>) => void;
+  onClick?: (
+    rows: TData[],
+    context: BatchActionContext<TData>,
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => void;
   /** 渲染自定义内容 */
   component?: React.ReactNode | ((context: BatchActionContext<TData>) => React.ReactNode);
   /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
@@ -213,8 +221,10 @@ export function AutoTableActionBar<TData>({
         return (
           <ActionBarItem
             key="export"
-            onClick={() =>
-              action.onClick ? action.onClick(selectedRows, actionContext) : onExport()
+            onClick={(event) =>
+              action.onClick
+                ? action.onClick(selectedRows, actionContext, event)
+                : onExport()
             }
           >
             <Download />
@@ -228,8 +238,10 @@ export function AutoTableActionBar<TData>({
           <ActionBarItem
             key="delete"
             variant="destructive"
-            onClick={() =>
-              action.onClick ? action.onClick(selectedRows, actionContext) : onDelete()
+            onClick={(event) =>
+              action.onClick
+                ? action.onClick(selectedRows, actionContext, event)
+                : onDelete()
             }
           >
             <Trash2 />
@@ -271,7 +283,7 @@ export function AutoTableActionBar<TData>({
         <ActionBarItem
           key={`custom-${index}`}
           variant={action.variant === 'destructive' ? 'destructive' : 'secondary'}
-          onClick={() => action.onClick?.(selectedRows, actionContext)}
+          onClick={(event) => action.onClick?.(selectedRows, actionContext, event)}
         >
           {action.label}
         </ActionBarItem>
