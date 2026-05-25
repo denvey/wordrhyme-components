@@ -1,37 +1,41 @@
-"use client";
+'use client';
 
-import { z } from "zod";
-import { useCallback, useEffect, useMemo } from "react";
-import { CommandIcon, FileSpreadsheetIcon, ListFilterIcon } from "lucide-react";
-import { DataTable } from "@/components/data-table/data-table";
-import { DataTableFilterList } from "@/components/data-table/data-table-filter-list";
-import { DataTableFilterMenu } from "@/components/data-table/data-table-filter-menu";
-import { DataTableSortList } from "@/components/data-table/data-table-sort-list";
-import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
-import { Button } from "@pixpilot/shadcn";
+import { z } from 'zod';
+import { useCallback, useEffect, useMemo } from 'react';
+import { CommandIcon, FileSpreadsheetIcon, ListFilterIcon } from 'lucide-react';
+import { DataTable } from '@/components/data-table/data-table';
+import { DataTableFilterList } from '@/components/data-table/data-table-filter-list';
+import { DataTableFilterMenu } from '@/components/data-table/data-table-filter-menu';
+import { DataTableSortList } from '@/components/data-table/data-table-sort-list';
+import { DataTableViewOptions } from '@/components/data-table/data-table-view-options';
+import { Button } from '@pixpilot/shadcn';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from "@pixpilot/shadcn";
-import { parseAsStringEnum, useQueryState } from "@/hooks/use-url-state";
-import { AutoTableSimpleFilters } from "./auto-table-simple-filters";
-import { AutoTableActionBar, type BatchUpdateField } from "./auto-table-action-bar";
-import { useDataTable } from "@/hooks/use-data-table";
+} from '@pixpilot/shadcn';
+import { parseAsStringEnum, useQueryState } from '@/hooks/use-url-state';
+import { AutoTableSimpleFilters } from './auto-table-simple-filters';
+import {
+  AutoTableActionBar,
+  type BatchActionConfig,
+  type BatchUpdateField,
+} from './auto-table-action-bar';
+import { useDataTable } from '@/hooks/use-data-table';
 import {
   createTableSchema,
   createSelectColumn,
   createActionsColumn,
   type ActionsColumnConfig,
-} from "@/lib/schema-bridge/zod-to-columns";
-import type { ColumnOverrides } from "@/lib/schema-bridge/types";
+} from '@/lib/schema-bridge/zod-to-columns';
+import type { ColumnOverrides } from '@/lib/schema-bridge/types';
 
 /** 过滤模式类型 */
-export type FilterMode = "simple" | "advanced" | "command";
+export type FilterMode = 'simple' | 'advanced' | 'command';
 
-const DEFAULT_MODES: FilterMode[] = ["simple", "advanced", "command"];
+const DEFAULT_MODES: FilterMode[] = ['simple', 'advanced', 'command'];
 
 /** 过滤模式配置 */
 const filterModeConfig: Record<
@@ -39,19 +43,19 @@ const filterModeConfig: Record<
   { label: string; icon: typeof ListFilterIcon; tooltip: string }
 > = {
   simple: {
-    label: "Simple",
+    label: 'Simple',
     icon: ListFilterIcon,
-    tooltip: "Simple column filters",
+    tooltip: 'Simple column filters',
   },
   advanced: {
-    label: "Advanced",
+    label: 'Advanced',
     icon: FileSpreadsheetIcon,
-    tooltip: "Airtable-style advanced filters",
+    tooltip: 'Airtable-style advanced filters',
   },
   command: {
-    label: "Command",
+    label: 'Command',
     icon: CommandIcon,
-    tooltip: "Linear-style command filters",
+    tooltip: 'Linear-style command filters',
   },
 };
 
@@ -83,10 +87,14 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
   batchUpdateFields?: BatchUpdateField[];
   /** 批量操作栏额外按钮 */
   actionBarExtra?: React.ReactNode;
+  /** 批量悬浮操作配置 */
+  actionBarActions?: BatchActionConfig<z.infer<T>>;
   /** 初始排序 */
   initialSorting?: any[];
   /** 是否启用导出功能 (默认 true) */
   enableExport?: boolean;
+  /** 未配置批量 actions / 只配置 custom actions 时，是否展示默认导出按钮 */
+  showDefaultExport?: boolean;
   /** 选中行数变化回调（用于外层组件获知选中状态） */
   onSelectedCountChange?: (count: number) => void;
   /** 获取选中行数据的回调（由外层组件调用） */
@@ -102,23 +110,27 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   exclude,
   actions,
   pinnedColumns,
-  filterMode = "simple",
+  filterMode = 'simple',
   onDeleteSelected,
   onUpdateSelected,
   batchUpdateFields,
   actionBarExtra,
+  actionBarActions,
   initialSorting,
   enableExport = true,
+  showDefaultExport = true,
   onSelectedCountChange,
   getSelectedRows,
 }: AutoTableProps<T>) {
   // 解析过滤模式配置，默认显示全部 3 个模式
   const modes = filterMode
-    ? (Array.isArray(filterMode) ? filterMode : [filterMode])
+    ? Array.isArray(filterMode)
+      ? filterMode
+      : [filterMode]
     : DEFAULT_MODES;
   const [currentMode, setCurrentMode] = useQueryState(
-    "filterMode",
-    parseAsStringEnum<FilterMode>(modes).withDefault(modes[0] ?? "simple"),
+    'filterMode',
+    parseAsStringEnum<FilterMode>(modes).withDefault(modes[0] ?? 'simple'),
   );
   const showToggle = modes.length > 1;
 
@@ -139,13 +151,16 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     return result;
   }, [schema, overrides, enableRowSelection, exclude, actions]);
 
-  const stableInitialState = useMemo(() => ({
-    sorting: initialSorting,
-    columnPinning: pinnedColumns ?? {
-      left: enableRowSelection ? ["select"] : [],
-      right: actions ? ["actions"] : [],
-    },
-  }), [initialSorting, pinnedColumns, enableRowSelection, actions]);
+  const stableInitialState = useMemo(
+    () => ({
+      sorting: initialSorting,
+      columnPinning: pinnedColumns ?? {
+        left: enableRowSelection ? ['select'] : [],
+        right: actions ? ['actions'] : [],
+      },
+    }),
+    [initialSorting, pinnedColumns, enableRowSelection, actions],
+  );
 
   const { table, shallow, debounceMs, throttleMs } = useDataTable({
     data,
@@ -160,7 +175,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   // 暴露选中行数据给外层组件
   const getSelectedRowsFn = useCallback(
     () => table.getFilteredSelectedRowModel().rows.map((row) => row.original),
-    [table]
+    [table],
   );
 
   useEffect(() => {
@@ -197,7 +212,10 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuRadioGroup value={currentMode} onValueChange={(v) => setCurrentMode(v as FilterMode)}>
+        <DropdownMenuRadioGroup
+          value={currentMode}
+          onValueChange={(v) => setCurrentMode(v as FilterMode)}
+        >
           {modes.map((mode) => {
             const config = filterModeConfig[mode];
             return (
@@ -215,9 +233,9 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   // 渲染过滤器组件（memoized to avoid recreating on every render）
   const filtersContent = useMemo(() => {
     switch (currentMode) {
-      case "simple":
+      case 'simple':
         return <AutoTableSimpleFilters table={table} shallow={shallow} />;
-      case "command":
+      case 'command':
         return (
           <DataTableFilterMenu
             table={table}
@@ -243,11 +261,11 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     <div className="space-y-4">
       <div className="flex w-full items-start justify-between gap-2 p-1">
         <div className="flex flex-1 items-start gap-2 min-h-[40px]" data-filter-parent>
-          {currentMode !== "simple" && <DataTableSortList table={table} align="start" />}
+          {currentMode !== 'simple' && <DataTableSortList table={table} align="start" />}
           {filtersContent}
         </div>
         <div className="flex items-center gap-2">
-          {currentMode === "simple" && <DataTableSortList table={table} align="end" />}
+          {currentMode === 'simple' && <DataTableSortList table={table} align="end" />}
           {FilterModeSelect}
           <DataTableViewOptions table={table} align="end" />
         </div>
@@ -261,7 +279,9 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           batchUpdateFields={batchUpdateFields}
           enableDelete={!!onDeleteSelected}
           enableExport={enableExport}
+          showDefaultExport={showDefaultExport}
           extraActions={actionBarExtra}
+          actions={actionBarActions}
         />
       )}
     </div>

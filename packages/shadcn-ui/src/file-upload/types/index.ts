@@ -20,6 +20,7 @@ type MainFileUploadProps = Omit<OrgFileUploadProps, 'value' | 'onError'>;
 
 export interface FileUploadBaseProps extends MainFileUploadProps {
   preventDuplicates?: boolean;
+  transformFile?: (file: File) => Promise<File> | File;
 }
 
 export type FileUploadProps =

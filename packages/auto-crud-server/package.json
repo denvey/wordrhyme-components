@@ -75,7 +75,7 @@
     "tsdown": "catalog:dev",
     "typescript": "catalog:dev",
     "vitest": "^4.0.18",
-    "zod": "^4.1.13"
+    "zod": "^4.3.6"
   },
   "prettier": "@internal/prettier-config"
 }

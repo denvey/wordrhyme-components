@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import type { z } from "zod";
-import type { UseAutoCrudResourceReturn } from "@/hooks/use-auto-crud-resource";
-import type { ModalVariant } from "./form-modal";
-import type { CrudPermissions } from "@/types/permissions";
-import { AutoTable, type FilterMode } from "./auto-table";
-import type { BatchUpdateField } from "./auto-table-action-bar";
-import { CrudFormModal } from "./crud-form-modal";
-import { Button } from "@pixpilot/shadcn";
+import type { z } from 'zod';
+import type { UseAutoCrudResourceReturn } from '@/hooks/use-auto-crud-resource';
+import type { ModalVariant } from './form-modal';
+import type { CrudPermissions } from '@/types/permissions';
+import { AutoTable, type FilterMode } from './auto-table';
+import type { BatchActionConfig, BatchUpdateField } from './auto-table-action-bar';
+import { CrudFormModal } from './crud-form-modal';
+import { Button } from '@pixpilot/shadcn';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,29 +17,22 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@pixpilot/shadcn";
+} from '@pixpilot/shadcn';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@pixpilot/shadcn';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@pixpilot/shadcn';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@pixpilot/shadcn";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@pixpilot/shadcn";
-import { parseZodField, type ResolvedActionItem } from "@/lib/schema-bridge/zod-to-columns";
-import { formatDate } from "@/lib/format";
-import { humanize } from "@/lib/humanize";
-import { Badge } from "@pixpilot/shadcn";
-import { ImportDialog } from "./import-dialog";
-import type { ExportMode } from "./export-dialog";
-import { Download, Loader2, Upload } from "lucide-react";
-import { exportAllToCSV } from "@/lib/export";
-import * as React from "react";
-import { type LocaleProp, resolveLocale } from "@/i18n/locale";
+  parseZodField,
+  type ResolvedActionItem,
+} from '@/lib/schema-bridge/zod-to-columns';
+import { formatDate } from '@/lib/format';
+import { humanize } from '@/lib/humanize';
+import { Badge } from '@pixpilot/shadcn';
+import { ImportDialog } from './import-dialog';
+import type { ExportMode } from './export-dialog';
+import { Download, Loader2, Upload } from 'lucide-react';
+import { exportAllToCSV } from '@/lib/export';
+import * as React from 'react';
+import { type LocaleProp, resolveLocale } from '@/i18n/locale';
 
 /**
  * 筛选器独立配置
@@ -49,9 +42,22 @@ export interface FilterConfig {
   /** 是否启用筛选（默认跟随 table.meta.variant 推断） */
   enabled?: boolean;
   /** 筛选器类型 */
-  variant?: "text" | "number" | "range" | "date" | "dateRange" | "boolean" | "select" | "multiSelect";
+  variant?:
+    | 'text'
+    | 'number'
+    | 'range'
+    | 'date'
+    | 'dateRange'
+    | 'boolean'
+    | 'select'
+    | 'multiSelect';
   /** select/multiSelect 的选项列表 */
-  options?: Array<{ label: string; value: string; count?: number; icon?: React.FC<React.SVGProps<SVGSVGElement>> }>;
+  options?: Array<{
+    label: string;
+    value: string;
+    count?: number;
+    icon?: React.FC<React.SVGProps<SVGSVGElement>>;
+  }>;
   /** range 的最小/最大值 */
   range?: [number, number];
   /** number 的单位 */
@@ -61,7 +67,7 @@ export interface FilterConfig {
   /** 是否在筛选栏中隐藏（隐藏筛选但不影响表格列显示） */
   hidden?: boolean;
   /** 控制在哪些筛选模式下显示（未设置则在所有模式显示） */
-  modes?: Array<"simple" | "advanced" | "command">;
+  modes?: Array<'simple' | 'advanced' | 'command'>;
 }
 
 /**
@@ -85,34 +91,38 @@ export interface Field {
    * - object: 详细配置
    * - false: 隐藏表格列（简写，等价于 { hidden: true }）
    */
-  table?: {
-    /** 是否在表格中隐藏 */
-    hidden?: boolean;
-    /** 筛选器配置 */
-    meta?: Record<string, unknown>;
-    /** 其他列配置 */
-    [key: string]: unknown;
-  } | false;
+  table?:
+    | {
+        /** 是否在表格中隐藏 */
+        hidden?: boolean;
+        /** 筛选器配置 */
+        meta?: Record<string, unknown>;
+        /** 其他列配置 */
+        [key: string]: unknown;
+      }
+    | false;
   /**
    * 表单特定配置
    * - object: 详细配置（Formily Schema）
    * - false: 隐藏表单字段（简写，等价于 { "x-hidden": true }）
    */
-  form?: {
-    /** 是否在表单中隐藏 */
-    "x-hidden"?: boolean;
-    /** 组件类型 */
-    "x-component"?: string;
-    /** 组件属性 */
-    "x-component-props"?: Record<string, unknown>;
-    /** 其他表单配置 */
-    [key: string]: unknown;
-  } | false;
+  form?:
+    | {
+        /** 是否在表单中隐藏 */
+        'x-hidden'?: boolean;
+        /** 组件类型 */
+        'x-component'?: string;
+        /** 组件属性 */
+        'x-component-props'?: Record<string, unknown>;
+        /** 其他表单配置 */
+        [key: string]: unknown;
+      }
+    | false;
 }
 
 export type Fields = Record<string, Field>;
 
-type BuiltinType = "view" | "edit" | "copy" | "delete";
+type BuiltinType = 'view' | 'edit' | 'copy' | 'delete';
 
 /** 内置操作项（覆盖默认行为或调整位置） */
 type BuiltinActionItem<T> = {
@@ -124,13 +134,13 @@ type BuiltinActionItem<T> = {
 
 /** 自定义操作项 */
 type CustomActionItem<T> = {
-  type: "custom";
+  type: 'custom';
   label: string;
   onClick: (row: T) => void;
   /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
-  position?: "start" | "end";
+  position?: 'start' | 'end';
   separator?: boolean;
-  variant?: "default" | "destructive";
+  variant?: 'default' | 'destructive';
 };
 
 /**
@@ -149,7 +159,7 @@ export type ActionConfig<T> =
  * 顶部工具栏内置操作项
  */
 export type ToolbarBuiltinActionItem = {
-  type: "create" | "import" | "export";
+  type: 'create' | 'import' | 'export';
   /** 替代默认的行为 */
   onClick?: () => void;
   /** 替代默认的标签文本 */
@@ -162,11 +172,11 @@ export type ToolbarBuiltinActionItem = {
  * 顶部工具栏自定义操作项
  */
 export type ToolbarCustomActionItem = {
-  type: "custom";
+  type: 'custom';
   /** 渲染自定义内容 */
   component: React.ReactNode;
   /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
-  position?: "start" | "end";
+  position?: 'start' | 'end';
 };
 
 export type ToolbarActionItem = ToolbarBuiltinActionItem | ToolbarCustomActionItem;
@@ -210,6 +220,12 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
      * - 也可以传完整配置覆盖 label 或 options
      */
     batchFields?: (string | BatchUpdateField)[];
+    /**
+     * 多选后悬浮批量操作栏配置
+     * 用法类同 `actions` 行操作和 `toolbarActions` 顶部工具栏。
+     * 只传 custom 时保留默认批量操作；包含任意内置 type 时完全接管顺序。
+     */
+    batchActions?: BatchActionConfig<z.output<TSchema>>;
     /** 默认排序 */
     defaultSort?: any[];
   };
@@ -225,8 +241,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
 
   /** 行操作配置，见 {@link ActionItem} */
   actions?: ActionConfig<z.output<TSchema>>;
-  /** 
-   * 顶层工具栏操作配置 
+  /**
+   * 顶层工具栏操作配置
    * 用法类同 `actions` 行操作。一旦配置了包含内置 `type` 的数组，它将完全接管右侧工具栏！
    */
   toolbarActions?: ToolbarActionConfig;
@@ -274,15 +290,19 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
  * 从统一配置生成表格 overrides
  * 当 filter 配置存在时，合并到 meta 中（不影响列隐藏）
  */
-function buildTableOverrides(fields?: Fields, legacyOverrides?: Record<string, any>): Record<string, any> {
+function buildTableOverrides(
+  fields?: Fields,
+  legacyOverrides?: Record<string, any>,
+): Record<string, any> {
   const result: Record<string, any> = { ...legacyOverrides };
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
       // 提取 table.meta（无论 filter 配置如何都需要保留）
-      const tableMeta = config.table !== false && typeof config.table === 'object'
-        ? config.table.meta as Record<string, unknown> | undefined
-        : undefined;
+      const tableMeta =
+        config.table !== false && typeof config.table === 'object'
+          ? (config.table.meta as Record<string, unknown> | undefined)
+          : undefined;
 
       // 提取 filter meta
       let filterMeta: Record<string, unknown> | undefined;
@@ -319,7 +339,7 @@ function buildTableOverrides(fields?: Fields, legacyOverrides?: Record<string, a
           meta: {
             ...(result[key]?.meta ?? {}),
             ...(tableMeta ?? {}),
-            ...(filterMeta ?? {}),  // filter meta 优先级更高
+            ...(filterMeta ?? {}), // filter meta 优先级更高
           },
         };
       }
@@ -367,7 +387,7 @@ function buildTableOverrides(fields?: Fields, legacyOverrides?: Record<string, a
 function buildFormOverrides(
   fields?: Fields,
   legacyOverrides?: Record<string, any>,
-  denyFields?: string[]
+  denyFields?: string[],
 ): Record<string, any> {
   const result: Record<string, any> = { ...legacyOverrides };
 
@@ -376,7 +396,7 @@ function buildFormOverrides(
     for (const field of denyFields) {
       result[field] = {
         ...result[field],
-        "x-hidden": true,
+        'x-hidden': true,
       };
     }
   }
@@ -394,7 +414,7 @@ function buildFormOverrides(
       if (config.hidden) {
         result[key] = {
           ...result[key],
-          "x-hidden": true,
+          'x-hidden': true,
         };
       }
 
@@ -402,7 +422,7 @@ function buildFormOverrides(
       if (config.form === false) {
         result[key] = {
           ...result[key],
-          "x-hidden": true,
+          'x-hidden': true,
         };
       }
       // 处理 form 对象配置
@@ -424,12 +444,9 @@ function buildFormOverrides(
 function buildHiddenColumns(
   fields?: Fields,
   legacyHidden?: string[],
-  denyFields?: string[]
+  denyFields?: string[],
 ): string[] {
-  const hidden = new Set([
-    ...(legacyHidden ?? []),
-    ...(denyFields ?? []),
-  ]);
+  const hidden = new Set([...(legacyHidden ?? []), ...(denyFields ?? [])]);
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
@@ -457,44 +474,48 @@ function buildHiddenColumns(
 function buildBatchUpdateFields<T extends z.ZodObject<z.ZodRawShape>>(
   schema: T,
   batchFields?: (string | BatchUpdateField)[],
-  fields?: Fields
+  fields?: Fields,
 ): BatchUpdateField[] {
   if (!batchFields || batchFields.length === 0) return [];
 
   const shape = schema.shape;
 
-  return batchFields.map((field) => {
-    // 如果是完整配置，直接使用
-    if (typeof field !== "string") {
-      return field;
-    }
+  return batchFields
+    .map((field) => {
+      // 如果是完整配置，直接使用
+      if (typeof field !== 'string') {
+        return field;
+      }
 
-    // 从 schema 推导 options
-    const fieldSchema = shape[field];
-    if (!fieldSchema) {
-      console.warn(`[AutoCrudTable] Field "${field}" not found in schema`);
-      return { field, label: humanize(field), options: [] };
-    }
+      // 从 schema 推导 options
+      const fieldSchema = shape[field];
+      if (!fieldSchema) {
+        console.warn(`[AutoCrudTable] Field "${field}" not found in schema`);
+        return { field, label: humanize(field), options: [] };
+      }
 
-    const parsed = parseZodField(fieldSchema as z.ZodType);
-    const label = fields?.[field]?.label ?? humanize(field);
+      const parsed = parseZodField(fieldSchema as z.ZodType);
+      const label = fields?.[field]?.label ?? humanize(field);
 
-    // 如果是 enum 类型，自动生成 options
-    if (parsed.type === "enum" && parsed.enumValues) {
-      return {
-        field,
-        label,
-        options: parsed.enumValues.map((v) => ({
-          label: humanize(v),
-          value: v,
-        })),
-      };
-    }
+      // 如果是 enum 类型，自动生成 options
+      if (parsed.type === 'enum' && parsed.enumValues) {
+        return {
+          field,
+          label,
+          options: parsed.enumValues.map((v) => ({
+            label: humanize(v),
+            value: v,
+          })),
+        };
+      }
 
-    // 非 enum 类型，返回空 options（需要手动配置）
-    console.warn(`[AutoCrudTable] Field "${field}" is not an enum type, options must be provided manually`);
-    return { field, label, options: [] };
-  }).filter((f) => f.options.length > 0);
+      // 非 enum 类型，返回空 options（需要手动配置）
+      console.warn(
+        `[AutoCrudTable] Field "${field}" is not an enum type, options must be provided manually`,
+      );
+      return { field, label, options: [] };
+    })
+    .filter((f) => f.options.length > 0);
 }
 
 /**
@@ -510,17 +531,17 @@ function renderFieldValue(
   }
 
   switch (type) {
-    case "boolean":
+    case 'boolean':
       return value ? booleanLocale.true : booleanLocale.false;
-    case "date":
+    case 'date':
       return formatDate(value as Date);
-    case "enum":
+    case 'enum':
       return (
         <Badge variant="outline" className="capitalize">
           {String(value)}
         </Badge>
       );
-    case "array":
+    case 'array':
       return Array.isArray(value) ? (
         <div className="flex gap-1 flex-wrap">
           {value.slice(0, 5).map((v, i) => (
@@ -528,9 +549,7 @@ function renderFieldValue(
               {String(v)}
             </Badge>
           ))}
-          {value.length > 5 && (
-            <Badge variant="outline">+{value.length - 5}</Badge>
-          )}
+          {value.length > 5 && <Badge variant="outline">+{value.length - 5}</Badge>}
         </div>
       ) : null;
     default:
@@ -580,9 +599,7 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
 
         return (
           <div key={key} className="grid grid-cols-3 items-start gap-4">
-            <dt className="text-sm font-medium text-muted-foreground">
-              {label}
-            </dt>
+            <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
             <dd className="col-span-2 text-sm">
               {renderFieldValue(value, parsed.type, locale.boolean)}
             </dd>
@@ -592,12 +609,12 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
     </dl>
   );
 
-  if (variant === "sheet") {
+  if (variant === 'sheet') {
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent>
           <SheetHeader>
-          <SheetTitle>{locale.viewModal.title}</SheetTitle>
+            <SheetTitle>{locale.viewModal.title}</SheetTitle>
           </SheetHeader>
           {content}
         </SheetContent>
@@ -630,34 +647,62 @@ export function resolveActions<T>(
   },
   rowActionsLocale: { view: string; edit: string; copy: string; delete: string },
 ): ResolvedActionItem<T>[] {
-  const items = typeof actionsOrFn === "function"
-    ? actionsOrFn([
-        { type: "view" },
-        { type: "edit" },
-        { type: "copy" },
-        { type: "delete" },
-      ])
-    : actionsOrFn;
+  const items =
+    typeof actionsOrFn === 'function'
+      ? actionsOrFn([
+          { type: 'view' },
+          { type: 'edit' },
+          { type: 'copy' },
+          { type: 'delete' },
+        ])
+      : actionsOrFn;
 
   const defaultItems: ResolvedActionItem<T>[] = [
     { label: rowActionsLocale.view, onClick: defaults.openView },
-    ...(defaults.openEdit ? [{ label: rowActionsLocale.edit, onClick: defaults.openEdit }] : []),
-    ...(defaults.copyRow ? [{ label: rowActionsLocale.copy, onClick: defaults.copyRow }] : []),
-    ...(defaults.openDelete ? [{ label: rowActionsLocale.delete, onClick: defaults.openDelete, separator: true, variant: "destructive" as const }] : []),
+    ...(defaults.openEdit
+      ? [{ label: rowActionsLocale.edit, onClick: defaults.openEdit }]
+      : []),
+    ...(defaults.copyRow
+      ? [{ label: rowActionsLocale.copy, onClick: defaults.copyRow }]
+      : []),
+    ...(defaults.openDelete
+      ? [
+          {
+            label: rowActionsLocale.delete,
+            onClick: defaults.openDelete,
+            separator: true,
+            variant: 'destructive' as const,
+          },
+        ]
+      : []),
   ];
 
   if (!items || items.length === 0) return defaultItems;
 
-  const hasBuiltin = items.some((i) => i.type !== "custom");
+  const hasBuiltin = items.some((i) => i.type !== 'custom');
 
   if (!hasBuiltin) {
     // 只有 custom 项 → 内置保持默认，custom 按 position 追加
     const startItems = items
-      .filter((i): i is CustomActionItem<T> => i.type === "custom" && i.position === "start")
-      .map(({ label, onClick, separator, variant }) => ({ label, onClick, separator, variant }));
+      .filter(
+        (i): i is CustomActionItem<T> => i.type === 'custom' && i.position === 'start',
+      )
+      .map(({ label, onClick, separator, variant }) => ({
+        label,
+        onClick,
+        separator,
+        variant,
+      }));
     const endItems = items
-      .filter((i): i is CustomActionItem<T> => i.type === "custom" && i.position !== "start")
-      .map(({ label, onClick, separator, variant }) => ({ label, onClick, separator, variant }));
+      .filter(
+        (i): i is CustomActionItem<T> => i.type === 'custom' && i.position !== 'start',
+      )
+      .map(({ label, onClick, separator, variant }) => ({
+        label,
+        onClick,
+        separator,
+        variant,
+      }));
     return [...startItems, ...defaultItems, ...endItems];
   }
 
@@ -668,15 +713,36 @@ export function resolveActions<T>(
     copy: defaults.copyRow,
     delete: defaults.openDelete,
   };
-  const variantMap: Record<string, "destructive" | undefined> = { delete: "destructive" };
+  const visibleMap: Record<string, boolean> = {
+    view: true,
+    edit: !!defaults.openEdit,
+    copy: !!defaults.copyRow,
+    delete: !!defaults.openDelete,
+  };
+  const variantMap: Record<string, 'destructive' | undefined> = { delete: 'destructive' };
 
   return items.flatMap((item): ResolvedActionItem<T>[] => {
-    if (item.type === "custom") {
-      return [{ label: item.label, onClick: item.onClick, separator: item.separator, variant: item.variant }];
+    if (item.type === 'custom') {
+      return [
+        {
+          label: item.label,
+          onClick: item.onClick,
+          separator: item.separator,
+          variant: item.variant,
+        },
+      ];
     }
+    if (!visibleMap[item.type]) return [];
     const handler = item.onClick ?? handlerMap[item.type];
     if (!handler) return [];
-    return [{ label: item.label ?? rowActionsLocale[item.type as keyof typeof rowActionsLocale], onClick: handler, separator: item.separator, variant: variantMap[item.type] }];
+    return [
+      {
+        label: item.label ?? rowActionsLocale[item.type as keyof typeof rowActionsLocale],
+        onClick: handler,
+        separator: item.separator,
+        variant: variantMap[item.type],
+      },
+    ];
   });
 }
 
@@ -729,32 +795,35 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   }, [schema, denyFields]);
 
   // 导出处理（支持选中/筛选两种模式）
-  const handleExport = React.useCallback(async (mode: ExportMode) => {
-    const filename = title ?? "export";
-    const excludeColumns = denyFields;
+  const handleExport = React.useCallback(
+    async (mode: ExportMode) => {
+      const filename = title ?? 'export';
+      const excludeColumns = denyFields;
 
-    if (mode === "selected") {
-      // 导出选中行（纯客户端，不需要 exportFetcher）
-      const selectedRows = getSelectedRowsRef.current?.();
-      if (!selectedRows || selectedRows.length === 0) return;
-      exportAllToCSV(selectedRows as Record<string, unknown>[], {
-        filename,
-        excludeColumns,
-      });
-    } else {
-      // 导出筛选结果（通过服务端 export 接口获取）
-      if (!resource.handlers.export) return;
-      const data = await resource.handlers.export();
-      exportAllToCSV(data, {
-        filename,
-        excludeColumns,
-      });
-    }
-  }, [resource.handlers.export, title, denyFields]);
+      if (mode === 'selected') {
+        // 导出选中行（纯客户端，不需要 exportFetcher）
+        const selectedRows = getSelectedRowsRef.current?.();
+        if (!selectedRows || selectedRows.length === 0) return;
+        exportAllToCSV(selectedRows as Record<string, unknown>[], {
+          filename,
+          excludeColumns,
+        });
+      } else {
+        // 导出筛选结果（通过服务端 export 接口获取）
+        if (!resource.handlers.export) return;
+        const data = await resource.handlers.export();
+        exportAllToCSV(data, {
+          filename,
+          excludeColumns,
+        });
+      }
+    },
+    [resource.handlers.export, title, denyFields],
+  );
 
   // 导出按钮点击：根据选中状态智能判断导出模式
   const handleExportClick = React.useCallback(async () => {
-    const mode: ExportMode = selectedCount > 0 ? "selected" : "filtered";
+    const mode: ExportMode = selectedCount > 0 ? 'selected' : 'filtered';
     setExporting(true);
     try {
       await handleExport(mode);
@@ -797,34 +866,51 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         {(() => {
           // --- 内置按钮工厂 ---
           const renderBuiltinButton = (
-            type: "import" | "export" | "create",
-            overrides?: { onClick?: () => void; label?: string }
+            type: 'import' | 'export' | 'create',
+            overrides?: { onClick?: () => void; label?: string },
           ): React.ReactNode => {
-            if (type === "import" && canImport) {
+            if (type === 'import' && canImport) {
               return (
-                <Button key="import" variant="outline" size="sm" onClick={overrides?.onClick ?? (() => setImportOpen(true))}>
+                <Button
+                  key="import"
+                  variant="outline"
+                  size="sm"
+                  onClick={overrides?.onClick ?? (() => setImportOpen(true))}
+                >
                   <Download className="mr-2 h-4 w-4" />
                   {overrides?.label ?? locale.toolbar.import}
                 </Button>
               );
             }
-            if (type === "export" && canExport) {
+            if (type === 'export' && canExport) {
               return (
                 <Button
                   key="export"
                   variant="outline"
                   size="sm"
                   onClick={overrides?.onClick ?? handleExportClick}
-                  disabled={exporting || (selectedCount === 0 && !resource.handlers.export)}
+                  disabled={
+                    exporting || (selectedCount === 0 && !resource.handlers.export)
+                  }
                 >
-                  {exporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                  {overrides?.label ?? (selectedCount > 0 ? locale.toolbar.exportSelected(selectedCount) : locale.toolbar.export)}
+                  {exporting ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Upload className="mr-2 h-4 w-4" />
+                  )}
+                  {overrides?.label ??
+                    (selectedCount > 0
+                      ? locale.toolbar.exportSelected(selectedCount)
+                      : locale.toolbar.export)}
                 </Button>
               );
             }
-            if (type === "create" && can.create) {
+            if (type === 'create' && can.create) {
               return (
-                <Button key="create" onClick={overrides?.onClick ?? onCreate ?? resource.handlers.openCreate}>
+                <Button
+                  key="create"
+                  onClick={overrides?.onClick ?? onCreate ?? resource.handlers.openCreate}
+                >
                   {overrides?.label ?? locale.toolbar.create}
                 </Button>
               );
@@ -833,41 +919,46 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           };
 
           // 1. 解析传入的 function
-          const resolvedToolbarActions = typeof toolbarActions === "function"
-            ? toolbarActions([
-                { type: "import" },
-                { type: "export" },
-                { type: "create" },
-              ])
-            : toolbarActions;
+          const resolvedToolbarActions =
+            typeof toolbarActions === 'function'
+              ? toolbarActions([
+                  { type: 'import' },
+                  { type: 'export' },
+                  { type: 'create' },
+                ])
+              : toolbarActions;
 
           // 2. 未配置 toolbarActions → 渲染默认内置按钮
           if (!resolvedToolbarActions || resolvedToolbarActions.length === 0) {
             return (
               <div className="flex items-center gap-2">
-                {renderBuiltinButton("import")}
-                {renderBuiltinButton("export")}
-                {renderBuiltinButton("create")}
+                {renderBuiltinButton('import')}
+                {renderBuiltinButton('export')}
+                {renderBuiltinButton('create')}
               </div>
             );
           }
 
-          const hasBuiltin = resolvedToolbarActions.some((i) => i.type !== "custom");
+          const hasBuiltin = resolvedToolbarActions.some((i) => i.type !== 'custom');
 
           // 3. 只有 custom 项 → 保留所有内置，custom 按 position 首尾拼接
           if (!hasBuiltin) {
             const startNodes = resolvedToolbarActions
-              .filter((i) => i.type === "custom" && i.position === "start")
-              .map((a, i) => <React.Fragment key={`start-${i}`}>{a.component}</React.Fragment>);
+              .filter((i) => i.type === 'custom' && i.position === 'start')
+              .map((a, i) => (
+                <React.Fragment key={`start-${i}`}>{a.component}</React.Fragment>
+              ));
             const endNodes = resolvedToolbarActions
-              .filter((i) => i.type === "custom" && i.position !== "start")
-              .map((a, i) => <React.Fragment key={`end-${i}`}>{a.component}</React.Fragment>);
+              .filter((i) => i.type === 'custom' && i.position !== 'start')
+              .map((a, i) => (
+                <React.Fragment key={`end-${i}`}>{a.component}</React.Fragment>
+              ));
             return (
               <div className="flex items-center gap-2">
                 {startNodes}
-                {renderBuiltinButton("import")}
-                {renderBuiltinButton("export")}
-                {renderBuiltinButton("create")}
+                {renderBuiltinButton('import')}
+                {renderBuiltinButton('export')}
+                {renderBuiltinButton('create')}
                 {endNodes}
               </div>
             );
@@ -877,13 +968,17 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           return (
             <div className="flex items-center gap-2">
               {resolvedToolbarActions.map((action, index) => {
-                if (action.type === "custom") {
-                  return <React.Fragment key={`custom-${index}`}>{action.component}</React.Fragment>;
+                if (action.type === 'custom') {
+                  return (
+                    <React.Fragment key={`custom-${index}`}>
+                      {action.component}
+                    </React.Fragment>
+                  );
                 }
                 const builtinVisible =
-                  action.type === "import"
+                  action.type === 'import'
                     ? canImport
-                    : action.type === "export"
+                    : action.type === 'export'
                       ? canExport
                       : can.create;
                 if (!builtinVisible) {
@@ -891,7 +986,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
                 }
                 // 内置项：支持完全替换组件
                 if (action.component) {
-                  return <React.Fragment key={action.type}>{action.component}</React.Fragment>;
+                  return (
+                    <React.Fragment key={action.type}>{action.component}</React.Fragment>
+                  );
                 }
                 // 内置项：复用工厂函数，传入用户覆盖
                 return renderBuiltinButton(action.type, {
@@ -912,16 +1009,22 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         overrides={tableOverrides as any}
         exclude={hiddenColumns as any}
         filterMode={tableConfig?.filterModes}
-        actions={resolveActions(actionItems, {
-          openView: resource.handlers.openView,
-          openEdit: can.update ? resource.handlers.openEdit : undefined,
-          copyRow: can.create ? resource.handlers.copyRow : undefined,
-          openDelete: can.delete ? resource.handlers.openDelete : undefined,
-        }, locale.rowActions)}
+        actions={resolveActions(
+          actionItems,
+          {
+            openView: resource.handlers.openView,
+            openEdit: can.update ? resource.handlers.openEdit : undefined,
+            copyRow: can.create ? resource.handlers.copyRow : undefined,
+            openDelete: can.delete ? resource.handlers.openDelete : undefined,
+          },
+          locale.rowActions,
+        )}
         onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}
         batchUpdateFields={can.update ? batchFields : undefined}
-        enableExport={false}
+        actionBarActions={tableConfig?.batchActions}
+        enableExport={canExport}
+        showDefaultExport={false}
         initialSorting={tableConfig?.defaultSort}
         onSelectedCountChange={setSelectedCount}
         getSelectedRows={getSelectedRowsRef}
@@ -932,7 +1035,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       <CrudFormModal
         open={resource.modal.createOpen || resource.modal.editOpen}
         onOpenChange={(open) => !open && resource.handlers.closeModals()}
-        mode={resource.modal.createOpen ? "create" : "edit"}
+        mode={resource.modal.createOpen ? 'create' : 'edit'}
         schema={schema}
         initialValues={
           resource.modal.createOpen
@@ -984,7 +1087,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
               onClick={resource.handlers.confirmDelete}
               disabled={resource.mutations.isDeleting}
             >
-              {resource.mutations.isDeleting ? locale.deleteModal.confirming : locale.deleteModal.confirm}
+              {resource.mutations.isDeleting
+                ? locale.deleteModal.confirming
+                : locale.deleteModal.confirm}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1000,7 +1105,6 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           locale={locale.importDialog}
         />
       )}
-
     </div>
   );
 }

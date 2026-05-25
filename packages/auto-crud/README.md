@@ -155,6 +155,7 @@ Zod Schema → 自动推断字段类型 → 生成表格列 + 表单字段
 ```
 
 **优势**：
+
 - ✅ 单一数据源（SSOT）
 - ✅ 类型安全
 - ✅ 零手动配置
@@ -169,13 +170,19 @@ Zod Schema → 自动推断字段类型 → 生成表格列 + 表单字段
 适合：原型开发、演示、测试
 
 ```typescript
-import { createMemoryDataSource } from "@wordrhyme/auto-crud";
+import { createMemoryDataSource } from '@wordrhyme/auto-crud';
 
 const dataSource = createMemoryDataSource({
   data: initialData,
-  onCreate: async (data) => { /* ... */ },
-  onUpdate: async (id, data) => { /* ... */ },
-  onDelete: async (id) => { /* ... */ },
+  onCreate: async (data) => {
+    /* ... */
+  },
+  onUpdate: async (id, data) => {
+    /* ... */
+  },
+  onDelete: async (id) => {
+    /* ... */
+  },
 });
 ```
 
@@ -184,7 +191,7 @@ const dataSource = createMemoryDataSource({
 适合：全栈 TypeScript 项目
 
 ```typescript
-import { createTRPCDataSource } from "@wordrhyme/auto-crud";
+import { createTRPCDataSource } from '@wordrhyme/auto-crud';
 
 const dataSource = createTRPCDataSource({
   router: trpc.tasks,
@@ -209,25 +216,25 @@ const dataSource: DataSource<Task> = {
     return response.json();
   },
   create: async (data) => {
-    const response = await fetch("/api/tasks", {
-      method: "POST",
+    const response = await fetch('/api/tasks', {
+      method: 'POST',
       body: JSON.stringify(data),
     });
     return response.json();
   },
   update: async (id, data) => {
     const response = await fetch(`/api/tasks/${id}`, {
-      method: "PATCH",
+      method: 'PATCH',
       body: JSON.stringify(data),
     });
     return response.json();
   },
   delete: async (id) => {
-    await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+    await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
   },
   deleteMany: async (ids) => {
-    await fetch("/api/tasks/batch", {
-      method: "DELETE",
+    await fetch('/api/tasks/batch', {
+      method: 'DELETE',
       body: JSON.stringify({ ids }),
     });
   },
@@ -247,23 +254,23 @@ const dataSource: DataSource<Task> = {
 ```typescript
 interface AutoCrudTableProps<TSchema> {
   // 必需
-  schema: TSchema;                              // Zod Schema
+  schema: TSchema; // Zod Schema
   resource: UseAutoCrudResourceReturn<TSchema>; // useAutoCrudResource 返回值
 
   // 可选
   title?: string;
   description?: string;
-  fields?: Fields;                              // 统一字段配置
+  fields?: Fields; // 统一字段配置
   table?: {
-    hidden?: string[];                          // 隐藏的列
-    overrides?: Record<string, any>;            // 列覆盖配置
-    filterModes?: FilterMode | FilterMode[];    // 过滤模式
+    hidden?: string[]; // 隐藏的列
+    overrides?: Record<string, any>; // 列覆盖配置
+    filterModes?: FilterMode | FilterMode[]; // 过滤模式
     batchFields?: (string | BatchUpdateField)[]; // 批量更新字段
-    defaultSort?: any[];                        // 默认排序
+    defaultSort?: any[]; // 默认排序
   };
   form?: {
-    overrides?: Record<string, any>;            // 表单覆盖配置
-    columns?: number;                           // 表单列数
+    overrides?: Record<string, any>; // 表单覆盖配置
+    columns?: number; // 表单列数
   };
   /**
    * 工具栏右侧操作配置
@@ -288,8 +295,8 @@ interface AutoCrudTableProps<TSchema> {
 
 ```typescript
 interface UseAutoCrudResourceConfig<TData> {
-  dataSource: DataSource<TData>;  // 数据源
-  schema: z.ZodType<TData>;       // Zod Schema
+  dataSource: DataSource<TData>; // 数据源
+  schema: z.ZodType<TData>; // Zod Schema
 }
 ```
 
@@ -305,7 +312,7 @@ interface UseAutoCrudResourceReturn<TSchema, TData> {
 
   // 模态框状态
   modal: {
-    variant: "dialog" | "sheet";
+    variant: 'dialog' | 'sheet';
     createOpen: boolean;
     editOpen: boolean;
     viewOpen: boolean;
@@ -352,16 +359,16 @@ interface Field {
   hidden?: boolean;
   /** 表格特定配置 */
   table?: {
-    hidden?: boolean;                    // 仅表格隐藏
-    meta?: Record<string, unknown>;      // 筛选器配置
+    hidden?: boolean; // 仅表格隐藏
+    meta?: Record<string, unknown>; // 筛选器配置
     [key: string]: unknown;
   };
   /** 表单特定配置 */
   form?: {
-    "x-hidden"?: boolean;                // 仅表单隐藏
-    "x-component"?: string;              // 组件类型
-    "x-component-props"?: Record<string, unknown>;  // 组件属性
-    "x-reactions"?: object;              // 字段联动
+    'x-hidden'?: boolean; // 仅表单隐藏
+    'x-component'?: string; // 组件类型
+    'x-component-props'?: Record<string, unknown>; // 组件属性
+    'x-reactions'?: object; // 字段联动
     [key: string]: unknown;
   };
 }
@@ -533,8 +540,12 @@ table={{
 ```tsx
 <AutoCrudTable
   toolbarActions={[
-    { type: "custom", component: <Button variant="outline">分类管理</Button>, position: "start" },
-    { type: "custom", component: <Button variant="outline">批量标签</Button> }, // 默认 position: "end"
+    {
+      type: 'custom',
+      component: <Button variant="outline">分类管理</Button>,
+      position: 'start',
+    },
+    { type: 'custom', component: <Button variant="outline">批量标签</Button> }, // 默认 position: "end"
   ]}
 />
 // 渲染顺序: 分类管理 · [导入] · [导出] · [新建] · 批量标签
@@ -547,8 +558,8 @@ table={{
 ```tsx
 <AutoCrudTable
   toolbarActions={[
-    { type: "create" },                    // 新建移到最前
-    { type: "export", label: "导出 CSV" }, // 覆盖文案
+    { type: 'create' }, // 新建移到最前
+    { type: 'export', label: '导出 CSV' }, // 覆盖文案
     // import 未列出 → 隐藏
   ]}
 />
@@ -560,12 +571,12 @@ table={{
 ```tsx
 <AutoCrudTable
   toolbarActions={[
-    { type: "import" },
-    { type: "export" },
-    { 
-      type: "create", 
-      label: "发布商品", 
-      onClick: () => router.push('/products/new'),  // 跳转详情页而非弹窗
+    { type: 'import' },
+    { type: 'export' },
+    {
+      type: 'create',
+      label: '发布商品',
+      onClick: () => router.push('/products/new'), // 跳转详情页而非弹窗
     },
   ]}
 />
@@ -576,13 +587,17 @@ table={{
 ```tsx
 <AutoCrudTable
   toolbarActions={[
-    { type: "export" },
-    { 
-      type: "create", 
-      component: (                             // 整个按钮替换
+    { type: 'export' },
+    {
+      type: 'create',
+      // 整个按钮替换
+      component: (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button><Plus className="mr-2 h-4 w-4" />新建</Button>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              新建
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onClick={() => create('simple')}>简易商品</DropdownMenuItem>
@@ -600,9 +615,9 @@ table={{
 ```tsx
 <AutoCrudTable
   toolbarActions={[
-    { type: "custom", component: <CategoryFilter onChange={setCategory} /> },
-    { type: "export" },
-    { type: "create", label: "发布", onClick: () => router.push('/products/new') },
+    { type: 'custom', component: <CategoryFilter onChange={setCategory} /> },
+    { type: 'export' },
+    { type: 'create', label: '发布', onClick: () => router.push('/products/new') },
   ]}
 />
 // 渲染顺序: 分类筛选 · 导出 · 发布（导入隐藏）
@@ -623,11 +638,11 @@ table={{
     can: { create: isAdmin, export: true, delete: isAdmin },
   }}
   toolbarActions={[
-    { type: "export" },                    // ✅ 始终渲染
-    { type: "create", label: "发布商品" }, // 🔒 仅 isAdmin 时渲染
-    { 
-      type: "custom",                     // ✅ 不受 permissions 影响
-      component: isEditor ? <Button>审核</Button> : null,  // 业务方自行守卫
+    { type: 'export' }, // ✅ 始终渲染
+    { type: 'create', label: '发布商品' }, // 🔒 仅 isAdmin 时渲染
+    {
+      type: 'custom', // ✅ 不受 permissions 影响
+      component: isEditor ? <Button>审核</Button> : null, // 业务方自行守卫
     },
   ]}
 />
@@ -640,11 +655,13 @@ table={{
 ```tsx
 <AutoCrudTable
   // defaults 即内置三个按钮的信息，在此数组里你可以随意 map、过滤或插值
-  toolbarActions={(defaults) => defaults.map(btn => 
-    btn.type === 'create' 
-      ? { ...btn, label: '发布商品', onClick: () => router.push('/products/new') }
-      : btn
-  )}
+  toolbarActions={(defaults) =>
+    defaults.map((btn) =>
+      btn.type === 'create'
+        ? { ...btn, label: '发布商品', onClick: () => router.push('/products/new') }
+        : btn,
+    )
+  }
 />
 // 非常适合“只盖头不换面”的场景，不会导致内置按钮丢失或顺序打乱
 ```
@@ -655,16 +672,16 @@ table={{
 type ToolbarActionItem = ToolbarBuiltinActionItem | ToolbarCustomActionItem;
 
 type ToolbarBuiltinActionItem = {
-  type: "create" | "import" | "export";
-  onClick?: () => void;          // 覆盖默认行为
-  label?: string;                // 覆盖默认文案
-  component?: React.ReactNode;   // 完全替换按钮渲染
+  type: 'create' | 'import' | 'export';
+  onClick?: () => void; // 覆盖默认行为
+  label?: string; // 覆盖默认文案
+  component?: React.ReactNode; // 完全替换按钮渲染
 };
 
 type ToolbarCustomActionItem = {
-  type: "custom";
-  component: React.ReactNode;    // 自定义渲染内容
-  position?: "start" | "end";    // 仅在无内置项时生效，默认 "end"
+  type: 'custom';
+  component: React.ReactNode; // 自定义渲染内容
+  position?: 'start' | 'end'; // 仅在无内置项时生效，默认 "end"
 };
 ```
 
@@ -679,8 +696,8 @@ type ToolbarCustomActionItem = {
 ```tsx
 <AutoCrudTable
   actions={[
-    { type: "custom", label: "分配", onClick: (row) => assign(row.id) },
-    { type: "custom", label: "预览", onClick: (row) => preview(row), position: "start" },
+    { type: 'custom', label: '分配', onClick: (row) => assign(row.id) },
+    { type: 'custom', label: '预览', onClick: (row) => preview(row), position: 'start' },
   ]}
 />
 // 渲染顺序: 预览 · 查看 · 编辑 · 复制 · 删除 · 分配
@@ -693,9 +710,9 @@ type ToolbarCustomActionItem = {
 ```tsx
 <AutoCrudTable
   actions={[
-    { type: "view", onClick: (row) => router.push(`/tasks/${row.id}`) }, // 覆盖跳转
-    { type: "custom", label: "分配", onClick: (row) => assign(row.id) },
-    { type: "edit" },   // 默认行为
+    { type: 'view', onClick: (row) => router.push(`/tasks/${row.id}`) }, // 覆盖跳转
+    { type: 'custom', label: '分配', onClick: (row) => assign(row.id) },
+    { type: 'edit' }, // 默认行为
     // copy / delete 未列出 → 隐藏
   ]}
 />
@@ -706,10 +723,10 @@ type ToolbarCustomActionItem = {
 ```tsx
 <AutoCrudTable
   actions={[
-    { type: "edit" },
-    { type: "copy" },
-    { type: "custom", label: "归档", onClick: archive, separator: true },
-    { type: "delete", separator: true },
+    { type: 'edit' },
+    { type: 'copy' },
+    { type: 'custom', label: '归档', onClick: archive, separator: true },
+    { type: 'delete', separator: true },
   ]}
 />
 ```
@@ -720,11 +737,13 @@ type ToolbarCustomActionItem = {
 
 ```tsx
 <AutoCrudTable
-  actions={(defaults) => defaults.map(action =>
-    action.type === 'delete'
-      ? { ...action, label: "下架", variant: "default" }
-      : action
-  )}
+  actions={(defaults) =>
+    defaults.map((action) =>
+      action.type === 'delete'
+        ? { ...action, label: '下架', variant: 'default' }
+        : action,
+    )
+  }
 />
 ```
 
@@ -733,18 +752,18 @@ type ToolbarCustomActionItem = {
 ```typescript
 type ActionItem<T> =
   | {
-      type: "view" | "edit" | "copy" | "delete";
-      onClick?: (row: T) => void;   // 不传则使用默认行为
-      label?: string;               // 不传则使用默认文案
-      separator?: boolean;          // 此项前加分隔线
+      type: 'view' | 'edit' | 'copy' | 'delete';
+      onClick?: (row: T) => void; // 不传则使用默认行为
+      label?: string; // 不传则使用默认文案
+      separator?: boolean; // 此项前加分隔线
     }
   | {
-      type: "custom";
+      type: 'custom';
       label: string;
       onClick: (row: T) => void;
-      position?: "start" | "end";   // 仅无内置项时生效，默认 end
+      position?: 'start' | 'end'; // 仅无内置项时生效，默认 end
       separator?: boolean;
-      variant?: "default" | "destructive";
+      variant?: 'default' | 'destructive';
     };
 ```
 
@@ -763,10 +782,58 @@ type ActionItem<T> =
 ```
 
 **功能**：
+
 - 选择多行
 - 点击批量更新按钮
 - 选择字段和新值
 - 一键更新所有选中行
+
+### 批量悬浮栏操作顺序
+
+`table.batchActions` 控制多选后悬浮操作栏，设计思路对齐行操作 `actions` 和顶部 `toolbarActions`。
+
+内置操作类型：`batchUpdate`（批量更新字段下拉）、`export`（导出选中行）、`delete`（删除选中行）。
+
+只传 `type: "custom"` 项时，默认批量操作保持原样；包含任意内置 `type` 时，将完全接管顺序，未列出的内置操作不渲染。
+
+`AutoCrudTable` 默认不在悬浮栏重复显示导出按钮；需要悬浮栏导出时，在 `batchActions` 中显式列出 `{ type: 'export' }`。
+
+```tsx
+<AutoCrudTable
+  schema={taskSchema}
+  resource={resource}
+  table={{
+    batchFields: ['status', 'priority'],
+    batchActions: [
+      { type: 'batchUpdate' },
+      {
+        type: 'custom',
+        label: '同步选中项',
+        onClick: (rows) => syncSelected(rows),
+      },
+      { type: 'export' },
+      { type: 'delete' },
+    ],
+  }}
+/>
+```
+
+也可以用函数式写法基于默认顺序插入业务操作：
+
+```tsx
+<AutoCrudTable
+  table={{
+    batchActions: (defaults) => [
+      defaults[0], // batchUpdate
+      {
+        type: 'custom',
+        component: ({ rows }) => <Button size="sm">同步 {rows.length} 项</Button>,
+      },
+      defaults[2], // delete
+    ],
+  }}
+/>
+```
 
 ### 批量删除
 
@@ -776,6 +843,7 @@ type ActionItem<T> =
 ```
 
 **功能**：
+
 - 选择多行
 - 点击批量删除按钮
 - 确认删除
@@ -817,13 +885,13 @@ export default function TasksPage() {
 
 ```typescript
 import {
-  parseZodField,        // 解析 Zod 字段类型
-  createTableSchema,        // Zod Schema → TanStack Table 列定义
-  createSelectColumn,   // 创建选择列
-  createActionsColumn,  // 创建操作列
-  createFormSchema,     // Zod Schema → Formily Schema
+  parseZodField, // 解析 Zod 字段类型
+  createTableSchema, // Zod Schema → TanStack Table 列定义
+  createSelectColumn, // 创建选择列
+  createActionsColumn, // 创建操作列
+  createFormSchema, // Zod Schema → Formily Schema
   createEditFormSchema, // 创建编辑表单 Schema（排除 id, createdAt, updatedAt）
-} from "@wordrhyme/auto-crud";
+} from '@wordrhyme/auto-crud';
 ```
 
 ### 自定义列渲染
@@ -864,31 +932,31 @@ const columns = createTableSchema(taskSchema, {
 使用 `createFormSchema` 的 `overrides` 参数自定义表单组件：
 
 ```typescript
-import { createFormSchema } from "@wordrhyme/auto-crud";
+import { createFormSchema } from '@wordrhyme/auto-crud';
 
 const formSchema = createFormSchema(taskSchema, {
   overrides: {
     description: {
-      "x-component": "Textarea",
-      "x-component-props": { rows: 5 },
+      'x-component': 'Textarea',
+      'x-component-props': { rows: 5 },
     },
     status: {
-      "x-component": "Select",
-      "x-component-props": {
+      'x-component': 'Select',
+      'x-component-props': {
         options: [
-          { label: "待办", value: "todo" },
-          { label: "完成", value: "done" },
+          { label: '待办', value: 'todo' },
+          { label: '完成', value: 'done' },
         ],
       },
     },
     dueDate: {
-      "x-component": "DatePicker",
-      "x-component-props": { format: "YYYY-MM-DD" },
+      'x-component': 'DatePicker',
+      'x-component-props': { format: 'YYYY-MM-DD' },
     },
   },
-  layout: "grid",
+  layout: 'grid',
   gridColumns: 2,
-  exclude: ["id", "createdAt"],
+  exclude: ['id', 'createdAt'],
 });
 ```
 
@@ -901,13 +969,13 @@ const formSchema = createFormSchema(taskSchema, {
 ### 1. Zod Schema（推荐）
 
 ```typescript
-import { z } from "zod";
+import { z } from 'zod';
 
 const taskSchema = z.object({
   id: z.string(),
   title: z.string(),
-  status: z.enum(["todo", "in-progress", "done"]),
-  priority: z.enum(["low", "medium", "high"]),
+  status: z.enum(['todo', 'in-progress', 'done']),
+  priority: z.enum(['low', 'medium', 'high']),
   createdAt: z.date(),
 });
 ```
@@ -915,49 +983,49 @@ const taskSchema = z.object({
 ### 2. JSON Schema
 
 ```typescript
-import type { JSONSchema } from "@wordrhyme/auto-crud";
+import type { JSONSchema } from '@wordrhyme/auto-crud';
 
 const taskSchema: JSONSchema = {
-  type: "object",
+  type: 'object',
   properties: {
-    id: { type: "string" },
-    title: { type: "string", title: "标题" },
+    id: { type: 'string' },
+    title: { type: 'string', title: '标题' },
     status: {
-      type: "string",
-      enum: ["todo", "in-progress", "done"],
-      title: "状态",
+      type: 'string',
+      enum: ['todo', 'in-progress', 'done'],
+      title: '状态',
     },
-    createdAt: { type: "string", format: "date-time" },
+    createdAt: { type: 'string', format: 'date-time' },
   },
-  required: ["id", "title"],
+  required: ['id', 'title'],
 };
 ```
 
 ### 3. 简化配置（Simple Config）
 
 ```typescript
-import type { SimpleFieldsConfig } from "@wordrhyme/auto-crud";
+import type { SimpleFieldsConfig } from '@wordrhyme/auto-crud';
 
 const taskSchema: SimpleFieldsConfig = {
-  id: { type: "string", required: true },
-  title: { type: "string", label: "标题", required: true },
+  id: { type: 'string', required: true },
+  title: { type: 'string', label: '标题', required: true },
   status: {
-    type: "select",
-    label: "状态",
-    options: ["todo", "in-progress", "done"],
+    type: 'select',
+    label: '状态',
+    options: ['todo', 'in-progress', 'done'],
   },
-  description: { type: "textarea", label: "描述" },
-  createdAt: { type: "datetime" },
+  description: { type: 'textarea', label: '描述' },
+  createdAt: { type: 'datetime' },
 };
 ```
 
 ### SchemaAdapter 使用
 
 ```typescript
-import { SchemaAdapter } from "@wordrhyme/auto-crud";
+import { SchemaAdapter } from '@wordrhyme/auto-crud';
 
 // 自动检测 Schema 类型
-const type = SchemaAdapter.detectType(schema);  // "zod" | "json" | "simple"
+const type = SchemaAdapter.detectType(schema); // "zod" | "json" | "simple"
 
 // 转换为统一的字段定义
 const fields = SchemaAdapter.toUnified(schema);
@@ -1119,48 +1187,69 @@ function CustomCrudPage() {
 
 ```typescript
 // Auto-CRUD 组件
-export { AutoCrudTable } from "./components/auto-crud/auto-crud-table";
-export type { Field, Fields, AutoCrudTableProps } from "./components/auto-crud/auto-crud-table";
-export { AutoForm } from "./components/auto-crud/auto-form";
-export { AutoTable } from "./components/auto-crud/auto-table";
-export { AutoTableActionBar } from "./components/auto-crud/auto-table-action-bar";
-export { AutoTableSimpleFilters } from "./components/auto-crud/auto-table-simple-filters";
-export { CrudFormModal } from "./components/auto-crud/crud-form-modal";
+export { AutoCrudTable } from './components/auto-crud/auto-crud-table';
+export type {
+  Field,
+  Fields,
+  AutoCrudTableProps,
+} from './components/auto-crud/auto-crud-table';
+export { AutoForm } from './components/auto-crud/auto-form';
+export { AutoTable } from './components/auto-crud/auto-table';
+export { AutoTableActionBar } from './components/auto-crud/auto-table-action-bar';
+export { AutoTableSimpleFilters } from './components/auto-crud/auto-table-simple-filters';
+export { CrudFormModal } from './components/auto-crud/crud-form-modal';
 
 // 数据表格组件
-export { DataTable } from "./components/data-table/data-table";
-export { DataTableAdvancedToolbar } from "./components/data-table/data-table-advanced-toolbar";
-export { DataTableColumnHeader } from "./components/data-table/data-table-column-header";
-export { DataTableFacetedFilter } from "./components/data-table/data-table-faceted-filter";
-export { DataTablePagination } from "./components/data-table/data-table-pagination";
-export { DataTableToolbar } from "./components/data-table/data-table-toolbar";
-export { DataTableViewOptions } from "./components/data-table/data-table-view-options";
+export { DataTable } from './components/data-table/data-table';
+export { DataTableAdvancedToolbar } from './components/data-table/data-table-advanced-toolbar';
+export { DataTableColumnHeader } from './components/data-table/data-table-column-header';
+export { DataTableFacetedFilter } from './components/data-table/data-table-faceted-filter';
+export { DataTablePagination } from './components/data-table/data-table-pagination';
+export { DataTableToolbar } from './components/data-table/data-table-toolbar';
+export { DataTableViewOptions } from './components/data-table/data-table-view-options';
 
 // Hooks
-export { useAutoCrudResource, noopToastAdapter } from "./hooks/use-auto-crud-resource";
-export type { ToastAdapter, CrudHooks, UseAutoCrudResourceOptions } from "./hooks/use-auto-crud-resource";
-export { useDataTable } from "./hooks/use-data-table";
-export { useReadableFilters } from "./hooks/use-readable-filters";
-export { useUrlState, useQueryState, useQueryStates } from "./hooks/use-url-state";
+export { useAutoCrudResource, noopToastAdapter } from './hooks/use-auto-crud-resource';
+export type {
+  ToastAdapter,
+  CrudHooks,
+  UseAutoCrudResourceOptions,
+} from './hooks/use-auto-crud-resource';
+export { useDataTable } from './hooks/use-data-table';
+export { useReadableFilters } from './hooks/use-readable-filters';
+export { useUrlState, useQueryState, useQueryStates } from './hooks/use-url-state';
 
 // Schema Bridge - 核心工具
-export { parseZodField, createTableSchema, createSelectColumn, createActionsColumn } from "./lib/schema-bridge/zod-to-columns";
-export { createFormSchema, createEditFormSchema } from "./lib/schema-bridge/zod-to-formily";
-export { SchemaAdapter } from "./lib/schema-bridge/schema-adapter";
+export {
+  parseZodField,
+  createTableSchema,
+  createSelectColumn,
+  createActionsColumn,
+} from './lib/schema-bridge/zod-to-columns';
+export {
+  createFormSchema,
+  createEditFormSchema,
+} from './lib/schema-bridge/zod-to-formily';
+export { SchemaAdapter } from './lib/schema-bridge/schema-adapter';
 export type {
-  ColumnOverrides, FormSchemaOverrides,
-  CreateTableSchemaOptions, CreateFormSchemaOptions,
-  UnifiedSchema, JSONSchema, SimpleFieldsConfig, UnifiedField,
-} from "./lib/schema-bridge";
+  ColumnOverrides,
+  FormSchemaOverrides,
+  CreateTableSchemaOptions,
+  CreateFormSchemaOptions,
+  UnifiedSchema,
+  JSONSchema,
+  SimpleFieldsConfig,
+  UnifiedField,
+} from './lib/schema-bridge';
 
 // 数据源
-export { createTRPCDataSource, createMemoryDataSource } from "./lib/data-source";
-export type { DataSource, ListParams, ListResult } from "./lib/data-source";
+export { createTRPCDataSource, createMemoryDataSource } from './lib/data-source';
+export type { DataSource, ListParams, ListResult } from './lib/data-source';
 
 // 工具函数
-export { cn } from "./lib/utils";
-export { formatDate } from "./lib/format";
-export { humanize } from "./lib/humanize";
+export { cn } from './lib/utils';
+export { formatDate } from './lib/format';
+export { humanize } from './lib/humanize';
 ```
 
 ---
