@@ -1,21 +1,18 @@
-import type { FileMetadata } from '../types';
+import type { FileUploadCallbacks } from '../types';
 import { useFileUpload } from '@pixpilot/shadcn';
 import { useEffect, useMemo, useRef } from 'react';
 import { getFileMeta } from '../utils';
 
-interface UseFileCallbacks {
-  onChange?: (fileMeta: FileMetadata) => void;
-}
-
 export function useFileUploadProgressCallbacks(
   file: File,
-  callBacks: UseFileCallbacks,
+  callBacks: FileUploadCallbacks,
 ): void {
-  const { onChange } = callBacks;
+  const { onFileSuccess, onFileError } = callBacks;
 
   const fileMeta = useMemo(() => getFileMeta(file), [file]);
 
   const isChangeTrigged = useRef<boolean>(false);
+  const isErrorTriggered = useRef<boolean>(false);
 
   const isUploadSuccess = useFileUpload((store) => {
     const storeFile = store.files.get(file);
@@ -26,10 +23,25 @@ export function useFileUploadProgressCallbacks(
     return false;
   });
 
+  const uploadError = useFileUpload((store) => {
+    const storeFile = store.files.get(file);
+    if (storeFile?.status === 'error') {
+      return storeFile.error ?? 'Upload failed';
+    }
+    return null;
+  });
+
   useEffect(() => {
     if (isUploadSuccess && !isChangeTrigged.current) {
       isChangeTrigged.current = true;
-      onChange?.(fileMeta);
+      onFileSuccess?.(fileMeta);
     }
-  }, [isUploadSuccess, onChange, fileMeta]);
+  }, [isUploadSuccess, onFileSuccess, fileMeta]);
+
+  useEffect(() => {
+    if (uploadError != null && !isErrorTriggered.current) {
+      isErrorTriggered.current = true;
+      onFileError?.(file, uploadError);
+    }
+  }, [uploadError, onFileError, file]);
 }

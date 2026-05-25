@@ -20,6 +20,7 @@
     "@internal/tsconfig": "workspace:*",
     "@vitest/coverage-v8": "catalog:dev",
     "eslint": "catalog:dev",
+    "postcss": "catalog:dev",
     "vitest": "catalog:dev"
   },
   "prettier": "@internal/prettier-config"

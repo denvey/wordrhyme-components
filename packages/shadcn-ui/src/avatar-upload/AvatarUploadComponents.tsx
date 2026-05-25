@@ -1,6 +1,7 @@
 import type { ComponentSize } from './types';
-import { cn } from '@pixpilot/shadcn';
-import { Pencil } from 'lucide-react';
+import type { ComponentSizes } from './types';
+import { Button, cn } from '@pixpilot/shadcn';
+import { Pencil, X } from 'lucide-react';
 
 import React from 'react';
 
@@ -14,19 +15,57 @@ export const MessageComponent: React.FC<{ message: string; className?: string }>
 export const AvatarWrap: React.FC<{
   children: React.ReactNode;
   className?: string;
-  iconClass: string;
   showChangeIcon: boolean;
-}> = ({ children, className, iconClass, showChangeIcon }) => {
+  size: keyof ComponentSizes;
+  onClear?: () => void;
+}> = ({ children, className, showChangeIcon, size, onClear }) => {
+  const editIcon: Record<keyof ComponentSizes, string> = {
+    sm: 'size-5.5 bottom-0 right-0',
+    md: 'size-6.5 bottom-1 right-1',
+    lg: 'size-7 bottom-1.5 right-1.5',
+  };
+
+  const clearButtonSize: Record<keyof ComponentSizes, string> = {
+    sm: 'size-5.5',
+    md: 'size-6.5',
+    lg: 'size-7.5',
+  };
+
+  const rootSize: Record<keyof ComponentSizes, string> = {
+    sm: 'h-20 w-20',
+    md: 'h-28 w-28',
+    lg: 'h-40 w-40',
+  };
+
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative', rootSize[size], className)}>
       {children}
       {showChangeIcon && (
         <Pencil
           className={cn(
-            `absolute bottom-0 right-0 bg-secondary text-secondary-foreground rounded-full p-1.5 shadow-md`,
-            iconClass,
+            editIcon[size],
+            `absolute bg-secondary text-secondary-foreground rounded-full p-1.5 shadow-md`,
           )}
         />
+      )}
+      {onClear != null && (
+        <Button
+          type="button"
+          variant="secondary"
+          size="icon"
+          className={cn(
+            '-top-2.5 -right-2.5 absolute  rounded-full ',
+            clearButtonSize[size],
+          )}
+          aria-label="Clear avatar"
+          onClick={(e) => {
+            e.stopPropagation();
+            e.preventDefault();
+            onClear();
+          }}
+        >
+          <X className={cn('p-1.5', clearButtonSize[size])} />
+        </Button>
       )}
     </div>
   );

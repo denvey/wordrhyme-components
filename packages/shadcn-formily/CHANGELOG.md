@@ -1,5 +1,289 @@
 # @pixpilot/formily-shadcn
 
+## 1.11.20
+
+### Patch Changes
+
+- 4237cd7: fix release
+- Updated dependencies [4237cd7]
+  - @pixpilot/shadcn@1.2.7
+  - @pixpilot/shadcn-ui@1.21.1
+
+## 1.11.19
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.21.0
+
+## 1.11.18
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.20.0
+
+## 1.11.17
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn@1.2.6
+  - @pixpilot/shadcn-ui@1.19.4
+
+## 1.11.16
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.19.3
+
+## 1.11.15
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.19.2
+
+## 1.11.14
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.19.1
+
+## 1.11.13
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.19.0
+
+## 1.11.12
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.18.2
+
+## 1.11.11
+
+### Patch Changes
+
+- 01ccd0c: fix release
+- Updated dependencies [01ccd0c]
+  - @pixpilot/shadcn@1.2.5
+  - @pixpilot/shadcn-ui@1.18.1
+
+## 1.11.10
+
+### Patch Changes
+
+- package issue
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn@1.2.4
+  - @pixpilot/shadcn-ui@1.18.0
+
+## 1.11.9
+
+### Patch Changes
+
+- 3d902a3: new release
+- Updated dependencies [3d902a3]
+  - @pixpilot/shadcn@1.2.3
+  - @pixpilot/shadcn-ui@1.17.1
+
+## 1.11.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.17.0
+
+## 1.11.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.16.0
+
+## 1.11.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.15.0
+
+## 1.11.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.14.0
+
+## 1.11.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.13.0
+
+## 1.11.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.12.1
+
+## 1.11.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.12.0
+
+## 1.11.1
+
+### Patch Changes
+
+- cc5d0dc: new fix release
+- Updated dependencies [cc5d0dc]
+  - @pixpilot/shadcn@1.2.2
+  - @pixpilot/shadcn-ui@1.11.1
+
+## 1.11.0
+
+### Minor Changes
+
+- add transformFile support
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.11.0
+
+## 1.10.9
+
+### Patch Changes
+
+- add path to FormFileUploadOptions and update logic
+
+## 1.10.8
+
+### Patch Changes
+
+- refactor FormFileUploadOptions and update imports
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.10.7
+
+## 1.10.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.10.6
+
+## 1.10.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.10.5
+
+## 1.10.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.10.4
+
+## 1.10.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.10.3
+
+## 1.10.3
+
+### Patch Changes
+
+- update size handling and component structure
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn@1.2.1
+  - @pixpilot/shadcn-ui@1.10.2
+
+## 1.10.2
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.10.1
+
+## 1.10.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.10.0
+
+## 1.10.0
+
+### Minor Changes
+
+- enhance `mapUploadProps` for better file handling
+
+## 1.9.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.9.0
+
+## 1.9.0
+
+### Minor Changes
+
+- enhance file upload components with improved type handling and mapping
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.8.0
+
+## 1.8.0
+
+### Minor Changes
+
+- implement shared `mapUploadProps` for file upload components
+
+## 1.7.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.7.0
+
+## 1.7.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.6.0
+
+## 1.7.3
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.5.0
+
 ## 1.7.2
 
 ### Patch Changes

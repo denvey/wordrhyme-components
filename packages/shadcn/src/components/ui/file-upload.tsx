@@ -281,6 +281,14 @@ interface FileUploadRootProps extends Omit<
   onFileReject?: (file: File, message: string) => void;
   onFilesReject?: (files: Array<{ file: File; message: string }>) => void;
   onFileValidate?: (file: File) => string | null | undefined;
+  /**
+   * Optional async transform applied to each accepted file before it enters
+   * the store.  Return the same file to leave it unchanged, or return a new
+   * `File` (e.g. after EXIF stripping) to replace it.  All subsequent
+   * callbacks — `onProgress`, `onSuccess`, `onError` — will reference the
+   * returned file.
+   */
+  transformFile?: (file: File) => Promise<File> | File;
   onUpload?: (
     files: File[],
     options: {
@@ -312,6 +320,7 @@ function FileUploadRoot(props: FileUploadRootProps) {
     onFileReject,
     onFilesReject,
     onFileValidate,
+    transformFile,
     onUpload,
     accept,
     maxFiles,
@@ -337,6 +346,7 @@ function FileUploadRoot(props: FileUploadRootProps) {
   const dir = useDirection(dirProp);
   const listeners = useLazyRef(() => new Set<() => void>()).current;
   const files = useLazyRef<Map<File, FileState>>(() => new Map()).current;
+  const progressFrames = useLazyRef<Map<File, number>>(() => new Map()).current;
   const urlCache = useLazyRef(() => new WeakMap<File, string>()).current;
   const inputRef = React.useRef<HTMLInputElement>(null);
   const isControlled = value !== undefined;
@@ -351,18 +361,34 @@ function FileUploadRoot(props: FileUploadRootProps) {
     [accept],
   );
 
+  const cancelPendingProgress = React.useCallback(
+    (file: File) => {
+      const frameId = progressFrames.get(file);
+
+      if (frameId === undefined) {
+        return;
+      }
+
+      cancelAnimationFrame(frameId);
+      progressFrames.delete(file);
+    },
+    [progressFrames],
+  );
+
   const onProgress = useLazyRef(() => {
-    let frame = 0;
     return (file: File, progress: number) => {
-      if (frame) return;
-      frame = requestAnimationFrame(() => {
-        frame = 0;
+      cancelPendingProgress(file);
+
+      const frameId = requestAnimationFrame(() => {
+        progressFrames.delete(file);
         store.dispatch({
           type: 'SET_PROGRESS',
           file,
           progress: Math.min(Math.max(0, progress), 100),
         });
       });
+
+      progressFrames.set(file, frameId);
     };
   }).current;
 
@@ -376,6 +402,12 @@ function FileUploadRoot(props: FileUploadRootProps) {
 
   React.useEffect(() => {
     return () => {
+      for (const frameId of progressFrames.values()) {
+        cancelAnimationFrame(frameId);
+      }
+
+      progressFrames.clear();
+
       for (const file of files.keys()) {
         const cachedUrl = urlCache.get(file);
         if (cachedUrl) {
@@ -383,7 +415,7 @@ function FileUploadRoot(props: FileUploadRootProps) {
         }
       }
     };
-  }, [files, urlCache]);
+  }, [files, progressFrames, urlCache]);
 
   const onFilesUpload = React.useCallback(
     async (files: File[]) => {
@@ -396,9 +428,11 @@ function FileUploadRoot(props: FileUploadRootProps) {
           await onUpload(files, {
             onProgress,
             onSuccess: (file) => {
+              cancelPendingProgress(file);
               store.dispatch({ type: 'SET_SUCCESS', file });
             },
             onError: (file, error) => {
+              cancelPendingProgress(file);
               store.dispatch({
                 type: 'SET_ERROR',
                 file,
@@ -408,12 +442,14 @@ function FileUploadRoot(props: FileUploadRootProps) {
           });
         } else {
           for (const file of files) {
+            cancelPendingProgress(file);
             store.dispatch({ type: 'SET_SUCCESS', file });
           }
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Upload failed';
         for (const file of files) {
+          cancelPendingProgress(file);
           store.dispatch({
             type: 'SET_ERROR',
             file,
@@ -422,7 +458,7 @@ function FileUploadRoot(props: FileUploadRootProps) {
         }
       }
     },
-    [store, onUpload, onProgress],
+    [cancelPendingProgress, store, onUpload, onProgress],
   );
 
   const onFilesChange = React.useCallback(
@@ -524,28 +560,35 @@ function FileUploadRoot(props: FileUploadRootProps) {
       }
 
       if (acceptedFiles.length > 0) {
-        store.dispatch({ type: 'ADD_FILES', files: acceptedFiles });
+        // eslint-disable-next-line no-void
+        void (async () => {
+          const finalFiles = transformFile
+            ? await Promise.all(acceptedFiles.map(async (file) => transformFile(file)))
+            : acceptedFiles;
 
-        if (isControlled && onValueChange) {
-          const currentFiles = Array.from(store.getState().files.values()).map(
-            (f) => f.file,
-          );
-          onValueChange([...currentFiles]);
-        }
+          store.dispatch({ type: 'ADD_FILES', files: finalFiles });
 
-        if (onAccept) {
-          onAccept(acceptedFiles);
-        }
+          if (isControlled && onValueChange) {
+            const currentFiles = Array.from(store.getState().files.values()).map(
+              (f) => f.file,
+            );
+            onValueChange([...currentFiles]);
+          }
 
-        for (const file of acceptedFiles) {
-          onFileAccept?.(file);
-        }
+          if (onAccept) {
+            onAccept(finalFiles);
+          }
 
-        if (onUpload) {
-          requestAnimationFrame(() => {
-            onFilesUpload(acceptedFiles);
-          });
-        }
+          for (const file of finalFiles) {
+            onFileAccept?.(file);
+          }
+
+          if (onUpload) {
+            requestAnimationFrame(() => {
+              onFilesUpload(finalFiles);
+            });
+          }
+        })();
       }
     },
     [
@@ -556,6 +599,7 @@ function FileUploadRoot(props: FileUploadRootProps) {
       onFileAccept,
       onUpload,
       onFilesUpload,
+      transformFile,
       maxFiles,
       onFileValidate,
       onFileReject,

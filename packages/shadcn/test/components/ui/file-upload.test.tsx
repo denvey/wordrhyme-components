@@ -6,7 +6,19 @@ import {
   FileUploadDropzone,
   FileUploadList,
   FileUploadTrigger,
+  useFileUpload,
 } from '../../../src/components/ui/file-upload';
+
+/**
+ * Keep these tests passing when updating or overriding this component from the shadcn registry.
+ * They guard the upload-state behavior that can regress during registry syncs.
+ */
+
+function StatusProbe({ file }: { file: File }) {
+  const status = useFileUpload((store) => store.files.get(file)?.status ?? 'missing');
+
+  return <span data-testid="status">{status}</span>;
+}
 
 describe('fileUpload - onFilesReject prop', () => {
   it('should call onFilesReject with rejected files exceeding maxFiles', async () => {
@@ -280,5 +292,217 @@ describe('fileUpload - onFilesReject prop', () => {
       message: string;
     }>;
     expect(rejectedFiles).toHaveLength(2);
+  });
+
+  it('should keep success state when progress is queued before immediate success', async () => {
+    const uploadFile = new File(['content'], 'file.txt', { type: 'text/plain' });
+    const queuedFrames = new Map<number, FrameRequestCallback>();
+    let nextFrameId = 1;
+
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      const frameId = nextFrameId++;
+      queuedFrames.set(frameId, callback);
+      return frameId;
+    });
+
+    vi.stubGlobal('cancelAnimationFrame', (frameId: number) => {
+      queuedFrames.delete(frameId);
+    });
+
+    const flushAnimationFrames = () => {
+      while (queuedFrames.size > 0) {
+        const [frameId, callback] = queuedFrames.entries().next().value as [
+          number,
+          FrameRequestCallback,
+        ];
+
+        queuedFrames.delete(frameId);
+        callback(performance.now());
+      }
+    };
+
+    try {
+      const { container, getByTestId } = render(
+        React.createElement(
+          FileUpload,
+          {
+            onUpload: (files, options) => {
+              for (const file of files) {
+                options.onProgress(file, 100);
+                options.onSuccess(file);
+              }
+            },
+          },
+          React.createElement(
+            FileUploadDropzone,
+            null,
+            React.createElement(FileUploadTrigger, null, 'Upload'),
+          ),
+          React.createElement(FileUploadList, null),
+          React.createElement(StatusProbe, { file: uploadFile }),
+        ),
+      );
+
+      const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+      Object.defineProperty(input, 'files', {
+        value: [uploadFile],
+        writable: true,
+      });
+
+      act(() => {
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+
+      act(() => {
+        flushAnimationFrames();
+      });
+
+      await waitFor(() => {
+        expect(getByTestId('status').textContent).toBe('success');
+      });
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+describe('fileUpload - transformFile prop', () => {
+  it('should add the transformed file to the store, not the original', async () => {
+    const originalFile = new File(['original'], 'photo.jpg', { type: 'image/jpeg' });
+    const transformedFile = new File(['stripped'], 'photo.jpg', { type: 'image/jpeg' });
+
+    function OriginalStatusProbe() {
+      const status = useFileUpload(
+        (store) => store.files.get(originalFile)?.status ?? 'missing',
+      );
+      return <span data-testid="original-status">{status}</span>;
+    }
+
+    function TransformedStatusProbe() {
+      const status = useFileUpload(
+        (store) => store.files.get(transformedFile)?.status ?? 'missing',
+      );
+      return <span data-testid="transformed-status">{status}</span>;
+    }
+
+    const { container, getByTestId } = render(
+      React.createElement(
+        FileUpload,
+        {
+          transformFile: () => transformedFile,
+        },
+        React.createElement(
+          FileUploadDropzone,
+          null,
+          React.createElement(FileUploadTrigger, null, 'Upload'),
+        ),
+        React.createElement(FileUploadList, null),
+        React.createElement(OriginalStatusProbe),
+        React.createElement(TransformedStatusProbe),
+      ),
+    );
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [originalFile], writable: true });
+    act(() => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await waitFor(() => {
+      expect(getByTestId('original-status').textContent).toBe('missing');
+      expect(getByTestId('transformed-status').textContent).toBe('idle');
+    });
+  });
+
+  it('should call onSuccess with the transformed file after upload', async () => {
+    const originalFile = new File(['original'], 'photo.jpg', { type: 'image/jpeg' });
+    const transformedFile = new File(['stripped'], 'photo.jpg', { type: 'image/jpeg' });
+
+    let capturedOnSuccess: ((file: File) => void) | undefined;
+
+    function TransformedStatusProbe() {
+      const status = useFileUpload(
+        (store) => store.files.get(transformedFile)?.status ?? 'missing',
+      );
+      return <span data-testid="transformed-status">{status}</span>;
+    }
+
+    const { container, getByTestId } = render(
+      React.createElement(
+        FileUpload,
+        {
+          transformFile: () => transformedFile,
+          onUpload: (_files, options) => {
+            capturedOnSuccess = options.onSuccess;
+          },
+        },
+        React.createElement(
+          FileUploadDropzone,
+          null,
+          React.createElement(FileUploadTrigger, null, 'Upload'),
+        ),
+        React.createElement(FileUploadList, null),
+        React.createElement(TransformedStatusProbe),
+      ),
+    );
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [originalFile], writable: true });
+    act(() => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await waitFor(() => {
+      expect(capturedOnSuccess).toBeDefined();
+    });
+
+    act(() => {
+      capturedOnSuccess!(transformedFile);
+    });
+
+    await waitFor(() => {
+      expect(getByTestId('transformed-status').textContent).toBe('success');
+    });
+  });
+
+  it('should support async transforms', async () => {
+    const originalFile = new File(['original'], 'photo.jpg', { type: 'image/jpeg' });
+    const transformedFile = new File(['async-stripped'], 'photo.jpg', {
+      type: 'image/jpeg',
+    });
+
+    function TransformedStatusProbe() {
+      const status = useFileUpload(
+        (store) => store.files.get(transformedFile)?.status ?? 'missing',
+      );
+      return <span data-testid="transformed-status">{status}</span>;
+    }
+
+    const { container, getByTestId } = render(
+      React.createElement(
+        FileUpload,
+        {
+          transformFile: async () => transformedFile,
+        },
+        React.createElement(
+          FileUploadDropzone,
+          null,
+          React.createElement(FileUploadTrigger, null, 'Upload'),
+        ),
+        React.createElement(FileUploadList, null),
+        React.createElement(TransformedStatusProbe),
+      ),
+    );
+
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+    Object.defineProperty(input, 'files', { value: [originalFile], writable: true });
+    act(() => {
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    await waitFor(() => {
+      expect(getByTestId('transformed-status').textContent).toBe('idle');
+    });
   });
 });

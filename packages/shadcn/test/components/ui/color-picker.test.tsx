@@ -1,14 +1,24 @@
-import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import React from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import {
   ColorPicker,
   ColorPickerAlphaSlider,
   ColorPickerContent,
   ColorPickerSwatch,
+  colorUtils,
 } from '../../../src/components/ui/color-picker';
 
 describe('colorPicker - value parsing', () => {
+  it('should parse transparent into a fully transparent color value', () => {
+    expect(colorUtils.parseColorString('  TRANSPARENT  ')).toEqual({
+      r: 0,
+      g: 0,
+      b: 0,
+      a: 0,
+    });
+  });
+
   it('should emit 8-digit hex when alpha changes in hex format (controlled regression)', () => {
     /*
      * Why this exists:
@@ -44,7 +54,7 @@ describe('colorPicker - value parsing', () => {
 
     expect(onValueChange).toHaveBeenCalled();
     const lastValue = onValueChange.mock.calls.at(-1)?.[0] as string | undefined;
-    expect(lastValue).toMatch(/^#ff0000[0-9a-f]{2}$/i);
+    expect(lastValue).toMatch(/^#ff0000[0-9a-f]{2}$/iu);
   });
 
   it('should parse valid color string and update internal state', async () => {
@@ -59,6 +69,77 @@ describe('colorPicker - value parsing', () => {
 
     await waitFor(() => {
       expect(getByRole('img').getAttribute('aria-label')).toBe('Current color: #ff0000');
+    });
+  });
+
+  it('should prioritize ColorPickerSwatch color prop over picker value (regression: swatch color override)', async () => {
+    const onValueChange = vi.fn();
+    const { getByRole } = render(
+      <ColorPicker value="#ff0000" onValueChange={onValueChange} inline>
+        <ColorPickerContent>
+          <ColorPickerSwatch color="#00ff00" />
+        </ColorPickerContent>
+      </ColorPicker>,
+    );
+
+    await waitFor(() => {
+      const swatch = getByRole('img');
+      expect(swatch.getAttribute('aria-label')).toBe('Current color: #00ff00');
+      expect(swatch.getAttribute('style') ?? '').toContain('rgb(0, 255, 0)');
+    });
+  });
+
+  it('should fallback to picker value when ColorPickerSwatch color prop is invalid (regression: swatch color override)', async () => {
+    const onValueChange = vi.fn();
+    const { getByRole } = render(
+      <ColorPicker value="#ff0000" onValueChange={onValueChange} inline>
+        <ColorPickerContent>
+          <ColorPickerSwatch color="not-a-color" />
+        </ColorPickerContent>
+      </ColorPicker>,
+    );
+
+    await waitFor(() => {
+      const swatch = getByRole('img');
+      expect(swatch.getAttribute('aria-label')).toBe('Current color: not-a-color');
+      expect(swatch.getAttribute('style') ?? '').not.toContain('background-color');
+    });
+  });
+
+  it('should render an empty swatch color prop as no color selected', async () => {
+    const onValueChange = vi.fn();
+    const { getByRole } = render(
+      <ColorPicker value="#ff0000" onValueChange={onValueChange} inline>
+        <ColorPickerContent>
+          <ColorPickerSwatch color="" />
+        </ColorPickerContent>
+      </ColorPicker>,
+    );
+
+    await waitFor(() => {
+      const swatch = getByRole('img');
+      expect(swatch.getAttribute('aria-label')).toBe('No color selected');
+      expect(swatch.getAttribute('style') ?? '').not.toContain('background-color');
+    });
+  });
+
+  it('should support asChild swatches and apply disabled styling', async () => {
+    const onValueChange = vi.fn();
+    const { getByRole } = render(
+      <ColorPicker value="#ff0000" onValueChange={onValueChange} disabled inline>
+        <ColorPickerContent>
+          <ColorPickerSwatch asChild>
+            <span data-testid="swatch-child" />
+          </ColorPickerSwatch>
+        </ColorPickerContent>
+      </ColorPicker>,
+    );
+
+    await waitFor(() => {
+      const swatch = getByRole('img');
+      expect(swatch.tagName).toBe('SPAN');
+      expect(swatch.getAttribute('aria-label')).toBe('Current color: #ff0000');
+      expect(swatch.getAttribute('class') ?? '').toContain('opacity-50');
     });
   });
 

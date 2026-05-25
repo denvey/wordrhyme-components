@@ -1,11 +1,12 @@
 'use client';
 
+import type { FileUploadCallbacks } from './types';
 import type { FileWithMetadata } from './utils';
 import { cn, FileUploadList } from '@pixpilot/shadcn';
 import { Plus } from 'lucide-react';
 import { FileUploadListItem } from './FileUploadListItem';
 
-interface FileUploadItemsProps {
+interface FileUploadItemsProps extends FileUploadCallbacks {
   displayFiles: FileWithMetadata[];
   deleteFile: (fileMeta: FileWithMetadata) => void;
   getFile: (fileMeta: FileWithMetadata) => File;
@@ -20,6 +21,8 @@ export function FileUploadItems({
   getFile,
   maxFiles,
   itemSize,
+  onFileSuccess,
+  onFileError,
   className,
 }: FileUploadItemsProps) {
   return (
@@ -39,6 +42,8 @@ export function FileUploadItems({
             deleteFile={deleteFile}
             getFile={getFile}
             itemSize={itemSize}
+            onFileSuccess={onFileSuccess}
+            onFileError={onFileError}
           />
         );
       })}

@@ -1,5 +1,6 @@
 'use client';
 
+import type { FileUploadCallbacks } from './types';
 import type { FileWithMetadata } from './utils';
 import {
   Button,
@@ -16,8 +17,9 @@ import {
 import { AlertTriangle, X } from 'lucide-react';
 import prettyBytes from 'pretty-bytes';
 import React from 'react';
+import { useFileUploadProgressCallbacks } from './hooks';
 
-interface FileUploadListItemProps {
+interface FileUploadListItemProps extends FileUploadCallbacks {
   fileMeta: FileWithMetadata;
   deleteFile: (fileMeta: FileWithMetadata) => void;
   getFile: (fileMeta: FileWithMetadata) => File;
@@ -32,8 +34,10 @@ const Backdrop: React.FC<{ className?: string; children?: React.ReactNode }> = (
 };
 
 const FileUploadListItem = React.memo<FileUploadListItemProps>(
-  ({ fileMeta, deleteFile, getFile, itemSize }) => {
+  ({ fileMeta, deleteFile, getFile, itemSize, onFileSuccess, onFileError }) => {
     const file = getFile(fileMeta);
+
+    useFileUploadProgressCallbacks(file, { onFileSuccess, onFileError });
 
     const storeFile = useFileUpload((store) => store.files.get(file));
 

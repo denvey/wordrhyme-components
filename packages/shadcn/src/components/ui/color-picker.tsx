@@ -320,8 +320,16 @@ function hslToRgb(hsl: { h: number; s: number; l: number }, alpha = 1): ColorVal
   };
 }
 
+function isTransparent(color: string): boolean {
+  return color.trim().toLowerCase() === 'transparent';
+}
+
 function parseColorString(value: string): ColorValue | null {
   const trimmed = value.trim();
+
+  if (isTransparent(trimmed)) {
+    return { r: 0, g: 0, b: 0, a: 0 };
+  }
 
   // Parse hex colors
   if (trimmed.startsWith('#')) {
@@ -1076,21 +1084,34 @@ function ColorPickerAlphaSlider(
   );
 }
 
-function ColorPickerSwatch(props: DivProps) {
-  const { asChild, className, ...swatchProps } = props;
+interface ColorPickerSwatchProps extends Omit<DivProps, 'color'> {
+  color?: string;
+}
 
+function ColorPickerSwatch(props: ColorPickerSwatchProps) {
+  const {
+    asChild,
+    className,
+    color: colorProp,
+    style: styleProp,
+    ...swatchProps
+  } = props;
   const context = useColorPickerContext(SWATCH_NAME);
 
-  const color = useStore((state) => state.color);
+  const storeColor = useStore((state) => state.color);
   const format = useStore((state) => state.format);
 
+  const color = React.useMemo(() => {
+    if (colorProp === undefined) return storeColor;
+
+    return parseColorString(colorProp);
+  }, [colorProp, storeColor]);
+
   const backgroundStyle = React.useMemo(() => {
-    if (!color) {
+    if (!color)
       return {
-        background:
-          'linear-gradient(to bottom right, transparent calc(50% - 1px), hsl(var(--destructive)) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)) no-repeat',
+        backgroundColor: colorProp,
       };
-    }
 
     const colorString = `rgba(${color.r}, ${color.g}, ${color.b}, ${color.a})`;
 
@@ -1103,11 +1124,13 @@ function ColorPickerSwatch(props: DivProps) {
     return {
       backgroundColor: colorString,
     };
-  }, [color]);
+  }, [color, colorProp]);
 
-  const ariaLabel = !color
-    ? 'No color selected'
-    : `Current color: ${colorToString(color, format)}`;
+  const ariaLabel = color
+    ? `Current color: ${colorToString(color, format)}`
+    : colorProp
+      ? `Current color: ${colorProp}`
+      : 'No color selected';
 
   const SwatchPrimitive = asChild ? Slot : 'div';
 
@@ -1125,6 +1148,7 @@ function ColorPickerSwatch(props: DivProps) {
       style={{
         ...backgroundStyle,
         forcedColorAdjust: 'none',
+        ...styleProp,
       }}
     />
   );

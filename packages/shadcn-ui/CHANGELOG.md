@@ -1,5 +1,232 @@
 # @pixpilot/shadcn-ui
 
+## 1.21.1
+
+### Patch Changes
+
+- 4237cd7: fix release
+- Updated dependencies [4237cd7]
+  - @pixpilot/shadcn@1.2.7
+
+## 1.21.0
+
+### Minor Changes
+
+- enhance ColorPickerSwatch functionality and update tests
+
+## 1.20.0
+
+### Minor Changes
+
+- support reset-to-inherit swatch
+
+## 1.19.4
+
+### Patch Changes
+
+- update color handling to use `swatchColor`
+- Updated dependencies
+  - @pixpilot/shadcn@1.2.6
+
+## 1.19.3
+
+### Patch Changes
+
+- simplify swatchChildren assignment logic
+
+## 1.19.2
+
+### Patch Changes
+
+- correct swatchChildren assignment logic
+
+## 1.19.1
+
+### Patch Changes
+
+- fix reset title
+
+## 1.19.0
+
+### Minor Changes
+
+- add reset options and clear button functionality
+
+## 1.18.2
+
+### Patch Changes
+
+- enhance display with truncation and clear button
+
+## 1.18.1
+
+### Patch Changes
+
+- 01ccd0c: fix release
+- Updated dependencies [01ccd0c]
+  - @pixpilot/shadcn@1.2.5
+
+## 1.18.0
+
+### Minor Changes
+
+- update Storybook configuration and dependencies
+
+### Patch Changes
+
+- package issue
+- Updated dependencies
+  - @pixpilot/shadcn@1.2.4
+
+## 1.17.1
+
+### Patch Changes
+
+- 3d902a3: new release
+- Updated dependencies [3d902a3]
+  - @pixpilot/shadcn@1.2.3
+
+## 1.17.0
+
+### Minor Changes
+
+- add README and scaffoldfy configuration for package generator
+
+## 1.16.0
+
+### Minor Changes
+
+- add optional `disabled` and `className` props to BaseSelectProps
+
+## 1.15.0
+
+### Minor Changes
+
+- add optional `id` prop to BaseSelectProps
+
+## 1.14.0
+
+### Minor Changes
+
+- implement nesting support in DialogProvider
+
+## 1.13.0
+
+### Minor Changes
+
+- update variant handling for ConfirmationDialog
+
+## 1.12.1
+
+### Patch Changes
+
+- remove unnecessary DialogClose component
+
+## 1.12.0
+
+### Minor Changes
+
+- enhance `description` prop type to support React nodes
+
+## 1.11.1
+
+### Patch Changes
+
+- cc5d0dc: new fix release
+- Updated dependencies [cc5d0dc]
+  - @pixpilot/shadcn@1.2.2
+
+## 1.11.0
+
+### Minor Changes
+
+- add onReplace callback and related logic
+
+## 1.10.7
+
+### Patch Changes
+
+- refactor FormFileUploadOptions and update imports
+
+## 1.10.6
+
+### Patch Changes
+
+- update upload options type and logic
+
+## 1.10.5
+
+### Patch Changes
+
+- clear upload warning feedback on single file deletion
+
+## 1.10.4
+
+### Patch Changes
+
+- update change icon visibility logic
+
+## 1.10.3
+
+### Patch Changes
+
+- update message display logic based on image presence
+
+## 1.10.2
+
+### Patch Changes
+
+- update size handling and component structure
+- remove unnecessary delay in upload success handling
+- Updated dependencies
+  - @pixpilot/shadcn@1.2.1
+
+## 1.10.1
+
+### Patch Changes
+
+- update message display logic in `MessageComponent`
+
+## 1.10.0
+
+### Minor Changes
+
+- refactor file handling and improve error management
+
+## 1.9.0
+
+### Minor Changes
+
+- add `clearable` prop to AvatarUpload component
+
+## 1.8.0
+
+### Minor Changes
+
+- enhance file upload components with improved type handling and mapping
+
+## 1.7.0
+
+### Minor Changes
+
+- add onSuccess and onError callbacks to file upload components
+
+## 1.6.0
+
+### Minor Changes
+
+- add onChange and onError callbacks to upload components
+
+## 1.5.0
+
+### Minor Changes
+
+- update file upload display text and add story
+
+### Patch Changes
+
+- pass onChange to useFileUploadProgressCallbacks
+
 ## 1.4.0
 
 ### Minor Changes

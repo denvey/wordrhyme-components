@@ -1,0 +1,191 @@
+{
+  "version": "0",
+  "stories": {
+    "shadcn-ui-avatarupload--default": {
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "timeout": 200
+                  },
+                  "id": "S73NarZBrPO9",
+                  "name": "waitForTimeout"
+                }
+              ],
+              "id": "04L4Niuwytxu",
+              "title": "waitForTimeout"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "#avatar-upload-div-1"
+                  },
+                  "id": "Ae0ezNueeo-x",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "sLuCMqr_6QwL",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "LSw61olDITRy",
+          "browserType": "chromium",
+          "id": "o87Ge9_UeZKz",
+          "index": 0,
+          "title": "Default AvatarUpload"
+        }
+      ],
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "#avatar-upload-div-1"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "NdAYLSveYGP8",
+          "title": "takeElementScreenshot"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "timeout": 200
+              },
+              "name": "waitForTimeout"
+            }
+          ],
+          "id": "EyLQdVheMMLY",
+          "title": "waitForTimeout"
+        }
+      ]
+    },
+    "shadcn-ui-avatarupload--with-image": {
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "#avatar-upload-div-1"
+                  },
+                  "id": "LK5Gk97ED2Tw",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "RmRqg2BqSLua",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "LSw61olDITRy",
+          "browserType": "chromium",
+          "id": "YaTJ_JkKlLpN",
+          "index": 0,
+          "title": "Avatar upload with image displayed"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"button\"]"
+                  },
+                  "id": "h4mfx2yeIgc7",
+                  "name": "click"
+                }
+              ],
+              "id": "2nIarzgUcmLz",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "timeout": 200
+                  },
+                  "id": "ibSggyoI68MM",
+                  "name": "waitForTimeout"
+                }
+              ],
+              "id": "pXR-qp7gU7ij",
+              "title": "delay 200"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "#avatar-upload-div-1"
+                  },
+                  "id": "N0Hj87otZxSx",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "2oOzqAhywb2c",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "LSw61olDITRy",
+          "browserType": "chromium",
+          "id": "xf11cu5I8cl4",
+          "index": 1,
+          "title": "Should remove file"
+        }
+      ],
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"button\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "e0xtY9FkTIRD",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "timeout": 200
+              },
+              "name": "waitForTimeout"
+            }
+          ],
+          "id": "wcwPynL5ceVF",
+          "title": "delay 200"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "#avatar-upload-div-1"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "YgO6iAxooOQH",
+          "title": "takeElementScreenshot"
+        }
+      ]
+    }
+  },
+  "browserOptions": {
+    "LSw61olDITRy": {
+      "viewport": {
+        "height": 424,
+        "width": 780
+      },
+      "cursor": true
+    }
+  }
+}

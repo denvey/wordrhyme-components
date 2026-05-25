@@ -1,14 +1,16 @@
+import type { ColorPickerResetOptions, ColorPickerSlots } from './types';
 import {
+  Button,
   cn,
   ColorPickerTrigger,
   InputGroup,
   InputGroupAddon,
-  InputGroupText,
 } from '@pixpilot/shadcn';
-import { ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
+import { ChevronDownIcon, ChevronUpIcon, XIcon } from 'lucide-react';
 import React from 'react';
 import { useColorPickerContext } from './color-picker-context';
 import { ColorPickerSwatch } from './ColorPickerSwatch';
+import { useColorPickerResetOptions } from './hooks/use-color-picker-reset-options';
 
 export interface ColorPickerButtonProps extends Omit<
   React.ComponentPropsWithoutRef<'div'>,
@@ -16,15 +18,37 @@ export interface ColorPickerButtonProps extends Omit<
 > {
   formatDisplayValue?: (value: string) => React.ReactNode;
   placeholder?: string;
-  slots?: {
-    swatch: React.ComponentProps<typeof ColorPickerSwatch>;
-  };
+  onClear?: () => void;
+  resetOptions?: ColorPickerResetOptions;
+  slots?: ColorPickerSlots;
 }
 
 const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
-  const { slots, formatDisplayValue, placeholder = 'Pick a color', ...rest } = props;
+  const {
+    slots,
+    formatDisplayValue,
+    placeholder = 'Pick a color',
+    onClear,
+    resetOptions,
+    title,
+    ...rest
+  } = props;
 
-  const { isPickerOpen, value, onValueChange } = useColorPickerContext();
+  const { isPickerOpen, onValueChange } = useColorPickerContext();
+
+  const {
+    value,
+    isResetValue,
+    resetLabel,
+    resetTooltip,
+    resetIcon,
+    handleClear,
+    showClearButton,
+    swatchColor,
+  } = useColorPickerResetOptions({
+    resetOptions,
+    onClear,
+  });
 
   // eslint-disable-next-line no-restricted-properties, node/prefer-global/process
   if (process.env.NODE_ENV !== 'production') {
@@ -36,27 +60,66 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
   }
 
   const renderDisplayValue = (): React.ReactNode => {
+    if (isResetValue) return resetLabel;
     if (value == null || value === '') return placeholder;
     return formatDisplayValue != null ? formatDisplayValue(value) : value;
   };
 
-  const currentcolor = value != null && value !== '' ? value : undefined;
+  const swatchChildren =
+    slots?.swatch?.children ?? (isResetValue ? resetIcon : undefined);
+
   return (
     <ColorPickerTrigger asChild>
       <InputGroup
         {...rest}
+        title={title}
         className={cn(
           'dark:hover:bg-input/50 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer',
           rest.className,
         )}
       >
         <InputGroupAddon align="inline-start">
-          <ColorPickerSwatch color={currentcolor} {...slots?.swatch} />
+          <ColorPickerSwatch
+            color={swatchColor}
+            resetOptions={resetOptions}
+            {...slots?.swatch}
+          >
+            {swatchChildren}
+          </ColorPickerSwatch>
         </InputGroupAddon>
-        <InputGroupText className="flex-1 text-left text-foreground pl-2">
+        <span className="flex-1 min-w-0 block truncate text-left text-foreground pl-2">
           {renderDisplayValue()}
-        </InputGroupText>
-        <InputGroupAddon align="inline-end" className="">
+        </span>
+        <InputGroupAddon align="inline-end" className="gap-1">
+          {showClearButton && (
+            <Button
+              type="button"
+              title={resetTooltip}
+              variant="ghost"
+              size="icon"
+              aria-label="Clear color"
+              {...slots?.clearButton}
+              className={cn(
+                'size-6 shrink-0 rounded-full',
+                slots?.clearButton?.className,
+              )}
+              onPointerDown={(e) => {
+                slots?.clearButton?.onPointerDown?.(e);
+                if (e.defaultPrevented) return;
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onClick={(e) => {
+                slots?.clearButton?.onClick?.(e);
+                if (e.defaultPrevented) return;
+                e.preventDefault();
+                e.stopPropagation();
+                handleClear?.();
+              }}
+            >
+              <XIcon className="size-4 opacity-50" />
+            </Button>
+          )}
           {isPickerOpen ? (
             <ChevronUpIcon className="size-4 opacity-50" />
           ) : (

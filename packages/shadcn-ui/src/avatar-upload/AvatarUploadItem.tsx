@@ -1,6 +1,6 @@
-import type { FileMetadata } from '../file-upload';
+import type { FileUploadCallbacks } from '../file-upload';
 
-import type { ComponentSize } from './types';
+import type { ComponentSize, Size } from './types';
 
 import {
   cn,
@@ -13,6 +13,7 @@ import {
   useFileUpload,
 } from '@pixpilot/shadcn';
 import { AlertCircle } from 'lucide-react';
+import React from 'react';
 import { useFileError, useFileUploadProgressCallbacks } from '../file-upload';
 import {
   AvatarWrap,
@@ -21,18 +22,28 @@ import {
   MessageComponent,
 } from './AvatarUploadComponents';
 
-interface AvatarUploadItemProps {
+interface AvatarUploadItemProps extends FileUploadCallbacks {
   file: File;
-  index: number;
   currentSize: ComponentSize;
+  size: Size;
   change: string;
-  onChange?: (file: FileMetadata) => void;
+  onClear?: () => void;
+  onError?: (error: string | null) => void;
 }
 
 const AvatarUploadItem: React.FC<AvatarUploadItemProps> = (props) => {
-  const { file, currentSize, change } = props;
+  const {
+    file,
+    currentSize,
+    change = 'Change',
+    onFileSuccess,
+    onFileError,
+    onClear,
+    onError,
+    size = 'md',
+  } = props;
 
-  useFileUploadProgressCallbacks(file, props);
+  useFileUploadProgressCallbacks(file, { onFileSuccess, onFileError });
 
   const fileError = useFileError(file);
 
@@ -45,22 +56,28 @@ const AvatarUploadItem: React.FC<AvatarUploadItemProps> = (props) => {
     return false;
   });
 
+  React.useEffect(() => {
+    if (fileError != null) {
+      onError?.(fileError);
+    }
+
+    return () => {
+      onError?.(null);
+    };
+  }, [fileError, onError]);
+
   return (
     <FileUploadItem value={file} className="p-0 border-0 m-0">
       <MainWrapper currentSize={currentSize}>
         <div className={cn('relative')}>
-          <AvatarWrap
-            className={currentSize.avatar}
-            showChangeIcon={true}
-            iconClass={currentSize.icon}
-          >
+          <AvatarWrap showChangeIcon={true} onClear={onClear} size={size}>
             <Image src={URL.createObjectURL(file)} />
           </AvatarWrap>
           {fileError != null && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="absolute -top-2 -right-2 p-1">
+                  <button type="button" className="absolute -top-3 -left-3 p-1">
                     <AlertCircle className="h-5 w-5 text-red-500" />
                   </button>
                 </TooltipTrigger>

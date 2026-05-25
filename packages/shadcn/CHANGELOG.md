@@ -1,5 +1,47 @@
 # @pixpilot/shadcn
 
+## 1.2.7
+
+### Patch Changes
+
+- 4237cd7: fix release
+
+## 1.2.6
+
+### Patch Changes
+
+- keep workspace packages in source during HMR
+
+## 1.2.5
+
+### Patch Changes
+
+- 01ccd0c: fix release
+
+## 1.2.4
+
+### Patch Changes
+
+- package issue
+
+## 1.2.3
+
+### Patch Changes
+
+- 3d902a3: new release
+
+## 1.2.2
+
+### Patch Changes
+
+- cc5d0dc: new fix release
+
+## 1.2.1
+
+### Patch Changes
+
+- update size handling and component structure
+
 ## 1.2.0
 
 ### Minor Changes

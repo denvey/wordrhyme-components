@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react';
 
 import {
+  cn,
   SelectContent,
   SelectItem,
   SelectTrigger,
@@ -56,7 +57,16 @@ type BaseSelectProps = {
    * Whether to show a clear button when a value is selected
    */
   clearable?: boolean;
-} & Omit<ComponentProps<typeof ShadcnSelect>, 'value' | 'onValueChange' | 'children'>;
+
+  id?: string;
+  disabled?: boolean;
+  name?: string;
+  required?: boolean;
+  className?: string;
+} & Omit<
+  ComponentProps<typeof ShadcnSelect>,
+  'value' | 'onValueChange' | 'children' | 'disabled' | 'name' | 'required'
+>;
 
 function Select(props: BaseSelectProps) {
   const {
@@ -70,6 +80,8 @@ function Select(props: BaseSelectProps) {
     onOpenChange: onOpenChangeProp,
     position,
     clearable = false,
+    disabled,
+    className,
     ...restProps
   } = props;
 
@@ -95,14 +107,18 @@ function Select(props: BaseSelectProps) {
 
   return (
     <ShadcnSelect
-      value={value}
-      onValueChange={onChange}
-      open={open}
-      onOpenChange={handleOpenChange}
       {...restProps}
+      value={value}
+      open={open}
+      onValueChange={onChange}
+      onOpenChange={handleOpenChange}
     >
       <div className="relative w-full">
-        <SelectTrigger className="w-full" onKeyDown={handleTriggerKeyDown}>
+        <SelectTrigger
+          className={cn('w-full', className)}
+          onKeyDown={handleTriggerKeyDown}
+          disabled={disabled}
+        >
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
 

@@ -1,5 +1,5 @@
 import type { SingleFileUploadProps } from '../file-upload';
-import type { ComponentSizes } from './types';
+import type { ComponentSizes, Size } from './types';
 
 import { cn, FileUpload, FileUploadDropzone, FileUploadList } from '@pixpilot/shadcn';
 import { UserCircle2 } from 'lucide-react';
@@ -18,79 +18,111 @@ export interface AvatarUploadProps extends SingleFileUploadProps {
     upload?: string;
     change?: string;
   };
-  size?: keyof ComponentSizes;
+  size?: Size;
+  /**
+   * When `true` (the default), a small × button is displayed on the avatar
+   * whenever there is an image loaded. Clicking it clears the current value.
+   * Set to `false` to hide the button.
+   */
+  clearable?: boolean;
 }
 
 const sizeClasses: ComponentSizes = {
-  sm: { avatar: 'h-20 w-20', icon: 'h-5 w-5', dropZone: 'p-3', main: 'space-y-2' },
+  sm: { dropZone: 'p-3', main: 'space-y-2' },
   md: {
     main: 'space-y-2.5',
-    avatar: 'h-28 w-28',
-    icon: 'h-6 w-6 bottom-1 right-1',
     dropZone: 'p-4',
   },
   lg: {
-    avatar: 'h-40 w-40',
-    icon: 'h-7 w-7 bottom-1.5 right-1.5',
     dropZone: 'p-5',
     main: 'space-y-3',
   },
 };
 
 const AvatarUpload: React.FC<AvatarUploadProps> = (props) => {
-  const { className, messages, value, onAccept, onChange, size = 'md', ...rest } = props;
+  const {
+    className,
+    messages,
+    value,
+    onAccept,
+    onFileSuccess,
+    onFileError,
+    onChange,
+    size = 'md',
+    clearable = true,
+    ...rest
+  } = props;
   const { upload = 'Upload', change = 'Change' } = messages || {};
+
+  const hasValue = value != null && Object.keys(value).length > 0;
 
   const currentSize = sizeClasses[size];
 
-  const [files, setFiles] = React.useState<{ file: File; id: string }[]>([]);
+  const [selectedFile, setSelectedFile] = React.useState<{
+    file: File;
+    id: string;
+  } | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
   const imageUrl = value?.url;
 
   const handleAccept = React.useCallback(
     (acceptedFiles: File[]) => {
-      setFiles(
-        acceptedFiles.map((file) => {
-          return {
-            file,
-            id: `${file.name}-${file.lastModified.toString()}`,
-          };
-        }),
+      const nextFile = acceptedFiles[0];
+
+      setSelectedFile(
+        nextFile == null
+          ? null
+          : {
+              file: nextFile,
+              id: `${nextFile.name}-${nextFile.lastModified.toString()}`,
+            },
       );
-      onAccept?.(acceptedFiles);
+      onAccept?.(nextFile == null ? [] : [nextFile]);
     },
     [onAccept],
   );
 
+  const handleClear = React.useCallback(() => {
+    setSelectedFile(null);
+    onChange?.(null);
+  }, [onChange]);
+
   const hasImageUrl = imageUrl != null;
+  const showClearButton = clearable && (selectedFile != null || hasImageUrl);
 
   return (
     <FileUpload
       {...rest}
+      multiple={false}
       onAccept={handleAccept}
-      className={cn('w-fit', className)}
+      className={cn('w-fit ', className)}
       accept="image/*"
+      data-slots="avatar-upload"
     >
-      <FileUploadDropzone className={currentSize.dropZone}>
-        {files.length > 0 ? (
+      <FileUploadDropzone
+        className={cn(error != null && 'border-red-500', currentSize.dropZone)}
+      >
+        {selectedFile != null ? (
           <FileUploadList>
-            {files.map(({ file, id }, i) => (
-              <AvatarUploadItem
-                key={id}
-                file={file}
-                index={i}
-                currentSize={currentSize}
-                change={change}
-                onChange={onChange}
-              />
-            ))}
+            <AvatarUploadItem
+              key={selectedFile.id}
+              file={selectedFile.file}
+              currentSize={currentSize}
+              change={change}
+              onFileSuccess={onFileSuccess}
+              onError={setError}
+              onFileError={onFileError}
+              onClear={showClearButton ? handleClear : undefined}
+              size={size}
+            />
           </FileUploadList>
         ) : (
           <MainWrapper currentSize={currentSize}>
             <AvatarWrap
-              className={currentSize.avatar}
-              iconClass={currentSize.icon}
-              showChangeIcon={hasImageUrl}
+              showChangeIcon={hasValue}
+              onClear={showClearButton ? handleClear : undefined}
+              size={size}
             >
               {hasImageUrl ? (
                 <Image src={imageUrl} />
@@ -101,7 +133,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = (props) => {
                 />
               )}
             </AvatarWrap>
-            <MessageComponent message={hasImageUrl != null ? change : upload} />
+            <MessageComponent message={hasImageUrl ? change : upload} />
           </MainWrapper>
         )}
       </FileUploadDropzone>

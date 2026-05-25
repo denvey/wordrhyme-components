@@ -1,6 +1,7 @@
 'use client';
 
 import type { UseFileUploadStoreResult } from '../file-upload/hooks/use-file-upload-store';
+import type { FileUploadCallbacks } from '../file-upload/types';
 import type { FileUploadRootProps } from './types';
 import {
   cn,
@@ -22,13 +23,18 @@ export function FileUploadRoot(props: FileUploadRootProps) {
     onChange,
     className,
     disabled,
-    multiple = false,
     children,
     onAccept,
+    maxFiles,
     preventDuplicates,
     slots,
+    onFileSuccess,
+    onFileError,
     ...rest
-  } = props;
+  } = props as FileUploadRootProps & FileUploadCallbacks;
+
+  const multiple = props.multiple ?? false;
+  const effectiveMaxFiles = multiple ? maxFiles : 1;
 
   const {
     handleAccept,
@@ -45,10 +51,12 @@ export function FileUploadRoot(props: FileUploadRootProps) {
 
   const handleFileAccept = useCallback(
     (files: File[]) => {
-      onAccept?.(files);
-      handleAccept(files);
+      const acceptedFiles = multiple ? files : files.slice(0, 1);
+
+      onAccept?.(acceptedFiles);
+      handleAccept(acceptedFiles);
     },
-    [handleAccept, onAccept],
+    [handleAccept, multiple, onAccept],
   );
 
   // eslint-disable-next-line no-restricted-properties, node/prefer-global/process
@@ -68,6 +76,7 @@ export function FileUploadRoot(props: FileUploadRootProps) {
       onAccept={handleFileAccept}
       disabled={disabled}
       multiple={multiple}
+      maxFiles={effectiveMaxFiles}
       className={cn('space-y-2', className)}
     >
       <>
@@ -99,6 +108,8 @@ export function FileUploadRoot(props: FileUploadRootProps) {
                   file={getFile(data)}
                   disabled={disabled}
                   onDelete={deleteFile}
+                  onFileSuccess={onFileSuccess}
+                  onFileError={onFileError}
                   {...(slots?.fileItem || {})}
                 />
               );

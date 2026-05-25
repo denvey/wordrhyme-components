@@ -1,0 +1,577 @@
+{
+  "version": "0",
+  "stories": {
+    "shadcn-ui-colorpicker--button-with-reset-options": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"color-picker-trigger\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "WTSpAH1PUrMm",
+          "title": "takeElementScreenshot"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"color-picker-trigger\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "IS39njS-WnWV",
+          "title": "takeElementScreenshot"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"button\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "oIAq1CiMVUcC",
+          "title": "click reset"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "S781aSQHA9dO",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "WojSkZ-92zDi",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserType": "chromium",
+          "id": "sxqh78YpGBOt",
+          "index": 0,
+          "title": "Color picker button with reset visible"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"button\"]"
+                  },
+                  "id": "8HIKprS1lX_o",
+                  "name": "click"
+                }
+              ],
+              "id": "gIswDkacDobW",
+              "title": "click reset"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "RXy6XHiPmD7V",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "JgtX9t6huY8R",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserType": "chromium",
+          "id": "eQCrjcu9aqjs",
+          "index": 1,
+          "title": "shoud show transparent for reset swatch"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "LFk6yIPmkWjV",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "ZUGwwWerCkMM",
+              "title": "takeElementScreenshot"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"button\"]"
+                  },
+                  "id": "NFbitScNvi0D",
+                  "name": "click"
+                }
+              ],
+              "id": "6EVZ-7UQUe7N",
+              "title": "click reset"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "exJdn-0F69w-",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "S62dJK9rcT7-",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "args": {
+            "value": "#a63737c4",
+            "resetOptions": {
+              "value": "",
+              "label": "Automatic",
+              "tooltip": "Use automatic theme color",
+              "icon": {
+                "type": {},
+                "key": null,
+                "props": {
+                  "size": 14,
+                  "aria-hidden": "true"
+                },
+                "_owner": null,
+                "_store": {
+                  "validated": 1
+                }
+              },
+              "swatchColor": "#1652baad"
+            }
+          },
+          "browserOptionsId": "8e68y-lk9uI1",
+          "browserType": "chromium",
+          "id": "2gWL2kT8DkLw",
+          "index": 2,
+          "screenshotOptionsId": "_UTFpx5EeJZh",
+          "title": "should show swatch color with opacity on rest"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "u8OM09iV_PPP",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "lBMQR1cgBwMu",
+              "title": "takeElementScreenshot"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"button\"]"
+                  },
+                  "id": "KHx7Pce3Q6bt",
+                  "name": "click"
+                }
+              ],
+              "id": "s4kOChbjnfw3",
+              "title": "click reset"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "eIS8jsgymjFg",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "qPYwESLohYDB",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "args": {
+            "value": "#a63737c4",
+            "resetOptions": {
+              "value": "",
+              "label": "Automatic",
+              "tooltip": "Use automatic theme color",
+              "icon": {
+                "type": {},
+                "key": null,
+                "props": {
+                  "size": 14,
+                  "aria-hidden": "true"
+                },
+                "_owner": null,
+                "_store": {
+                  "validated": 1
+                }
+              },
+              "swatchColor": "#1652ba"
+            }
+          },
+          "browserOptionsId": "8e68y-lk9uI1",
+          "browserType": "chromium",
+          "id": "S-yH3PKOD75O",
+          "index": 3,
+          "screenshotOptionsId": "_UTFpx5EeJZh",
+          "title": "should show solid color on reset"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "ymaYaDRryakq",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "2otR_cONHk2m",
+              "title": "takeElementScreenshot"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"button\"]"
+                  },
+                  "id": "lE92s9gDAl2K",
+                  "name": "click"
+                }
+              ],
+              "id": "t2PM-arNj-K-",
+              "title": "click reset"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "IxWZeBLgA-lm",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "k3VwrR6BRpNg",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "args": {
+            "resetOptions": {
+              "value": "inherit",
+              "label": "Automatic",
+              "tooltip": "Use automatic theme color",
+              "icon": {
+                "type": {},
+                "key": null,
+                "props": {
+                  "size": 14,
+                  "aria-hidden": "true"
+                },
+                "_owner": null,
+                "_store": {}
+              },
+              "swatchColor": "inherit"
+            }
+          },
+          "browserOptionsId": "8e68y-lk9uI1",
+          "browserType": "chromium",
+          "id": "6kIj1f3vMz1b",
+          "index": 4,
+          "screenshotOptionsId": "_UTFpx5EeJZh",
+          "title": "should show inherit color on reset"
+        }
+      ]
+    },
+    "shadcn-ui-colorpicker--input-with-reset-options": {
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"button\"]"
+                  },
+                  "id": "foTNVbeHvtb8",
+                  "name": "click"
+                }
+              ],
+              "id": "1_Thb6zf4VTP",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "LaF6xiWY2QJf",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "lJqeUR3GH3eV",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserType": "chromium",
+          "id": "4t1p4VP1cY9i",
+          "index": 1,
+          "title": "Color picker reset button clicked"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "timeout": 200
+                  },
+                  "id": "rI_-NaHgu2Z-",
+                  "name": "waitForTimeout"
+                }
+              ],
+              "id": "s66jtjUF54wC",
+              "title": "delay 200"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "E2dYVfMSCTWY",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "KsDKUrlrecgn",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserType": "chromium",
+          "id": "hLWCjYZsvzrc",
+          "index": 0,
+          "title": "Color picker reset options visible"
+        }
+      ],
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "timeout": 200
+              },
+              "name": "waitForTimeout"
+            }
+          ],
+          "id": "p2JveG7beELX",
+          "title": "delay 200"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"color-picker-trigger\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "PrA957HxwBaX",
+          "title": "takeElementScreenshot"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"button\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "9Hv6dyFJrm98",
+          "title": "click"
+        }
+      ]
+    },
+    "shadcn-ui-colorpicker--button-with-reset-swatch-color": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"button\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "eAk41YAthfmM",
+          "title": "reset"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"color-picker-trigger\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "NEyv2B4gWq4D",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"button\"]"
+                  },
+                  "id": "dlgyfdhRin92",
+                  "name": "click"
+                }
+              ],
+              "id": "wUSYvTSP0i55",
+              "title": "reset"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "vAKqLQnfYuwF",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "ck2anxpCK7lm",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserType": "chromium",
+          "id": "ipMEYuVwBsk-",
+          "index": 0,
+          "title": "Button With Reset Swatch Color"
+        }
+      ]
+    },
+    "shadcn-ui-colorpicker--button-with-reset-to-inherit": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"color-picker-trigger\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "F3anrtIKsb9b",
+          "title": "takeElementScreenshot"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"color-picker-trigger\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "yDTvfYZRvjxq",
+          "title": "takeElementScreenshot"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"button\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "SfaqHwAfUUoz",
+          "title": "rest"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"button\"]"
+                  },
+                  "id": "5QebtOFnbXzk",
+                  "name": "click"
+                }
+              ],
+              "id": "vl7PevDwA2jq",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"color-picker-trigger\"]"
+                  },
+                  "id": "H71rc_EU3Mth",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "29qjIIp9Aak9",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserType": "chromium",
+          "id": "PkgoGU1d2RbO",
+          "index": 0,
+          "title": "Button With Reset To Inherit color"
+        }
+      ]
+    }
+  },
+  "browserOptions": {
+    "8e68y-lk9uI1": {
+      "viewport": {
+        "height": 368,
+        "width": 836
+      }
+    }
+  },
+  "screenshotOptions": {
+    "_UTFpx5EeJZh": {
+      "clip": {
+        "height": 223,
+        "width": 437,
+        "x": 215,
+        "y": 23
+      }
+    }
+  }
+}

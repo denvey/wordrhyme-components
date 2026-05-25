@@ -1,7 +1,5 @@
-'use client';
-
 import type { UseFileUploadStoreResult } from './hooks/use-file-upload-store';
-import type { FileUploadProps } from './types';
+import type { FileUploadCallbacks, FileUploadProps } from './types';
 import { cn, FileUploadDropzone, FileUpload as OrgFileUpload } from '@pixpilot/shadcn';
 import { Upload } from 'lucide-react';
 import * as React from 'react';
@@ -13,12 +11,16 @@ export function FileUpload(props: FileUploadProps) {
     value,
     onChange,
     className,
-    multiple = true,
     onAccept,
     maxFiles,
     preventDuplicates,
+    onFileReject,
+    onFileSuccess,
+    onFileError,
     ...rest
-  } = props;
+  } = props as FileUploadProps & FileUploadCallbacks;
+
+  const multiple = props.multiple ?? true;
 
   const {
     handleAccept,
@@ -44,11 +46,24 @@ export function FileUpload(props: FileUploadProps) {
   const itemSize = 'size-22';
   const containerClasses = cn('p-1.5');
 
+  const handleError = React.useCallback(
+    (file: File, message: string) => {
+      if (onFileReject) {
+        onFileReject(file, message);
+      }
+      if (onFileError) {
+        onFileError(file, message);
+      }
+    },
+    [onFileError, onFileReject],
+  );
+
   return (
     <OrgFileUpload
       {...rest}
       value={orgValue}
       onAccept={handleFileAccept}
+      onFileReject={handleError}
       multiple={multiple}
       className={cn('w-full', className)}
     >
@@ -70,6 +85,8 @@ export function FileUpload(props: FileUploadProps) {
             getFile={getFile}
             maxFiles={maxFiles}
             itemSize={itemSize}
+            onFileSuccess={onFileSuccess}
+            onFileError={onFileError}
             className={containerClasses}
           />
         )}
