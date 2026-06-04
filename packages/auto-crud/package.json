@@ -80,7 +80,7 @@
     "clsx": "catalog:prod",
     "cmdk": "^1.1.1",
     "lucide-react": "catalog:prod",
-    "nanoid": "^5.1.6",
+    "nanoid": "^5.1.11",
     "tailwind-merge": "catalog:prod",
     "vaul": "^1.1.2"
   },
