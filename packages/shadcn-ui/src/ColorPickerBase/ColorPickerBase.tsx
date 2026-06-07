@@ -23,6 +23,7 @@ const ColorPickerBase: React.FC<ColorPickerBaseProps> = (props) => {
     onFormatChange,
     contentProps,
     children,
+    id,
     ...rest
   } = props;
 
@@ -71,18 +72,21 @@ const ColorPickerBase: React.FC<ColorPickerBaseProps> = (props) => {
             value: currentValue,
             onValueChange: handleValueChange,
             isPickerOpen: open,
+            id,
           })
         : children}
 
       {layout === 'compact' ? (
         <ColorPickerCompactControls
           {...contentProps}
+          id={id}
           presetColors={colors}
           sections={resolvedSections}
         />
       ) : (
         <ColorPickerFullControls
           {...contentProps}
+          id={id}
           presetColors={colors}
           sections={resolvedSections}
         />

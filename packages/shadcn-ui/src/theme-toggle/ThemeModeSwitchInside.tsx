@@ -42,6 +42,7 @@ const SIZE_STYLES: Record<
 };
 
 export interface ThemeModeSwitchInsideProps {
+  id?: string;
   /** Whether to render the sun/moon icons at all. */
   showIcons?: boolean;
   /** Visual size of the toggle pill. */
@@ -68,6 +69,7 @@ export interface ThemeModeSwitchInsideProps {
 export function ThemeModeSwitchInside(props: ThemeModeSwitchInsideProps) {
   const {
     showIcons = true,
+    id,
     size = 'md',
     iconSize: iconSizeProp,
     className,
@@ -90,6 +92,7 @@ export function ThemeModeSwitchInside(props: ThemeModeSwitchInsideProps) {
   if (!showIcons) {
     return (
       <Switch
+        id={id}
         checked={isDark}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
@@ -121,6 +124,7 @@ export function ThemeModeSwitchInside(props: ThemeModeSwitchInsideProps) {
       )}
     >
       <Switch
+        id={id}
         checked={isDark}
         onCheckedChange={onCheckedChange}
         disabled={disabled}

@@ -4,6 +4,7 @@ import { Pencil, X } from 'lucide-react';
 
 import React from 'react';
 import { cn } from '@/lib';
+import { getId } from '../utils';
 
 export const MessageComponent: React.FC<{ message: string; className?: string }> = ({
   message,
@@ -13,12 +14,13 @@ export const MessageComponent: React.FC<{ message: string; className?: string }>
 };
 
 export const AvatarWrap: React.FC<{
+  id?: string;
   children: React.ReactNode;
   className?: string;
   showChangeIcon: boolean;
   size: keyof ComponentSizes;
   onClear?: () => void;
-}> = ({ children, className, showChangeIcon, size, onClear }) => {
+}> = ({ id, children, className, showChangeIcon, size, onClear }) => {
   const editIcon: Record<keyof ComponentSizes, string> = {
     sm: 'size-5.5 bottom-0 right-0',
     md: 'size-6.5 bottom-1 right-1',
@@ -50,6 +52,7 @@ export const AvatarWrap: React.FC<{
       )}
       {onClear != null && (
         <Button
+          id={getId(id, 'clear-button')}
           type="button"
           variant="secondary"
           size="icon"

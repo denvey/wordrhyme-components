@@ -30,6 +30,7 @@ export function FileUploadRoot(props: FileUploadRootProps) {
     slots,
     onFileSuccess,
     onFileError,
+    id,
     ...rest
   } = props as FileUploadRootProps & FileUploadCallbacks;
 
@@ -88,7 +89,11 @@ export function FileUploadRoot(props: FileUploadRootProps) {
               slots?.dropzone?.className,
             )}
           >
-            <FileUploadTrigger asChild {...(slots?.trigger || {})}>
+            <FileUploadTrigger
+              asChild
+              {...(slots?.trigger || {})}
+              id={id ?? slots?.trigger?.id}
+            >
               {children}
             </FileUploadTrigger>
           </FileUploadDropzone>
@@ -107,6 +112,7 @@ export function FileUploadRoot(props: FileUploadRootProps) {
                   {...data}
                   file={getFile(data)}
                   disabled={disabled}
+                  id={id}
                   onDelete={deleteFile}
                   onFileSuccess={onFileSuccess}
                   onFileError={onFileError}

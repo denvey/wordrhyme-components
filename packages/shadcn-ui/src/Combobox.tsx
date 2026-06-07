@@ -14,8 +14,10 @@ import {
 import { ChevronsUpDown } from 'lucide-react';
 import React, { useState } from 'react';
 import { CommandOptionList } from './CommandOptionList';
+import { getId } from './utils';
 
 type ComboboxProps = {
+  id?: string;
   value?: string;
   onChange?: (value: string) => void;
   options?: CommandOptionListItem[];
@@ -34,6 +36,7 @@ const Combobox: React.FC<ComboboxProps> = (props) => {
     placeholder = 'Select option...',
     searchPlaceholder = 'Search...',
     emptyText = 'No option found.',
+    id,
     ...commandProps
   } = props;
 
@@ -43,6 +46,7 @@ const Combobox: React.FC<ComboboxProps> = (props) => {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           role="combobox"
           aria-expanded={open}
@@ -57,8 +61,9 @@ const Combobox: React.FC<ComboboxProps> = (props) => {
         style={{ width: 'var(--radix-popover-trigger-width)' }}
       >
         <Command {...commandProps}>
-          <CommandInput placeholder={searchPlaceholder} />
+          <CommandInput id={getId(id, 'search-input')} placeholder={searchPlaceholder} />
           <CommandOptionList
+            id={id}
             options={options}
             value={value}
             onChange={(val) => {

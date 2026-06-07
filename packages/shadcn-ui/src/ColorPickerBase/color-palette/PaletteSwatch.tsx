@@ -4,11 +4,12 @@ import { useCallback } from 'react';
 import { ColorPickerPaletteButton } from './PaletteButton';
 
 const ColorPickerPaletteSwatch: React.FC<{
+  id?: string;
   color?: PresetColor;
   onSelect?: (color: string) => void;
   className?: string;
   selectedValue?: string;
-}> = ({ color, onSelect, className, selectedValue }) => {
+}> = ({ id, color, onSelect, className, selectedValue }) => {
   const colorValue = color?.value ?? 'rgb(0,0,0,0)';
   const colorLabel = color?.label;
 
@@ -39,6 +40,7 @@ const ColorPickerPaletteSwatch: React.FC<{
 
   const button = (
     <ColorPickerPaletteButton
+      id={id}
       style={style}
       className={className}
       selected={isSelected}

@@ -13,6 +13,7 @@ import { XIcon } from 'lucide-react';
 import prettyBytes from 'pretty-bytes';
 import React from 'react';
 import { useFileError, useFileUploadProgressCallbacks } from '../file-upload/hooks';
+import { getId } from '../utils';
 
 const FileMetaDataDisplay: React.FC<
   FileMetadata & {
@@ -31,10 +32,12 @@ const FileMetaDataDisplay: React.FC<
 };
 
 const DeleteIconButton: React.FC<{
+  id?: string;
   onClick?: (e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => void;
-}> = ({ onClick }) => {
+}> = ({ id, onClick }) => {
   return (
     <Button
+      id={id}
       variant="ghost"
       size="icon"
       className="size-7 shrink-0"
@@ -64,6 +67,7 @@ const FileItemInnerWrapper: React.FC<{
 
 export interface FileUploadRootItemProps
   extends Partial<FileMetadata>, FileUploadCallbacks {
+  id?: string;
   file: File;
   disabled?: boolean;
   onDelete: (file: FileWithMetadata) => void;
@@ -80,6 +84,7 @@ export const FileUploadRootItem: React.FC<FileUploadRootItemProps> = React.memo(
     onDelete,
     onFileError,
     onFileSuccess,
+    id,
   }) => {
     useFileUploadProgressCallbacks(file, { onFileSuccess, onFileError });
     const fileError = useFileError(file);
@@ -104,6 +109,7 @@ export const FileUploadRootItem: React.FC<FileUploadRootItemProps> = React.memo(
           </FileMetaDataDisplay>
           {!disabled && (
             <DeleteIconButton
+              id={getId(id, `remove-button-${name}-${lastModified}`)}
               onClick={(e) => {
                 e.stopPropagation();
                 e.preventDefault();

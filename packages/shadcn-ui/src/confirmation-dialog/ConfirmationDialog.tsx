@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@pixpilot/shadcn';
+import { getId } from '../utils';
 import { variantConfig } from '../variant-config';
 
 export type ConfirmationDialogVariant = 'destructive' | 'warning' | 'primary' | 'default';
@@ -22,6 +23,7 @@ const variantMap: Record<ConfirmationDialogVariant, AlertVariant> = {
 };
 
 export interface ConfirmationDialogProps {
+  id?: string;
   title: string;
   description?: string | React.ReactNode;
   confirmText?: string;
@@ -33,7 +35,7 @@ export interface ConfirmationDialogProps {
 }
 
 const ConfirmationDialog = NiceModal.create<Partial<ConfirmationDialogProps>>((props) => {
-  const { title = 'Confirmation Dialog', variant, showIcon = true } = props;
+  const { id, title = 'Confirmation Dialog', variant, showIcon = true } = props;
 
   const modal = useModal();
 
@@ -97,10 +99,16 @@ const ConfirmationDialog = NiceModal.create<Partial<ConfirmationDialogProps>>((p
           )}
         </DialogHeader>
         <DialogFooter>
-          <Button data-slots="button-cancel" variant="outline" onClick={handleCancel}>
+          <Button
+            id={getId(id, 'cancel-button')}
+            data-slots="button-cancel"
+            variant="outline"
+            onClick={handleCancel}
+          >
             {props.cancelText ?? 'Cancel'}
           </Button>
           <Button
+            id={id}
             data-slots="button-confirm"
             variant={confirmBtnVariant}
             className={confirmBtnClassName}

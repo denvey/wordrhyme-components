@@ -2,6 +2,7 @@ import type { PresetColor } from '../types';
 import { cn, ColorPickerEyeDropper } from '@pixpilot/shadcn';
 import { Droplet } from 'lucide-react';
 import React from 'react';
+import { getId } from '../../utils';
 import { useColorPickerContext } from '../color-picker-context';
 import {
   COLOR_PICKER_PALETTE_BUTTON_CLASSES,
@@ -38,19 +39,29 @@ export interface ColorPickerColorPaletteProps extends Omit<
 }
 
 const ColorPickerColorPalette: React.FC<ColorPickerColorPaletteProps> = (props) => {
-  const { presetColors = COMMON_COLORS, enableEyeDropper, onMoreColor, ...rest } = props;
+  const {
+    presetColors = COMMON_COLORS,
+    enableEyeDropper,
+    onMoreColor,
+    id,
+    ...rest
+  } = props;
 
   const { value: selectedColor, onValueChange } = useColorPickerContext();
 
   return (
     <div {...rest} className={cn('gap-2 flex flex-wrap', rest.className)}>
       {enableEyeDropper && (
-        <ColorPickerEyeDropper className={COLOR_PICKER_PALETTE_BUTTON_CLASSES} />
+        <ColorPickerEyeDropper
+          id={getId(id, 'eye-dropper-button')}
+          className={COLOR_PICKER_PALETTE_BUTTON_CLASSES}
+        />
       )}
 
       {presetColors.map((color) => (
         <ColorPickerPaletteSwatch
           key={color.value}
+          id={getId(id, `option-${color.value}`)}
           color={color}
           onSelect={onValueChange}
           selectedValue={selectedColor}
@@ -58,6 +69,7 @@ const ColorPickerColorPalette: React.FC<ColorPickerColorPaletteProps> = (props) 
       ))}
       {onMoreColor && (
         <ColorPickerPaletteButton
+          id={getId(id, 'more-colors-button')}
           onClick={onMoreColor}
           aria-label="Toggle full color picker"
           className="flex items-center justify-center border-input bg-input hover:bg-accent hover:text-accent-foreground"

@@ -13,7 +13,7 @@ export interface ColorPickerFullControlsProps extends Omit<
 
 const ColorPickerFullControls: React.FC<ColorPickerFullControlsProps> = React.memo(
   (props) => {
-    const { presetColors, sections, ...rest } = props;
+    const { presetColors, sections, id, ...rest } = props;
 
     const enabledSections = new Set(sections);
     const showPicker = enabledSections.has('picker');
@@ -23,11 +23,11 @@ const ColorPickerFullControls: React.FC<ColorPickerFullControlsProps> = React.me
 
     return (
       <ColorPickerContent {...rest}>
-        {showPicker && <ColorPickerControls />}
+        {showPicker && <ColorPickerControls id={id} />}
 
         {showSwatch && (
           <div className="gap-2  flex flex-wrap">
-            <ColorPickerColorPalette presetColors={presetColors} />
+            <ColorPickerColorPalette id={id} presetColors={presetColors} />
           </div>
         )}
 
@@ -35,6 +35,7 @@ const ColorPickerFullControls: React.FC<ColorPickerFullControlsProps> = React.me
           <ColorPickerFormatControls
             showFormatSelect={showFormatSelect}
             showInput={showInput}
+            id={id}
           />
         )}
       </ColorPickerContent>

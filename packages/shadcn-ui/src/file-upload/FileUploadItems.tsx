@@ -7,6 +7,7 @@ import { Plus } from 'lucide-react';
 import { FileUploadListItem } from './FileUploadListItem';
 
 interface FileUploadItemsProps extends FileUploadCallbacks {
+  id?: string;
   displayFiles: FileWithMetadata[];
   deleteFile: (fileMeta: FileWithMetadata) => void;
   getFile: (fileMeta: FileWithMetadata) => File;
@@ -16,6 +17,7 @@ interface FileUploadItemsProps extends FileUploadCallbacks {
 }
 
 export function FileUploadItems({
+  id,
   displayFiles,
   deleteFile,
   getFile,
@@ -38,6 +40,7 @@ export function FileUploadItems({
         return (
           <FileUploadListItem
             key={key}
+            id={id}
             fileMeta={fileMeta}
             deleteFile={deleteFile}
             getFile={getFile}

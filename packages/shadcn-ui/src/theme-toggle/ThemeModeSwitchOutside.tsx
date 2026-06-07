@@ -7,6 +7,7 @@ import React from 'react';
 const DEFAULT_ICON_SIZE = 16;
 
 export interface ThemeModeSwitchOutsideProps {
+  id?: string;
   /** Whether to render the sun/moon icons at all. */
   showIcons?: boolean;
   /** Icon size in pixels. */
@@ -31,6 +32,7 @@ export interface ThemeModeSwitchOutsideProps {
 export function ThemeModeSwitchOutside(props: ThemeModeSwitchOutsideProps) {
   const {
     showIcons = true,
+    id,
     iconSize = DEFAULT_ICON_SIZE,
     className,
     switchClassName,
@@ -49,6 +51,7 @@ export function ThemeModeSwitchOutside(props: ThemeModeSwitchOutsideProps) {
   if (!showIcons) {
     return (
       <Switch
+        id={id}
         checked={isDark}
         onCheckedChange={onCheckedChange}
         disabled={disabled}
@@ -65,6 +68,7 @@ export function ThemeModeSwitchOutside(props: ThemeModeSwitchOutsideProps) {
         style={{ width: iconSize, height: iconSize }}
       />
       <Switch
+        id={id}
         checked={isDark}
         onCheckedChange={onCheckedChange}
         disabled={disabled}

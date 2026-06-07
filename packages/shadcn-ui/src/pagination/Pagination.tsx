@@ -9,8 +9,10 @@ import {
 } from '@pixpilot/shadcn';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import React from 'react';
+import { getId } from '../utils';
 
 export interface PaginationProps {
+  id?: string;
   /**
    * Current page number (1-indexed)
    */
@@ -102,6 +104,7 @@ export interface PaginationProps {
  * />
  */
 export const Pagination: React.FC<PaginationProps> = ({
+  id,
   page,
   totalPages,
   onPageChange,
@@ -216,6 +219,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         <PaginationContent>
           <PaginationItem>
             <PaginationLink
+              id={getId(id, 'first-page-button')}
               onClick={handlePageClick(1)}
               aria-label="Go to first page"
               className="gap-1 px-2"
@@ -224,7 +228,10 @@ export const Pagination: React.FC<PaginationProps> = ({
             </PaginationLink>
           </PaginationItem>
           <PaginationItem>
-            <PaginationPrevious onClick={handlePageClick(Math.max(1, page - 1))} />
+            <PaginationPrevious
+              id={getId(id, 'previous-page-button')}
+              onClick={handlePageClick(Math.max(1, page - 1))}
+            />
           </PaginationItem>
           <PaginationItem>
             <span className="flex h-9 items-center justify-center px-4 text-sm font-medium">
@@ -232,10 +239,14 @@ export const Pagination: React.FC<PaginationProps> = ({
             </span>
           </PaginationItem>
           <PaginationItem>
-            <PaginationNext onClick={handlePageClick(Math.min(totalPages, page + 1))} />
+            <PaginationNext
+              id={getId(id, 'next-page-button')}
+              onClick={handlePageClick(Math.min(totalPages, page + 1))}
+            />
           </PaginationItem>
           <PaginationItem>
             <PaginationLink
+              id={getId(id, 'last-page-button')}
               onClick={handlePageClick(totalPages)}
               aria-label="Go to last page"
               className="gap-1 px-2"
@@ -260,10 +271,16 @@ export const Pagination: React.FC<PaginationProps> = ({
         <OrgPagination>
           <PaginationContent>
             <PaginationItem>
-              <PaginationPrevious onClick={handlePageClick(Math.max(1, page - 1))} />
+              <PaginationPrevious
+                id={id}
+                onClick={handlePageClick(Math.max(1, page - 1))}
+              />
             </PaginationItem>
             <PaginationItem>
-              <PaginationNext onClick={handlePageClick(Math.min(totalPages, page + 1))} />
+              <PaginationNext
+                id={getId(id, 'next-page-button')}
+                onClick={handlePageClick(Math.min(totalPages, page + 1))}
+              />
             </PaginationItem>
           </PaginationContent>
         </OrgPagination>
@@ -282,7 +299,10 @@ export const Pagination: React.FC<PaginationProps> = ({
       <OrgPagination>
         <PaginationContent>
           <PaginationItem>
-            <PaginationPrevious onClick={handlePageClick(Math.max(1, page - 1))} />
+            <PaginationPrevious
+              id={getId(id, 'previous-page-button')}
+              onClick={handlePageClick(Math.max(1, page - 1))}
+            />
           </PaginationItem>
           {pages.map((p) =>
             typeof p === 'string' ? (
@@ -291,14 +311,21 @@ export const Pagination: React.FC<PaginationProps> = ({
               </PaginationItem>
             ) : (
               <PaginationItem key={p}>
-                <PaginationLink onClick={handlePageClick(p)} isActive={p === page}>
+                <PaginationLink
+                  id={p === page ? id : getId(id, `page-${p}`)}
+                  onClick={handlePageClick(p)}
+                  isActive={p === page}
+                >
                   {p}
                 </PaginationLink>
               </PaginationItem>
             ),
           )}
           <PaginationItem>
-            <PaginationNext onClick={handlePageClick(Math.min(totalPages, page + 1))} />
+            <PaginationNext
+              id={getId(id, 'next-page-button')}
+              onClick={handlePageClick(Math.min(totalPages, page + 1))}
+            />
           </PaginationItem>
         </PaginationContent>
       </OrgPagination>

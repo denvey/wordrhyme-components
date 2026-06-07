@@ -52,6 +52,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = (props) => {
     onChange,
     size = 'md',
     clearable = true,
+    id,
     ...rest
   } = props;
   const { upload = 'Upload', change = 'Change' } = messages || {};
@@ -103,6 +104,7 @@ const AvatarUpload: React.FC<AvatarUploadProps> = (props) => {
       data-slots="avatar-upload"
     >
       <FileUploadDropzone
+        id={id}
         className={cn(error != null && 'border-red-500', currentSize.dropZone)}
       >
         {selectedFile != null ? (
@@ -117,11 +119,13 @@ const AvatarUpload: React.FC<AvatarUploadProps> = (props) => {
               onFileError={onFileError}
               onClear={showClearButton ? handleClear : undefined}
               size={size}
+              id={id}
             />
           </FileUploadList>
         ) : (
           <MainWrapper currentSize={currentSize}>
             <AvatarWrap
+              id={id}
               showChangeIcon={hasValue}
               onClear={showClearButton ? handleClear : undefined}
               size={size}

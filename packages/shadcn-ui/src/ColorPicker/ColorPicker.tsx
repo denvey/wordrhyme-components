@@ -20,15 +20,17 @@ const ColorPicker: React.FC<ColorPickerProps> = (props) => {
     formatDisplayValue,
     placeholder,
     resetOptions,
+    id,
     ...rest
   } = props;
 
   return (
-    <ColorPickerBase {...rest}>
+    <ColorPickerBase id={id} {...rest}>
       {variant === 'input' ? (
-        <ColorPickerInput placeholder={placeholder} resetOptions={resetOptions} />
+        <ColorPickerInput id={id} placeholder={placeholder} resetOptions={resetOptions} />
       ) : (
         <ColorPickerButton
+          id={id}
           placeholder={placeholder}
           formatDisplayValue={formatDisplayValue}
           resetOptions={resetOptions}

@@ -17,6 +17,7 @@ export function FileUpload(props: FileUploadProps) {
     onFileReject,
     onFileSuccess,
     onFileError,
+    id,
     ...rest
   } = props as FileUploadProps & FileUploadCallbacks;
 
@@ -67,7 +68,7 @@ export function FileUpload(props: FileUploadProps) {
       multiple={multiple}
       className={cn('w-full', className)}
     >
-      <FileUploadDropzone className={containerClasses}>
+      <FileUploadDropzone id={id} className={containerClasses}>
         {displayFiles.length === 0 ? (
           <div className="flex flex-col items-center gap-1 text-center p-2">
             <div className="flex items-center justify-center rounded-full border p-2.5">
@@ -87,6 +88,7 @@ export function FileUpload(props: FileUploadProps) {
             itemSize={itemSize}
             onFileSuccess={onFileSuccess}
             onFileError={onFileError}
+            id={id}
             className={containerClasses}
           />
         )}

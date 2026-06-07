@@ -5,7 +5,7 @@ import React from 'react';
 import { Alert } from '../Alert';
 
 const AlertToast: React.FC<AlertToastProps> = (props) => {
-  const { duration, onClose, ...rest } = props;
+  const { duration, onClose, id, ...rest } = props;
 
   return (
     <Alert
@@ -16,6 +16,7 @@ const AlertToast: React.FC<AlertToastProps> = (props) => {
       {onClose && (
         <div className="flex items-start pt-0.5 pl-1">
           <button
+            id={id}
             type="button"
             className="cursor-pointer opacity-80 transition-opacity hover:opacity-100"
             onClick={onClose}

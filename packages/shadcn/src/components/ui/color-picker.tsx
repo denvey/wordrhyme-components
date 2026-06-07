@@ -38,6 +38,10 @@ const INPUT_NAME = 'ColorPickerInput';
 
 const colorFormats = ['hex', 'rgb', 'hsl', 'hsb'] as const;
 
+function getId(baseId: string | undefined, suffix: string): string | undefined {
+  return baseId === undefined ? undefined : `${baseId}-${suffix}`;
+}
+
 interface DivProps extends React.ComponentProps<'div'> {
   asChild?: boolean;
 }
@@ -1207,10 +1211,12 @@ function ColorPickerEyeDropper(props: React.ComponentProps<typeof Button>) {
 interface ColorPickerFormatSelectProps
   extends
     Omit<React.ComponentProps<typeof Select>, 'value' | 'onValueChange'>,
-    Pick<React.ComponentProps<typeof SelectTrigger>, 'size' | 'className'> {}
+    Pick<React.ComponentProps<typeof SelectTrigger>, 'size' | 'className'> {
+  id?: string;
+}
 
 function ColorPickerFormatSelect(props: ColorPickerFormatSelectProps) {
-  const { size, disabled, className, ...selectProps } = props;
+  const { id, size, disabled, className, ...selectProps } = props;
 
   const context = useColorPickerContext(FORMAT_SELECT_NAME);
   const store = useStoreContext(FORMAT_SELECT_NAME);
@@ -1234,6 +1240,7 @@ function ColorPickerFormatSelect(props: ColorPickerFormatSelectProps) {
       disabled={isDisabled}
     >
       <SelectTrigger
+        id={id}
         data-slot="color-picker-format-select-trigger"
         size={size ?? 'sm'}
         className={cn(className)}
@@ -1242,7 +1249,7 @@ function ColorPickerFormatSelect(props: ColorPickerFormatSelectProps) {
       </SelectTrigger>
       <SelectContent>
         {colorFormats.map((format) => (
-          <SelectItem key={format} value={format}>
+          <SelectItem key={format} id={getId(id, `option-${format}`)} value={format}>
             {format.toUpperCase()}
           </SelectItem>
         ))}
