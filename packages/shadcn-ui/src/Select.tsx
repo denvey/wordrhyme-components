@@ -12,6 +12,7 @@ import { XIcon } from 'lucide-react';
 import React from 'react';
 
 import { useSelectKeyboard } from './hooks/use-select-keyboard';
+import { getId } from './utils';
 
 export interface SelectOption {
   value: string | number;
@@ -82,6 +83,7 @@ function Select(props: BaseSelectProps) {
     clearable = false,
     disabled,
     className,
+    id,
     ...restProps
   } = props;
 
@@ -115,6 +117,7 @@ function Select(props: BaseSelectProps) {
     >
       <div className="relative w-full">
         <SelectTrigger
+          id={id}
           className={cn('w-full', className)}
           onKeyDown={handleTriggerKeyDown}
           disabled={disabled}
@@ -124,6 +127,7 @@ function Select(props: BaseSelectProps) {
 
         {clearable && value !== '' && (
           <button
+            id={getId(id, 'clear-button')}
             type="button"
             className="absolute right-8 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-sm opacity-40 hover:opacity-100 z-10"
             onClick={(e) => {
@@ -140,7 +144,11 @@ function Select(props: BaseSelectProps) {
 
       <SelectContent position={position} {...contentProps}>
         {options?.map((option) => (
-          <SelectItem key={option.value} value={String(option.value)}>
+          <SelectItem
+            key={option.value}
+            id={getId(id, `option-${option.value}`)}
+            value={String(option.value)}
+          >
             {option.label}
           </SelectItem>
         ))}
