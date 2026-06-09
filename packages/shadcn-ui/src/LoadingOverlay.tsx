@@ -2,7 +2,8 @@
 'use client';
 import { cn } from '@pixpilot/shadcn';
 import { Loader2 } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import { useDelayedVisibility } from './hooks';
 
 const DEFAULT_DELAY = 0;
 const FADE_DURATION = 300;
@@ -21,7 +22,7 @@ export interface LoadingOverlayProps {
   /**
    * Whether to show the loader
    */
-  loading: boolean;
+  show: boolean;
   /**
    * Optional loading message to display below spinner
    */
@@ -30,7 +31,12 @@ export interface LoadingOverlayProps {
    * Delay in milliseconds before showing the loader
    * @default 0
    */
-  delay?: number;
+  inDelay?: number;
+  /**
+   * Delay in milliseconds before hiding the loader after loading becomes false
+   * @default 0
+   */
+  outDelay?: number;
   /**
    * Scope of the loader overlay
    * - 'container': Fills parent container (requires parent with position: relative)
@@ -64,59 +70,23 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = (props) => {
   const {
     backdrop = true,
     placement = 'center',
-    loading,
-    delay = DEFAULT_DELAY,
+    show,
+    inDelay = DEFAULT_DELAY,
+    outDelay = DEFAULT_DELAY,
     message,
-    scope = 'container ',
+    scope = 'container',
     size = 'default',
     className,
     slots,
   } = props;
 
   const contentProps = slots?.content || {};
-
-  const hasDelay = delay > 0;
-
-  // When loading starts as true with no delay, mount and show immediately
-  // to block content without any fade-in animation.
-  const [mounted, setMounted] = useState(() => !hasDelay && loading);
-  const [visible, setVisible] = useState(() => !hasDelay && loading);
-
-  useEffect(() => {
-    let timeoutId: NodeJS.Timeout;
-
-    if (loading) {
-      /*
-       * Always mount via setTimeout + double-RAF so that subsequent
-       * loading=true toggles get a fade-in transition.
-       * When delay=0 and loading is true on the very first render,
-       * the lazy useState initializer already set mounted/visible=true,
-       * so these setters are no-ops and no flicker occurs.
-       */
-      timeoutId = setTimeout(() => {
-        setMounted(true);
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            setVisible(true);
-          });
-        });
-      }, delay);
-    } else {
-      setVisible(false);
-
-      // Only delay unmounting if we're actually mounted
-      timeoutId = setTimeout(
-        () => {
-          setMounted(false);
-        },
-        mounted ? FADE_DURATION : 0,
-      );
-    }
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [loading, delay, mounted]);
+  const { mounted, visible } = useDelayedVisibility({
+    show,
+    inDelay,
+    outDelay,
+    fadeDuration: FADE_DURATION,
+  });
 
   const positionClass = {
     top: 'items-start pt-[50px]',
@@ -156,7 +126,7 @@ const LoadingOverlay: React.FC<LoadingOverlayProps> = (props) => {
       }}
       role="status"
       aria-live="polite"
-      aria-busy={loading}
+      aria-busy={show}
     >
       <div
         data-slot="loading-overlay-content"

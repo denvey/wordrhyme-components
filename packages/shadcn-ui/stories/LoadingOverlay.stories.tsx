@@ -4,6 +4,10 @@ import { useEffect, useState } from 'react';
 import { Button } from '../src/Button';
 import { LoadingOverlay } from '../src/LoadingOverlay';
 
+const AUTO_HIDE_DELAY = 4000;
+const OUT_DELAY_AUTO_HIDE_DELAY = 2500;
+const OUT_DELAY = 1500;
+
 type StoryArgs = Partial<
   ComponentProps<typeof LoadingOverlay> & {
     id?: string;
@@ -38,13 +42,17 @@ const meta = {
       options: ['top', 'center', 'bottom'],
       description: 'Position of the loader on screen',
     },
-    loading: {
+    show: {
       control: 'boolean',
       description: 'Whether the loader is visible',
     },
-    delay: {
+    inDelay: {
       control: 'number',
       description: 'Delay in milliseconds before showing the loader',
+    },
+    outDelay: {
+      control: 'number',
+      description: 'Delay in milliseconds before hiding the loader',
     },
     scope: {
       control: 'select',
@@ -62,7 +70,7 @@ type Story = StoryObj<typeof meta>;
  */
 export const Default: Story = {
   args: {
-    loading: true,
+    show: true,
     backdrop: true,
     placement: 'center',
   },
@@ -73,7 +81,7 @@ export const Default: Story = {
  */
 export const WithoutBackdrop: Story = {
   args: {
-    loading: true,
+    show: true,
     backdrop: false,
     placement: 'center',
   },
@@ -84,7 +92,7 @@ export const WithoutBackdrop: Story = {
  */
 export const TopPlacement: Story = {
   args: {
-    loading: true,
+    show: true,
     backdrop: true,
     placement: 'top',
   },
@@ -95,7 +103,7 @@ export const TopPlacement: Story = {
  */
 export const BottomPlacement: Story = {
   args: {
-    loading: true,
+    show: true,
     backdrop: true,
     placement: 'bottom',
   },
@@ -108,7 +116,7 @@ export const Interactive: Story = {
   args: {
     backdrop: true,
     placement: 'center',
-    loading: false, // Will be controlled by state
+    show: false, // Will be controlled by state
   },
   render: function InteractiveLoader(args) {
     const [loading, setLoading] = useState(false);
@@ -117,7 +125,7 @@ export const Interactive: Story = {
       if (!loading) return;
       const timeoutId = setTimeout(() => {
         setLoading(false);
-      }, 4000);
+      }, AUTO_HIDE_DELAY);
       // eslint-disable-next-line consistent-return
       return () => clearTimeout(timeoutId);
     }, [loading]);
@@ -127,7 +135,7 @@ export const Interactive: Story = {
         <Button onClick={() => setLoading(!loading)}>
           {loading ? 'Stop Loading' : 'Start Loading'}
         </Button>
-        <LoadingOverlay {...args} loading={loading} />
+        <LoadingOverlay {...args} show={loading} />
       </div>
     );
   },
@@ -135,10 +143,10 @@ export const Interactive: Story = {
 
 export const DelayedLoader: Story = {
   args: {
-    loading: true,
+    show: true,
     backdrop: true,
     placement: 'center',
-    delay: 1000, // 1 second delay
+    inDelay: 1000, // 1 second delay
   },
   render: function DelayedLoader(args) {
     const [loading, setLoading] = useState(false);
@@ -147,7 +155,7 @@ export const DelayedLoader: Story = {
       if (!loading) return;
       const timeoutId = setTimeout(() => {
         setLoading(false);
-      }, 4000);
+      }, AUTO_HIDE_DELAY);
       // eslint-disable-next-line consistent-return
       return () => clearTimeout(timeoutId);
     }, [loading]);
@@ -157,7 +165,46 @@ export const DelayedLoader: Story = {
         <Button onClick={() => setLoading(!loading)}>
           {loading ? 'Stop Loading' : 'Start Loading'}
         </Button>
-        <LoadingOverlay {...args} loading={loading} />
+        <LoadingOverlay {...args} show={loading} />
+      </div>
+    );
+  },
+};
+
+export const OutDelayedLoader: Story = {
+  args: {
+    show: true,
+    backdrop: true,
+    placement: 'center',
+    outDelay: OUT_DELAY,
+    message: 'Finishing up...',
+  },
+  render: function OutDelayedLoader(args) {
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+      if (!loading) return;
+      const timeoutId = setTimeout(() => {
+        setLoading(false);
+      }, OUT_DELAY_AUTO_HIDE_DELAY);
+      // eslint-disable-next-line consistent-return
+      return () => clearTimeout(timeoutId);
+    }, [loading]);
+
+    return (
+      <div
+        id="loading-overlay-div-out-delay"
+        className="relative w-64 h-40 border rounded-md overflow-hidden"
+      >
+        <div className="p-4">
+          <Button onClick={() => setLoading(!loading)}>
+            {loading ? 'Stop Loading' : 'Start Loading'}
+          </Button>
+          <p className="mt-4 text-sm text-muted-foreground">
+            The overlay remains visible briefly after loading stops.
+          </p>
+        </div>
+        <LoadingOverlay {...args} show={loading} />
       </div>
     );
   },
@@ -168,7 +215,7 @@ export const DelayedLoader: Story = {
  */
 export const Fullscreen: Story = {
   args: {
-    loading: true,
+    show: true,
     backdrop: true,
     placement: 'center',
     scope: 'fullscreen',
@@ -180,7 +227,7 @@ export const Fullscreen: Story = {
       if (!loading) return;
       const timeoutId = setTimeout(() => {
         setLoading(false);
-      }, 4000);
+      }, AUTO_HIDE_DELAY);
       // eslint-disable-next-line consistent-return
       return () => clearTimeout(timeoutId);
     }, [loading]);
@@ -190,7 +237,7 @@ export const Fullscreen: Story = {
         <Button onClick={() => setLoading(!loading)}>
           {loading ? 'Stop Loading' : 'Start Loading'}
         </Button>
-        <LoadingOverlay {...args} loading={loading} />
+        <LoadingOverlay {...args} show={loading} />
       </div>
     );
   },
@@ -203,7 +250,7 @@ export const Fullscreen: Story = {
  */
 export const LoadingOnMount: Story = {
   args: {
-    loading: true,
+    show: true,
     backdrop: true,
     placement: 'center',
     scope: 'container',
@@ -253,7 +300,7 @@ export const LoadingOnMount: Story = {
                 This content is blocked immediately on mount.
               </p>
             </div>
-            <LoadingOverlay {...args} loading={loading} />
+            <LoadingOverlay {...args} show={loading} />
           </div>
         )}
       </div>
@@ -266,7 +313,7 @@ export const LoadingOnMount: Story = {
  */
 export const ContainerScope: Story = {
   args: {
-    loading: true,
+    show: true,
     scope: 'container',
   },
   render: function ContainerScope(args) {
@@ -276,7 +323,7 @@ export const ContainerScope: Story = {
       if (!loading) return;
       const timeoutId = setTimeout(() => {
         setLoading(false);
-      }, 4000);
+      }, AUTO_HIDE_DELAY);
       // eslint-disable-next-line consistent-return
       return () => clearTimeout(timeoutId);
     }, [loading]);
@@ -286,7 +333,7 @@ export const ContainerScope: Story = {
         <Button onClick={() => setLoading(!loading)}>
           {loading ? 'Stop Loading' : 'Start Loading'}
         </Button>
-        <LoadingOverlay {...args} loading={loading} />
+        <LoadingOverlay {...args} show={loading} />
       </div>
     );
   },

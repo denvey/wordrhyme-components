@@ -200,7 +200,7 @@ const IconPickerContent: FC<IconPickerContentProps> = ({
 
       {/* {isLoading && ( */}
       {/* <div className="h-full min-h-[100px]"> */}
-      <LoadingOverlay message="Loading icons..." loading={isLoading} />
+      <LoadingOverlay message="Loading icons..." show={isLoading} />
       {/* </div> */}
       {/* )} */}
 
