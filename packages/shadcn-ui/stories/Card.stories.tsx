@@ -29,10 +29,6 @@ const meta = {
       control: 'text',
       description: 'Additional classes for the card root',
     },
-    marginBottom: {
-      control: 'boolean',
-      description: 'Adds responsive margin below the card',
-    },
   },
 } satisfies Meta<typeof Card>;
 
@@ -128,21 +124,6 @@ export const WithFooter: Story = {
         <Button variant="outline">Cancel</Button>
         <Button>Save</Button>
       </CardFooter>
-    ),
-  },
-};
-
-/**
- * Card with responsive margin bottom enabled.
- */
-export const WithMargin: Story = {
-  args: {
-    className: 'w-[360px]',
-    marginBottom: true,
-    children: (
-      <CardContent>
-        <p id="card-p-4">This card has the marginBottom spacing applied.</p>
-      </CardContent>
     ),
   },
 };
