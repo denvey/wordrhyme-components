@@ -12,6 +12,7 @@ export * from './avatar-upload';
 export * from './Button';
 export * from './ButtonExtended';
 export * from './ButtonGroup';
+export * from './Card';
 export * from './circle-loader';
 export * from './CloseButtonAbsolute';
 export * from './CloseButtonRounded';
@@ -46,7 +47,6 @@ export * from './theme-toggle';
 export * from './toast';
 export * from './ToggleButton';
 export * from './ToggleGroup';
-export * from './utils';
 export {
   cn,
   type FileMetadata,
@@ -54,3 +54,4 @@ export {
   type FileUploadProgressCallBacks,
   type FileUploadProps,
 };
+export * from './utils';
