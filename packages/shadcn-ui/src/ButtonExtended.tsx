@@ -1,4 +1,4 @@
-'use clinet';
+'use client';
 import type { buttonVariants } from '@pixpilot/shadcn';
 
 import type { VariantProps } from 'class-variance-authority';
