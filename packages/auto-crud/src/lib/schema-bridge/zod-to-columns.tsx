@@ -1,36 +1,33 @@
-"use client";
+'use client';
 
-import * as React from "react";
-import type { ColumnDef, Row } from "@tanstack/react-table";
-import { z } from "zod";
-import { DataTableColumnHeader } from "@/components/data-table/data-table-column-header";
-import { Badge } from "@pixpilot/shadcn";
-import { Button } from "@pixpilot/shadcn";
-import { Checkbox } from "@pixpilot/shadcn";
+import * as React from 'react';
+import type { ColumnDef, Row } from '@tanstack/react-table';
+import { z } from 'zod';
+import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header';
+import { Badge } from '@pixpilot/shadcn';
+import { Button } from '@pixpilot/shadcn';
+import { Checkbox } from '@pixpilot/shadcn';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@pixpilot/shadcn";
-import { Ellipsis } from "lucide-react";
-import { formatDate } from "@/lib/format";
-import { humanize } from "@/lib/humanize";
+} from '@pixpilot/shadcn';
+import { Ellipsis } from 'lucide-react';
+import { formatDate } from '@/lib/format';
+import { humanize } from '@/lib/humanize';
 import type {
   ColumnOverrides,
   CreateTableSchemaOptions,
   FieldType,
   FilterVariant,
   ParsedZodField,
-} from "./types";
-import { fieldTypeToFilterVariant, inferFilterVariantByFieldName } from "./types";
+} from './types';
+import { fieldTypeToFilterVariant, inferFilterVariantByFieldName } from './types';
 
 const parsedFieldCache = new WeakMap<z.ZodType, ParsedZodField>();
-const baseTableSchemaCache = new WeakMap<
-  z.ZodObject<z.ZodRawShape>,
-  ColumnDef<any>[]
->();
+const baseTableSchemaCache = new WeakMap<z.ZodObject<z.ZodRawShape>, ColumnDef<any>[]>();
 
 /**
  * 解析 Zod 字段类型
@@ -49,8 +46,8 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
 
   // 优先检查 Zod 内部类型名称（更准确）
   const typeName = def?.typeName;
-  const isOptional = def?.type === "optional" || typeName === "ZodOptional";
-  const isNullable = def?.type === "nullable" || typeName === "ZodNullable";
+  const isOptional = def?.type === 'optional' || typeName === 'ZodOptional';
+  const isNullable = def?.type === 'nullable' || typeName === 'ZodNullable';
 
   // 处理 nullable/optional 类型 - 解包获取内部类型
   if (isOptional || isNullable) {
@@ -73,15 +70,15 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
 
   // 检查 drizzle-zod 生成的简化结构
   if (def?.type === 'boolean') {
-    return finalize({ type: "boolean", required });
+    return finalize({ type: 'boolean', required });
   }
 
   if (def?.type === 'number') {
-    return finalize({ type: "number", required });
+    return finalize({ type: 'number', required });
   }
 
   if (def?.type === 'date') {
-    return finalize({ type: "date", required });
+    return finalize({ type: 'date', required });
   }
 
   // 检查 enum 类型
@@ -91,7 +88,7 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
       const entries = def.entries;
       if (Array.isArray(entries)) {
         enumValues = entries.map(String);
-      } else if (typeof entries === "object") {
+      } else if (typeof entries === 'object') {
         enumValues = Object.keys(entries);
       }
     } else if (def?.values) {
@@ -101,17 +98,17 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
       }
     }
     if (enumValues && enumValues.length > 0) {
-      return finalize({ type: "enum", required, enumValues });
+      return finalize({ type: 'enum', required, enumValues });
     }
   }
 
   if (def?.type === 'string') {
-    return finalize({ type: "string", required });
+    return finalize({ type: 'string', required });
   }
 
   // 显式检查标准 Zod 类型
-  if (typeName === "ZodBoolean") {
-    return finalize({ type: "boolean", required });
+  if (typeName === 'ZodBoolean') {
+    return finalize({ type: 'boolean', required });
   }
 
   // 尝试获取 enum 值 (Zod v3/v4 兼容)
@@ -122,7 +119,7 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
     const entries = def.entries;
     if (Array.isArray(entries)) {
       enumValues = entries.map(String);
-    } else if (typeof entries === "object") {
+    } else if (typeof entries === 'object') {
       enumValues = Object.keys(entries);
     }
   } else if (def?.values) {
@@ -134,73 +131,103 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
   }
 
   if (enumValues && Array.isArray(enumValues) && enumValues.length > 0) {
-    return finalize({ type: "enum", required, enumValues });
+    return finalize({ type: 'enum', required, enumValues });
   }
 
   // 显式检查其他 Zod 类型
-  if (typeName === "ZodNumber") {
-    return finalize({ type: "number", required });
+  if (typeName === 'ZodNumber') {
+    return finalize({ type: 'number', required });
   }
 
-  if (typeName === "ZodDate") {
-    return finalize({ type: "date", required });
+  if (typeName === 'ZodDate') {
+    return finalize({ type: 'date', required });
   }
 
-  if (typeName === "ZodArray") {
-    return finalize({ type: "array", required });
+  if (typeName === 'ZodArray') {
+    return finalize({ type: 'array', required });
   }
 
-  if (typeName === "ZodObject") {
-    return finalize({ type: "object", required });
+  if (typeName === 'ZodObject') {
+    return finalize({ type: 'object', required });
   }
 
   // 回退到 safeParse 检测（兼容性）
-  const testString = schema.safeParse("test");
+  const testString = schema.safeParse('test');
   const testNumber = schema.safeParse(123);
   const testBoolean = schema.safeParse(true);
   // 使用时间戳避免 Next.js 警告
   const testDate = schema.safeParse(1704067200000); // 2024-01-01 的时间戳
 
   if (testBoolean.success && !testString.success && !testNumber.success) {
-    return finalize({ type: "boolean", required });
+    return finalize({ type: 'boolean', required });
   }
 
   if (testDate.success && !testString.success) {
-    return finalize({ type: "date", required });
+    return finalize({ type: 'date', required });
   }
 
   if (testNumber.success && !testString.success) {
-    return finalize({ type: "number", required });
+    return finalize({ type: 'number', required });
   }
 
   const testArray = schema.safeParse([]);
   if (testArray.success && !testString.success) {
-    return finalize({ type: "array", required });
+    return finalize({ type: 'array', required });
   }
 
-  return finalize({ type: "string", required });
+  return finalize({ type: 'string', required });
 }
 
 /**
  * 渲染单元格内容
  */
-function renderCell(value: unknown, type: FieldType) {
+function renderCell(
+  value: unknown,
+  type: FieldType,
+  options?: Array<{ label: string; value: string }>,
+) {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground">-</span>;
   }
 
+  const formatOptionValue = (optionValue: unknown) => {
+    const stringValue = String(optionValue);
+    return options?.find((option) => option.value === stringValue)?.label ?? stringValue;
+  };
+
+  if (options && options.length > 0) {
+    if (Array.isArray(value)) {
+      return (
+        <div className="flex gap-1 flex-wrap">
+          {value.slice(0, 3).map((v, i) => (
+            <Badge key={i} variant="secondary">
+              {formatOptionValue(v)}
+            </Badge>
+          ))}
+          {value.length > 3 && <Badge variant="outline">+{value.length - 3}</Badge>}
+        </div>
+      );
+    }
+
+    return (
+      <Badge variant="outline" className="capitalize">
+        {formatOptionValue(value)}
+      </Badge>
+    );
+  }
+
   switch (type) {
-    case "boolean":
-      return value ? "✓" : "✗";
-    case "date":
+    case 'boolean':
+      return value ? '✓' : '✗';
+    case 'date':
       return formatDate(value as Date);
-    case "enum":
+    case 'enum':
       return (
         <Badge variant="outline" className="capitalize">
           {String(value)}
         </Badge>
       );
-    case "array":
+    case 'array':
       return Array.isArray(value) ? (
         <div className="flex gap-1 flex-wrap">
           {value.slice(0, 3).map((v, i) => (
@@ -208,12 +235,10 @@ function renderCell(value: unknown, type: FieldType) {
               {String(v)}
             </Badge>
           ))}
-          {value.length > 3 && (
-            <Badge variant="outline">+{value.length - 3}</Badge>
-          )}
+          {value.length > 3 && <Badge variant="outline">+{value.length - 3}</Badge>}
         </div>
       ) : null;
-    case "number":
+    case 'number':
       return <span className="tabular-nums">{String(value)}</span>;
     default:
       return <span className="truncate max-w-48">{String(value)}</span>;
@@ -225,7 +250,7 @@ function renderCell(value: unknown, type: FieldType) {
  */
 export function createTableSchema<T extends z.ZodObject<z.ZodRawShape>>(
   schema: T,
-  options?: CreateTableSchemaOptions<z.infer<T>>
+  options?: CreateTableSchemaOptions<z.infer<T>>,
 ): ColumnDef<z.infer<T>>[] {
   const { overrides, exclude = [] } = options ?? {};
   const hasOverrides = !!overrides && Object.keys(overrides).length > 0;
@@ -237,7 +262,11 @@ export function createTableSchema<T extends z.ZodObject<z.ZodRawShape>>(
   }
 
   const shape = schema.shape;
-  const columns: ColumnDef<z.infer<T>>[] = [];
+  const columnEntries: Array<{
+    order: number;
+    sourceIndex: number;
+    column: ColumnDef<z.infer<T>>;
+  }> = [];
 
   for (const [key, fieldSchema] of Object.entries(shape)) {
     if (exclude.includes(key as keyof z.infer<T>)) continue;
@@ -250,7 +279,8 @@ export function createTableSchema<T extends z.ZodObject<z.ZodRawShape>>(
 
     // 智能推断筛选器类型：override > 字段名模式 > 字段类型
     const inferredVariant = inferFilterVariantByFieldName(key);
-    const variant: FilterVariant = override?.meta?.variant ?? inferredVariant ?? fieldTypeToFilterVariant[parsed.type];
+    const variant: FilterVariant =
+      override?.meta?.variant ?? inferredVariant ?? fieldTypeToFilterVariant[parsed.type];
 
     // 自动生成的 options
     const autoOptions = Array.isArray(parsed.enumValues)
@@ -269,20 +299,42 @@ export function createTableSchema<T extends z.ZodObject<z.ZodRawShape>>(
 
     // 从 override 中排除 meta，单独处理
     const { meta: _ignoredMeta, ...restOverride } = override ?? {};
+    const sourceIndex = columnEntries.length;
+    const order =
+      typeof restOverride.index === 'number'
+        ? restOverride.index
+        : typeof meta.index === 'number'
+          ? meta.index
+          : 10000 + sourceIndex;
 
-    columns.push({
-      id: key,
-      accessorKey: key,
-      header: ({ column }) => (
-        <DataTableColumnHeader column={column} label={label} />
-      ),
-      cell: ({ row }) => renderCell(row.getValue(key), parsed.type),
-      enableColumnFilter: true,
-      enableSorting: true,
-      meta,
-      ...restOverride,
-    } as ColumnDef<z.infer<T>>);
+    columnEntries.push({
+      order,
+      sourceIndex,
+      column: {
+        id: key,
+        accessorKey: key,
+        header: ({ column }) => <DataTableColumnHeader column={column} label={label} />,
+        cell: ({ row }) =>
+          renderCell(
+            row.getValue(key),
+            parsed.type,
+            meta.options as Array<{ label: string; value: string }> | undefined,
+          ),
+        enableColumnFilter: true,
+        enableSorting: true,
+        meta,
+        ...restOverride,
+      } as ColumnDef<z.infer<T>>,
+    });
   }
+
+  const columns = columnEntries
+    .sort((a, b) => {
+      const orderDiff = a.order - b.order;
+      if (orderDiff !== 0) return orderDiff;
+      return a.sourceIndex - b.sourceIndex;
+    })
+    .map((entry) => entry.column);
 
   if (canCache) {
     baseTableSchemaCache.set(schema, columns as ColumnDef<any>[]);
@@ -296,14 +348,14 @@ export function createTableSchema<T extends z.ZodObject<z.ZodRawShape>>(
  */
 export function createSelectColumn<T>(): ColumnDef<T> {
   return {
-    id: "select",
+    id: 'select',
     header: ({ table }) => (
       <Checkbox
         aria-label="Select all"
         className="translate-y-0.5"
         checked={
           table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
+          (table.getIsSomePageRowsSelected() && 'indeterminate')
         }
         onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
       />
@@ -332,7 +384,7 @@ export interface ResolvedActionItem<T> {
   label: string;
   onClick: (row: T) => void;
   separator?: boolean;
-  variant?: "default" | "destructive";
+  variant?: 'default' | 'destructive';
 }
 
 /**
@@ -343,11 +395,9 @@ export type ActionsColumnConfig<T> = ResolvedActionItem<T>[];
 /**
  * 创建操作列
  */
-export function createActionsColumn<T>(
-  items: ActionsColumnConfig<T>
-): ColumnDef<T> {
+export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef<T> {
   return {
-    id: "actions",
+    id: 'actions',
     cell: ({ row }) => (
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -364,7 +414,7 @@ export function createActionsColumn<T>(
             <React.Fragment key={i}>
               {item.separator && <DropdownMenuSeparator />}
               <DropdownMenuItem
-                className={item.variant === "destructive" ? "text-destructive" : ""}
+                className={item.variant === 'destructive' ? 'text-destructive' : ''}
                 onClick={() => item.onClick(row.original)}
               >
                 {item.label}

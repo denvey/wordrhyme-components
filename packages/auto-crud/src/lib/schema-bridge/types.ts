@@ -1,30 +1,30 @@
-import type { ColumnDef } from "@tanstack/react-table";
-import type { ISchema } from "@formily/json-schema";
+import type { ColumnDef } from '@tanstack/react-table';
+import type { ISchema } from '@formily/json-schema';
 
 /**
  * 字段类型映射
  */
 export type FieldType =
-  | "string"
-  | "number"
-  | "boolean"
-  | "date"
-  | "enum"
-  | "array"
-  | "object";
+  | 'string'
+  | 'number'
+  | 'boolean'
+  | 'date'
+  | 'enum'
+  | 'array'
+  | 'object';
 
 /**
  * DataTable Filter Variant
  */
 export type FilterVariant =
-  | "text"
-  | "number"
-  | "boolean"
-  | "select"
-  | "multiSelect"
-  | "date"
-  | "dateRange"
-  | "range";
+  | 'text'
+  | 'number'
+  | 'boolean'
+  | 'select'
+  | 'multiSelect'
+  | 'date'
+  | 'dateRange'
+  | 'range';
 
 /**
  * 解析后的 Zod 字段信息
@@ -44,6 +44,7 @@ export type ColumnOverrides<T> = Partial<{
   [K in keyof T]: Partial<ColumnDef<T, unknown>> & {
     hidden?: boolean;
     label?: string;
+    index?: number;
   };
 }>;
 
@@ -66,10 +67,10 @@ export interface CreateTableSchemaOptions<T> {
 export interface CreateFormSchemaOptions {
   overrides?: FormSchemaOverrides;
   exclude?: string[];
-  layout?: "vertical" | "horizontal" | "grid";
+  layout?: 'vertical' | 'horizontal' | 'grid';
   gridColumns?: number;
   /** Label 对齐方式 */
-  labelAlign?: "left" | "top" | "right";
+  labelAlign?: 'left' | 'top' | 'right';
   /** Label 宽度（labelAlign 为 left 时有效） */
   labelWidth?: number | string;
   /** Label 栅格占位 */
@@ -93,26 +94,26 @@ export interface EnumOption {
  * - number 默认 range（通常需要范围筛选）
  */
 export const fieldTypeToFilterVariant: Record<FieldType, FilterVariant> = {
-  string: "text",
-  number: "range",
-  boolean: "boolean",
-  date: "dateRange",
-  enum: "multiSelect",
-  array: "multiSelect",
-  object: "text",
+  string: 'text',
+  number: 'range',
+  boolean: 'boolean',
+  date: 'dateRange',
+  enum: 'multiSelect',
+  array: 'multiSelect',
+  object: 'text',
 };
 
 /**
  * 字段类型到 Formily 组件映射
  */
 export const fieldTypeToFormilyComponent: Record<FieldType, string> = {
-  string: "Input",
-  number: "NumberInput",
-  boolean: "Switch",
-  date: "DatePicker",
-  enum: "Select",
-  array: "ArrayCards",
-  object: "ObjectField",
+  string: 'Input',
+  number: 'NumberInput',
+  boolean: 'Switch',
+  date: 'DatePicker',
+  enum: 'Select',
+  array: 'ArrayCards',
+  object: 'ObjectField',
 };
 
 /**
@@ -126,22 +127,30 @@ export const fieldNamePatternToComponent: Array<{
   props?: Record<string, unknown>;
 }> = [
   // 长文本字段 -> Textarea
-  { pattern: /^(description|content|body|notes|summary|bio|about|comment|message|text)$/i, component: "Textarea" },
-  { pattern: /(description|content|body|notes|summary|bio|about|comment|message)$/i, component: "Textarea" },
+  {
+    pattern: /^(description|content|body|notes|summary|bio|about|comment|message|text)$/i,
+    component: 'Textarea',
+  },
+  {
+    pattern: /(description|content|body|notes|summary|bio|about|comment|message)$/i,
+    component: 'Textarea',
+  },
 
   // 颜色字段 -> ColorSelect
-  { pattern: /^color$/i, component: "ColorSelect" },
-  { pattern: /color$/i, component: "ColorSelect" },
+  { pattern: /^color$/i, component: 'ColorSelect' },
+  { pattern: /color$/i, component: 'ColorSelect' },
 
   // 图标字段 -> IconPicker
-  { pattern: /^icon$/i, component: "IconPicker" },
-  { pattern: /icon$/i, component: "IconPicker" },
+  { pattern: /^icon$/i, component: 'IconPicker' },
+  { pattern: /icon$/i, component: 'IconPicker' },
 ];
 
 /**
  * 根据字段名推断 Formily 组件
  */
-export function inferComponentByFieldName(fieldName: string): { component: string; props?: Record<string, unknown> } | null {
+export function inferComponentByFieldName(
+  fieldName: string,
+): { component: string; props?: Record<string, unknown> } | null {
   for (const rule of fieldNamePatternToComponent) {
     if (rule.pattern.test(fieldName)) {
       return { component: rule.component, props: rule.props };
@@ -159,14 +168,20 @@ export const fieldNamePatternToFilterVariant: Array<{
   variant: FilterVariant;
 }> = [
   // 长文本字段 -> text (不适合 multiSelect)
-  { pattern: /^(description|content|body|notes|summary|bio|about|comment|message|text)$/i, variant: "text" },
-  { pattern: /(description|content|body|notes|summary|bio|about|comment|message)$/i, variant: "text" },
+  {
+    pattern: /^(description|content|body|notes|summary|bio|about|comment|message|text)$/i,
+    variant: 'text',
+  },
+  {
+    pattern: /(description|content|body|notes|summary|bio|about|comment|message)$/i,
+    variant: 'text',
+  },
 
   // 日期字段（非范围）-> date
-  { pattern: /^(date|day)$/i, variant: "date" },
+  { pattern: /^(date|day)$/i, variant: 'date' },
 
   // 时间戳字段 -> dateRange
-  { pattern: /(at|time|timestamp)$/i, variant: "dateRange" },
+  { pattern: /(at|time|timestamp)$/i, variant: 'dateRange' },
 ];
 
 /**

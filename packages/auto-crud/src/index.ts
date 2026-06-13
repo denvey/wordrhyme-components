@@ -2,6 +2,7 @@
 export { AutoCrudTable } from './components/auto-crud/auto-crud-table';
 export type {
   Field,
+  FieldOption,
   Fields,
   FilterConfig,
   AutoCrudTableProps,
@@ -41,6 +42,27 @@ export { DataTableFacetedFilter } from './components/data-table/data-table-facet
 export { DataTablePagination } from './components/data-table/data-table-pagination';
 export { DataTableToolbar } from './components/data-table/data-table-toolbar';
 export { DataTableViewOptions } from './components/data-table/data-table-view-options';
+export { MultiCombobox } from './components/ui/multi-combobox';
+export type {
+  MultiComboboxOption,
+  MultiComboboxProps,
+  MultiComboboxTriggerRenderProps,
+} from './components/ui/multi-combobox';
+
+// AutoCrud registries
+export {
+  dataSources,
+  formComponents,
+  normalizeDataSourceConfig,
+  normalizeOptions,
+} from './lib/registries';
+export type {
+  AutoCrudDataSourceConfig,
+  AutoCrudDataSourceContext,
+  AutoCrudDataSourceLoader,
+  AutoCrudFormComponentConfig,
+  AutoCrudOption,
+} from './lib/registries';
 
 // Hooks
 export { useAutoCrudResource, noopToastAdapter } from './hooks/use-auto-crud-resource';

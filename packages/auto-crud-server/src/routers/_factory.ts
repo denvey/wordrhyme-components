@@ -9,7 +9,17 @@
  */
 
 import { z } from 'zod';
-import { eq, sql, inArray, asc, desc, and, isNull } from 'drizzle-orm';
+import {
+  eq,
+  sql,
+  inArray,
+  asc,
+  desc,
+  and,
+  or,
+  isNull,
+  getTableColumns,
+} from 'drizzle-orm';
 import type { AnyColumn, SQL } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
@@ -38,6 +48,9 @@ import type {
   ProcedureMap,
   ProcedureFactory,
   CrudColumnRef,
+  CrudExtensionFilter,
+  CrudExtensionsConfig,
+  CrudExtensionsProvider,
 } from '../types/config';
 
 // Re-export types for backward compatibility
@@ -45,6 +58,10 @@ export type {
   CrudColumnConfig,
   CrudColumnExpression,
   CrudColumnRef,
+  CrudExtensionFilter,
+  CrudExtensionMetadata,
+  CrudExtensionsConfig,
+  CrudExtensionsProvider,
   CrudRouterConfig,
   AnyProcedure,
   CrudProcedures,
@@ -61,6 +78,25 @@ export type { ListResult, ExportResult, ImportResult } from '../types/config';
  */
 type CrudRouterReturn = ReturnType<typeof router> & {
   procedures: CrudProcedures;
+};
+
+type CrudExtensionConfigRef<TContext = unknown> = {
+  id?: string;
+  extensions?: CrudExtensionsConfig<TContext>;
+};
+
+type CrudLifecycleOperation = 'create' | 'update' | 'delete' | 'upsert';
+
+type CrudLifecycleHooks = {
+  emit: <T>(
+    hookId: string,
+    data: T,
+    options?: {
+      mode?: 'event' | 'pipe' | 'effect';
+      dispatch?: 'auto' | 'command' | 'hook';
+      tx?: unknown;
+    },
+  ) => Promise<T>;
 };
 
 interface ResolvedConfig<TContext, TSelect> {
@@ -111,13 +147,24 @@ function resolveSoftDelete(
 /**
  * 判断 procedure 配置的类型
  */
+function isProcedureLike(config: unknown): boolean {
+  if (!config || typeof config !== 'object') return false;
+
+  const candidate = config as Record<string, unknown>;
+  return ['input', 'output', 'query', 'mutation', 'use'].some(
+    (key) => typeof candidate[key] === 'function',
+  );
+}
+
 function isProcedureMap(config: ProcedureConfig | undefined): config is ProcedureMap {
   if (!config) return false;
   if (typeof config === 'function') return false;
+  if (isProcedureLike(config)) return false;
   // 检查是否是对象且包含已知的操作键
   if (typeof config === 'object' && config !== null) {
     const keys = Object.keys(config);
     const validKeys = [
+      'meta',
       'list',
       'get',
       'create',
@@ -189,6 +236,13 @@ function resolveConfig<TTable extends PgTable, TContext, TSelect, TInsert, TUpda
   };
 }
 
+function resolveMetaProcedure(
+  config: ProcedureConfig | undefined,
+  fallback: AnyProcedure,
+): AnyProcedure {
+  return isProcedureMap(config) ? (config.meta ?? fallback) : fallback;
+}
+
 // ============================================================
 // Schema 定义
 // ============================================================
@@ -212,6 +266,7 @@ export const baseListInputSchema = z.object({
       }),
     )
     .optional(),
+  search: z.string().trim().optional(),
   filters: z.array(filterItemSchema).optional(),
   joinOperator: z.enum(['and', 'or']).default('and'),
 });
@@ -231,6 +286,7 @@ export const baseExportInputSchema = z.object({
       }),
     )
     .optional(),
+  search: z.string().trim().optional(),
   filters: z.array(filterItemSchema).optional(),
   joinOperator: z.enum(['and', 'or']).default('and'),
   limit: z.number().min(1).optional(),
@@ -246,6 +302,22 @@ const importInputSchema = z.object({
 // ============================================================
 
 const DEFAULT_OMIT_FIELDS = ['id', 'createdAt', 'updatedAt'] as const;
+
+function shouldEnableCrudExtensionSchema<TContext>(
+  config: CrudExtensionConfigRef<TContext>,
+): boolean {
+  return Boolean(config.id) && config.extensions !== false;
+}
+
+function withCrudExtensionInput<TContext>(
+  schema: z.ZodTypeAny,
+  config: CrudExtensionConfigRef<TContext>,
+): z.ZodTypeAny {
+  if (!shouldEnableCrudExtensionSchema(config) || !isZodObject(schema)) {
+    return schema;
+  }
+  return schema.passthrough();
+}
 
 /**
  * 解析并派生 Schema
@@ -289,8 +361,10 @@ function resolveSchemas<TTable extends PgTable>(
       (omitFields as string[]).map((f) => [f, true as const]),
     ) as Record<string, true>;
 
-    schema = rawSchema.omit(omitConfig);
+    schema = (rawSchema as z.ZodObject<z.ZodRawShape>).omit(omitConfig);
   }
+
+  schema = withCrudExtensionInput(schema, config) as z.ZodObject<z.ZodRawShape>;
 
   // 2. selectSchema: 优先使用配置，其次使用 schema，最后从 table 创建
   let selectSchema: z.ZodTypeAny;
@@ -305,11 +379,13 @@ function resolveSchemas<TTable extends PgTable>(
   }
 
   // 3. updateSchema: 优先使用配置，否则从 schema 派生
-  const updateSchema =
-    config.updateSchema ??
-    schema.partial().refine(nonEmpty, {
-      message: 'Update payload cannot be empty. At least one field is required.',
-    });
+  const updateSchema = (
+    config.updateSchema
+      ? withCrudExtensionInput(config.updateSchema, config)
+      : schema.partial().refine(nonEmpty, {
+          message: 'Update payload cannot be empty. At least one field is required.',
+        })
+  ) as z.ZodTypeAny;
 
   return { selectSchema, schema, updateSchema };
 }
@@ -363,9 +439,7 @@ function buildJsonFieldTextExpression(
   const fields = normalizeJsonFields(jsonField);
 
   if (fields.length === 0) {
-    throw new Error(
-      '[createCrudRouter] jsonField must include at least one json key.',
-    );
+    throw new Error('[createCrudRouter] jsonField must include at least one json key.');
   }
 
   const objectFields = fields.map((field) => sql`${column} ->> ${field}`);
@@ -410,6 +484,513 @@ function resolveColumnTarget<TTable extends PgTable>({
   return getTableColumn(table, columnId);
 }
 
+const CRUD_EXTENSION_FILTER_ID = 'auto-crud-extension-filter';
+const NO_CRUD_EXTENSION_MATCH = '__auto_crud_no_crud_extension_match__';
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isCrudExtensionIdFilter(
+  filter: { id: string; filterId?: string },
+  idField: string,
+): boolean {
+  return filter.id === idField && filter.filterId === CRUD_EXTENSION_FILTER_ID;
+}
+
+function readCrudTarget(config: { id?: string }): { id: string } | null {
+  const id = config.id;
+  if (!id) return null;
+  return { id };
+}
+
+function buildCrudLifecycleHookId<TContext>(
+  config: CrudExtensionConfigRef<TContext>,
+  operation: CrudLifecycleOperation,
+): string | null {
+  const target = readCrudTarget(config);
+  if (!target) return null;
+
+  return `${target.id}.${operation}`;
+}
+
+function getCrudLifecycleHooks(ctx: unknown): CrudLifecycleHooks | null {
+  const hooks = (ctx as { hooks?: CrudLifecycleHooks | null })?.hooks;
+  return typeof hooks?.emit === 'function' ? hooks : null;
+}
+
+function shouldWrapCrudLifecycleTransaction<TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+): boolean {
+  return Boolean(
+    buildCrudLifecycleHookId(config, 'create') && getCrudLifecycleHooks(ctx),
+  );
+}
+
+async function emitCrudWriteLifecycle<TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  operation: CrudLifecycleOperation,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  const hookId = buildCrudLifecycleHookId(config, operation);
+  const hooks = getCrudLifecycleHooks(ctx);
+  if (!hookId || !hooks) return;
+
+  await hooks.emit(hookId, payload, {
+    dispatch: 'hook',
+    mode: 'effect',
+    tx: (ctx as { tx?: unknown })?.tx,
+  });
+}
+
+function resolveCrudExtensions<TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+): CrudExtensionsProvider | null {
+  const extensions = config.extensions;
+  if (extensions === false) return null;
+
+  if (typeof extensions === 'function') {
+    return extensions(ctx) ?? null;
+  }
+
+  if (extensions) return extensions;
+  if (!config.id) return null;
+
+  return (
+    (ctx as { crudExtensions?: CrudExtensionsProvider | null })?.crudExtensions ?? null
+  );
+}
+
+function getTableColumnNames<TTable extends PgTable>(table: TTable): Set<string> {
+  try {
+    const columns = getTableColumns(table) as Record<string, unknown>;
+    const names = Object.keys(columns);
+    if (names.length > 0) return new Set(names);
+  } catch {
+    // Unit-test mocks and custom table-like objects may not carry Drizzle's symbols.
+  }
+
+  return new Set(
+    Object.keys(table as Record<string, unknown>).filter((key) => !key.startsWith('_')),
+  );
+}
+
+type SplitCrudExtensionInput<TInput> = {
+  data: TInput;
+  rawValues: Record<string, unknown>;
+  baseValues: Record<string, unknown>;
+  extraValues: Record<string, unknown> | null;
+};
+
+function splitCrudExtensionWriteInput<TInput>(
+  inputData: TInput,
+  tableColumnNames: Set<string>,
+): SplitCrudExtensionInput<TInput> {
+  if (!isObjectRecord(inputData)) {
+    return {
+      data: inputData,
+      rawValues: {},
+      baseValues: {},
+      extraValues: null,
+    };
+  }
+
+  const baseValues: Record<string, unknown> = {};
+  const extraValues: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(inputData)) {
+    if (key === 'ext') {
+      if (isObjectRecord(value)) {
+        Object.assign(extraValues, value);
+      }
+      continue;
+    }
+
+    if (tableColumnNames.has(key)) {
+      baseValues[key] = value;
+    } else {
+      extraValues[key] = value;
+    }
+  }
+
+  return {
+    data: baseValues as TInput,
+    rawValues: inputData,
+    baseValues,
+    extraValues: Object.keys(extraValues).length > 0 ? extraValues : null,
+  };
+}
+
+async function saveCrudExtraValues<TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  entityId: unknown,
+  input: SplitCrudExtensionInput<unknown>,
+) {
+  const target = readCrudTarget(config);
+  const extraValues = input.extraValues;
+  if (!target || !extraValues) return;
+  if (entityId === null || entityId === undefined || String(entityId).length === 0) {
+    return;
+  }
+
+  const provider = resolveCrudExtensions(ctx, config);
+  if (!provider?.saveExtraValues) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'CRUD extension persistence is not available',
+    });
+  }
+
+  await provider.saveExtraValues({
+    id: target.id,
+    entityId: String(entityId),
+    rawValues: input.rawValues,
+    baseValues: input.baseValues,
+    extraValues,
+    tx: (ctx as { tx?: unknown })?.tx,
+  });
+}
+
+async function runCrudExtensionWriteTransaction<TContext extends { db: any }, TResult>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  input: SplitCrudExtensionInput<unknown>,
+  operation: (ctx: TContext & { tx?: unknown }) => Promise<TResult>,
+): Promise<TResult> {
+  if (
+    (input.extraValues || shouldWrapCrudLifecycleTransaction(ctx, config)) &&
+    (ctx as { tx?: unknown }).tx === undefined &&
+    typeof ctx.db?.transaction === 'function'
+  ) {
+    return ctx.db.transaction((tx: unknown) =>
+      operation({
+        ...ctx,
+        db: tx,
+        tx,
+      } as TContext & { tx?: unknown }),
+    );
+  }
+
+  return operation(ctx as TContext & { tx?: unknown });
+}
+
+function assertCrudExtraValuesWritable<TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  input: SplitCrudExtensionInput<unknown>,
+) {
+  const target = readCrudTarget(config);
+  if (!target || !input.extraValues) return;
+
+  const provider = resolveCrudExtensions(ctx, config);
+  if (!provider?.saveExtraValues) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'CRUD extension persistence is not available',
+    });
+  }
+}
+
+function assertCrudExtraValuesWritableForRows<TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  inputs: Array<SplitCrudExtensionInput<unknown>>,
+) {
+  if (inputs.some((input) => input.extraValues)) {
+    assertCrudExtraValuesWritable(
+      ctx,
+      config,
+      inputs.find((input) => input.extraValues)!,
+    );
+  }
+}
+
+async function saveCrudExtraValuesForRows<TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  idField: string,
+  results: Array<Record<string, unknown>>,
+  inputs: Array<SplitCrudExtensionInput<unknown>>,
+) {
+  const inputsWithExtra = inputs.filter((input) => input.extraValues);
+  if (inputsWithExtra.length === 0) return;
+
+  const extraByInputId = new Map<string, SplitCrudExtensionInput<unknown>>();
+  for (const input of inputs) {
+    if (!input.extraValues || !isObjectRecord(input.data)) continue;
+
+    const inputId = input.data[idField];
+    if (inputId !== null && inputId !== undefined) {
+      extraByInputId.set(String(inputId), input);
+    }
+  }
+
+  const canUseIndexFallback = results.length === inputs.length;
+  const hasUnidentifiedExtraInput = inputsWithExtra.some((input) => {
+    if (!isObjectRecord(input.data)) return true;
+    const inputId = input.data[idField];
+    return inputId === null || inputId === undefined || String(inputId).length === 0;
+  });
+
+  if (!canUseIndexFallback && hasUnidentifiedExtraInput) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message:
+        'Cannot persist CRUD extension values because inserted rows cannot be matched to input rows. Provide stable ids or avoid partial-conflict batch writes.',
+    });
+  }
+
+  await Promise.all(
+    results.map((result, index) => {
+      const resultId = result[idField];
+      const fallbackInput = canUseIndexFallback ? inputs[index] : undefined;
+      const fallbackInputId =
+        fallbackInput && isObjectRecord(fallbackInput.data)
+          ? fallbackInput.data[idField]
+          : undefined;
+      const entityId =
+        resultId !== null && resultId !== undefined ? resultId : fallbackInputId;
+      const input =
+        entityId !== null && entityId !== undefined
+          ? (extraByInputId.get(String(entityId)) ?? fallbackInput)
+          : fallbackInput;
+
+      if (!input?.extraValues) return Promise.resolve();
+
+      if (entityId === null || entityId === undefined || String(entityId).length === 0) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Cannot persist CRUD extension values because the created entity id is unavailable.',
+        });
+      }
+
+      return saveCrudExtraValues(ctx, config, entityId, input);
+    }),
+  );
+}
+
+function createCrudBatchTransactionInput(
+  inputs: Array<SplitCrudExtensionInput<unknown>>,
+): SplitCrudExtensionInput<unknown> {
+  return {
+    data: {},
+    rawValues: {},
+    baseValues: {},
+    extraValues: inputs.some((input) => input.extraValues) ? {} : null,
+  };
+}
+
+function readProjectionDisplay(value: unknown): unknown {
+  if (!isObjectRecord(value)) return value;
+  if ('display' in value && value.display !== null && value.display !== undefined) {
+    return value.display;
+  }
+  if ('value' in value) return value.value;
+  return value;
+}
+
+async function enrichCrudRows<TContext, TRow extends Record<string, unknown>>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  idField: string,
+  rows: TRow[],
+): Promise<TRow[]> {
+  const target = readCrudTarget(config);
+  if (!target || rows.length === 0) return rows;
+
+  const provider = resolveCrudExtensions(ctx, config);
+  if (!provider?.readProjection) return rows;
+
+  const entityIds = rows
+    .map((row) => row[idField])
+    .filter(
+      (id): id is string | number =>
+        (typeof id === 'string' && id.length > 0) || typeof id === 'number',
+    )
+    .map(String);
+  if (entityIds.length === 0) return rows;
+
+  const projections = await provider.readProjection({
+    id: target.id,
+    entityIds,
+  });
+
+  return rows.map((row) => {
+    const rowId = row[idField];
+    const projected =
+      rowId !== null && rowId !== undefined ? projections[String(rowId)] : undefined;
+    if (!projected || Object.keys(projected).length === 0) return row;
+
+    return {
+      ...row,
+      ...Object.fromEntries(
+        Object.entries(projected).map(([field, value]) => [
+          field,
+          readProjectionDisplay(value),
+        ]),
+      ),
+    };
+  });
+}
+
+function isAllowedBaseCrudColumn<TTable extends PgTable>(
+  table: TTable,
+  columnId: string,
+  allowedColumns: CrudColumnRef<TTable>[] | undefined,
+): boolean {
+  if (allowedColumns && allowedColumns.length > 0) {
+    return (
+      resolveColumnTarget({
+        table,
+        columnId,
+        allowedColumns,
+      }) !== undefined
+    );
+  }
+  return getTableColumn(table, columnId) !== undefined;
+}
+
+function isKnownBaseCrudColumn<TTable extends PgTable>(
+  table: TTable,
+  columnId: string,
+  allowedColumns: CrudColumnRef<TTable>[] | undefined,
+): boolean {
+  return (
+    getTableColumn(table, columnId) !== undefined ||
+    findColumnRef(columnId, allowedColumns) !== undefined
+  );
+}
+
+async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  table: TTable,
+  idField: string,
+  filterableColumns: CrudColumnRef<TTable>[] | undefined,
+  searchColumns: CrudColumnRef<TTable>[] | undefined,
+  input: ListInput | ExportInput,
+): Promise<ListInput | ExportInput> {
+  const target = readCrudTarget(config);
+  const filters = input.filters ?? [];
+  const search = typeof input.search === 'string' ? input.search.trim() : '';
+  if (!target || (filters.length === 0 && !search)) return input;
+
+  const baseFilters: typeof filters = [];
+  const extensionFilters: typeof filters = [];
+  for (const filter of filters) {
+    if (isAllowedBaseCrudColumn(table, filter.id, filterableColumns)) {
+      baseFilters.push(filter);
+    } else if (isKnownBaseCrudColumn(table, filter.id, filterableColumns)) {
+      continue;
+    } else {
+      extensionFilters.push(filter);
+    }
+  }
+
+  if (extensionFilters.length === 0 && !search) {
+    return { ...input, filters: baseFilters };
+  }
+
+  const provider = resolveCrudExtensions(ctx, config);
+
+  const matchedSets: Array<Set<string>> = [];
+  if (extensionFilters.length > 0) {
+    if (!provider?.matchEntityIds) {
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'CRUD extension filtering is not available',
+      });
+    }
+
+    const matchedIds = await provider.matchEntityIds({
+      id: target.id,
+      filters: extensionFilters as CrudExtensionFilter[],
+      joinOperator: input.joinOperator,
+      limit: 5000,
+    });
+    matchedSets.push(new Set(matchedIds));
+  }
+
+  if (search && provider?.searchEntityIds) {
+    const matchedIds = await provider.searchEntityIds({
+      id: target.id,
+      search,
+      limit: 5000,
+    });
+    matchedSets.push(new Set(matchedIds));
+  } else if (search && !buildCrudSearchCondition({ table, search, searchColumns })) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'CRUD search is not available',
+    });
+  }
+
+  if (matchedSets.length === 0) {
+    return { ...input, filters: baseFilters };
+  }
+
+  let matchedIds = matchedSets[0] ? [...matchedSets[0]] : [];
+  for (const set of matchedSets.slice(1)) {
+    matchedIds = matchedIds.filter((id) => set.has(id));
+  }
+
+  return {
+    ...input,
+    filters: [
+      ...baseFilters,
+      {
+        id: idField,
+        value: matchedIds.length > 0 ? matchedIds : [NO_CRUD_EXTENSION_MATCH],
+        variant: 'multiSelect',
+        operator: 'inArray',
+        filterId: CRUD_EXTENSION_FILTER_ID,
+      },
+    ],
+  };
+}
+
+function buildCrudSearchCondition<TTable extends PgTable>({
+  table,
+  search,
+  searchColumns,
+}: {
+  table: TTable;
+  search: string | undefined;
+  searchColumns: CrudColumnRef<TTable>[] | undefined;
+}): SQL | undefined {
+  const term = typeof search === 'string' ? search.trim() : '';
+  if (!term || !searchColumns || searchColumns.length === 0) return undefined;
+
+  const conditions = searchColumns
+    .map((columnRef) =>
+      resolveColumnTarget({
+        table,
+        columnId: getColumnRefId(columnRef),
+        allowedColumns: searchColumns,
+      }),
+    )
+    .filter((column): column is ColumnTarget => column !== undefined)
+    .map((column) => sql`${column}::text ilike ${`%${term}%`}`);
+
+  if (conditions.length === 0) return undefined;
+  if (conditions.length === 1) return conditions[0];
+  return or(...conditions);
+}
+
+function combineConditions(...conditions: Array<SQL | undefined>): SQL | undefined {
+  const filtered = conditions.filter(
+    (condition): condition is SQL => condition !== undefined,
+  );
+  if (filtered.length === 0) return undefined;
+  if (filtered.length === 1) return filtered[0];
+  return and(...filtered);
+}
+
 // ============================================================
 // createCrudRouter - 类型防火墙版
 // ============================================================
@@ -451,6 +1032,7 @@ export function createCrudRouter<
     table,
     idField = 'id',
     filterableColumns,
+    searchColumns,
     sortableColumns,
     maxBatchSize = 100,
     maxExportSize = 5000,
@@ -467,14 +1049,19 @@ export function createCrudRouter<
   // ===== 构建 output schemas（类型防火墙核心） =====
   // .output() 让 tRPC 使用 Zod schema 推导的输出类型，
   // 而非从 Drizzle 查询实现推导，切断深层泛型链
-  const entityOutputSchema = selectSchema;
+  const entityOutputSchema = withCrudExtensionInput(selectSchema, config) as z.ZodTypeAny;
 
   const listOutputSchema = z.object({
-    data: z.array(selectSchema),
+    data: z.array(entityOutputSchema),
     total: z.number(),
     page: z.number(),
     perPage: z.number(),
     pageCount: z.number(),
+  });
+  const metadataOutputSchema = z.object({
+    schema: z.unknown().optional(),
+    fields: z.record(z.string(), z.unknown()).optional(),
+    errors: z.array(z.string()).optional(),
   });
 
   const deleteManyOutputSchema = z.object({ deleted: z.number() });
@@ -486,13 +1073,13 @@ export function createCrudRouter<
   });
 
   const exportOutputSchema = z.object({
-    data: z.array(selectSchema),
+    data: z.array(entityOutputSchema),
     total: z.number(),
     hasMore: z.boolean(),
   });
 
   const createManyOutputSchema = z.object({
-    created: z.array(selectSchema),
+    created: z.array(entityOutputSchema),
     count: z.number(),
   });
 
@@ -511,6 +1098,10 @@ export function createCrudRouter<
   // 解析配置
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const resolved = resolveConfig(config as any) as ResolvedConfig<TContext, TSelect>;
+  const metaProcedure = resolveMetaProcedure(
+    config.procedure,
+    resolved.procedureFactory('list'),
+  );
   const softDelete = resolveSoftDelete(softDeleteOption);
   const resolvedListInputSchema = (config.listInputSchema ??
     baseListInputSchema) as z.ZodType<TListInput>;
@@ -537,6 +1128,7 @@ export function createCrudRouter<
   // 辅助函数
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getIdColumn = () => (table as any)[idField];
+  const tableColumnNames = getTableColumnNames(table);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const getSoftDeleteColumn = () =>
     softDelete ? (table as any)[softDelete.column] : null;
@@ -615,6 +1207,20 @@ export function createCrudRouter<
 
   // ========== Procedures 定义 ==========
   const procedures = {
+    meta: metaProcedure
+      .output(metadataOutputSchema)
+      .query(async ({ ctx }: { ctx: TContext }) => {
+        await withGuard(ctx, 'list');
+
+        const target = readCrudTarget(config);
+        if (!target) return {};
+
+        const provider = resolveCrudExtensions(ctx, config);
+        if (!provider?.getMetadata) return {};
+
+        return provider.getMetadata({ id: target.id });
+      }),
+
     // 列表查询
     list: resolved
       .procedureFactory('list')
@@ -627,10 +1233,21 @@ export function createCrudRouter<
 
           // 核心查询逻辑
           const doList = async (listInput: ListInput): Promise<ListResult<TSelect>> => {
-            const offset = (listInput.page - 1) * listInput.perPage;
+            const effectiveInput = (await applyCrudExtensionFilters(
+              ctx,
+              config,
+              table,
+              idField,
+              filterableColumns,
+              searchColumns,
+              listInput,
+            )) as ListInput;
+            const offset = (effectiveInput.page - 1) * effectiveInput.perPage;
 
-            const validatedFilters = listInput.filters?.filter((filter) =>
-              validateColumn(filter.id, filterableColumns),
+            const validatedFilters = effectiveInput.filters?.filter(
+              (filter) =>
+                isCrudExtensionIdFilter(filter, idField) ||
+                validateColumn(filter.id, filterableColumns),
             );
 
             const filterCondition = validatedFilters?.length
@@ -638,25 +1255,37 @@ export function createCrudRouter<
                   table,
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   filters: validatedFilters as any,
-                  joinOperator: listInput.joinOperator,
-                  resolveColumn: (columnId) =>
-                    resolveColumnTarget({
+                  joinOperator: effectiveInput.joinOperator,
+                  resolveColumn: (columnId) => {
+                    const id = String(columnId);
+                    if (id === idField) return getTableColumn(table, idField);
+                    return resolveColumnTarget({
                       table,
-                      columnId: String(columnId),
+                      columnId: id,
                       allowedColumns: filterableColumns,
-                    }),
+                    });
+                  },
                 })
               : undefined;
 
-            const where = buildWhere(ctx, 'list', filterCondition);
+            const searchCondition = buildCrudSearchCondition({
+              table,
+              search: effectiveInput.search,
+              searchColumns,
+            });
+            const where = buildWhere(
+              ctx,
+              'list',
+              combineConditions(filterCondition, searchCondition),
+            );
 
             let query = ctx.db.select().from(table).$dynamic();
             if (where) {
               query = query.where(where);
             }
 
-            if (listInput.sort?.length) {
-              const sortField = listInput.sort[0];
+            if (effectiveInput.sort?.length) {
+              const sortField = effectiveInput.sort[0];
               if (sortField && validateColumn(sortField.id, sortableColumns)) {
                 const column = resolveColumnTarget({
                   table,
@@ -669,7 +1298,13 @@ export function createCrudRouter<
               }
             }
 
-            const data = await query.limit(listInput.perPage).offset(offset);
+            const data = await query.limit(effectiveInput.perPage).offset(offset);
+            const enrichedData = await enrichCrudRows(
+              ctx,
+              config,
+              idField,
+              data as Array<Record<string, unknown>>,
+            );
 
             let countQuery = ctx.db
               .select({ count: sql<number>`count(*)::int` })
@@ -682,11 +1317,11 @@ export function createCrudRouter<
             const count = countResult[0]?.count ?? 0;
 
             return {
-              data,
+              data: enrichedData as TSelect[],
               total: count,
-              page: listInput.page,
-              perPage: listInput.perPage,
-              pageCount: Math.ceil(count / listInput.perPage),
+              page: effectiveInput.page,
+              perPage: effectiveInput.perPage,
+              pageCount: Math.ceil(count / effectiveInput.perPage),
             };
           };
 
@@ -723,7 +1358,11 @@ export function createCrudRouter<
             const where = buildWhere(ctx, 'get', idCondition);
             const [item] = await ctx.db.select().from(table).where(where!);
             await withAuthorize(ctx, item as TSelect, 'get');
-            return (item as TSelect) ?? null;
+            if (!item) return null;
+            const [enriched] = await enrichCrudRows(ctx, config, idField, [
+              item as Record<string, unknown>,
+            ]);
+            return (enriched as TSelect | undefined) ?? null;
           };
 
           const id = typeof input === 'string' ? input : input.id;
@@ -754,14 +1393,37 @@ export function createCrudRouter<
 
           // 核心创建逻辑
           const doCreate = async (inputData: TInsert): Promise<TSelect> => {
-            const injectData = resolved.getInject(ctx, 'create');
-            const data = { ...(inputData as object), ...injectData };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const [created] = await ctx.db
-              .insert(table)
-              .values(data as any)
-              .returning();
-            return created as TSelect;
+            const splitInput = splitCrudExtensionWriteInput(inputData, tableColumnNames);
+            assertCrudExtraValuesWritable(ctx, config, splitInput);
+            return runCrudExtensionWriteTransaction(
+              ctx,
+              config,
+              splitInput,
+              async (writeCtx) => {
+                const injectData = resolved.getInject(writeCtx, 'create');
+                const data = { ...(splitInput.data as object), ...injectData };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const [created] = await writeCtx.db
+                  .insert(table)
+                  .values(data as any)
+                  .returning();
+                await saveCrudExtraValues(
+                  writeCtx,
+                  config,
+                  (created as Record<string, unknown> | undefined)?.[idField],
+                  splitInput,
+                );
+                await emitCrudWriteLifecycle(writeCtx, config, 'create', {
+                  input: inputData,
+                  row: created as Record<string, unknown> | undefined,
+                  entityId: (created as Record<string, unknown> | undefined)?.[idField],
+                  rawValues: splitInput.rawValues,
+                  baseValues: splitInput.baseValues,
+                  extraValues: splitInput.extraValues ?? {},
+                });
+                return created as TSelect;
+              },
+            );
           };
 
           // middleware 模式
@@ -809,15 +1471,41 @@ export function createCrudRouter<
 
           // 核心更新逻辑
           const doUpdate = async (updateData: TUpdate): Promise<TSelect> => {
-            const injectData = resolved.getInject(ctx, 'update');
-            const data = { ...(updateData as object), ...injectData };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const [updated] = await ctx.db
-              .update(table)
-              .set(data as any)
-              .where(where!)
-              .returning();
-            return updated as TSelect;
+            const splitUpdate = splitCrudExtensionWriteInput(
+              updateData,
+              tableColumnNames,
+            );
+            assertCrudExtraValuesWritable(ctx, config, splitUpdate);
+            return runCrudExtensionWriteTransaction(
+              ctx,
+              config,
+              splitUpdate,
+              async (writeCtx) => {
+                const injectData = resolved.getInject(writeCtx, 'update');
+                const data = { ...(splitUpdate.data as object), ...injectData };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                let updated = existing as TSelect;
+                if (Object.keys(data).length > 0) {
+                  [updated] = await writeCtx.db
+                    .update(table)
+                    .set(data as any)
+                    .where(where!)
+                    .returning();
+                }
+                await saveCrudExtraValues(writeCtx, config, input.id, splitUpdate);
+                await emitCrudWriteLifecycle(writeCtx, config, 'update', {
+                  id: input.id,
+                  input: updateData,
+                  row: updated as Record<string, unknown>,
+                  existing: existing as Record<string, unknown>,
+                  entityId: input.id,
+                  rawValues: splitUpdate.rawValues,
+                  baseValues: splitUpdate.baseValues,
+                  extraValues: splitUpdate.extraValues ?? {},
+                });
+                return updated as TSelect;
+              },
+            );
           };
 
           // middleware 模式
@@ -861,18 +1549,36 @@ export function createCrudRouter<
 
           // 核心删除逻辑
           const doDelete = async (): Promise<TSelect> => {
-            let deleted;
-            if (softDelete) {
-              [deleted] = await ctx.db
-                .update(table)
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .set({ [softDelete.column]: softDelete.getValue() } as any)
-                .where(where!)
-                .returning();
-            } else {
-              [deleted] = await ctx.db.delete(table).where(where!).returning();
-            }
-            return deleted as TSelect;
+            return runCrudExtensionWriteTransaction(
+              ctx,
+              config,
+              {
+                data: {},
+                rawValues: { id: input },
+                baseValues: {},
+                extraValues: null,
+              },
+              async (writeCtx) => {
+                let deleted;
+                if (softDelete) {
+                  [deleted] = await writeCtx.db
+                    .update(table)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    .set({ [softDelete.column]: softDelete.getValue() } as any)
+                    .where(where!)
+                    .returning();
+                } else {
+                  [deleted] = await writeCtx.db.delete(table).where(where!).returning();
+                }
+                await emitCrudWriteLifecycle(writeCtx, config, 'delete', {
+                  id: input,
+                  row: deleted as Record<string, unknown> | undefined,
+                  existing: existing as Record<string, unknown>,
+                  entityId: input,
+                });
+                return deleted as TSelect;
+              },
+            );
           };
 
           // middleware 模式
@@ -968,15 +1674,42 @@ export function createCrudRouter<
           const doUpdateMany = async (
             updateData: TUpdate,
           ): Promise<{ updated: number }> => {
-            const injectData = resolved.getInject(ctx, 'update');
-            const data = { ...(updateData as object), ...injectData };
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const updated = await ctx.db
-              .update(table)
-              .set(data as any)
-              .where(where!)
-              .returning({ id: getIdColumn() });
-            return { updated: updated.length };
+            const splitUpdate = splitCrudExtensionWriteInput(
+              updateData,
+              tableColumnNames,
+            );
+            assertCrudExtraValuesWritable(ctx, config, splitUpdate);
+            return runCrudExtensionWriteTransaction(
+              ctx,
+              config,
+              splitUpdate,
+              async (writeCtx) => {
+                const injectData = resolved.getInject(writeCtx, 'update');
+                const data = { ...(splitUpdate.data as object), ...injectData };
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                let updated: Array<Record<string, unknown>> = input.ids.map((id) => ({
+                  [idField]: id,
+                }));
+                if (Object.keys(data).length > 0) {
+                  updated = await writeCtx.db
+                    .update(table)
+                    .set(data as any)
+                    .where(where!)
+                    .returning({ [idField]: getIdColumn() });
+                } else {
+                  updated = await writeCtx.db
+                    .select({ [idField]: getIdColumn() })
+                    .from(table)
+                    .where(where!);
+                }
+                await Promise.all(
+                  updated.map((row) =>
+                    saveCrudExtraValues(writeCtx, config, row[idField], splitUpdate),
+                  ),
+                );
+                return { updated: updated.length };
+              },
+            );
           };
 
           // middleware 模式
@@ -1008,9 +1741,11 @@ export function createCrudRouter<
           const doUpsert = async (
             inputData: TInsert,
           ): Promise<{ data: TSelect; isNew: boolean }> => {
+            const splitInput = splitCrudExtensionWriteInput(inputData, tableColumnNames);
+            assertCrudExtraValuesWritable(ctx, config, splitInput);
             // 先尝试查询是否存在
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const inputId = (inputData as any)[idField];
+            const inputId = (splitInput.data as any)[idField];
             let isNew = true;
             let existing: TSelect | null = null;
 
@@ -1028,28 +1763,57 @@ export function createCrudRouter<
               }
             }
 
-            // Major #5: 根据 isNew 决定使用 create 还是 update 的 inject
-            const injectData = resolved.getInject(ctx, isNew ? 'create' : 'update');
-            const data = { ...(inputData as object), ...injectData };
+            return runCrudExtensionWriteTransaction(
+              ctx,
+              config,
+              splitInput,
+              async (writeCtx) => {
+                // Major #5: 根据 isNew 决定使用 create 还是 update 的 inject
+                const injectData = resolved.getInject(
+                  writeCtx,
+                  isNew ? 'create' : 'update',
+                );
+                const data = { ...(splitInput.data as object), ...injectData };
 
-            // 使用 onConflictDoUpdate
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const [result] = await ctx.db
-              .insert(table)
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              .values(data as any)
-              .onConflictDoUpdate({
-                target: getIdColumn(),
-                // 更新时只使用 update 的 inject
+                // 使用 onConflictDoUpdate
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                set: {
-                  ...(inputData as object),
-                  ...resolved.getInject(ctx, 'update'),
-                } as any,
-              })
-              .returning();
+                const [result] = await writeCtx.db
+                  .insert(table)
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  .values(data as any)
+                  .onConflictDoUpdate({
+                    target: getIdColumn(),
+                    // 更新时只使用 update 的 inject
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    set: {
+                      ...(splitInput.data as object),
+                      ...resolved.getInject(writeCtx, 'update'),
+                    } as any,
+                  })
+                  .returning();
 
-            return { data: result as TSelect, isNew };
+                await saveCrudExtraValues(
+                  writeCtx,
+                  config,
+                  (result as Record<string, unknown> | undefined)?.[idField] ?? inputId,
+                  splitInput,
+                );
+
+                await emitCrudWriteLifecycle(writeCtx, config, 'upsert', {
+                  input: inputData,
+                  row: result as Record<string, unknown>,
+                  existing: existing as Record<string, unknown> | null,
+                  isNew,
+                  entityId:
+                    (result as Record<string, unknown> | undefined)?.[idField] ?? inputId,
+                  rawValues: splitInput.rawValues,
+                  baseValues: splitInput.baseValues,
+                  extraValues: splitInput.extraValues ?? {},
+                });
+
+                return { data: result as TSelect, isNew };
+              },
+            );
           };
 
           // middleware 模式
@@ -1078,13 +1842,32 @@ export function createCrudRouter<
           const doExport = async (
             exportInput: ExportInput,
           ): Promise<ExportResult<TSelect>> => {
+            const effectiveInput = (await applyCrudExtensionFilters(
+              ctx,
+              config,
+              table,
+              idField,
+              filterableColumns,
+              searchColumns,
+              {
+                page: 1,
+                perPage: Math.min(
+                  Math.max(exportInput.limit ?? maxExportSize, 1),
+                  maxExportSize,
+                ),
+                joinOperator: exportInput.joinOperator ?? 'and',
+                ...exportInput,
+              },
+            )) as ExportInput;
             const effectiveLimit = Math.min(
-              Math.max(exportInput.limit ?? maxExportSize, 1),
+              Math.max(effectiveInput.limit ?? maxExportSize, 1),
               maxExportSize,
             );
 
-            const validatedFilters = exportInput.filters?.filter((filter) =>
-              validateColumn(filter.id, filterableColumns),
+            const validatedFilters = effectiveInput.filters?.filter(
+              (filter) =>
+                isCrudExtensionIdFilter(filter, idField) ||
+                validateColumn(filter.id, filterableColumns),
             );
 
             const filterCondition = validatedFilters?.length
@@ -1092,25 +1875,37 @@ export function createCrudRouter<
                   table,
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   filters: validatedFilters as any,
-                  joinOperator: exportInput.joinOperator ?? 'and',
-                  resolveColumn: (columnId) =>
-                    resolveColumnTarget({
+                  joinOperator: effectiveInput.joinOperator ?? 'and',
+                  resolveColumn: (columnId) => {
+                    const id = String(columnId);
+                    if (id === idField) return getTableColumn(table, idField);
+                    return resolveColumnTarget({
                       table,
-                      columnId: String(columnId),
+                      columnId: id,
                       allowedColumns: filterableColumns,
-                    }),
+                    });
+                  },
                 })
               : undefined;
 
-            const where = buildWhere(ctx, 'export', filterCondition);
+            const searchCondition = buildCrudSearchCondition({
+              table,
+              search: effectiveInput.search,
+              searchColumns,
+            });
+            const where = buildWhere(
+              ctx,
+              'export',
+              combineConditions(filterCondition, searchCondition),
+            );
 
             let query = ctx.db.select().from(table).$dynamic();
             if (where) {
               query = query.where(where);
             }
 
-            if (exportInput.sort?.length) {
-              const sortField = exportInput.sort[0];
+            if (effectiveInput.sort?.length) {
+              const sortField = effectiveInput.sort[0];
               if (sortField && validateColumn(sortField.id, sortableColumns)) {
                 const column = resolveColumnTarget({
                   table,
@@ -1124,6 +1919,12 @@ export function createCrudRouter<
             }
 
             const data = await query.limit(effectiveLimit);
+            const enrichedData = await enrichCrudRows(
+              ctx,
+              config,
+              idField,
+              data as Array<Record<string, unknown>>,
+            );
 
             // 查询总数以计算 hasMore
             let countQuery = ctx.db
@@ -1137,9 +1938,9 @@ export function createCrudRouter<
             const total = countResult[0]?.count ?? 0;
 
             return {
-              data: data as TSelect[],
+              data: enrichedData as TSelect[],
               total,
-              hasMore: total > data.length,
+              hasMore: total > enrichedData.length,
             };
           };
 
@@ -1171,15 +1972,36 @@ export function createCrudRouter<
           const doCreateMany = async (
             items: TInsert[],
           ): Promise<{ created: TSelect[]; count: number }> => {
-            const injectData = resolved.getInject(ctx, 'create');
-            const values = items.map((item) => ({ ...(item as object), ...injectData }));
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const created = await ctx.db
-              .insert(table)
-              .values(values as any)
-              .onConflictDoNothing()
-              .returning();
-            return { created: created as TSelect[], count: created.length };
+            const splitItems = items.map((item) =>
+              splitCrudExtensionWriteInput(item, tableColumnNames),
+            );
+            assertCrudExtraValuesWritableForRows(ctx, config, splitItems);
+            return runCrudExtensionWriteTransaction(
+              ctx,
+              config,
+              createCrudBatchTransactionInput(splitItems),
+              async (writeCtx) => {
+                const injectData = resolved.getInject(writeCtx, 'create');
+                const values = splitItems.map(({ data }) => ({
+                  ...(data as object),
+                  ...injectData,
+                }));
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const created = await writeCtx.db
+                  .insert(table)
+                  .values(values as any)
+                  .onConflictDoNothing()
+                  .returning();
+                await saveCrudExtraValuesForRows(
+                  writeCtx,
+                  config,
+                  idField,
+                  created as Array<Record<string, unknown>>,
+                  splitItems,
+                );
+                return { created: created as TSelect[], count: created.length };
+              },
+            );
           };
 
           if (m.createMany) {
@@ -1212,7 +2034,12 @@ export function createCrudRouter<
           await withGuard(ctx, 'import');
 
           const doImport = async (importData: ImportInput): Promise<ImportResult> => {
-            const validRows: TInsert[] = [];
+            const validRows: Array<{
+              data: TInsert;
+              rawValues: Record<string, unknown>;
+              baseValues: Record<string, unknown>;
+              extraValues: Record<string, unknown> | null;
+            }> = [];
             const failed: ImportResult['failed'] = [];
 
             // 逐行验证
@@ -1220,7 +2047,11 @@ export function createCrudRouter<
               const row = importData.rows[i];
               const result = schema.safeParse(row);
               if (result.success) {
-                validRows.push(result.data as TInsert);
+                const splitRow = splitCrudExtensionWriteInput(
+                  result.data as TInsert,
+                  tableColumnNames,
+                );
+                validRows.push(splitRow);
               } else {
                 const errors = result.error.issues.map(
                   (issue) => `${issue.path.join('.')}: ${issue.message}`,
@@ -1237,66 +2068,95 @@ export function createCrudRouter<
             if (validRows.length === 0) {
               return { success: 0, updated: 0, skipped: 0, failed };
             }
+            assertCrudExtraValuesWritableForRows(ctx, config, validRows);
 
-            // 批量插入有效行
-            const injectData = resolved.getInject(ctx, 'create');
-            const values = validRows.map((row) => ({
-              ...(row as object),
-              ...injectData,
-            }));
+            const { insertedCount, updatedCount } =
+              await runCrudExtensionWriteTransaction(
+                ctx,
+                config,
+                createCrudBatchTransactionInput(validRows),
+                async (writeCtx) => {
+                  // 批量插入有效行
+                  const injectData = resolved.getInject(writeCtx, 'create');
+                  const values = validRows.map((row) => ({
+                    ...(row.data as object),
+                    ...injectData,
+                  }));
 
-            let insertedCount = 0;
-            let updatedCount = 0;
+                  let insertedCount = 0;
+                  let updatedCount = 0;
 
-            if (importData.onConflict === 'upsert') {
-              // upsert: 存在则更新，不存在则新建
-              // 先查已存在的 ID 数量，用于区分 insert vs update
-              const existingIds = await ctx.db
-                .select({ id: getIdColumn() })
-                .from(table)
-                .where(
-                  inArray(
-                    getIdColumn(),
-                    values.map((v: any) => (v as any)[idField]).filter(Boolean),
-                  ),
-                );
-              const existingCount = existingIds.length;
+                  if (importData.onConflict === 'upsert') {
+                    // upsert: 存在则更新，不存在则新建
+                    // 先查已存在的 ID 数量，用于区分 insert vs update
+                    const existingIds = await writeCtx.db
+                      .select({ id: getIdColumn() })
+                      .from(table)
+                      .where(
+                        inArray(
+                          getIdColumn(),
+                          values.map((v: any) => (v as any)[idField]).filter(Boolean),
+                        ),
+                      );
+                    const existingCount = existingIds.length;
 
-              // 构建 set: 用 sql`excluded."col"` 引用待插入行的值
-              const updateFields = Object.keys(validRows[0] as object);
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const setClause: Record<string, any> = {
-                // 注入 update 时的额外字段（如 updatedAt）
-                ...resolved.getInject(ctx, 'update'),
-              };
-              for (const key of updateFields) {
-                setClause[key] = sql.raw(`excluded."${key}"`);
-              }
+                    // 构建 set: 用 sql`excluded."col"` 引用待插入行的值
+                    const updateFields = Object.keys(validRows[0]!.data as object);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const setClause: Record<string, any> = {
+                      // 注入 update 时的额外字段（如 updatedAt）
+                      ...resolved.getInject(writeCtx, 'update'),
+                    };
+                    for (const key of updateFields) {
+                      setClause[key] = sql.raw(`excluded."${key}"`);
+                    }
 
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const results = await ctx.db
-                .insert(table)
-                .values(values as any)
-                .onConflictDoUpdate({
-                  target: getIdColumn(),
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  set: setClause as any,
-                })
-                .returning({ id: getIdColumn() });
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const results = await writeCtx.db
+                      .insert(table)
+                      .values(values as any)
+                      .onConflictDoUpdate({
+                        target: getIdColumn(),
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        set: setClause as any,
+                      })
+                      .returning({ id: getIdColumn() });
+                    await saveCrudExtraValuesForRows(
+                      writeCtx,
+                      config,
+                      idField,
+                      results.map((result: { id: unknown }) => ({
+                        [idField]: result.id,
+                      })),
+                      validRows,
+                    );
 
-              updatedCount = Math.min(existingCount, results.length);
-              insertedCount = results.length - updatedCount;
-            } else {
-              // skip: 跳过冲突行
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const inserted = await ctx.db
-                .insert(table)
-                .values(values as any)
-                .onConflictDoNothing()
-                .returning({ id: getIdColumn() });
-              insertedCount = inserted.length;
-              updatedCount = 0;
-            }
+                    updatedCount = Math.min(existingCount, results.length);
+                    insertedCount = results.length - updatedCount;
+                  } else {
+                    // skip: 跳过冲突行
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const inserted = await writeCtx.db
+                      .insert(table)
+                      .values(values as any)
+                      .onConflictDoNothing()
+                      .returning({ id: getIdColumn() });
+                    await saveCrudExtraValuesForRows(
+                      writeCtx,
+                      config,
+                      idField,
+                      inserted.map((result: { id: unknown }) => ({
+                        [idField]: result.id,
+                      })),
+                      validRows,
+                    );
+                    insertedCount = inserted.length;
+                    updatedCount = 0;
+                  }
+
+                  return { insertedCount, updatedCount };
+                },
+              );
 
             const skipped = validRows.length - insertedCount - updatedCount;
 

@@ -362,6 +362,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.90.15
         version: 5.90.20(react@19.2.4)
+      '@testing-library/jest-dom':
+        specifier: catalog:dev
+        version: 6.9.1
       '@testing-library/react':
         specifier: catalog:dev
         version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -383,6 +386,9 @@ importers:
       eslint:
         specifier: catalog:dev
         version: 9.39.4(jiti@2.6.1)
+      jsdom:
+        specifier: catalog:dev
+        version: 27.4.0(postcss@8.5.15)
       react:
         specifier: catalog:prod
         version: 19.2.4
@@ -395,6 +401,9 @@ importers:
       typescript:
         specifier: catalog:dev
         version: 5.9.3
+      vitest:
+        specifier: catalog:dev
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.19)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.19.19)(typescript@5.9.3))(terser@5.43.1)(tsx@4.21.0)(yaml@2.9.0)
 
   packages/auto-crud-server:
     dependencies:
@@ -417,6 +426,9 @@ importers:
       '@internal/vitest-config':
         specifier: workspace:*
         version: link:../../tooling/vitest
+      '@testing-library/jest-dom':
+        specifier: catalog:dev
+        version: 6.9.1
       '@trpc/server':
         specifier: ^11.0.0
         version: 11.8.1(typescript@5.9.3)
@@ -12524,7 +12536,7 @@ snapshots:
       sirv: 3.0.1
       tinyglobby: 0.2.14
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@24.1.0)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@27.4.0(postcss@8.5.15))(lightningcss@1.32.0)(msw@2.14.6(@types/node@24.1.0)(typescript@5.9.3))(terser@5.43.1)(tsx@4.21.0)(yaml@2.9.0)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.19)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@27.4.0)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.19.19)(typescript@5.9.3))(terser@5.43.1)(tsx@4.21.0)(yaml@2.9.0)
 
   '@vitest/utils@2.0.5':
     dependencies:

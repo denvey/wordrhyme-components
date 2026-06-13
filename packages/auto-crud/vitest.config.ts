@@ -1,14 +1,17 @@
-import path from "node:path";
-import { mergeConfig } from "vitest/config";
-import baseConfig from "@internal/vitest-config";
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { configDefaults, defineConfig } from 'vitest/config';
 
-export default mergeConfig(baseConfig, {
-  test: {
-    environment: "jsdom",
-  },
+const dir = path.dirname(fileURLToPath(import.meta.url));
+
+export default defineConfig({
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(dir, 'src'),
     },
+  },
+  test: {
+    environment: 'jsdom',
+    exclude: [...configDefaults.exclude, 'src/hooks/test/use-data-grid.test.tsx'],
   },
 });

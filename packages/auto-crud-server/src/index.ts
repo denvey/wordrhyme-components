@@ -20,6 +20,10 @@ export type {
   CrudColumnConfig,
   CrudColumnExpression,
   CrudColumnRef,
+  CrudExtensionFilter,
+  CrudExtensionMetadata,
+  CrudExtensionsConfig,
+  CrudExtensionsProvider,
   CrudProcedures,
   // Operation types
   CrudOperation,

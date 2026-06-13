@@ -33,6 +33,12 @@ import { Download, Loader2, Upload } from 'lucide-react';
 import { exportAllToCSV } from '@/lib/export';
 import * as React from 'react';
 import { type LocaleProp, resolveLocale } from '@/i18n/locale';
+import {
+  dataSources,
+  normalizeDataSourceConfig,
+  normalizeOptions,
+  type AutoCrudDataSourceConfig,
+} from '@/lib/registries';
 
 /**
  * 筛选器独立配置
@@ -52,22 +58,30 @@ export interface FilterConfig {
     | 'select'
     | 'multiSelect';
   /** select/multiSelect 的选项列表 */
-  options?: Array<{
-    label: string;
-    value: string;
-    count?: number;
-    icon?: React.FC<React.SVGProps<SVGSVGElement>>;
-  }>;
+  options?: FieldOption[];
+  /** select/multiSelect 的动态选项源 */
+  dataSource?: AutoCrudDataSourceConfig;
   /** range 的最小/最大值 */
   range?: [number, number];
   /** number 的单位 */
   unit?: string;
   /** 过滤器占位符 */
   placeholder?: string;
+  /** 排序权重，数值越小越靠前 */
+  index?: number;
   /** 是否在筛选栏中隐藏（隐藏筛选但不影响表格列显示） */
   hidden?: boolean;
   /** 控制在哪些筛选模式下显示（未设置则在所有模式显示） */
   modes?: Array<'simple' | 'advanced' | 'command'>;
+}
+
+export interface FieldOption {
+  label: string;
+  value: string;
+  searchText?: string | string[];
+  count?: number;
+  icon?: React.FC<React.SVGProps<SVGSVGElement>>;
+  disabled?: boolean;
 }
 
 /**
@@ -77,8 +91,14 @@ export interface FilterConfig {
 export interface Field {
   /** 字段标签（表格和表单共用） */
   label?: string;
+  /** 字段级静态选项（表单、筛选、展示共用） */
+  enum?: FieldOption[];
+  /** 字段级动态选项源（表单、筛选、展示共用） */
+  dataSource?: AutoCrudDataSourceConfig;
   /** 是否隐藏（表格和表单都隐藏） */
   hidden?: boolean;
+  /** 是否参与 AutoCrud 全局搜索 */
+  search?: boolean;
   /**
    * 筛选器独立配置
    * - FilterConfig: 详细配置
@@ -95,6 +115,8 @@ export interface Field {
     | {
         /** 是否在表格中隐藏 */
         hidden?: boolean;
+        /** 排序权重，数值越小越靠前 */
+        index?: number;
         /** 筛选器配置 */
         meta?: Record<string, unknown>;
         /** 其他列配置 */
@@ -189,6 +211,8 @@ export type ToolbarActionConfig =
  * AutoCrudTable Props 接口
  */
 export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> {
+  /** Public CRUD id. Used by hosts to document the extension target. */
+  id?: string;
   /** 页面标题 */
   title?: string;
   /** 页面描述 */
@@ -214,6 +238,12 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
      * - 数组: 第一个为默认值，显示切换按钮
      */
     filterModes?: FilterMode | FilterMode[];
+    /** 全局搜索框；默认在存在 search: true 字段时显示 */
+    search?:
+      | boolean
+      | {
+          placeholder?: string;
+        };
     /**
      * 批量更新字段配置
      * - 只需传字段名数组，options 自动从 schema enum 推导
@@ -286,6 +316,175 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   onCreate?: () => void;
 }
 
+function mergeFieldPart<T>(
+  base: T | false | undefined,
+  override: T | false | undefined,
+): T | false | undefined {
+  if (override === undefined) return base;
+  if (
+    override === false ||
+    base === false ||
+    typeof base !== 'object' ||
+    typeof override !== 'object' ||
+    base === null ||
+    override === null ||
+    Array.isArray(base) ||
+    Array.isArray(override)
+  ) {
+    return override;
+  }
+
+  return { ...base, ...override };
+}
+
+function mergeFieldConfig(base: Field | undefined, override: Field | undefined): Field {
+  return {
+    ...base,
+    ...override,
+    enum: override?.enum ?? base?.enum,
+    dataSource: override?.dataSource ?? base?.dataSource,
+    table: mergeFieldPart(base?.table, override?.table),
+    filter: mergeFieldPart(base?.filter, override?.filter),
+    form: mergeFieldPart(base?.form, override?.form),
+  };
+}
+
+function mergeFields(
+  base: Fields | undefined,
+  override: Fields | undefined,
+): Fields | undefined {
+  if (!base && !override) return undefined;
+
+  const keys = new Set([...Object.keys(base ?? {}), ...Object.keys(override ?? {})]);
+  return Object.fromEntries(
+    Array.from(keys).map((key) => [key, mergeFieldConfig(base?.[key], override?.[key])]),
+  );
+}
+
+function normalizeFieldOptions(options?: FieldOption[]): FieldOption[] | undefined {
+  if (!options || options.length === 0) return undefined;
+
+  return options.map((option) => ({
+    ...option,
+    value: String(option.value),
+  }));
+}
+
+function toTableOptions(options?: FieldOption[]) {
+  return options?.map(({ label, value, searchText, count, icon }) => ({
+    label,
+    value,
+    searchText: Array.isArray(searchText) ? searchText.join(' ') : searchText,
+    count,
+    icon,
+  }));
+}
+
+function toBatchOptions(options?: FieldOption[]) {
+  return options?.map(({ label, value }) => ({ label, value }));
+}
+
+function getFilterDataSource(config: Field): AutoCrudDataSourceConfig | undefined {
+  if (config.filter && typeof config.filter === 'object') {
+    return config.filter.dataSource ?? config.dataSource;
+  }
+
+  return config.dataSource;
+}
+
+function shouldLoadDynamicFilterOptions(config: Field): boolean {
+  if (config.filter === false) return false;
+  if (normalizeFieldOptions(config.enum)) return false;
+
+  if (config.filter && typeof config.filter === 'object') {
+    if (config.filter.enabled === false || config.filter.hidden === true) return false;
+    if (normalizeFieldOptions(config.filter.options)) return false;
+  }
+
+  return normalizeDataSourceConfig(getFilterDataSource(config)) !== undefined;
+}
+
+function useRegistryVersion(subscribe: (listener: () => void) => () => void) {
+  const [version, setVersion] = React.useState(0);
+
+  React.useEffect(
+    () => subscribe(() => setVersion((current) => current + 1)),
+    [subscribe],
+  );
+
+  return version;
+}
+
+function useDynamicFilterOptions(fields?: Fields): Record<string, FieldOption[]> {
+  const registryVersion = useRegistryVersion(dataSources.subscribe);
+  const [optionsByField, setOptionsByField] = React.useState<
+    Record<string, FieldOption[]>
+  >({});
+
+  const sourceEntries = React.useMemo(() => {
+    if (!fields) return [];
+
+    return Object.entries(fields).flatMap(([field, config]) => {
+      if (!shouldLoadDynamicFilterOptions(config)) return [];
+
+      const source = normalizeDataSourceConfig(getFilterDataSource(config));
+      return source ? [{ field, source }] : [];
+    });
+  }, [fields]);
+
+  React.useEffect(() => {
+    if (sourceEntries.length === 0) {
+      setOptionsByField({});
+      return;
+    }
+
+    let active = true;
+    const controller =
+      typeof AbortController === 'undefined' ? undefined : new AbortController();
+
+    void Promise.all(
+      sourceEntries.map(async ({ field, source }) => {
+        const loader = dataSources.get(source.key);
+        if (!loader) return [field, []] as const;
+
+        try {
+          const options = normalizeOptions(
+            await loader({
+              field,
+              values: {},
+              signal: controller?.signal,
+            }),
+          );
+          return [field, options] as const;
+        } catch (error) {
+          if (!controller?.signal.aborted) {
+            console.warn(
+              `[AutoCrud] Failed to load filter data source "${source.key}".`,
+              error,
+            );
+          }
+          return [field, []] as const;
+        }
+      }),
+    ).then((entries) => {
+      if (!active) return;
+      setOptionsByField(Object.fromEntries(entries));
+    });
+
+    return () => {
+      active = false;
+      controller?.abort();
+    };
+  }, [sourceEntries, registryVersion]);
+
+  return optionsByField;
+}
+
+function getOptionLabel(value: unknown, options?: FieldOption[]) {
+  const stringValue = String(value);
+  return options?.find((option) => option.value === stringValue)?.label ?? stringValue;
+}
+
 /**
  * 从统一配置生成表格 overrides
  * 当 filter 配置存在时，合并到 meta 中（不影响列隐藏）
@@ -293,16 +492,36 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
 function buildTableOverrides(
   fields?: Fields,
   legacyOverrides?: Record<string, any>,
+  dynamicFilterOptions?: Record<string, FieldOption[]>,
 ): Record<string, any> {
   const result: Record<string, any> = { ...legacyOverrides };
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
+      const fieldOptions = normalizeFieldOptions(config.enum);
+      const tableOptions = toTableOptions(fieldOptions);
+      const dynamicOptions = !fieldOptions
+        ? toTableOptions(normalizeFieldOptions(dynamicFilterOptions?.[key]))
+        : undefined;
+
       // 提取 table.meta（无论 filter 配置如何都需要保留）
       const tableMeta =
         config.table !== false && typeof config.table === 'object'
           ? (config.table.meta as Record<string, unknown> | undefined)
           : undefined;
+
+      const fieldEnumMeta = tableOptions
+        ? {
+            options: tableOptions,
+            variant: 'multiSelect',
+          }
+        : undefined;
+      const fieldDataSourceMeta = dynamicOptions
+        ? {
+            options: dynamicOptions,
+            variant: 'multiSelect',
+          }
+        : undefined;
 
       // 提取 filter meta
       let filterMeta: Record<string, unknown> | undefined;
@@ -333,11 +552,13 @@ function buildTableOverrides(
       }
 
       // 始终合并 meta（无论 filter 状态如何）
-      if (tableMeta || filterMeta) {
+      if (fieldEnumMeta || fieldDataSourceMeta || tableMeta || filterMeta) {
         result[key] = {
           ...result[key],
           meta: {
             ...(result[key]?.meta ?? {}),
+            ...(fieldEnumMeta ?? {}),
+            ...(fieldDataSourceMeta ?? {}),
             ...(tableMeta ?? {}),
             ...(filterMeta ?? {}), // filter meta 优先级更高
           },
@@ -403,6 +624,17 @@ function buildFormOverrides(
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
+      const formConfig =
+        config.form && typeof config.form === 'object' ? config.form : undefined;
+      const formOptions = normalizeFieldOptions(
+        formConfig?.enum as FieldOption[] | undefined,
+      );
+      const fieldOptions = formOptions ?? normalizeFieldOptions(config.enum);
+      const fieldDataSource =
+        fieldOptions || !config.dataSource
+          ? undefined
+          : normalizeDataSourceConfig(config.dataSource);
+
       // 处理共用配置
       if (config.label) {
         result[key] = {
@@ -415,6 +647,20 @@ function buildFormOverrides(
         result[key] = {
           ...result[key],
           'x-hidden': true,
+        };
+      }
+
+      if (fieldOptions) {
+        result[key] = {
+          ...result[key],
+          enum: fieldOptions,
+        };
+      }
+
+      if (fieldDataSource) {
+        result[key] = {
+          ...result[key],
+          'x-data-source': config.dataSource,
         };
       }
 
@@ -496,6 +742,16 @@ function buildBatchUpdateFields<T extends z.ZodObject<z.ZodRawShape>>(
 
       const parsed = parseZodField(fieldSchema as z.ZodType);
       const label = fields?.[field]?.label ?? humanize(field);
+      const fieldOptions = normalizeFieldOptions(fields?.[field]?.enum);
+      const batchOptions = toBatchOptions(fieldOptions);
+
+      if (batchOptions) {
+        return {
+          field,
+          label,
+          options: batchOptions,
+        };
+      }
 
       // 如果是 enum 类型，自动生成 options
       if (parsed.type === 'enum' && parsed.enumValues) {
@@ -525,9 +781,31 @@ function renderFieldValue(
   value: unknown,
   type: string,
   booleanLocale: { true: string; false: string },
+  options?: FieldOption[],
 ): React.ReactNode {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground">-</span>;
+  }
+
+  if (options && options.length > 0) {
+    if (Array.isArray(value)) {
+      return (
+        <div className="flex gap-1 flex-wrap">
+          {value.slice(0, 5).map((v, i) => (
+            <Badge key={i} variant="secondary">
+              {getOptionLabel(v, options)}
+            </Badge>
+          ))}
+          {value.length > 5 && <Badge variant="outline">+{value.length - 5}</Badge>}
+        </div>
+      );
+    }
+
+    return (
+      <Badge variant="outline" className="capitalize">
+        {getOptionLabel(value, options)}
+      </Badge>
+    );
   }
 
   switch (type) {
@@ -596,12 +874,13 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
         const parsed = parseZodField(fieldSchema as z.ZodType);
         const label = fieldConfig?.[key]?.label ?? humanize(key);
         const value = (data as Record<string, unknown>)[key];
+        const options = normalizeFieldOptions(fieldConfig?.[key]?.enum);
 
         return (
           <div key={key} className="grid grid-cols-3 items-start gap-4">
             <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
             <dd className="col-span-2 text-sm">
-              {renderFieldValue(value, parsed.type, locale.boolean)}
+              {renderFieldValue(value, parsed.type, locale.boolean, options)}
             </dd>
           </div>
         );
@@ -766,6 +1045,12 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   onCreate,
 }: AutoCrudTableProps<TSchema>) {
   const locale = resolveLocale(localeProp);
+  const resolvedSchema = resource.schema ?? schema;
+  const resolvedFields = React.useMemo<Fields>(
+    () => mergeFields(resource.fields, fields) ?? {},
+    [fields, resource.fields],
+  );
+
   // 解析权限配置（默认全部允许）
   const can = {
     create: permissions?.can?.create ?? true,
@@ -786,13 +1071,14 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const [selectedCount, setSelectedCount] = React.useState(0);
   const [exporting, setExporting] = React.useState(false);
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
+  const dynamicFilterOptions = useDynamicFilterOptions(resolvedFields);
 
   // 从 schema 提取可导入的列名（排除 deny 字段）
   const importColumns = React.useMemo(() => {
-    const shape = schema.shape;
+    const shape = resolvedSchema.shape;
     const denySet = new Set(denyFields ?? []);
     return Object.keys(shape).filter((key) => !denySet.has(key));
-  }, [schema, denyFields]);
+  }, [resolvedSchema, denyFields]);
 
   // 导出处理（支持选中/筛选两种模式）
   const handleExport = React.useCallback(
@@ -834,22 +1120,37 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
 
   // 构建表格和表单的 overrides（memoized）
   const tableOverrides = React.useMemo(
-    () => buildTableOverrides(fields, tableConfig?.overrides),
-    [fields, tableConfig?.overrides],
+    () =>
+      buildTableOverrides(resolvedFields, tableConfig?.overrides, dynamicFilterOptions),
+    [resolvedFields, tableConfig?.overrides, dynamicFilterOptions],
   );
   // Critical #2: 传入 denyFields 到表单 overrides
   const formOverrides = React.useMemo(
-    () => buildFormOverrides(fields, formConfig?.overrides, denyFields),
-    [fields, formConfig?.overrides, denyFields],
+    () => buildFormOverrides(resolvedFields, formConfig?.overrides, denyFields),
+    [resolvedFields, formConfig?.overrides, denyFields],
   );
   const hiddenColumns = React.useMemo(
-    () => buildHiddenColumns(fields, tableConfig?.hidden, denyFields),
-    [fields, tableConfig?.hidden, denyFields],
+    () => buildHiddenColumns(resolvedFields, tableConfig?.hidden, denyFields),
+    [resolvedFields, tableConfig?.hidden, denyFields],
   );
+  const searchConfig = React.useMemo(() => {
+    const tableSearch = tableConfig?.search;
+    if (tableSearch === false) return false;
+    if (tableSearch && typeof tableSearch === 'object') return tableSearch;
+    return Object.values(resolvedFields).some((field) => field?.search === true)
+      ? true
+      : false;
+  }, [resolvedFields, tableConfig?.search]);
   const batchFields = React.useMemo(
-    () => buildBatchUpdateFields(schema, tableConfig?.batchFields, fields),
-    [schema, tableConfig?.batchFields, fields],
+    () =>
+      buildBatchUpdateFields(resolvedSchema, tableConfig?.batchFields, resolvedFields),
+    [resolvedSchema, tableConfig?.batchFields, resolvedFields],
   );
+  const formInitialValues = React.useMemo(() => {
+    return resource.modal.createOpen
+      ? (resource.modal.copySource ?? undefined)
+      : (resource.modal.selected ?? undefined);
+  }, [resource.modal.createOpen, resource.modal.copySource, resource.modal.selected]);
 
   return (
     <div className="space-y-4">
@@ -1004,11 +1305,12 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       {/* Table */}
       <AutoTable
         data={resource.tableData.data}
-        schema={schema}
+        schema={resolvedSchema as TSchema}
         pageCount={resource.tableData.pageCount}
         overrides={tableOverrides as any}
         exclude={hiddenColumns as any}
         filterMode={tableConfig?.filterModes}
+        search={searchConfig}
         actions={resolveActions(
           actionItems,
           {
@@ -1036,12 +1338,8 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         open={resource.modal.createOpen || resource.modal.editOpen}
         onOpenChange={(open) => !open && resource.handlers.closeModals()}
         mode={resource.modal.createOpen ? 'create' : 'edit'}
-        schema={schema}
-        initialValues={
-          resource.modal.createOpen
-            ? (resource.modal.copySource ?? undefined)
-            : (resource.modal.selected ?? undefined)
-        }
+        schema={resolvedSchema}
+        initialValues={formInitialValues}
         onSubmit={(values) => {
           if (resource.modal.createOpen) {
             resource.handlers.submitCreate(values as z.output<TSchema>);
@@ -1063,8 +1361,8 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         onOpenChange={(open) => !open && resource.handlers.closeModals()}
         variant={resource.modal.variant}
         data={resource.modal.selected}
-        schema={schema}
-        fields={fields}
+        schema={resolvedSchema}
+        fields={resolvedFields}
         denyFields={denyFields}
         locale={locale}
       />

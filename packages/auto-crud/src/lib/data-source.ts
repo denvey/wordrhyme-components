@@ -10,6 +10,7 @@ export interface ListParams {
   page: number;
   perPage: number;
   sort?: Array<{ id: string; desc: boolean }>;
+  search?: string;
   filters?: Array<{
     id: string;
     value: any;
@@ -112,7 +113,7 @@ export function createTRPCDataSource<T = any>(router: any): DataSource<T> {
  * ```
  */
 export function createMemoryDataSource<T extends { id: string | number }>(
-  initialData: T[] = []
+  initialData: T[] = [],
 ): DataSource<T> {
   let data = [...initialData];
   let nextId = Math.max(...data.map((item) => Number(item.id)), 0) + 1;

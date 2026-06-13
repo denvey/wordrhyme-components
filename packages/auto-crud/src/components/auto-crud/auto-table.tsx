@@ -8,7 +8,7 @@ import { DataTableFilterList } from '@/components/data-table/data-table-filter-l
 import { DataTableFilterMenu } from '@/components/data-table/data-table-filter-menu';
 import { DataTableSortList } from '@/components/data-table/data-table-sort-list';
 import { DataTableViewOptions } from '@/components/data-table/data-table-view-options';
-import { Button } from '@pixpilot/shadcn';
+import { Button, Input } from '@pixpilot/shadcn';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,7 +16,13 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@pixpilot/shadcn';
-import { parseAsStringEnum, useQueryState } from '@/hooks/use-url-state';
+import {
+  parseAsInteger,
+  parseAsString,
+  parseAsStringEnum,
+  useQueryState,
+  useUrlState,
+} from '@/hooks/use-url-state';
 import { AutoTableSimpleFilters } from './auto-table-simple-filters';
 import {
   AutoTableActionBar,
@@ -79,6 +85,12 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
    * 默认: ["simple", "advanced", "command"] (全部显示)
    */
   filterMode?: FilterMode | FilterMode[];
+  /** 全局搜索框 */
+  search?:
+    | boolean
+    | {
+        placeholder?: string;
+      };
   /** 批量删除回调 */
   onDeleteSelected?: (rows: z.infer<T>[]) => void;
   /** 批量更新回调 */
@@ -111,6 +123,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   actions,
   pinnedColumns,
   filterMode = 'simple',
+  search = false,
   onDeleteSelected,
   onUpdateSelected,
   batchUpdateFields,
@@ -133,6 +146,19 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     parseAsStringEnum<FilterMode>(modes).withDefault(modes[0] ?? 'simple'),
   );
   const showToggle = modes.length > 1;
+  const [searchValue, setSearchValue] = useUrlState(
+    'search',
+    parseAsString.withDefault(''),
+    {
+      shallow: false,
+      clearOnDefault: true,
+    },
+  );
+  const [, setSearchPage] = useUrlState('page', parseAsInteger.withDefault(1), {
+    shallow: false,
+    clearOnDefault: true,
+  });
+  const searchConfig = search && typeof search === 'object' ? search : {};
 
   // 所有模式都使用高级过滤的数据流（filters 数组同步到 URL）
   // 区别只在于 UI 展示方式
@@ -230,11 +256,25 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     </DropdownMenu>
   ) : null;
 
+  const searchInput = search ? (
+    <Input
+      value={searchValue}
+      onChange={(event) => {
+        setSearchValue(event.target.value);
+        setSearchPage(1);
+      }}
+      placeholder={searchConfig.placeholder ?? '搜索'}
+      className="h-8 w-48 shrink-0"
+    />
+  ) : null;
+
   // 渲染过滤器组件（memoized to avoid recreating on every render）
   const filtersContent = useMemo(() => {
     switch (currentMode) {
       case 'simple':
-        return <AutoTableSimpleFilters table={table} shallow={shallow} />;
+        return (
+          <AutoTableSimpleFilters table={table} shallow={shallow} leading={searchInput} />
+        );
       case 'command':
         return (
           <DataTableFilterMenu
@@ -255,12 +295,16 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           />
         );
     }
-  }, [currentMode, table, shallow, debounceMs, throttleMs]);
+  }, [currentMode, table, columns, shallow, searchInput, debounceMs, throttleMs]);
 
   return (
     <div className="space-y-4">
       <div className="flex w-full items-start justify-between gap-2 p-1">
-        <div className="flex flex-1 items-start gap-2 min-h-[40px]" data-filter-parent>
+        <div
+          className="flex min-h-[40px] min-w-0 flex-1 items-start gap-2"
+          data-filter-parent
+        >
+          {currentMode !== 'simple' && searchInput}
           {currentMode !== 'simple' && <DataTableSortList table={table} align="start" />}
           {filtersContent}
         </div>

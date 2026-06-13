@@ -35,6 +35,16 @@ type CrudCaller = {
   get: (input: string | Record<string, unknown>) => Promise<any>;
   list: (input: Record<string, unknown>) => Promise<any>;
 };
+type MutationCaller = {
+  create: (input: Record<string, unknown>) => Promise<any>;
+  createMany: (input: Array<Record<string, unknown>>) => Promise<any>;
+  upsert: (input: Record<string, unknown>) => Promise<any>;
+  update: (input: { id: string; data: Record<string, unknown> }) => Promise<any>;
+  updateMany: (input: { ids: string[]; data: Record<string, unknown> }) => Promise<any>;
+};
+type MetadataCaller = {
+  meta: () => Promise<any>;
+};
 
 // Mock 数据库
 function createMockDb() {
@@ -146,6 +156,11 @@ const mockProcedure = {
   mutation: vi.fn().mockReturnThis(),
 };
 
+const mockProcedureWithMeta = {
+  ...mockProcedure,
+  meta: vi.fn().mockReturnThis(),
+};
+
 // ============================================================
 // 测试套件
 // ============================================================
@@ -218,6 +233,18 @@ describe('createCrudRouter', () => {
 
       const router = createCrudRouter(config);
       expect(router.procedures).toBeDefined();
+    });
+
+    it('should treat a procedure builder with meta() as a single procedure', () => {
+      const config: CrudRouterConfig = {
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        procedure: mockProcedureWithMeta as any,
+      };
+
+      expect(() => createCrudRouter(config)).not.toThrow();
+      expect(mockProcedureWithMeta.output).toHaveBeenCalled();
     });
 
     it('should work with procedure map', () => {
@@ -741,9 +768,7 @@ describe('createCrudRouter', () => {
         schema: insertTaskSchema,
         updateSchema: updateTaskSchema,
         selectSchema: taskSchema,
-        filterableColumns: [
-          { id: 'title', jsonField: ['zh-CN', 'en-US', 'en', 'zh'] },
-        ],
+        filterableColumns: [{ id: 'title', jsonField: ['zh-CN', 'en-US', 'en', 'zh'] }],
       });
 
       const caller = crudRouter.createCaller({ db } as any) as ListCaller;
@@ -860,6 +885,688 @@ describe('createCrudRouter', () => {
 
       expect(db.builders[0]?.where).not.toHaveBeenCalled();
       expect(db.builders[1]?.where).not.toHaveBeenCalled();
+    });
+
+    it('should not treat disallowed table filters as extension filters', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        filterableColumns: ['status'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await expect(
+        caller.list({
+          page: 1,
+          perPage: 10,
+          filters: [
+            {
+              id: 'title',
+              value: 'Task',
+              operator: 'iLike',
+              variant: 'text',
+              filterId: 'title',
+            },
+          ],
+          joinOperator: 'and',
+        }),
+      ).resolves.toMatchObject({ total: 1 });
+
+      expect(db.builders[0]?.where).not.toHaveBeenCalled();
+      expect(db.builders[1]?.where).not.toHaveBeenCalled();
+    });
+
+    it('should apply global search through configured searchColumns', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        searchColumns: ['title'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        search: 'Task',
+        joinOperator: 'and',
+      });
+
+      const whereArg = db.builders[0]?.where.mock.calls[0]?.[0];
+      const sqlText = collectSqlText(whereArg);
+
+      expect(db.builders[0]?.where).toHaveBeenCalledTimes(1);
+      expect(sqlText).toContain('ilike');
+      expect(sqlText).toContain('::text');
+    });
+  });
+
+  describe('CRUD extension writes', () => {
+    it('should expose extension metadata from ctx.crudExtensions', async () => {
+      const getMetadata = vi.fn().mockResolvedValue({
+        schema: {
+          type: 'object',
+          properties: {
+            owner: { type: 'string' },
+          },
+        },
+        fields: {
+          owner: { label: 'Owner', search: true },
+        },
+      });
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db: createMockDb(),
+        crudExtensions: {
+          getMetadata,
+        },
+      } as any) as MetadataCaller;
+
+      const result = await caller.meta();
+
+      expect(getMetadata).toHaveBeenCalledWith({ id: 'com.example.tasks' });
+      expect(result).toEqual({
+        schema: {
+          type: 'object',
+          properties: {
+            owner: { type: 'string' },
+          },
+        },
+        fields: {
+          owner: { label: 'Owner', search: true },
+        },
+      });
+    });
+
+    it('should merge projection values into list rows through ctx.crudExtensions', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const readProjection = vi.fn().mockResolvedValue({
+        '1': {
+          owner: {
+            value: 'user-1',
+            display: 'User One',
+          },
+        },
+      });
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          readProjection,
+        },
+      } as any) as ListCaller;
+
+      const result = await caller.list({
+        page: 1,
+        perPage: 10,
+        joinOperator: 'and',
+      });
+
+      expect(readProjection).toHaveBeenCalledWith({
+        id: 'com.example.tasks',
+        entityIds: ['1'],
+      });
+      expect(result.data[0]).toMatchObject({
+        id: '1',
+        owner: 'User One',
+      });
+    });
+
+    it('should keep extension id filters when filterableColumns are restricted', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const matchEntityIds = vi.fn().mockResolvedValue(['1']);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        filterableColumns: ['status'],
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          matchEntityIds,
+        },
+      } as any) as ListCaller;
+
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        filters: [
+          {
+            id: 'owner',
+            value: 'user-1',
+            operator: 'inArray',
+            variant: 'multiSelect',
+            filterId: 'owner',
+          },
+        ],
+        joinOperator: 'and',
+      });
+
+      expect(matchEntityIds).toHaveBeenCalledWith({
+        id: 'com.example.tasks',
+        filters: [
+          {
+            id: 'owner',
+            value: 'user-1',
+            operator: 'inArray',
+            variant: 'multiSelect',
+            filterId: 'owner',
+          },
+        ],
+        joinOperator: 'and',
+        limit: 5000,
+      });
+      expect(db.builders[0]?.where).toHaveBeenCalled();
+      expect(db.builders[1]?.where).toHaveBeenCalled();
+    });
+
+    it('should strip direct extra fields from upsert table writes and persist them separately', async () => {
+      const db = createMockDb();
+      const saveExtraValues = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          saveExtraValues,
+        },
+      } as any) as MutationCaller;
+
+      await caller.upsert({
+        id: 'new-id',
+        title: 'New Task',
+        status: 'todo',
+        owner: 'user-1',
+      });
+
+      expect(db.values).toHaveBeenCalledWith({
+        id: 'new-id',
+        title: 'New Task',
+        status: 'todo',
+      });
+      expect(db.onConflictDoUpdate.mock.calls[0]?.[0].set).toEqual({
+        id: 'new-id',
+        title: 'New Task',
+        status: 'todo',
+      });
+      expect(saveExtraValues).toHaveBeenCalledWith({
+        id: 'com.example.tasks',
+        entityId: 'new-id',
+        rawValues: {
+          id: 'new-id',
+          title: 'New Task',
+          status: 'todo',
+          owner: 'user-1',
+        },
+        baseValues: {
+          id: 'new-id',
+          title: 'New Task',
+          status: 'todo',
+        },
+        extraValues: {
+          owner: 'user-1',
+        },
+        tx: undefined,
+      });
+    });
+
+    it('should keep legacy ext payload compatibility', async () => {
+      const db = createMockDb();
+      const saveExtraValues = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          saveExtraValues,
+        },
+      } as any) as MutationCaller;
+
+      await caller.upsert({
+        id: 'new-id',
+        title: 'New Task',
+        status: 'todo',
+        ext: {
+          owner: 'user-1',
+        },
+      });
+
+      expect(db.values).toHaveBeenCalledWith({
+        id: 'new-id',
+        title: 'New Task',
+        status: 'todo',
+      });
+      expect(saveExtraValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          extraValues: {
+            owner: 'user-1',
+          },
+        }),
+      );
+    });
+
+    it('should save create extra values inside a shared transaction', async () => {
+      const tx = createMockDb();
+      const db = {
+        transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+          callback(tx),
+        ),
+      };
+      const saveExtraValues = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          saveExtraValues,
+        },
+      } as any) as MutationCaller;
+
+      await caller.create({
+        title: 'New Task',
+        status: 'todo',
+        owner: 'user-1',
+      });
+
+      expect(db.transaction).toHaveBeenCalledTimes(1);
+      expect(tx.values).toHaveBeenCalledWith({
+        title: 'New Task',
+        status: 'todo',
+      });
+      expect(saveExtraValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityId: 'new-id',
+          extraValues: {
+            owner: 'user-1',
+          },
+          tx,
+        }),
+      );
+    });
+
+    it('should roll back create base write when extra value persistence fails', async () => {
+      const committedRows: unknown[] = [];
+      const pendingRows: unknown[] = [];
+      const tx = createMockDb();
+      tx.values.mockImplementation((row: unknown) => {
+        pendingRows.push(row);
+        return tx;
+      });
+      const db = {
+        transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+          try {
+            const result = await callback(tx);
+            committedRows.push(...pendingRows);
+            return result;
+          } finally {
+            pendingRows.length = 0;
+          }
+        }),
+      };
+      const saveExtraValues = vi.fn().mockRejectedValue(new Error('plugin save failed'));
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          saveExtraValues,
+        },
+      } as any) as MutationCaller;
+
+      await expect(
+        caller.create({
+          title: 'New Task',
+          status: 'todo',
+          owner: 'user-1',
+        }),
+      ).rejects.toThrow('plugin save failed');
+
+      expect(committedRows).toEqual([]);
+      expect(pendingRows).toEqual([]);
+    });
+
+    it('should emit create lifecycle hook inside the shared transaction', async () => {
+      const tx = createMockDb();
+      const db = {
+        transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+          callback(tx),
+        ),
+      };
+      const hooks = {
+        emit: vi.fn().mockResolvedValue(undefined),
+      };
+      const crudRouter = createCrudRouter({
+        id: 'com.wordrhyme.shop.stores',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        hooks,
+      } as any) as MutationCaller;
+
+      await caller.create({
+        title: 'New Task',
+        status: 'todo',
+      });
+
+      expect(db.transaction).toHaveBeenCalledTimes(1);
+      expect(hooks.emit).toHaveBeenCalledWith(
+        'com.wordrhyme.shop.stores.create',
+        expect.objectContaining({
+          entityId: 'new-id',
+          extraValues: {},
+          row: expect.objectContaining({ id: 'new-id' }),
+        }),
+        {
+          dispatch: 'hook',
+          mode: 'effect',
+          tx,
+        },
+      );
+    });
+
+    it('should roll back create base write when lifecycle hook fails', async () => {
+      const committedRows: unknown[] = [];
+      const pendingRows: unknown[] = [];
+      const tx = createMockDb();
+      tx.values.mockImplementation((row: unknown) => {
+        pendingRows.push(row);
+        return tx;
+      });
+      const db = {
+        transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+          try {
+            const result = await callback(tx);
+            committedRows.push(...pendingRows);
+            return result;
+          } finally {
+            pendingRows.length = 0;
+          }
+        }),
+      };
+      const hooks = {
+        emit: vi.fn().mockRejectedValue(new Error('lifecycle failed')),
+      };
+      const crudRouter = createCrudRouter({
+        id: 'com.wordrhyme.shop.stores',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        hooks,
+      } as any) as MutationCaller;
+
+      await expect(
+        caller.create({
+          title: 'New Task',
+          status: 'todo',
+        }),
+      ).rejects.toThrow('lifecycle failed');
+
+      expect(committedRows).toEqual([]);
+      expect(pendingRows).toEqual([]);
+    });
+
+    it('should emit lifecycle hooks for custom non-dotted crud ids', async () => {
+      const tx = createMockDb();
+      const db = {
+        transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+          callback(tx),
+        ),
+      };
+      const hooks = {
+        emit: vi.fn().mockResolvedValue(undefined),
+      };
+      const crudRouter = createCrudRouter({
+        id: 'customStore',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        hooks,
+      } as any) as MutationCaller;
+
+      await caller.create({
+        title: 'New Task',
+        status: 'todo',
+      });
+
+      expect(hooks.emit).toHaveBeenCalledWith(
+        'customStore.create',
+        expect.objectContaining({
+          entityId: 'new-id',
+        }),
+        expect.objectContaining({
+          tx,
+        }),
+      );
+    });
+
+    it('should scope extension-only updateMany before saving extra values', async () => {
+      const selectBuilder = {
+        from: vi.fn(() => selectBuilder),
+        where: vi.fn(() => [{ id: '1' }]),
+      };
+      const db = {
+        select: vi.fn(() => selectBuilder),
+        update: vi.fn(),
+      };
+      const saveExtraValues = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          saveExtraValues,
+        },
+      } as any) as MutationCaller;
+
+      const result = await caller.updateMany({
+        ids: ['1', '2'],
+        data: {
+          owner: 'user-1',
+        },
+      });
+
+      expect(result).toEqual({ updated: 1 });
+      expect(db.update).not.toHaveBeenCalled();
+      expect(selectBuilder.where).toHaveBeenCalledTimes(1);
+      expect(saveExtraValues).toHaveBeenCalledTimes(1);
+      expect(saveExtraValues).toHaveBeenCalledWith(
+        expect.objectContaining({
+          entityId: '1',
+          extraValues: {
+            owner: 'user-1',
+          },
+        }),
+      );
+    });
+
+    it('should roll back createMany when extra values cannot be matched to returned rows', async () => {
+      const committedRows: unknown[] = [];
+      const pendingRows: unknown[] = [];
+      const tx = {
+        insert: vi.fn(() => tx),
+        values: vi.fn((rows: unknown[]) => {
+          pendingRows.push(...rows);
+          return tx;
+        }),
+        onConflictDoNothing: vi.fn(() => tx),
+        returning: vi.fn(() => [
+          { id: 'created-id', title: 'Created Task', status: 'todo' },
+        ]),
+      };
+      const db = {
+        transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) => {
+          try {
+            const result = await callback(tx);
+            committedRows.push(...pendingRows);
+            return result;
+          } finally {
+            pendingRows.length = 0;
+          }
+        }),
+      };
+      const saveExtraValues = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          saveExtraValues,
+        },
+      } as any) as MutationCaller;
+
+      await expect(
+        caller.createMany([
+          {
+            title: 'Skipped Task',
+            status: 'todo',
+            owner: 'skipped-owner',
+          },
+          {
+            title: 'Created Task',
+            status: 'todo',
+            owner: 'created-owner',
+          },
+        ]),
+      ).rejects.toThrow('Cannot persist CRUD extension values');
+
+      expect(tx.values).toHaveBeenCalledWith([
+        { title: 'Skipped Task', status: 'todo' },
+        { title: 'Created Task', status: 'todo' },
+      ]);
+      expect(saveExtraValues).not.toHaveBeenCalled();
+      expect(committedRows).toEqual([]);
+      expect(pendingRows).toEqual([]);
+    });
+
+    it('should reject extra fields before writing when no provider is available', async () => {
+      const db = createMockDb();
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as MutationCaller;
+
+      await expect(
+        caller.upsert({
+          id: 'new-id',
+          title: 'New Task',
+          status: 'todo',
+          owner: 'user-1',
+        }),
+      ).rejects.toThrow('CRUD extension persistence is not available');
+      expect(db.values).not.toHaveBeenCalled();
+    });
+
+    it('should reject search when neither base nor extension search is available', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+
+      await expect(
+        caller.list({
+          page: 1,
+          perPage: 10,
+          search: 'Task',
+          joinOperator: 'and',
+        }),
+      ).rejects.toThrow('CRUD search is not available');
+      expect(db.builders).toHaveLength(0);
     });
   });
 });

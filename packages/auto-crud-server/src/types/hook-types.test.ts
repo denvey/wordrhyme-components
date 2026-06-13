@@ -118,6 +118,7 @@ describe('CrudHookEventMap 类型推导', () => {
       page: number;
       perPage: number;
       sort?: Array<{ id: string; desc: boolean }>;
+      search?: string;
       filters?: Array<{
         id: string;
         value: string | string[];
@@ -147,6 +148,7 @@ describe('CrudHookEventMap 类型推导', () => {
   it('export procedure hook 应推导为完整 ExportInput 结构', () => {
     expectTypeOf<TestMap['crm.customers.export']>().toEqualTypeOf<{
       sort?: Array<{ id: string; desc: boolean }>;
+      search?: string;
       filters?: Array<{
         id: string;
         value: string | string[];

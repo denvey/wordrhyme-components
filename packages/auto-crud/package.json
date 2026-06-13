@@ -1,7 +1,7 @@
 {
   "name": "@wordrhyme/auto-crud",
   "type": "module",
-  "version": "1.1.2",
+  "version": "1.2.1",
   "packageManager": "pnpm@10.25.0",
   "description": "Schema-first CRUD components with auto-generated tables and forms",
   "author": "wordrhyme",
@@ -42,6 +42,7 @@
     "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore"
   },
   "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
     "react": "^18.0.0 || ^19.0.0",
     "react-dom": "^18.0.0 || ^19.0.0",
     "sonner": "^2.0.0",
@@ -91,6 +92,7 @@
     "@internal/tsdown-config": "workspace:*",
     "@internal/vitest-config": "workspace:*",
     "@tanstack/react-query": "^5.90.15",
+    "@testing-library/jest-dom": "catalog:dev",
     "@testing-library/react": "catalog:dev",
     "@trpc/server": "^11.0.0",
     "@types/node": "catalog:dev",
@@ -98,10 +100,12 @@
     "@types/react-dom": "catalog:dev",
     "drizzle-orm": "1.0.0-beta.15-859cf75",
     "eslint": "catalog:dev",
+    "jsdom": "catalog:dev",
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
     "tsdown": "catalog:dev",
-    "typescript": "catalog:dev"
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev"
   },
   "prettier": "@internal/prettier-config"
 }

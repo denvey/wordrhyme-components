@@ -1,5 +1,18 @@
 # @wordrhyme/auto-crud
 
+## 1.2.0
+
+### Minor Changes
+
+- Add a reusable searchable MultiCombobox inside AutoCrud and reuse it in table filters and generated forms. The option list stays scrollable inside dialogs by constraining the command group and handling wheel events inside the scroll container.
+
+  Expose AutoCrud form component and data source registries from the package entry so plugins can register custom Formily components and dynamic option loaders.
+
+### Patch Changes
+
+- Move entity extension support into the AutoCrud packages: AutoCrud now discovers extension fields, merges schema/field config, renders extension columns/filters/search, hydrates list rows from projections, and submits extension form values through `ext`. AutoCrud Server now accepts an optional globally unique CRUD `id`, `search`, extension write payloads, and projection-backed extension filter/search matching. Also fixes AutoCrud form Combobox search by label/searchText/keywords while preserving submitted option values.
+- 0653981: Fix readable filter URL synchronization when clearing the final active filter.
+
 ## 1.0.4
 
 ### Patch Changes

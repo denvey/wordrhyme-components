@@ -1,12 +1,18 @@
-import { useReducer, useCallback, useMemo, useRef, useEffect } from "react";
-import { z } from "zod";
-import { toast as sonnerToast } from "sonner";
-import { keepPreviousData } from "@tanstack/react-query";
-import { useQueryStates, parseAsInteger, parseAsStringEnum } from "@/hooks/use-url-state";
-import { useReadableFilters } from "@/hooks/use-readable-filters";
-import { createTableSchema } from "@/lib/schema-bridge/zod-to-columns";
-import { getSortingStateParser } from "@/lib/parsers";
-import { coerceRowValues } from "@/lib/import";
+import { useReducer, useCallback, useMemo, useRef, useEffect } from 'react';
+import { z } from 'zod';
+import { toast as sonnerToast } from 'sonner';
+import { keepPreviousData } from '@tanstack/react-query';
+import {
+  useQueryStates,
+  parseAsInteger,
+  parseAsString,
+  parseAsStringEnum,
+} from '@/hooks/use-url-state';
+import { useReadableFilters } from '@/hooks/use-readable-filters';
+import { createTableSchema } from '@/lib/schema-bridge/zod-to-columns';
+import { getSortingStateParser } from '@/lib/parsers';
+import { coerceRowValues } from '@/lib/import';
+import type { Fields } from '@/components/auto-crud/auto-crud-table';
 
 /**
  * Toast 适配器接口
@@ -35,10 +41,114 @@ export const noopToastAdapter: ToastAdapter = {
   warning: () => {},
 };
 
+type JsonSchemaProperty = {
+  type?: string | string[];
+  format?: string;
+  enum?: unknown[];
+  properties?: Record<string, JsonSchemaProperty>;
+  items?: JsonSchemaProperty;
+};
+
+type JsonSchemaObject = {
+  type?: string;
+  properties?: Record<string, JsonSchemaProperty>;
+  required?: string[];
+};
+
+type AutoCrudMetadata = {
+  schema?: unknown;
+  fields?: Fields;
+  errors?: string[];
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isJsonSchemaObject(value: unknown): value is JsonSchemaObject {
+  return isRecord(value) && isRecord(value.properties);
+}
+
+function readJsonSchemaType(property: JsonSchemaProperty): string | undefined {
+  return Array.isArray(property.type)
+    ? property.type.find((item) => item !== 'null')
+    : property.type;
+}
+
+function jsonPropertyToZod(
+  property: JsonSchemaProperty,
+  required: boolean,
+): z.ZodTypeAny {
+  const enumValues = property.enum?.filter(
+    (value): value is string => typeof value === 'string',
+  );
+  let schema: z.ZodTypeAny;
+
+  if (enumValues && enumValues.length > 0) {
+    schema = z.enum(enumValues as [string, ...string[]]);
+  } else {
+    const type = readJsonSchemaType(property);
+    switch (type) {
+      case 'number':
+      case 'integer':
+        schema = z.number();
+        break;
+      case 'boolean':
+        schema = z.boolean();
+        break;
+      case 'array':
+        schema = z.array(z.unknown());
+        break;
+      case 'object':
+        schema = z.record(z.string(), z.unknown());
+        break;
+      case 'string':
+        schema =
+          property.format === 'date' || property.format === 'date-time'
+            ? z.coerce.date()
+            : z.string();
+        break;
+      default:
+        schema = z.unknown();
+    }
+  }
+
+  return required ? schema : schema.optional();
+}
+
+function mergeMetadataSchema<TSchema extends z.ZodObject<z.ZodRawShape>>(
+  baseSchema: TSchema,
+  metadataSchema: unknown,
+): z.ZodObject<z.ZodRawShape> {
+  if (!isJsonSchemaObject(metadataSchema)) return baseSchema;
+
+  const required = new Set(
+    Array.isArray(metadataSchema.required)
+      ? metadataSchema.required.filter(
+          (field): field is string => typeof field === 'string',
+        )
+      : [],
+  );
+  const extensionShape: Record<string, z.ZodTypeAny> = {};
+
+  for (const [field, property] of Object.entries(metadataSchema.properties ?? {})) {
+    if (field in baseSchema.shape) continue;
+    extensionShape[field] = jsonPropertyToZod(property, required.has(field));
+  }
+
+  return Object.keys(extensionShape).length > 0
+    ? baseSchema.extend(extensionShape)
+    : baseSchema;
+}
+
+function readMetadataFields(fields: unknown): Fields | undefined {
+  return isRecord(fields) ? (fields as Fields) : undefined;
+}
+
 /**
  * Modal 状态类型
  */
-export type ModalVariant = "dialog" | "sheet";
+export type ModalVariant = 'dialog' | 'sheet';
 
 interface ModalState<T> {
   createOpen: boolean;
@@ -55,13 +165,13 @@ interface ModalState<T> {
  * Modal 状态 Actions
  */
 type ModalAction<T> =
-  | { type: "OPEN_CREATE" }
-  | { type: "OPEN_CREATE_WITH_COPY"; payload: T }
-  | { type: "OPEN_EDIT"; payload: T }
-  | { type: "OPEN_DELETE"; payload: T }
-  | { type: "OPEN_VIEW"; payload: T }
-  | { type: "CLOSE_ALL" }
-  | { type: "SET_VARIANT"; payload: ModalVariant };
+  | { type: 'OPEN_CREATE' }
+  | { type: 'OPEN_CREATE_WITH_COPY'; payload: T }
+  | { type: 'OPEN_EDIT'; payload: T }
+  | { type: 'OPEN_DELETE'; payload: T }
+  | { type: 'OPEN_VIEW'; payload: T }
+  | { type: 'CLOSE_ALL' }
+  | { type: 'SET_VARIANT'; payload: ModalVariant };
 
 /**
  * Hook 返回值类型（用于判断是数据转换还是完全自定义）
@@ -80,13 +190,18 @@ export interface CrudHooks<TSchema extends z.ZodObject<z.ZodRawShape>, TListItem
    * - 返回 true: 表示已自定义处理成功，跳过默认创建
    * - 返回 false: 表示自定义处理失败，跳过默认创建
    */
-  beforeCreate?: (values: z.infer<TSchema>) => HookResult<z.infer<TSchema>> | Promise<HookResult<z.infer<TSchema>>>;
+  beforeCreate?: (
+    values: z.infer<TSchema>,
+  ) => HookResult<z.infer<TSchema>> | Promise<HookResult<z.infer<TSchema>>>;
   /**
    * 更新前钩子
    * - 返回对象: 作为转换后的数据，继续执行默认更新
    * - 返回 true/false: 完全自定义处理
    */
-  beforeUpdate?: (values: z.infer<TSchema>, original: TListItem) => HookResult<z.infer<TSchema>> | Promise<HookResult<z.infer<TSchema>>>;
+  beforeUpdate?: (
+    values: z.infer<TSchema>,
+    original: TListItem,
+  ) => HookResult<z.infer<TSchema>> | Promise<HookResult<z.infer<TSchema>>>;
   /**
    * 删除前钩子
    * - 返回 true: 表示已自定义处理成功（如软删除）
@@ -95,15 +210,18 @@ export interface CrudHooks<TSchema extends z.ZodObject<z.ZodRawShape>, TListItem
    */
   beforeDelete?: (item: TListItem) => boolean | void | Promise<boolean | void>;
   /** 操作成功回调 */
-  onSuccess?: (op: "create" | "update" | "delete", payload: unknown) => void;
+  onSuccess?: (op: 'create' | 'update' | 'delete', payload: unknown) => void;
   /** 操作失败回调 */
-  onError?: (op: "create" | "update" | "delete", error: Error) => void;
+  onError?: (op: 'create' | 'update' | 'delete', error: Error) => void;
 }
 
 /**
  * Hook 配置选项
  */
-export interface UseAutoCrudResourceOptions<TSchema extends z.ZodObject<z.ZodRawShape>, TListItem> {
+export interface UseAutoCrudResourceOptions<
+  TSchema extends z.ZodObject<z.ZodRawShape>,
+  TListItem,
+> {
   /** 主键字段名（默认: "id"） */
   idKey?: keyof TListItem & string;
   /** 默认弹窗模式 */
@@ -127,7 +245,9 @@ export interface UseAutoCrudResourceOptions<TSchema extends z.ZodObject<z.ZodRaw
    * 仅当需要完全自定义导出逻辑时才使用（如队列导出、自定义接口等）
    * 传入后优先级高于 router.export
    */
-  exportFetcher?: (params: any) => Promise<{ data: Record<string, unknown>[]; total: number; hasMore: boolean }>;
+  exportFetcher?: (
+    params: any,
+  ) => Promise<{ data: Record<string, unknown>[]; total: number; hasMore: boolean }>;
 }
 
 /**
@@ -143,7 +263,10 @@ export interface ImportResult {
 /**
  * Hook 返回值类型
  */
-export interface UseAutoCrudResourceReturn<TSchema extends z.ZodObject<z.ZodRawShape>, TListItem> {
+export interface UseAutoCrudResourceReturn<
+  TSchema extends z.ZodObject<z.ZodRawShape>,
+  TListItem,
+> {
   tableData: {
     data: TListItem[];
     pageCount: number;
@@ -151,6 +274,10 @@ export interface UseAutoCrudResourceReturn<TSchema extends z.ZodObject<z.ZodRawS
     /** 是否正在获取数据（用于显示微妙的加载指示器） */
     isFetching: boolean;
   };
+  /** Optional schema override from host metadata. */
+  schema?: z.ZodObject<z.ZodRawShape>;
+  /** Optional field config override from host metadata. */
+  fields?: Fields;
   modal: ModalState<TListItem>;
   mutations: {
     isCreating: boolean;
@@ -183,19 +310,27 @@ export interface UseAutoCrudResourceReturn<TSchema extends z.ZodObject<z.ZodRawS
  */
 function modalReducer<T>(state: ModalState<T>, action: ModalAction<T>): ModalState<T> {
   switch (action.type) {
-    case "OPEN_CREATE":
+    case 'OPEN_CREATE':
       return { ...state, createOpen: true, selected: null, copySource: null };
-    case "OPEN_CREATE_WITH_COPY":
+    case 'OPEN_CREATE_WITH_COPY':
       return { ...state, createOpen: true, selected: null, copySource: action.payload };
-    case "OPEN_EDIT":
+    case 'OPEN_EDIT':
       return { ...state, editOpen: true, selected: action.payload };
-    case "OPEN_DELETE":
+    case 'OPEN_DELETE':
       return { ...state, deleteOpen: true, selected: action.payload };
-    case "OPEN_VIEW":
+    case 'OPEN_VIEW':
       return { ...state, viewOpen: true, selected: action.payload };
-    case "CLOSE_ALL":
-      return { ...state, createOpen: false, editOpen: false, deleteOpen: false, viewOpen: false, selected: null, copySource: null };
-    case "SET_VARIANT":
+    case 'CLOSE_ALL':
+      return {
+        ...state,
+        createOpen: false,
+        editOpen: false,
+        deleteOpen: false,
+        viewOpen: false,
+        selected: null,
+        copySource: null,
+      };
+    case 'SET_VARIANT':
       return { ...state, variant: action.payload };
     default:
       return state;
@@ -233,6 +368,10 @@ interface CrudRouter {
   export?: {
     useQuery: (input?: any, opts?: any) => any;
   };
+  /** 元数据路由（query，由 createCrudRouter 自动生成） */
+  meta?: {
+    useQuery: (input?: any, opts?: any) => any;
+  };
 }
 
 /**
@@ -242,14 +381,18 @@ export interface AutoQueryParams {
   page: number;
   perPage: number;
   sort: Array<{ id: string; desc: boolean }>;
+  search?: string;
   filters: any[];
-  joinOperator: "and" | "or";
+  joinOperator: 'and' | 'or';
 }
 
 /**
  * Hook 配置参数
  */
-export interface UseAutoCrudResourceParams<TSchema extends z.ZodObject<z.ZodRawShape>, TListItem> {
+export interface UseAutoCrudResourceParams<
+  TSchema extends z.ZodObject<z.ZodRawShape>,
+  TListItem,
+> {
   /** tRPC router (如 trpc.tasks) */
   router: CrudRouter;
   /** Zod schema */
@@ -279,16 +422,19 @@ export interface UseAutoCrudResourceParams<TSchema extends z.ZodObject<z.ZodRawS
  */
 export function useAutoCrudResource<
   TSchema extends z.ZodObject<z.ZodRawShape>,
-  TListItem = z.output<TSchema>
+  TListItem = z.output<TSchema>,
 >({
   router,
   schema,
   query: queryTransform,
   options = {},
-}: UseAutoCrudResourceParams<TSchema, TListItem>): UseAutoCrudResourceReturn<TSchema, TListItem> {
+}: UseAutoCrudResourceParams<TSchema, TListItem>): UseAutoCrudResourceReturn<
+  TSchema,
+  TListItem
+> {
   const {
-    idKey = "id" as keyof TListItem & string,
-    defaultVariant = "dialog",
+    idKey = 'id' as keyof TListItem & string,
+    defaultVariant = 'dialog',
     hooks,
     toast: toastAdapter,
     exportFetcher,
@@ -296,8 +442,9 @@ export function useAutoCrudResource<
 
   // 使用注入的 toast 或默认 sonner
   const toast = useMemo(
-    () => toastAdapter === false ? noopToastAdapter : (toastAdapter ?? defaultToastAdapter),
-    [toastAdapter]
+    () =>
+      toastAdapter === false ? noopToastAdapter : (toastAdapter ?? defaultToastAdapter),
+    [toastAdapter],
   );
 
   // Stabilize hooks reference to avoid handler rebuilds when hooks object changes
@@ -306,11 +453,24 @@ export function useAutoCrudResource<
     hooksRef.current = hooks;
   }, [hooks]);
 
+  const metadataQuery = router.meta?.useQuery(undefined, {
+    staleTime: 30_000,
+  });
+  const metadata = metadataQuery?.data as AutoCrudMetadata | undefined;
+  const resolvedSchema = useMemo(
+    () => mergeMetadataSchema(schema, metadata?.schema),
+    [schema, metadata?.schema],
+  );
+  const metadataFields = useMemo(
+    () => readMetadataFields(metadata?.fields),
+    [metadata?.fields],
+  );
+
   // ========== URL 状态管理（内部自动 or 外部传入） ==========
   // 从 schema 推导 columns（用于 useReadableFilters）
   const columns = useMemo(
-    () => createTableSchema(schema as any),
-    [schema],
+    () => createTableSchema(resolvedSchema as any),
+    [resolvedSchema],
   );
 
   // 内部 URL 状态：分页、排序、joinOperator
@@ -319,7 +479,8 @@ export function useAutoCrudResource<
       page: parseAsInteger.withDefault(1),
       perPage: parseAsInteger.withDefault(10),
       sort: getSortingStateParser().withDefault([]),
-      joinOperator: parseAsStringEnum(["and", "or"]).withDefault("and"),
+      joinOperator: parseAsStringEnum(['and', 'or']).withDefault('and'),
+      search: parseAsString.withDefault(''),
     },
     { shallow: false },
   );
@@ -335,6 +496,7 @@ export function useAutoCrudResource<
       sort: urlParams.sort,
       filters,
       joinOperator: urlParams.joinOperator,
+      ...(urlParams.search.trim() ? { search: urlParams.search.trim() } : {}),
     };
     return queryTransform ? queryTransform(autoParams) : autoParams;
   }, [urlParams, filters, queryTransform]);
@@ -345,6 +507,8 @@ export function useAutoCrudResource<
     placeholderData: keepPreviousData,
     staleTime: 0,
   });
+  const tableRows = listQuery.data?.data ?? [];
+
   const createMutation = router.create.useMutation();
   const updateMutation = router.update.useMutation();
   const deleteMutation = router.delete.useMutation();
@@ -372,12 +536,24 @@ export function useAutoCrudResource<
   });
 
   // Handlers: Modal 控制
-  const openCreate = useCallback(() => dispatch({ type: "OPEN_CREATE" }), []);
-  const openEdit = useCallback((row: TListItem) => dispatch({ type: "OPEN_EDIT", payload: row }), []);
-  const openDelete = useCallback((row: TListItem) => dispatch({ type: "OPEN_DELETE", payload: row }), []);
-  const openView = useCallback((row: TListItem) => dispatch({ type: "OPEN_VIEW", payload: row }), []);
-  const closeModals = useCallback(() => dispatch({ type: "CLOSE_ALL" }), []);
-  const setVariant = useCallback((variant: ModalVariant) => dispatch({ type: "SET_VARIANT", payload: variant }), []);
+  const openCreate = useCallback(() => dispatch({ type: 'OPEN_CREATE' }), []);
+  const openEdit = useCallback(
+    (row: TListItem) => dispatch({ type: 'OPEN_EDIT', payload: row }),
+    [],
+  );
+  const openDelete = useCallback(
+    (row: TListItem) => dispatch({ type: 'OPEN_DELETE', payload: row }),
+    [],
+  );
+  const openView = useCallback(
+    (row: TListItem) => dispatch({ type: 'OPEN_VIEW', payload: row }),
+    [],
+  );
+  const closeModals = useCallback(() => dispatch({ type: 'CLOSE_ALL' }), []);
+  const setVariant = useCallback(
+    (variant: ModalVariant) => dispatch({ type: 'SET_VARIANT', payload: variant }),
+    [],
+  );
 
   // Handlers: Create
   const submitCreate = useCallback(
@@ -389,12 +565,12 @@ export function useAutoCrudResource<
           const result = await currentHooks.beforeCreate(values);
 
           // 返回 boolean = 完全自定义处理
-          if (typeof result === "boolean") {
+          if (typeof result === 'boolean') {
             if (result) {
-              toast.success("创建成功");
+              toast.success('创建成功');
               closeModals();
               listQuery.refetch();
-              currentHooks?.onSuccess?.("create", values);
+              currentHooks?.onSuccess?.('create', values);
             }
             return;
           }
@@ -405,24 +581,24 @@ export function useAutoCrudResource<
 
         createMutation.mutate(values, {
           onSuccess: (data: unknown) => {
-            toast.success("创建成功");
+            toast.success('创建成功');
             closeModals();
             listQuery.refetch();
-            currentHooks?.onSuccess?.("create", data);
+            currentHooks?.onSuccess?.('create', data);
           },
           onError: (error: unknown) => {
             const err = error as Error;
             toast.error(`创建失败: ${err.message}`);
-            currentHooks?.onError?.("create", err);
+            currentHooks?.onError?.('create', err);
           },
         });
       } catch (error) {
         const err = error as Error;
         toast.error(`创建失败: ${err.message}`);
-        currentHooks?.onError?.("create", err);
+        currentHooks?.onError?.('create', err);
       }
     },
-    [createMutation, closeModals, listQuery]
+    [createMutation, closeModals, listQuery],
   );
 
   // Handlers: Update
@@ -437,12 +613,12 @@ export function useAutoCrudResource<
           const result = await currentHooks.beforeUpdate(values, modal.selected);
 
           // 返回 boolean = 完全自定义处理
-          if (typeof result === "boolean") {
+          if (typeof result === 'boolean') {
             if (result) {
-              toast.success("更新成功");
+              toast.success('更新成功');
               closeModals();
               listQuery.refetch();
-              currentHooks?.onSuccess?.("update", values);
+              currentHooks?.onSuccess?.('update', values);
             }
             return;
           }
@@ -456,25 +632,25 @@ export function useAutoCrudResource<
           { id, data: values } as { id: string | number; data: z.infer<TSchema> },
           {
             onSuccess: (data: unknown) => {
-              toast.success("更新成功");
+              toast.success('更新成功');
               closeModals();
               listQuery.refetch();
-              currentHooks?.onSuccess?.("update", data);
+              currentHooks?.onSuccess?.('update', data);
             },
             onError: (error: unknown) => {
               const err = error as Error;
               toast.error(`更新失败: ${err.message}`);
-              currentHooks?.onError?.("update", err);
+              currentHooks?.onError?.('update', err);
             },
-          }
+          },
         );
       } catch (error) {
         const err = error as Error;
         toast.error(`更新失败: ${err.message}`);
-        currentHooks?.onError?.("update", err);
+        currentHooks?.onError?.('update', err);
       }
     },
-    [modal.selected, idKey, updateMutation, closeModals, listQuery]
+    [modal.selected, idKey, updateMutation, closeModals, listQuery],
   );
 
   // Handlers: Delete
@@ -488,12 +664,12 @@ export function useAutoCrudResource<
         const result = await currentHooks.beforeDelete(modal.selected);
 
         // 返回 boolean = 完全自定义处理
-        if (typeof result === "boolean") {
+        if (typeof result === 'boolean') {
           if (result) {
-            toast.success("删除成功");
+            toast.success('删除成功');
             closeModals();
             listQuery.refetch();
-            currentHooks?.onSuccess?.("delete", modal.selected);
+            currentHooks?.onSuccess?.('delete', modal.selected);
           }
           return;
         }
@@ -503,21 +679,21 @@ export function useAutoCrudResource<
       const id = modal.selected[idKey];
       deleteMutation.mutate(id as string, {
         onSuccess: (data: unknown) => {
-          toast.success("删除成功");
+          toast.success('删除成功');
           closeModals();
           listQuery.refetch();
-          currentHooks?.onSuccess?.("delete", data);
+          currentHooks?.onSuccess?.('delete', data);
         },
         onError: (error: unknown) => {
           const err = error as Error;
           toast.error(`删除失败: ${err.message}`);
-          currentHooks?.onError?.("delete", err);
+          currentHooks?.onError?.('delete', err);
         },
       });
     } catch (error) {
       const err = error as Error;
       toast.error(`删除失败: ${err.message}`);
-      currentHooks?.onError?.("delete", err);
+      currentHooks?.onError?.('delete', err);
     }
   }, [modal.selected, idKey, deleteMutation, closeModals, listQuery]);
 
@@ -526,7 +702,7 @@ export function useAutoCrudResource<
     (rows: TListItem[]) => {
       const currentHooks = hooksRef.current;
       if (!deleteManyMutation) {
-        toast.error("批量删除功能未启用");
+        toast.error('批量删除功能未启用');
         return;
       }
       const ids = rows.map((row) => row[idKey] as string);
@@ -534,16 +710,16 @@ export function useAutoCrudResource<
         onSuccess: (data: unknown) => {
           toast.success(`成功删除 ${ids.length} 条记录`);
           listQuery.refetch();
-          currentHooks?.onSuccess?.("delete", data);
+          currentHooks?.onSuccess?.('delete', data);
         },
         onError: (error: unknown) => {
           const err = error as Error;
           toast.error(`批量删除失败: ${err.message}`);
-          currentHooks?.onError?.("delete", err);
+          currentHooks?.onError?.('delete', err);
         },
       });
     },
-    [deleteManyMutation, idKey, listQuery]
+    [deleteManyMutation, idKey, listQuery],
   );
 
   // Handlers: Update Many
@@ -551,82 +727,81 @@ export function useAutoCrudResource<
     (rows: TListItem[], data: Record<string, unknown>) => {
       const currentHooks = hooksRef.current;
       if (!updateManyMutation) {
-        toast.error("批量更新功能未启用");
+        toast.error('批量更新功能未启用');
         return;
       }
       const ids = rows.map((row) => row[idKey] as string);
-      updateManyMutation.mutate({ ids, data }, {
-        onSuccess: (result: unknown) => {
-          toast.success(`成功更新 ${ids.length} 条记录`);
-          listQuery.refetch();
-          currentHooks?.onSuccess?.("update", result);
+      updateManyMutation.mutate(
+        { ids, data },
+        {
+          onSuccess: (result: unknown) => {
+            toast.success(`成功更新 ${ids.length} 条记录`);
+            listQuery.refetch();
+            currentHooks?.onSuccess?.('update', result);
+          },
+          onError: (error: unknown) => {
+            const err = error as Error;
+            toast.error(`批量更新失败: ${err.message}`);
+            currentHooks?.onError?.('update', err);
+          },
         },
-        onError: (error: unknown) => {
-          const err = error as Error;
-          toast.error(`批量更新失败: ${err.message}`);
-          currentHooks?.onError?.("update", err);
-        },
-      });
+      );
     },
-    [updateManyMutation, idKey, listQuery]
+    [updateManyMutation, idKey, listQuery],
   );
 
   // Handlers: Copy Row (复制行并打开创建弹窗)
-  const copyRow = useCallback(
-    (row: TListItem) => {
-      dispatch({ type: "OPEN_CREATE_WITH_COPY", payload: row });
-    },
-    []
-  );
+  const copyRow = useCallback((row: TListItem) => {
+    dispatch({ type: 'OPEN_CREATE_WITH_COPY', payload: row });
+  }, []);
 
   // Handlers: Import (如果 router 支持)
   const handleImport = useCallback(
     async (rows: Record<string, unknown>[]): Promise<ImportResult> => {
       if (!importMutation) {
-        throw new Error("Import not supported: router has no import procedure");
+        throw new Error('Import not supported: router has no import procedure');
       }
       // CSV 解析后所有值都是 string，根据 schema 做类型转换
       const coercedRows = coerceRowValues(rows, schema);
       const result = await importMutation.mutateAsync({
         rows: coercedRows,
-        onConflict: "upsert",
+        onConflict: 'upsert',
       });
       listQuery.refetch();
       return result as ImportResult;
     },
-    [importMutation, listQuery, schema]
+    [importMutation, listQuery, schema],
   );
 
   // Handlers: Export — 导出筛选结果
   // 优先级：exportFetcher（自定义） > router.export（自动检测）
-  const handleExport = useCallback(
-    async (): Promise<Record<string, unknown>[]> => {
-      // 优先使用自定义 exportFetcher
-      if (exportFetcher) {
-        const { page: _p, perPage: _pp, ...exportParams } = queryInput ?? {};
-        const result = await exportFetcher(exportParams);
-        return (result?.data ?? []) as Record<string, unknown>[];
-      }
-      // 自动检测 router.export
-      if (exportQuery) {
-        const result = await exportQuery.refetch();
-        return (result?.data?.data ?? []) as Record<string, unknown>[];
-      }
-      throw new Error("Export not supported");
-    },
-    [exportFetcher, exportQuery, queryInput]
-  );
+  const handleExport = useCallback(async (): Promise<Record<string, unknown>[]> => {
+    // 优先使用自定义 exportFetcher
+    if (exportFetcher) {
+      const { page: _p, perPage: _pp, ...exportParams } = queryInput ?? {};
+      const result = await exportFetcher(exportParams);
+      return (result?.data ?? []) as Record<string, unknown>[];
+    }
+    // 自动检测 router.export
+    if (exportQuery) {
+      const result = await exportQuery.refetch();
+      return (result?.data?.data ?? []) as Record<string, unknown>[];
+    }
+    throw new Error('Export not supported');
+  }, [exportFetcher, exportQuery, queryInput]);
 
   const canExport = !!(exportFetcher || exportQuery);
 
   // 返回值
   return {
     tableData: {
-      data: (listQuery.data?.data ?? []) as TListItem[],
+      data: tableRows as TListItem[],
       pageCount: listQuery.data?.pageCount ?? 0,
       isLoading: listQuery.isLoading,
       isFetching: listQuery.isFetching,
     },
+    schema: resolvedSchema,
+    fields: metadataFields,
     modal,
     mutations: {
       isCreating: createMutation.isPending,

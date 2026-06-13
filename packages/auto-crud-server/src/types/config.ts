@@ -100,6 +100,7 @@ export interface ListInput {
   page: number;
   perPage: number;
   sort?: Array<{ id: string; desc: boolean }>;
+  search?: string;
   filters?: Array<{
     id: string;
     value: string | string[];
@@ -133,6 +134,7 @@ export type GetInput = string | { id: string };
  */
 export interface ExportInput {
   sort?: Array<{ id: string; desc: boolean }>;
+  search?: string;
   filters?: Array<{
     id: string;
     value: string | string[];
@@ -144,6 +146,53 @@ export interface ExportInput {
   /** 导出数量限制，会被 clamp 到 [1, maxExportSize] */
   limit?: number;
 }
+
+export interface CrudExtensionMetadata {
+  schema?: unknown;
+  fields?: Record<string, unknown>;
+  errors?: string[];
+}
+
+export interface CrudExtensionFilter {
+  id: string;
+  value: string | string[];
+  variant: string;
+  operator: string;
+  filterId?: string | undefined;
+}
+
+export interface CrudExtensionsProvider {
+  getMetadata?: (input: { id: string }) => Promise<CrudExtensionMetadata>;
+  saveExtraValues?: (input: {
+    id: string;
+    entityId: string;
+    rawValues: Record<string, unknown>;
+    baseValues: Record<string, unknown>;
+    extraValues: Record<string, unknown>;
+    tx?: unknown;
+  }) => Promise<void>;
+  readProjection?: (input: {
+    id: string;
+    entityIds: string[];
+    fields?: string[];
+  }) => Promise<Record<string, Record<string, unknown>>>;
+  matchEntityIds?: (input: {
+    id: string;
+    filters: CrudExtensionFilter[];
+    joinOperator?: 'and' | 'or';
+    limit?: number;
+  }) => Promise<string[]>;
+  searchEntityIds?: (input: {
+    id: string;
+    search: string;
+    limit?: number;
+  }) => Promise<string[]>;
+}
+
+export type CrudExtensionsConfig<TContext = unknown> =
+  | false
+  | CrudExtensionsProvider
+  | ((ctx: TContext) => CrudExtensionsProvider | null | undefined);
 
 /**
  * 导出查询结果类型
@@ -408,6 +457,7 @@ export interface CrudMiddleware<
  * 按操作指定不同的 procedure，支持 default 回退
  */
 export interface ProcedureMap {
+  meta?: AnyProcedure;
   list?: AnyProcedure;
   get?: AnyProcedure;
   create?: AnyProcedure;
@@ -506,6 +556,30 @@ export interface CrudRouterConfig<
 
   /** Drizzle 表定义 */
   table: TTable;
+
+  // ========== 可选扩展配置 ==========
+
+  /**
+   * Globally unique extension target id for this CRUD.
+   *
+   * Optional. Only consumers that enable entity extension fields need this.
+   * CRUDs without an explicit id keep the normal AutoCrud behavior and ignore
+   * field extensions.
+   *
+   * Example: "com.example.shop.stores".
+   */
+  id?: string;
+
+  /**
+   * Optional dynamic field provider.
+   *
+   * - undefined: when `id` is present, `createCrudRouter` will use
+   *   `ctx.crudExtensions` if the request context provides it.
+   * - false: disable dynamic fields for this CRUD even if the context has a
+   *   provider.
+   * - provider/function: explicitly use this provider.
+   */
+  extensions?: CrudExtensionsConfig<TContext>;
 
   // ========== Schema 配置 ==========
 
@@ -648,6 +722,17 @@ export interface CrudRouterConfig<
    */
   filterableColumns?: CrudColumnRef<TTable>[];
   /**
+   * 全局搜索列白名单。
+   *
+   * 当列表/导出输入包含 `search` 时，默认查询会对这些列做文本化 ILIKE
+   * 搜索，并与其他筛选条件按 AND 组合。扩展字段搜索仍由
+   * `CrudExtensionsProvider.searchEntityIds` 处理。
+   *
+   * @example
+   * searchColumns: ['title', { id: 'name', jsonField: ['zh-CN', 'en-US'] }]
+   */
+  searchColumns?: CrudColumnRef<TTable>[];
+  /**
    * 可排序的列白名单。
    *
    * 与 filterableColumns 相同，普通字段使用字符串，jsonb/i18n 字段可配置 jsonField。
@@ -726,6 +811,7 @@ export interface CrudRouterConfig<
 // ============================================================
 
 export interface CrudProcedures {
+  meta: AnyProcedure;
   list: AnyProcedure;
   get: AnyProcedure;
   create: AnyProcedure;
