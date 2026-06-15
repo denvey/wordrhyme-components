@@ -12,8 +12,8 @@ import { createEditFormSchema } from '@/lib/schema-bridge/zod-to-formily';
 import type { FormSchemaOverrides } from '@/lib/schema-bridge/types';
 import { MultiCombobox, type MultiComboboxProps } from '@/components/ui/multi-combobox';
 import {
+  components,
   dataSources,
-  formComponents,
   normalizeDataSourceConfig,
   normalizeOptions,
   type AutoCrudDataSourceConfig,
@@ -142,10 +142,7 @@ function useRegistryVersion(subscribe: (listener: () => void) => () => void) {
 }
 
 function isDataSourceConfig(value: unknown): value is AutoCrudDataSourceConfig {
-  if (typeof value === 'string') return value.length > 0;
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
-
-  return typeof (value as { key?: unknown }).key === 'string';
+  return typeof value === 'string' && value.length > 0;
 }
 
 function collectDataSourceConfigs(
@@ -204,8 +201,8 @@ function useFormDataSources(form: FormilyCoreForm<any>, schema: Record<string, a
       const version = (loadVersions.get(fieldName) ?? 0) + 1;
       loadVersions.set(fieldName, version);
 
-      const loader = dataSources.get(source.key);
-      if (!loader) {
+      const entry = dataSources.get(source.key);
+      if (!entry) {
         form.setFieldState(fieldName, (state) => {
           state.dataSource = [];
         });
@@ -214,10 +211,10 @@ function useFormDataSources(form: FormilyCoreForm<any>, schema: Record<string, a
 
       try {
         const options = normalizeOptions(
-          await loader({
+          await entry.load({
             field: fieldName,
             values: Object.fromEntries(
-              source.dependsOn.map((dependency) => [
+              entry.dependencies.map((dependency) => [
                 dependency,
                 form.getValuesIn(dependency),
               ]),
@@ -245,12 +242,15 @@ function useFormDataSources(form: FormilyCoreForm<any>, schema: Record<string, a
 
     form.addEffects(effectId, () => {
       for (const dependency of new Set(
-        sourceEntries.flatMap(([, source]) => source.dependsOn),
+        sourceEntries.flatMap(
+          ([, source]) => dataSources.get(source.key)?.dependencies ?? [],
+        ),
       )) {
         onFieldValueChange(dependency, () => {
           for (const [fieldName, source] of sourceEntries) {
-            if (!source.dependsOn.includes(dependency)) continue;
-            if (source.resetOnChange) form.setValuesIn(fieldName, undefined);
+            const entry = dataSources.get(source.key);
+            if (!entry?.dependencies.includes(dependency)) continue;
+            if (entry.reset) form.setValuesIn(fieldName, undefined);
             void loadFieldOptions(fieldName, source);
           }
         });
@@ -310,12 +310,12 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
         : undefined,
     };
   }, [labelAlign, labelWidth]);
-  const formComponentVersion = useRegistryVersion(formComponents.subscribe);
+  const formComponentVersion = useRegistryVersion(components.subscribe);
   const fieldComponents = useMemo(
     () => ({
       fields: {
         ...defaultFieldComponents,
-        ...formComponents.all(),
+        ...components.all(),
       },
     }),
     [formComponentVersion],

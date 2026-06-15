@@ -444,12 +444,12 @@ function useDynamicFilterOptions(fields?: Fields): Record<string, FieldOption[]>
 
     void Promise.all(
       sourceEntries.map(async ({ field, source }) => {
-        const loader = dataSources.get(source.key);
-        if (!loader) return [field, []] as const;
+        const entry = dataSources.get(source.key);
+        if (!entry) return [field, []] as const;
 
         try {
           const options = normalizeOptions(
-            await loader({
+            await entry.load({
               field,
               values: {},
               signal: controller?.signal,
@@ -845,6 +845,7 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   data,
   schema,
   fields: fieldConfig,
+  dynamicOptions,
   denyFields,
   locale,
 }: {
@@ -854,6 +855,7 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   data: z.output<TSchema> | null;
   schema: TSchema;
   fields?: Fields;
+  dynamicOptions?: Record<string, FieldOption[]>;
   denyFields?: string[];
   locale: { viewModal: { title: string }; boolean: { true: string; false: string } };
 }) {
@@ -874,7 +876,9 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
         const parsed = parseZodField(fieldSchema as z.ZodType);
         const label = fieldConfig?.[key]?.label ?? humanize(key);
         const value = (data as Record<string, unknown>)[key];
-        const options = normalizeFieldOptions(fieldConfig?.[key]?.enum);
+        const options =
+          normalizeFieldOptions(fieldConfig?.[key]?.enum) ??
+          normalizeFieldOptions(dynamicOptions?.[key]);
 
         return (
           <div key={key} className="grid grid-cols-3 items-start gap-4">
@@ -903,7 +907,10 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-w-2xl max-h-[80vh] overflow-y-auto"
+      >
         <DialogHeader>
           <DialogTitle>{locale.viewModal.title}</DialogTitle>
         </DialogHeader>
@@ -1363,6 +1370,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.modal.selected}
         schema={resolvedSchema}
         fields={resolvedFields}
+        dynamicOptions={dynamicFilterOptions}
         denyFields={denyFields}
         locale={locale}
       />

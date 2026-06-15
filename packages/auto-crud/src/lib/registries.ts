@@ -32,22 +32,35 @@ export type AutoCrudDataSourceLoader = (
   context: AutoCrudDataSourceContext,
 ) => AutoCrudDataSourceResult | Promise<AutoCrudDataSourceResult>;
 
-export type AutoCrudDataSourceConfig =
-  | string
+export type AutoCrudDataSourceConfig = string;
+
+export type AutoCrudDataSourceRegistration =
+  | AutoCrudDataSourceLoader
   | {
-      key: string;
-      dependsOn?: string[];
-      resetOnChange?: boolean;
+      dependencies?: string[];
+      reset?: boolean;
+      load: AutoCrudDataSourceLoader;
     };
+
+export type AutoCrudDataSourceEntry = {
+  dependencies: string[];
+  reset: boolean;
+  load: AutoCrudDataSourceLoader;
+};
 
 type RegistryListener = () => void;
 
 function createRegistry<T>(label: string) {
   const entries = new Map<string, T>();
   const listeners = new Set<RegistryListener>();
+  let notifyScheduled = false;
 
   const notify = () => {
+    if (notifyScheduled) return;
+    notifyScheduled = true;
+
     queueMicrotask(() => {
+      notifyScheduled = false;
       for (const listener of listeners) {
         listener();
       }
@@ -83,32 +96,55 @@ function createRegistry<T>(label: string) {
 
 export const formComponents =
   createRegistry<AutoCrudFormComponentConfig>('form component');
-export const dataSources = createRegistry<AutoCrudDataSourceLoader>('data source');
+
+export const components = formComponents;
+
+function normalizeDataSourceRegistration(
+  registration: AutoCrudDataSourceRegistration,
+): AutoCrudDataSourceEntry {
+  if (typeof registration === 'function') {
+    return {
+      dependencies: [],
+      reset: false,
+      load: registration,
+    };
+  }
+
+  return {
+    dependencies: Array.isArray(registration.dependencies)
+      ? registration.dependencies
+      : [],
+    reset: registration.reset === true,
+    load: registration.load,
+  };
+}
+
+const dataSourceRegistry = createRegistry<AutoCrudDataSourceEntry>('data source');
+
+export const dataSources = {
+  register(name: string, registration: AutoCrudDataSourceRegistration): void {
+    dataSourceRegistry.register(name, normalizeDataSourceRegistration(registration));
+  },
+  unregister: dataSourceRegistry.unregister,
+  get: dataSourceRegistry.get,
+  all: dataSourceRegistry.all,
+  subscribe: dataSourceRegistry.subscribe,
+};
 
 export function normalizeDataSourceConfig(config: AutoCrudDataSourceConfig | undefined):
   | {
       key: string;
-      dependsOn: string[];
-      resetOnChange: boolean;
     }
   | undefined {
   if (typeof config === 'string') {
     return config.length > 0
       ? {
           key: config,
-          dependsOn: [],
-          resetOnChange: false,
         }
       : undefined;
   }
 
-  if (!config?.key) return undefined;
-
-  return {
-    key: config.key,
-    dependsOn: Array.isArray(config.dependsOn) ? config.dependsOn : [],
-    resetOnChange: config.resetOnChange === true,
-  };
+  return undefined;
 }
 
 export function normalizeOptions(

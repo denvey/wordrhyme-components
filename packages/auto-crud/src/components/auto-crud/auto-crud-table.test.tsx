@@ -47,8 +47,12 @@ function queryDynamicFilterTrigger() {
   );
 }
 
-function createResource(): UseAutoCrudResourceReturn<typeof schema, Row> {
-  return {
+function createResource(
+  options: {
+    modal?: Partial<UseAutoCrudResourceReturn<typeof schema, Row>['modal']>;
+  } = {},
+): UseAutoCrudResourceReturn<typeof schema, Row> {
+  const resource: UseAutoCrudResourceReturn<typeof schema, Row> = {
     tableData: {
       data: [{ id: '1', region: 'west' }],
       pageCount: 1,
@@ -85,6 +89,14 @@ function createResource(): UseAutoCrudResourceReturn<typeof schema, Row> {
       setVariant: vi.fn(),
       import: null,
       export: null,
+    },
+  };
+
+  return {
+    ...resource,
+    modal: {
+      ...resource.modal,
+      ...options.modal,
     },
   };
 }
@@ -131,6 +143,34 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
 
     await waitFor(() => expect(queryDynamicFilterTrigger()).toBeTruthy());
     expect(await screen.findByText('West Dynamic')).toBeTruthy();
+    await waitFor(() => expect(loader).toHaveBeenCalled());
+  });
+
+  it('uses dynamic dataSource options for view labels', async () => {
+    const loader = vi.fn(() => [
+      { label: 'East Dynamic', value: 'east' },
+      { label: 'West Dynamic', value: 'west' },
+    ]);
+
+    dataSources.register('test.dynamic-regions', loader);
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: {
+            viewOpen: true,
+            selected: { id: '1', region: 'west' },
+          },
+        })}
+        fields={fields}
+        table={{ filterModes: ['simple'] }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('West Dynamic').length).toBeGreaterThanOrEqual(2);
+    });
     await waitFor(() => expect(loader).toHaveBeenCalled());
   });
 });

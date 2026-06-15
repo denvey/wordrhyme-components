@@ -51,6 +51,7 @@ export type {
 
 // AutoCrud registries
 export {
+  components,
   dataSources,
   formComponents,
   normalizeDataSourceConfig,
@@ -59,7 +60,9 @@ export {
 export type {
   AutoCrudDataSourceConfig,
   AutoCrudDataSourceContext,
+  AutoCrudDataSourceEntry,
   AutoCrudDataSourceLoader,
+  AutoCrudDataSourceRegistration,
   AutoCrudFormComponentConfig,
   AutoCrudOption,
 } from './lib/registries';

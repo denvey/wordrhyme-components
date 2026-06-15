@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { dataSources } from '@/lib/registries';
 import { AutoForm } from './auto-form';
 
 beforeAll(() => {
@@ -13,6 +14,7 @@ beforeAll(() => {
 });
 
 afterEach(() => {
+  dataSources.unregister('test.dynamic-regions');
   cleanup();
 });
 
@@ -22,6 +24,11 @@ const schema = z.object({
 
 const multiSchema = z.object({
   countries: z.array(z.string()).optional(),
+});
+
+const dependentSchema = z.object({
+  customer: z.string().optional(),
+  region: z.string().optional(),
 });
 
 function renderComboboxForm(onSubmit = vi.fn()) {
@@ -175,5 +182,79 @@ describe('AutoForm MultiCombobox', () => {
 
     expect(group?.style.maxHeight).toBe('300px');
     expect(group?.style.overflowY).toBe('auto');
+  });
+});
+
+describe('AutoForm dynamic dataSource', () => {
+  it('reloads options from registered dependency metadata and resets stale values', async () => {
+    const onSubmit = vi.fn();
+    const loader = vi.fn(({ values }) => [
+      {
+        value: 'region-1',
+        label: `Region ${String(values?.['customer'] ?? '')}`,
+      },
+    ]);
+
+    dataSources.register('test.dynamic-regions', {
+      dependencies: ['customer'],
+      reset: true,
+      load: loader,
+    });
+
+    render(
+      <AutoForm
+        schema={dependentSchema}
+        initialValues={{ customer: 'acme' }}
+        onSubmit={onSubmit}
+        overrides={{
+          customer: {
+            title: 'Customer',
+          },
+          region: {
+            title: 'Region',
+            'x-component': 'Combobox',
+            'x-data-source': 'test.dynamic-regions',
+            'x-component-props': {
+              placeholder: 'Select region',
+              searchPlaceholder: 'Search region',
+            },
+          },
+        }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(loader).toHaveBeenCalledWith(
+        expect.objectContaining({
+          field: 'region',
+          values: { customer: 'acme' },
+        }),
+      );
+    });
+
+    fireEvent.click(
+      screen.getByText('Select region').closest('button') as HTMLButtonElement,
+    );
+    await screen.findByText('Region acme');
+    fireEvent.click(screen.getByText('Region acme'));
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Customer' }), {
+      target: { value: 'beta' },
+    });
+
+    await waitFor(() => {
+      expect(loader).toHaveBeenCalledWith(
+        expect.objectContaining({
+          field: 'region',
+          values: { customer: 'beta' },
+        }),
+      );
+    });
+
+    fireEvent.click(screen.getByText('创建'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0]?.[0]).toMatchObject({ customer: 'beta' });
+    expect(onSubmit.mock.calls[0]?.[0]?.region).toBeUndefined();
   });
 });
