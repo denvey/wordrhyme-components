@@ -21,7 +21,7 @@ const manager = new BrowserManager({
       firefox: playwright.firefox,
       webkit: playwright.webkit,
     };
-    const wsEndpoint = `${'ws://127.0.0.1:3010'}/${browserType}`;
+    const wsEndpoint = `ws://127.0.0.1:3010/${browserType}?server--ignoreDefaultArgs=["--hide-scrollbars"]`;
     return await browserTypes[browserType].connect(wsEndpoint);
   },
   isBrowserConnected: (browser) => browser.isConnected(),
@@ -59,6 +59,21 @@ const provider = createOpenRouter({
       console.log(`Browser ${browserType}-${index}`);
       const page = await browser.newPage(options);
       page.setDefaultTimeout(5000);
+      await page.addStyleTag({
+        content: `
+    ::-webkit-scrollbar {
+      width: 12px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #eee;
+    }
+  `, //
+      });
       return page;
     },
 

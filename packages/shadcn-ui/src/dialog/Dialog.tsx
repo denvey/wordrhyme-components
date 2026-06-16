@@ -1,15 +1,23 @@
 import { DialogContent as BaseDialogContent, cn } from '@pixpilot/shadcn';
 import * as React from 'react';
 
-export type DialogContentProps = React.ComponentPropsWithoutRef<typeof BaseDialogContent>;
+export interface DialogContentProps extends React.ComponentPropsWithoutRef<
+  typeof BaseDialogContent
+> {
+  fullscreen?: boolean;
+}
 
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof BaseDialogContent>,
   DialogContentProps
->(({ className, ...props }, ref) => (
+>(({ className, fullscreen = false, ...props }, ref) => (
   <BaseDialogContent
     ref={ref}
-    className={cn('max-h-[85vh] sm:max-h-[90vh] flex flex-col p-0 gap-0', className)}
+    className={cn(
+      'max-h-[calc(100%-2rem)] sm:max-h-[calc(100%-2rem)] w-fit max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-2rem)] flex min-h-0 flex-col p-0 gap-0',
+      fullscreen && 'h-[calc(100%-2rem)] w-[calc(100%-2rem)] max-w-none sm:max-w-none',
+      className,
+    )}
     {...props}
   />
 ));
@@ -24,7 +32,7 @@ export function DialogHeader({
   return (
     <div
       data-slot="header"
-      className={cn('flex flex-col space-y-1.5 px-6 py-4', className)}
+      className={cn('flex shrink-0 flex-col space-y-1.5 px-6 py-4', className)}
       {...props}
     />
   );
@@ -40,7 +48,7 @@ export function DialogBody({
   return (
     <div
       data-slot="body"
-      className={cn('flex-1 overflow-y-auto px-6 py-2', className)}
+      className={cn('min-h-0 flex-1 overflow-auto px-6 py-2', className)}
       {...props}
     />
   );
@@ -54,7 +62,7 @@ export function DialogFooter({
   return (
     <div
       data-slot="footer"
-      className={cn('flex justify-end space-x-2 px-6 py-4', className)}
+      className={cn('flex shrink-0 justify-end space-x-2 px-6 py-4', className)}
       {...props}
     />
   );

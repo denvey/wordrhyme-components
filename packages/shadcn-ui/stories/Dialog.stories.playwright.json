@@ -1,0 +1,1050 @@
+{
+  "version": "0",
+  "stories": {
+    "shadcn-ui-dialog--default": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "Fjys_3c9zLhT",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-content\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "XTsHR928dGP9",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "4unJaOIC599w",
+                  "name": "click"
+                }
+              ],
+              "id": "qDxnS2XGISUM",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "IdHc_lK_aTQ0",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "LcnB5XwJQ9Ye",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "381RjXAZ3beS",
+          "browserType": "chromium",
+          "id": "eFgg7NKZHCxL",
+          "index": 0,
+          "title": "Dialog open after trigger click"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--without-close-button": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "tl6W6hP5Hvm-",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-content\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "ykrCPfloGUAM",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "VobEiXWCPDvd",
+                  "name": "click"
+                }
+              ],
+              "id": "80E_Drjf2cmQ",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "-tL7c7Q-KO8a",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "ITLam8gSS0TY",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "381RjXAZ3beS",
+          "browserType": "chromium",
+          "id": "hz42luXHwoQ_",
+          "index": 0,
+          "title": "should not have close icon"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--long-dialog": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "timeout": 200
+              },
+              "name": "waitForTimeout"
+            }
+          ],
+          "id": "FTcbwI-KS7mw",
+          "title": "delay 200"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-content\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "tjBUAdtdc3Tz",
+          "title": "takeElementScreenshot"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "8au3pPFk_uyI",
+          "title": "click"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "BcYbRee8q_BW",
+                  "name": "click"
+                }
+              ],
+              "id": "B7GzVad1pq59",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "timeout": 200
+                  },
+                  "id": "LVjSEyMw7f9k",
+                  "name": "waitForTimeout"
+                }
+              ],
+              "id": "9m04EAhKBOFg",
+              "title": "delay 200"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "SZyTlHqRuQr6",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "Z9K6mdcome6j",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "QapbYE73oXDs",
+          "browserType": "chromium",
+          "id": "tHR3JdWl0kDb",
+          "index": 0,
+          "title": "should overflow content"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--wide-cards-row": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "NpOCLSr7tCdd",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-content\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "6aXNHXG9QFfw",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "2Yu5ky2o3_Z-",
+                  "name": "click"
+                }
+              ],
+              "id": "TLwXpcz9MIeh",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "UklxrxlhEf2N",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "oHVOGAXAfAQw",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "mEo-VCI-nuXJ",
+          "browserType": "chromium",
+          "id": "zg6UAstoVhEY",
+          "index": 0,
+          "title": "should show scrollbars on small screen"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "PTLslrhkuQN-",
+                  "name": "click"
+                }
+              ],
+              "id": "JGgVHJh9wt2A",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "A9z1Z13-LHFf",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "HLQoJ71VDkFS",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "O2zXDNnM0LAp",
+          "browserType": "chromium",
+          "id": "3_6Dfr3sZ2n6",
+          "index": 1,
+          "title": "content should be force posver to expend horizontally"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--restricted-width": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "Er7w4FWqlSd3",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-content\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "UFjrjiMT_iWZ",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "p53BOy9Ecfa1",
+                  "name": "click"
+                }
+              ],
+              "id": "Qym0HH2Nq6or",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "hb_pO5zCYOG-",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "L0BZ4E7xXFKg",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "2gXg_FaSgGcR",
+          "browserType": "chromium",
+          "id": "op2XUlcZkvfW",
+          "index": 0,
+          "title": "should respect max-w-..."
+        }
+      ]
+    },
+    "shadcn-ui-dialog--responsive-cards": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "aGKGGS5nsTpB",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-content\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "OYAhyb1pqlDr",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "78dENGO60USj",
+                  "name": "click"
+                }
+              ],
+              "id": "CqJH4GCBNIAT",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "-pvwDNnEgXww",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "ALpgneQNgqqj",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "SLXjooCgrAG3",
+          "browserType": "chromium",
+          "id": "EIZnlmJ01cPp",
+          "index": 0,
+          "title": "inner content should for dialog to expand"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "oJVUI7Pyqkzb",
+                  "name": "click"
+                }
+              ],
+              "id": "sCAbC20kQfY1",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "_QDn5LoKvmwq",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "c2FHydHqKtXI",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "ouMDEzybFIRR",
+          "browserType": "chromium",
+          "id": "4zLjuvrSehGQ",
+          "index": 1,
+          "title": "Inner content should be responsive"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--responsive-flex-cards": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "mtefzaPnjrYV",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-content\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "vVom5GPnpYCW",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "5BAOym50httS",
+                  "name": "click"
+                }
+              ],
+              "id": "H6v9tEfnzvHI",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "5i8nItAn3CEt",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "ROOC7YpKt7p3",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "s_PEuWULU9gW",
+          "browserType": "chromium",
+          "id": "oZT9mcPOF1G1",
+          "index": 0,
+          "title": "Flex card should be responsive"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "8I3qy15UXVlf",
+                  "name": "click"
+                }
+              ],
+              "id": "j__vb38Ny5xI",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-content\"]"
+                  },
+                  "id": "O_jkU2OgjFQx",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "gZd1rnbLcm6R",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "0216pMTCFXRc",
+          "browserType": "chromium",
+          "id": "kPFWqpueAcnc",
+          "index": 1,
+          "title": "inner content should expand dialog content"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--full-screen": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "5aRsEo6z3cRu",
+          "title": "click"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "-Jossr0I7vVP",
+                  "name": "click"
+                }
+              ],
+              "id": "ZbZYjzE1oE0d",
+              "title": "click"
+            }
+          ],
+          "browserOptionsId": "t4nvXEW4EPFw",
+          "browserType": "chromium",
+          "id": "_U7KTh1DGjWm",
+          "index": 0,
+          "title": "should be full screen"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "ueEOgv_lK0__",
+                  "name": "click"
+                }
+              ],
+              "id": "ftBN2yxc5maB",
+              "title": "click"
+            }
+          ],
+          "browserOptionsId": "5SufGUlFa_71",
+          "browserType": "chromium",
+          "id": "mMoB-0Bgde0s",
+          "index": 1,
+          "title": "should show scrolls"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--in-container": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "BIGa0jGuK3fy",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-overlay\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "brAYT1vS4zcX",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "-gyAdW0wq84w",
+                  "name": "click"
+                }
+              ],
+              "id": "r-bsyBu3G0iV",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-overlay\"]"
+                  },
+                  "id": "oYnuJK_JMc4u",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "uiKMdCM240xw",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "5SufGUlFa_71",
+          "browserType": "chromium",
+          "id": "Oqiw4cLYObR4",
+          "index": 0,
+          "title": "should open dialog inside container"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--in-container-auto-width": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "_iOv21n41ddY",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-overlay\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "8-2ax8YgC510",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "8yaq0bqa5yKb",
+                  "name": "click"
+                }
+              ],
+              "id": "zkkd-NwHikpf",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-overlay\"]"
+                  },
+                  "id": "7TqdM7cY5V6n",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "Dqj_CmL0ge8I",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "b6vQKg5S7aXd",
+          "browserType": "chromium",
+          "id": "zDDwfF8PzYKq",
+          "index": 0,
+          "title": "should fit dialog inside container"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--in-container-without-backdrop-dismiss": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "n3JZLeAkDt7r",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "#storybook-root"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "_kdqHVFUBpd8",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "lMyqKHY2tYVa",
+                  "name": "click"
+                }
+              ],
+              "id": "Zuh1PtTfT2-J",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "#storybook-root"
+                  },
+                  "id": "SUteN4L_UKjG",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "E3vV3LyMmUDF",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "b6vQKg5S7aXd",
+          "browserType": "chromium",
+          "id": "6tFWriYyf8Bl",
+          "index": 0,
+          "title": "should not have backdrop for dialog inside container"
+        }
+      ]
+    },
+    "shadcn-ui-dialog--without-backdrop-dismiss": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"dialog-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "Q3c8sMZrg5M2",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "x": 152,
+                "y": 99
+              },
+              "name": "mouse.click"
+            }
+          ],
+          "id": "5VdG7rLgVHat",
+          "title": "mouse.click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"header\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "PtFJmIkelhM-",
+          "title": "takeElementScreenshot"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"header\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "hFneQQm9JtIB",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"dialog-trigger\"]"
+                  },
+                  "id": "qJnRlmbG8FTM",
+                  "name": "click"
+                }
+              ],
+              "id": "ZK_xkbNT2MAv",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"header\"]"
+                  },
+                  "id": "eLdgrCDGuNKx",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "fkkZStlNo7FI",
+              "title": "takeElementScreenshot"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "x": 152,
+                    "y": 99
+                  },
+                  "id": "2MTHPwb6uPSR",
+                  "name": "mouse.click"
+                }
+              ],
+              "id": "S9Nnvilzv2-g",
+              "title": "mouse.click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"header\"]"
+                  },
+                  "id": "TZarcSRW7OfC",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "e5da829kLGxb",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "b6vQKg5S7aXd",
+          "browserType": "chromium",
+          "id": "GYH7O19W6W39",
+          "index": 0,
+          "title": "should not hide dialog of backdrop click is disabled"
+        }
+      ]
+    }
+  },
+  "browserOptions": {
+    "381RjXAZ3beS": {
+      "viewport": {
+        "height": 368,
+        "width": 657
+      },
+      "cursor": true
+    },
+    "QapbYE73oXDs": {
+      "viewport": {
+        "height": 351,
+        "width": 836
+      },
+      "cursor": true
+    },
+    "mEo-VCI-nuXJ": {
+      "viewport": {
+        "height": 433,
+        "width": 712
+      },
+      "cursor": true
+    },
+    "O2zXDNnM0LAp": {
+      "viewport": {
+        "height": 563,
+        "width": 1044
+      },
+      "cursor": true
+    },
+    "2gXg_FaSgGcR": {
+      "viewport": {
+        "height": 570,
+        "width": 846
+      },
+      "cursor": true
+    },
+    "SLXjooCgrAG3": {
+      "viewport": {
+        "height": 574,
+        "width": 1026
+      },
+      "cursor": true
+    },
+    "ouMDEzybFIRR": {
+      "viewport": {
+        "height": 574,
+        "width": 764
+      },
+      "cursor": true
+    },
+    "s_PEuWULU9gW": {
+      "viewport": {
+        "height": 414,
+        "width": 748
+      },
+      "cursor": true
+    },
+    "0216pMTCFXRc": {
+      "viewport": {
+        "height": 415,
+        "width": 1045
+      },
+      "cursor": true
+    },
+    "t4nvXEW4EPFw": {
+      "viewport": {
+        "height": 1000,
+        "width": 1300
+      },
+      "cursor": true
+    },
+    "5SufGUlFa_71": {
+      "viewport": {
+        "height": 305,
+        "width": 681
+      },
+      "cursor": true
+    },
+    "b6vQKg5S7aXd": {
+      "viewport": {
+        "height": 519,
+        "width": 899
+      },
+      "cursor": true
+    }
+  }
+}

@@ -115,6 +115,34 @@
       "id": "0SjXwxXFKaw6mO3",
       "title": "delay 500",
       "visibleTo": "*"
+    },
+    {
+      "actions": [
+        {
+          "args": {
+            "selector": "[data-slot=\"dialog-trigger\"]"
+          },
+          "id": "wmm7moKVDp",
+          "name": "click"
+        }
+      ],
+      "id": "GExYo1x9G_z82jB",
+      "title": "click",
+      "visibleTo": "*"
+    },
+    {
+      "actions": [
+        {
+          "args": {
+            "selector": "[data-slot=\"dialog-content\"]"
+          },
+          "id": "KL-X9Y4ZSS",
+          "name": "takeElementScreenshot"
+        }
+      ],
+      "id": "1RKQ_k0uHugVX-R",
+      "title": "takeElementScreenshot",
+      "visibleTo": "*"
     }
   ]
 }
