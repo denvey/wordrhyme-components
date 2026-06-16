@@ -267,6 +267,8 @@ export interface UseAutoCrudResourceReturn<
   TSchema extends z.ZodObject<z.ZodRawShape>,
   TListItem,
 > {
+  /** 主键字段名（默认: "id"） */
+  idKey?: keyof TListItem & string;
   tableData: {
     data: TListItem[];
     pageCount: number;
@@ -794,6 +796,7 @@ export function useAutoCrudResource<
 
   // 返回值
   return {
+    idKey,
     tableData: {
       data: tableRows as TListItem[],
       pageCount: listQuery.data?.pageCount ?? 0,

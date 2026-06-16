@@ -109,6 +109,8 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
   showDefaultExport?: boolean;
   /** 选中行数变化回调（用于外层组件获知选中状态） */
   onSelectedCountChange?: (count: number) => void;
+  /** 选中行数据变化回调（用于外层组件获知选中行身份变化） */
+  onSelectedRowsChange?: (rows: z.infer<T>[]) => void;
   /** 获取选中行数据的回调（由外层组件调用） */
   getSelectedRows?: React.MutableRefObject<(() => z.infer<T>[]) | null>;
 }
@@ -133,6 +135,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   enableExport = true,
   showDefaultExport = true,
   onSelectedCountChange,
+  onSelectedRowsChange,
   getSelectedRows,
 }: AutoTableProps<T>) {
   // 解析过滤模式配置，默认显示全部 3 个模式
@@ -198,11 +201,15 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     clearOnDefault: true,
   });
 
-  // 暴露选中行数据给外层组件
-  const getSelectedRowsFn = useCallback(
+  const rowSelection = table.getState().rowSelection;
+  const columnFilters = table.getState().columnFilters;
+  const selectedRows = useMemo(
     () => table.getFilteredSelectedRowModel().rows.map((row) => row.original),
-    [table],
+    [table, rowSelection, columnFilters, data],
   );
+
+  // 暴露选中行数据给外层组件
+  const getSelectedRowsFn = useCallback(() => selectedRows, [selectedRows]);
 
   useEffect(() => {
     if (getSelectedRows) {
@@ -216,10 +223,14 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   }, [getSelectedRows, getSelectedRowsFn]);
 
   // 通知外层选中行数变化
-  const selectedRowCount = table.getFilteredSelectedRowModel().rows.length;
+  const selectedRowCount = selectedRows.length;
   useEffect(() => {
     onSelectedCountChange?.(selectedRowCount);
   }, [selectedRowCount, onSelectedCountChange]);
+
+  useEffect(() => {
+    onSelectedRowsChange?.(selectedRows);
+  }, [selectedRows, onSelectedRowsChange]);
 
   // 过滤模式切换组件（放在 View 旁边）
   const FilterModeSelect = showToggle ? (

@@ -207,6 +207,95 @@ export type ToolbarActionConfig =
   | ToolbarActionItem[]
   | ((defaults: ToolbarBuiltinActionItem[]) => ToolbarActionItem[]);
 
+export interface AutoCrudToolbarContext {
+  crudId: string;
+  idKey: string;
+  rowIds: string[];
+  selectedRowIds: string[];
+  selectedCount: number;
+  openCreate?: () => void;
+}
+
+export type AutoCrudToolbarResolver = (
+  targetId: string,
+  ownerActions: readonly ToolbarActionItem[],
+  context: AutoCrudToolbarContext,
+) => ToolbarActionItem[];
+
+let autoCrudToolbarResolver: AutoCrudToolbarResolver | null = null;
+
+export function setAutoCrudToolbarResolver(
+  resolver: AutoCrudToolbarResolver | null,
+): void {
+  autoCrudToolbarResolver = resolver;
+}
+
+function getDefaultToolbarActions(): ToolbarBuiltinActionItem[] {
+  return [{ type: 'import' }, { type: 'export' }, { type: 'create' }];
+}
+
+function resolveOwnerToolbarActions(
+  toolbar: ToolbarActionConfig | undefined,
+): ToolbarActionItem[] {
+  const resolved =
+    typeof toolbar === 'function' ? toolbar(getDefaultToolbarActions()) : toolbar;
+
+  return resolved !== undefined && resolved.length > 0
+    ? [...resolved]
+    : getDefaultToolbarActions();
+}
+
+function readRowIds<T>(rows: readonly T[], idKey: string): string[] {
+  return rows.flatMap((row) => {
+    const value = (row as Record<string, unknown>)[idKey];
+    return value === null || value === undefined ? [] : [String(value)];
+  });
+}
+
+function areStringArraysEqual(
+  left: readonly string[],
+  right: readonly string[],
+): boolean {
+  return (
+    left.length === right.length && left.every((value, index) => value === right[index])
+  );
+}
+
+function haveSameRowSelection<T>(
+  left: readonly T[],
+  right: readonly T[],
+  idKey: string,
+): boolean {
+  if (left.length !== right.length) return false;
+
+  const leftIds = readRowIds(left, idKey);
+  const rightIds = readRowIds(right, idKey);
+  if (leftIds.length === left.length && rightIds.length === right.length) {
+    return areStringArraysEqual(leftIds, rightIds);
+  }
+
+  return left.every((row, index) => row === right[index]);
+}
+
+function readCreateAction(
+  actions: readonly ToolbarActionItem[],
+): ToolbarBuiltinActionItem | undefined {
+  return actions.find(
+    (action): action is ToolbarBuiltinActionItem => action.type === 'create',
+  );
+}
+
+function resolveToolbarActionsWithResolver(
+  targetId: string | undefined,
+  ownerActions: ToolbarActionItem[],
+  context: AutoCrudToolbarContext,
+): ToolbarActionItem[] {
+  const resolver = autoCrudToolbarResolver;
+  return targetId !== undefined && targetId.length > 0 && resolver !== null
+    ? resolver(targetId, ownerActions, context)
+    : ownerActions;
+}
+
 /**
  * AutoCrudTable Props 接口
  */
@@ -252,7 +341,7 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     batchFields?: (string | BatchUpdateField)[];
     /**
      * 多选后悬浮批量操作栏配置
-     * 用法类同 `actions` 行操作和 `toolbarActions` 顶部工具栏。
+     * 用法类同 `actions` 行操作和 `toolbar` 顶部工具栏。
      * 只传 custom 时保留默认批量操作；包含任意内置 type 时完全接管顺序。
      */
     batchActions?: BatchActionConfig<z.output<TSchema>>;
@@ -275,6 +364,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
    * 顶层工具栏操作配置
    * 用法类同 `actions` 行操作。一旦配置了包含内置 `type` 的数组，它将完全接管右侧工具栏！
    */
+  toolbar?: ToolbarActionConfig;
+  /** @deprecated Use toolbar instead. */
   toolbarActions?: ToolbarActionConfig;
   /**
    * 权限配置
@@ -1038,6 +1129,7 @@ export function resolveActions<T>(
  * 高级 CRUD 表格组件，封装了完整的增删改查流程
  */
 export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
+  id,
   title,
   description,
   schema,
@@ -1047,6 +1139,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   form: formConfig,
   permissions,
   actions: actionItems,
+  toolbar,
   toolbarActions,
   locale: localeProp,
   onCreate,
@@ -1075,10 +1168,55 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
 
   // Import dialog state
   const [importOpen, setImportOpen] = React.useState(false);
-  const [selectedCount, setSelectedCount] = React.useState(0);
+  const [selectedRows, setSelectedRows] = React.useState<z.output<TSchema>[]>([]);
   const [exporting, setExporting] = React.useState(false);
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
   const dynamicFilterOptions = useDynamicFilterOptions(resolvedFields);
+  const resourceIdKey = resource.idKey ?? 'id';
+  const ownerToolbarActions = React.useMemo(
+    () => resolveOwnerToolbarActions(toolbar ?? toolbarActions),
+    [toolbar, toolbarActions],
+  );
+  const selectedCount = selectedRows.length;
+  const selectedRowIds = React.useMemo(
+    () => readRowIds(selectedRows, resourceIdKey),
+    [selectedRows, resourceIdKey],
+  );
+  const rowIds = React.useMemo(
+    () => readRowIds(resource.tableData.data, resourceIdKey),
+    [resource.tableData.data, resourceIdKey],
+  );
+  const handleSelectedRowsChange = React.useCallback(
+    (rows: z.output<TSchema>[]) => {
+      setSelectedRows((currentRows) =>
+        haveSameRowSelection(currentRows, rows, resourceIdKey) ? currentRows : rows,
+      );
+    },
+    [resourceIdKey],
+  );
+  const ownerCreateAction = React.useMemo(
+    () => readCreateAction(ownerToolbarActions),
+    [ownerToolbarActions],
+  );
+  const toolbarOpenCreate = can.create
+    ? (ownerCreateAction?.onClick ?? onCreate ?? resource.handlers.openCreate)
+    : undefined;
+  const toolbarContext = React.useMemo<AutoCrudToolbarContext>(
+    () => ({
+      crudId: id ?? '',
+      idKey: resourceIdKey,
+      rowIds,
+      selectedRowIds,
+      selectedCount,
+      ...(toolbarOpenCreate ? { openCreate: toolbarOpenCreate } : {}),
+    }),
+    [id, resourceIdKey, rowIds, selectedRowIds, selectedCount, toolbarOpenCreate],
+  );
+  const resolvedToolbarActions = resolveToolbarActionsWithResolver(
+    id,
+    ownerToolbarActions,
+    toolbarContext,
+  );
 
   // 从 schema 提取可导入的列名（排除 deny 字段）
   const importColumns = React.useMemo(() => {
@@ -1226,17 +1364,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             return null;
           };
 
-          // 1. 解析传入的 function
-          const resolvedToolbarActions =
-            typeof toolbarActions === 'function'
-              ? toolbarActions([
-                  { type: 'import' },
-                  { type: 'export' },
-                  { type: 'create' },
-                ])
-              : toolbarActions;
-
-          // 2. 未配置 toolbarActions → 渲染默认内置按钮
+          // 1. 未配置 toolbar → 渲染默认内置按钮
           if (!resolvedToolbarActions || resolvedToolbarActions.length === 0) {
             return (
               <div className="flex items-center gap-2">
@@ -1249,7 +1377,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
 
           const hasBuiltin = resolvedToolbarActions.some((i) => i.type !== 'custom');
 
-          // 3. 只有 custom 项 → 保留所有内置，custom 按 position 首尾拼接
+          // 2. 只有 custom 项 → 保留所有内置，custom 按 position 首尾拼接
           if (!hasBuiltin) {
             const startNodes = resolvedToolbarActions
               .filter((i) => i.type === 'custom' && i.position === 'start')
@@ -1272,7 +1400,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             );
           }
 
-          // 4. 包含内置项 → 完全接管：未列出的内置不渲染，顺序严格按数组
+          // 3. 包含内置项 → 完全接管：未列出的内置不渲染，顺序严格按数组
           return (
             <div className="flex items-center gap-2">
               {resolvedToolbarActions.map((action, index) => {
@@ -1335,7 +1463,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         enableExport={canExport}
         showDefaultExport={false}
         initialSorting={tableConfig?.defaultSort}
-        onSelectedCountChange={setSelectedCount}
+        onSelectedRowsChange={handleSelectedRowsChange}
         getSelectedRows={getSelectedRowsRef}
       />
 

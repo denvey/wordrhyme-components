@@ -277,7 +277,9 @@ interface AutoCrudTableProps<TSchema> {
    * - 只传 custom 项：内置保持默认，custom 追加到首/尾
    * - 包含任意内置 type：数组完全接管，未列出的内置项自动隐藏
    */
-  toolbarActions?: ToolbarActionItem[];
+  toolbar?: ToolbarActionConfig;
+  /** @deprecated 新代码请使用 toolbar */
+  toolbarActions?: ToolbarActionConfig;
   /**
    * 行操作配置
    * - 只传 custom 项：内置保持默认，custom 追加到首/尾
@@ -304,6 +306,9 @@ interface UseAutoCrudResourceConfig<TData> {
 
 ```typescript
 interface UseAutoCrudResourceReturn<TSchema, TData> {
+  // 主键字段名；未提供时 AutoCrudTable 默认按 "id" 读取
+  idKey?: keyof TData & string;
+
   // 表格数据
   tableData: {
     data: TData[];
@@ -529,7 +534,7 @@ table={{
 
 ## 🔧 工具栏操作配置
 
-`toolbarActions` 数组控制页面顶部右侧工具栏的按钮，设计思路完全对齐行操作 `actions`。
+`toolbar` 数组控制页面顶部右侧工具栏的按钮，设计思路完全对齐行操作 `actions`。旧 prop `toolbarActions` 仍兼容读取，但新代码请使用 `toolbar`。
 
 内置操作类型：`create`（新建）、`import`（导入）、`export`（导出）。
 
@@ -539,7 +544,7 @@ table={{
 
 ```tsx
 <AutoCrudTable
-  toolbarActions={[
+  toolbar={[
     {
       type: 'custom',
       component: <Button variant="outline">分类管理</Button>,
@@ -557,7 +562,7 @@ table={{
 
 ```tsx
 <AutoCrudTable
-  toolbarActions={[
+  toolbar={[
     { type: 'create' }, // 新建移到最前
     { type: 'export', label: '导出 CSV' }, // 覆盖文案
     // import 未列出 → 隐藏
@@ -570,7 +575,7 @@ table={{
 
 ```tsx
 <AutoCrudTable
-  toolbarActions={[
+  toolbar={[
     { type: 'import' },
     { type: 'export' },
     {
@@ -586,7 +591,7 @@ table={{
 
 ```tsx
 <AutoCrudTable
-  toolbarActions={[
+  toolbar={[
     { type: 'export' },
     {
       type: 'create',
@@ -614,7 +619,7 @@ table={{
 
 ```tsx
 <AutoCrudTable
-  toolbarActions={[
+  toolbar={[
     { type: 'custom', component: <CategoryFilter onChange={setCategory} /> },
     { type: 'export' },
     { type: 'create', label: '发布', onClick: () => router.push('/products/new') },
@@ -625,7 +630,7 @@ table={{
 
 ### 与 `permissions` 的交互
 
-`toolbarActions` 与 `permissions` 的交互规则如下：
+`toolbar` 与 `permissions` 的交互规则如下：
 
 - `permissions.can.create = false` → 即使配置了 `{ type: "create" }`，新建按钮仍不渲染
 - `permissions.can.export = false` → 即使配置了 `{ type: "export" }`，导出按钮仍不渲染
@@ -637,7 +642,7 @@ table={{
   permissions={{
     can: { create: isAdmin, export: true, delete: isAdmin },
   }}
-  toolbarActions={[
+  toolbar={[
     { type: 'export' }, // ✅ 始终渲染
     { type: 'create', label: '发布商品' }, // 🔒 仅 isAdmin 时渲染
     {
@@ -648,14 +653,14 @@ table={{
 />
 ```
 
-### `toolbarActions` 传参高级语法（函数式）
+### `toolbar` 传参高级语法（函数式）
 
 如果你的目标是拦截并修改基于原顺序的所有内容，你还可以传递一个函数：
 
 ```tsx
 <AutoCrudTable
   // defaults 即内置三个按钮的信息，在此数组里你可以随意 map、过滤或插值
-  toolbarActions={(defaults) =>
+  toolbar={(defaults) =>
     defaults.map((btn) =>
       btn.type === 'create'
         ? { ...btn, label: '发布商品', onClick: () => router.push('/products/new') }
@@ -671,6 +676,10 @@ table={{
 ```typescript
 type ToolbarActionItem = ToolbarBuiltinActionItem | ToolbarCustomActionItem;
 
+type ToolbarActionConfig =
+  | ToolbarActionItem[]
+  | ((defaults: ToolbarBuiltinActionItem[]) => ToolbarActionItem[]);
+
 type ToolbarBuiltinActionItem = {
   type: 'create' | 'import' | 'export';
   onClick?: () => void; // 覆盖默认行为
@@ -683,6 +692,29 @@ type ToolbarCustomActionItem = {
   component: React.ReactNode; // 自定义渲染内容
   position?: 'start' | 'end'; // 仅在无内置项时生效，默认 "end"
 };
+```
+
+### 工具栏扩展 Resolver
+
+宿主应用可以通过 `setAutoCrudToolbarResolver` 为指定 CRUD 注入额外工具栏动作。resolver 是普通纯函数，不是 React Hook；不要在 resolver 内调用 `useRouter`、`useMemo` 等 React Hooks。
+
+```tsx
+import { AutoCrudTable, setAutoCrudToolbarResolver } from '@wordrhyme/auto-crud';
+import type { AutoCrudToolbarResolver } from '@wordrhyme/auto-crud';
+
+const toolbarResolver: AutoCrudToolbarResolver = (targetId, ownerActions, context) => {
+  if (targetId !== 'com.wordrhyme.shop.products') return [...ownerActions];
+
+  return [
+    ...ownerActions,
+    {
+      type: 'custom',
+      component: <Button disabled={context.selectedCount === 0}>批量发布</Button>,
+    },
+  ];
+};
+
+setAutoCrudToolbarResolver(toolbarResolver);
 ```
 
 ---
@@ -790,7 +822,7 @@ type ActionItem<T> =
 
 ### 批量悬浮栏操作顺序
 
-`table.batchActions` 控制多选后悬浮操作栏，设计思路对齐行操作 `actions` 和顶部 `toolbarActions`。
+`table.batchActions` 控制多选后悬浮操作栏，设计思路对齐行操作 `actions` 和顶部 `toolbar`。
 
 内置操作类型：`batchUpdate`（批量更新字段下拉）、`export`（导出选中行）、`delete`（删除选中行）。
 
