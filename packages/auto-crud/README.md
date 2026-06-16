@@ -696,10 +696,10 @@ type ToolbarCustomActionItem = {
 
 ### 工具栏扩展 Resolver
 
-宿主应用可以通过 `setAutoCrudToolbarResolver` 为指定 CRUD 注入额外工具栏动作。resolver 是普通纯函数，不是 React Hook；不要在 resolver 内调用 `useRouter`、`useMemo` 等 React Hooks。
+宿主应用可以通过 `setToolbarResolver` 为指定 CRUD 注入额外工具栏动作。resolver 是普通纯函数，不是 React Hook；不要在 resolver 内调用 `useRouter`、`useMemo` 等 React Hooks。
 
 ```tsx
-import { AutoCrudTable, setAutoCrudToolbarResolver } from '@wordrhyme/auto-crud';
+import { AutoCrudTable, setToolbarResolver } from '@wordrhyme/auto-crud';
 import type { AutoCrudToolbarResolver } from '@wordrhyme/auto-crud';
 
 const toolbarResolver: AutoCrudToolbarResolver = (targetId, ownerActions, context) => {
@@ -714,7 +714,7 @@ const toolbarResolver: AutoCrudToolbarResolver = (targetId, ownerActions, contex
   ];
 };
 
-setAutoCrudToolbarResolver(toolbarResolver);
+setToolbarResolver(toolbarResolver);
 ```
 
 ---

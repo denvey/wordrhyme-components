@@ -4,7 +4,7 @@ import { z } from 'zod';
 import type { UseAutoCrudResourceReturn } from '@/hooks/use-auto-crud-resource';
 import { dataSources } from '@/lib/registries';
 import type { AutoCrudToolbarResolver, Fields } from './auto-crud-table';
-import { AutoCrudTable, setAutoCrudToolbarResolver } from './auto-crud-table';
+import { AutoCrudTable, setToolbarResolver } from './auto-crud-table';
 
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -116,7 +116,7 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
   });
 
   afterEach(() => {
-    setAutoCrudToolbarResolver(null);
+    setToolbarResolver(null);
     dataSources.unregister('test.dynamic-regions');
     cleanup();
     vi.clearAllMocks();
@@ -190,7 +190,7 @@ describe('auto-crud table toolbar resolver', () => {
   });
 
   afterEach(() => {
-    setAutoCrudToolbarResolver(null);
+    setToolbarResolver(null);
     cleanup();
     vi.clearAllMocks();
   });
@@ -200,7 +200,7 @@ describe('auto-crud table toolbar resolver', () => {
       ...ownerActions,
       { type: 'custom' as const, component: <button type="button">Injected</button> },
     ]);
-    setAutoCrudToolbarResolver(toolbarResolver);
+    setToolbarResolver(toolbarResolver);
 
     render(
       <AutoCrudTable
@@ -235,7 +235,7 @@ describe('auto-crud table toolbar resolver', () => {
     const toolbarResolver = vi.fn<AutoCrudToolbarResolver>((_targetId, ownerActions) => [
       ...ownerActions,
     ]);
-    setAutoCrudToolbarResolver(toolbarResolver);
+    setToolbarResolver(toolbarResolver);
 
     const { rerender } = render(
       <AutoCrudTable
@@ -309,7 +309,7 @@ describe('auto-crud table toolbar resolver', () => {
     const toolbarResolver = vi.fn<AutoCrudToolbarResolver>((_targetId, ownerActions) => [
       ...ownerActions,
     ]);
-    setAutoCrudToolbarResolver(toolbarResolver);
+    setToolbarResolver(toolbarResolver);
 
     render(
       <AutoCrudTable
@@ -328,7 +328,7 @@ describe('auto-crud table toolbar resolver', () => {
     const toolbarResolver = vi.fn<AutoCrudToolbarResolver>((_targetId, ownerActions) => [
       ...ownerActions,
     ]);
-    setAutoCrudToolbarResolver(toolbarResolver);
+    setToolbarResolver(toolbarResolver);
 
     render(
       <AutoCrudTable

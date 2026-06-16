@@ -14,7 +14,7 @@ export type {
   ToolbarBuiltinActionItem,
   ToolbarCustomActionItem,
 } from './components/auto-crud/auto-crud-table';
-export { setAutoCrudToolbarResolver } from './components/auto-crud/auto-crud-table';
+export { setToolbarResolver } from './components/auto-crud/auto-crud-table';
 
 // i18n
 export { zhCN, enUS, jaJP, koKR, frFR, deDE, esES, resolveLocale } from './i18n/locale';

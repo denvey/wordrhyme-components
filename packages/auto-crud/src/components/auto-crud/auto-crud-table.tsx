@@ -224,9 +224,7 @@ export type AutoCrudToolbarResolver = (
 
 let autoCrudToolbarResolver: AutoCrudToolbarResolver | null = null;
 
-export function setAutoCrudToolbarResolver(
-  resolver: AutoCrudToolbarResolver | null,
-): void {
+export function setToolbarResolver(resolver: AutoCrudToolbarResolver | null): void {
   autoCrudToolbarResolver = resolver;
 }
 
