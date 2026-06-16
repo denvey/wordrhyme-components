@@ -18,8 +18,7 @@ export const DialogContent = React.forwardRef<
   <BaseDialogContent
     ref={ref}
     className={cn(
-      'gap-4 py-5 px-0',
-      'max-h-[calc(100%-2rem)] sm:max-h-[calc(100%-2rem)] w-fit max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-2rem)] flex min-h-0 flex-col',
+      'max-h-[calc(100%-2rem)] sm:max-h-[calc(100%-2rem)] w-fit max-w-[calc(100%-2rem)] sm:max-w-[calc(100%-2rem)] flex min-h-0 flex-col gap-4 px-6 py-5',
       fullscreen && 'h-[calc(100%-2rem)] w-[calc(100%-2rem)] max-w-none sm:max-w-none',
       className,
     )}
@@ -37,15 +36,13 @@ export function DialogHeader({
   return (
     <div
       data-slot="header"
-      className={cn('flex shrink-0 flex-col gap-2.5 px-6', className)}
+      className={cn('flex shrink-0 flex-col gap-2.5', className)}
       {...props}
     />
   );
 }
 
 // DialogBody.tsx
-// Note: Uses py-2 for tighter spacing compared to header/footer (py-4)
-// to create content-dense dialogs while maintaining visual hierarchy
 export function DialogBody({
   className,
   ...props
@@ -53,7 +50,7 @@ export function DialogBody({
   return (
     <div
       data-slot="body"
-      className={cn('min-h-0 flex-1 overflow-auto px-6', className)}
+      className={cn('min-h-0 flex-1 overflow-auto -mx-6 px-6', className)}
       {...props}
     />
   );
@@ -67,7 +64,7 @@ export function DialogFooter({
   return (
     <div
       data-slot="footer"
-      className={cn('flex shrink-0 justify-end space-x-2 px-6', className)}
+      className={cn('flex shrink-0 justify-end space-x-2', className)}
       {...props}
     />
   );
