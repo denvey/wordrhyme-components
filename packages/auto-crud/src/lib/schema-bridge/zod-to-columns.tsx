@@ -380,9 +380,11 @@ export function createSelectColumn<T>(): ColumnDef<T> {
 /**
  * 已解析的操作项（渲染层使用）
  */
-export interface ResolvedActionItem<T> {
-  label: string;
-  onClick: (row: T) => void;
+export interface ResolvedActionItem<T, TContext = any> {
+  label?: string;
+  onClick?: (row: T) => void;
+  component?: React.ReactNode | ((context: TContext) => React.ReactNode);
+  getContext?: (row: T) => TContext;
   separator?: boolean;
   variant?: 'default' | 'destructive';
 }
@@ -390,12 +392,20 @@ export interface ResolvedActionItem<T> {
 /**
  * 操作列配置（ResolvedActionItem 数组）
  */
-export type ActionsColumnConfig<T> = ResolvedActionItem<T>[];
+export type ActionsColumnConfig<T> = ResolvedActionItem<T, any>[];
 
 /**
  * 创建操作列
  */
 export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef<T> {
+  const renderActionComponent = (item: ResolvedActionItem<T>, row: Row<T>) => {
+    if (!item.component) return null;
+
+    return typeof item.component === 'function'
+      ? item.component(item.getContext?.(row.original))
+      : item.component;
+  };
+
   return {
     id: 'actions',
     cell: ({ row }) => (
@@ -413,12 +423,16 @@ export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef
           {items.map((item, i) => (
             <React.Fragment key={i}>
               {item.separator && <DropdownMenuSeparator />}
-              <DropdownMenuItem
-                className={item.variant === 'destructive' ? 'text-destructive' : ''}
-                onClick={() => item.onClick(row.original)}
-              >
-                {item.label}
-              </DropdownMenuItem>
+              {item.component ? (
+                renderActionComponent(item, row)
+              ) : item.label && item.onClick ? (
+                <DropdownMenuItem
+                  className={item.variant === 'destructive' ? 'text-destructive' : ''}
+                  onClick={() => item.onClick?.(row.original)}
+                >
+                  {item.label}
+                </DropdownMenuItem>
+              ) : null}
             </React.Fragment>
           ))}
         </DropdownMenuContent>

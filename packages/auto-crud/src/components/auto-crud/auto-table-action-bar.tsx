@@ -41,7 +41,13 @@ export interface BatchActionContext<TData> {
 
 export type BatchBuiltinActionType = 'batchUpdate' | 'export' | 'delete';
 
-export type BatchBuiltinActionItem<TData> = {
+export type BatchActionMeta = {
+  id?: string;
+  order?: number;
+  hidden?: boolean;
+};
+
+export type BatchBuiltinActionItem<TData> = BatchActionMeta & {
   type: BatchBuiltinActionType;
   /** 替代默认行为 */
   onClick?: (
@@ -55,7 +61,7 @@ export type BatchBuiltinActionItem<TData> = {
   component?: React.ReactNode | ((context: BatchActionContext<TData>) => React.ReactNode);
 };
 
-export type BatchCustomActionItem<TData> = {
+export type BatchCustomActionItem<TData> = BatchActionMeta & {
   type: 'custom';
   /** 操作文本。传 component 时可省略 */
   label?: string;
@@ -298,9 +304,10 @@ export function AutoTableActionBar<TData>({
       { type: 'export' },
       { type: 'delete' },
     ];
-    const resolvedActions = typeof actions === 'function' ? actions(defaults) : actions;
+    const configuredActions = typeof actions === 'function' ? actions(defaults) : actions;
+    const resolvedActions = configuredActions?.filter((action) => !action.hidden);
 
-    if (!resolvedActions || resolvedActions.length === 0) {
+    if (configuredActions === undefined) {
       return (
         <>
           {renderBuiltinAction({ type: 'batchUpdate' })}
@@ -309,6 +316,10 @@ export function AutoTableActionBar<TData>({
           {renderBuiltinAction({ type: 'delete' })}
         </>
       );
+    }
+
+    if (!resolvedActions || resolvedActions.length === 0) {
+      return null;
     }
 
     const hasBuiltin = resolvedActions.some((action) => action.type !== 'custom');

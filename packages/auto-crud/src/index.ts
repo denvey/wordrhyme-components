@@ -7,8 +7,17 @@ export type {
   FilterConfig,
   AutoCrudTableProps,
   ActionItem,
+  ActionConfig,
+  AutoCrudActionConfig,
+  AutoCrudActionsConfig,
+  AutoCrudRowActionContext,
   AutoCrudToolbarContext,
   AutoCrudToolbarResolver,
+  RowActionConfig,
+  RowActionItem,
+  RowBuiltinActionItem,
+  RowBuiltinActionType,
+  RowCustomActionItem,
   ToolbarActionItem,
   ToolbarActionConfig,
   ToolbarBuiltinActionItem,
@@ -70,6 +79,13 @@ export type {
   AutoCrudFormComponentConfig,
   AutoCrudOption,
 } from './lib/registries';
+export { crudActions } from './lib/crud-actions';
+export type {
+  CrudActionBase,
+  CrudActionEntry,
+  CrudActionRegistration,
+  CrudActionZone,
+} from './lib/crud-actions';
 
 // Hooks
 export { useAutoCrudResource, noopToastAdapter } from './hooks/use-auto-crud-resource';

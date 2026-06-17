@@ -266,6 +266,8 @@ interface AutoCrudTableProps<TSchema> {
     overrides?: Record<string, any>; // 列覆盖配置
     filterModes?: FilterMode | FilterMode[]; // 过滤模式
     batchFields?: (string | BatchUpdateField)[]; // 批量更新字段
+    /** @deprecated 新代码请使用 actions.batch */
+    batchActions?: BatchActionConfig<z.output<TSchema>>;
     defaultSort?: any[]; // 默认排序
   };
   form?: {
@@ -273,19 +275,20 @@ interface AutoCrudTableProps<TSchema> {
     columns?: number; // 表单列数
   };
   /**
-   * 工具栏右侧操作配置
-   * - 只传 custom 项：内置保持默认，custom 追加到首/尾
-   * - 包含任意内置 type：数组完全接管，未列出的内置项自动隐藏
+   * 行操作配置，或统一配置 toolbar/row/batch。
+   *
+   * 旧写法 actions={[...]} 仍表示行操作；
+   * 新写法 actions={{ toolbar, row, batch }} 可集中配置三类操作。
    */
+  actions?: RowActionConfig<z.output<TSchema>> | {
+    toolbar?: ToolbarActionConfig;
+    row?: RowActionConfig<z.output<TSchema>>;
+    batch?: BatchActionConfig<z.output<TSchema>>;
+  };
+  /** @deprecated 新代码请使用 actions.toolbar */
   toolbar?: ToolbarActionConfig;
-  /** @deprecated 新代码请使用 toolbar */
+  /** @deprecated 新代码请使用 actions.toolbar */
   toolbarActions?: ToolbarActionConfig;
-  /**
-   * 行操作配置
-   * - 只传 custom 项：内置保持默认，custom 追加到首/尾
-   * - 包含任意内置 type：数组完全接管，未列出的隐藏，顺序即渲染顺序
-   */
-  actions?: ActionItem<z.output<TSchema>>[];
 }
 ```
 
@@ -674,24 +677,39 @@ table={{
 ### `ToolbarActionItem` 类型
 
 ```typescript
+type ActionMeta = {
+  id?: string; // 插件注册时用于区分同 type 的 action
+  order?: number; // 插件注册排序，默认 100
+  hidden?: boolean; // 显式隐藏该 action
+};
+
 type ToolbarActionItem = ToolbarBuiltinActionItem | ToolbarCustomActionItem;
 
 type ToolbarActionConfig =
   | ToolbarActionItem[]
   | ((defaults: ToolbarBuiltinActionItem[]) => ToolbarActionItem[]);
 
-type ToolbarBuiltinActionItem = {
+type ToolbarBuiltinActionItem = ActionMeta & {
   type: 'create' | 'import' | 'export';
   onClick?: () => void; // 覆盖默认行为
   label?: string; // 覆盖默认文案
-  component?: React.ReactNode; // 完全替换按钮渲染
+  component?: React.ReactNode | ((context: AutoCrudToolbarContext) => React.ReactNode);
 };
 
-type ToolbarCustomActionItem = {
+type ToolbarCustomActionItem = ActionMeta & {
   type: 'custom';
-  component: React.ReactNode; // 自定义渲染内容
+  component: React.ReactNode | ((context: AutoCrudToolbarContext) => React.ReactNode);
   position?: 'start' | 'end'; // 仅在无内置项时生效，默认 "end"
 };
+
+interface AutoCrudToolbarContext {
+  crudId: string;
+  idKey: string;
+  rowIds: string[];
+  selectedRowIds: string[];
+  selectedCount: number;
+  openCreate?: () => void;
+}
 ```
 
 ### 工具栏扩展 Resolver
@@ -717,20 +735,50 @@ const toolbarResolver: AutoCrudToolbarResolver = (targetId, ownerActions, contex
 setToolbarResolver(toolbarResolver);
 ```
 
+### 插件式操作注册
+
+跨模块扩展推荐使用 `crudActions.register`。它按 `targetId` 和区域注入操作，不需要业务页把所有插件动作手动拼到 props 中。
+
+```tsx
+import { crudActions } from '@wordrhyme/auto-crud';
+
+crudActions.register({
+  targetId: 'com.wordrhyme.shop.products',
+  zone: 'toolbar', // 'toolbar' | 'row' | 'batch'
+  ownerId: 'com.wordrhyme.product-lab',
+  actions: [
+    { type: 'export', hidden: true },
+    { type: 'create', label: '发布商品', order: 80 },
+    {
+      type: 'custom',
+      id: 'bulk-publish',
+      position: 'end',
+      component: ({ selectedCount }) => (
+        <Button disabled={selectedCount === 0}>批量发布</Button>
+      ),
+    },
+  ],
+});
+```
+
+同一个 `ownerId + targetId + zone` 再次注册会替换该 owner 的旧动作；卸载插件或页面时可调用 `crudActions.unregister(ownerId)`。
+
 ---
 
 ## 🎬 行操作配置
 
-`actions` 数组控制每行下拉菜单的操作项，支持覆盖内置操作、添加自定义操作、完全自定义顺序。
+`actions` 旧数组写法控制每行下拉菜单的操作项；统一写法可使用 `actions.row`。两种写法都支持覆盖内置操作、添加自定义操作、完全自定义顺序。
 
 ### 只添加自定义项（内置不变）
 
 ```tsx
 <AutoCrudTable
-  actions={[
-    { type: 'custom', label: '分配', onClick: (row) => assign(row.id) },
-    { type: 'custom', label: '预览', onClick: (row) => preview(row), position: 'start' },
-  ]}
+  actions={{
+    row: [
+      { type: 'custom', label: '分配', onClick: (row) => assign(row.id) },
+      { type: 'custom', label: '预览', onClick: (row) => preview(row), position: 'start' },
+    ],
+  }}
 />
 // 渲染顺序: 预览 · 查看 · 编辑 · 复制 · 删除 · 分配
 ```
@@ -741,12 +789,14 @@ setToolbarResolver(toolbarResolver);
 
 ```tsx
 <AutoCrudTable
-  actions={[
-    { type: 'view', onClick: (row) => router.push(`/tasks/${row.id}`) }, // 覆盖跳转
-    { type: 'custom', label: '分配', onClick: (row) => assign(row.id) },
-    { type: 'edit' }, // 默认行为
-    // copy / delete 未列出 → 隐藏
-  ]}
+  actions={{
+    row: [
+      { type: 'view', onClick: (row) => router.push(`/tasks/${row.id}`) }, // 覆盖跳转
+      { type: 'custom', label: '分配', onClick: (row) => assign(row.id) },
+      { type: 'edit' }, // 默认行为
+      // copy / delete 未列出 → 隐藏
+    ],
+  }}
 />
 ```
 
@@ -779,24 +829,42 @@ setToolbarResolver(toolbarResolver);
 />
 ```
 
-### `ActionItem` 类型
+### `RowActionItem` 类型
 
 ```typescript
-type ActionItem<T> =
-  | {
-      type: 'view' | 'edit' | 'copy' | 'delete';
-      onClick?: (row: T) => void; // 不传则使用默认行为
-      label?: string; // 不传则使用默认文案
-      separator?: boolean; // 此项前加分隔线
-    }
-  | {
-      type: 'custom';
-      label: string;
-      onClick: (row: T) => void;
-      position?: 'start' | 'end'; // 仅无内置项时生效，默认 end
-      separator?: boolean;
-      variant?: 'default' | 'destructive';
-    };
+type RowActionItem<T> = RowBuiltinActionItem<T> | RowCustomActionItem<T>;
+
+type RowActionConfig<T> =
+  | RowActionItem<T>[]
+  | ((defaults: RowBuiltinActionItem<T>[]) => RowActionItem<T>[]);
+
+type RowBuiltinActionItem<T> = ActionMeta & {
+  type: 'view' | 'edit' | 'copy' | 'delete';
+  onClick?: (row: T) => void; // 不传则使用默认行为
+  label?: string; // 不传则使用默认文案
+  separator?: boolean; // 此项前加分隔线
+};
+
+type RowCustomActionItem<T> = ActionMeta & {
+  type: 'custom';
+  label?: string;
+  onClick?: (row: T) => void;
+  component?: React.ReactNode | ((context: AutoCrudRowActionContext<T>) => React.ReactNode);
+  position?: 'start' | 'end'; // 仅无内置项时生效，默认 end
+  separator?: boolean;
+  variant?: 'default' | 'destructive';
+};
+
+interface AutoCrudRowActionContext<T> {
+  crudId: string;
+  idKey: string;
+  row: T;
+  rowId?: string;
+  openView: (row: T) => void;
+  openEdit?: (row: T) => void;
+  copyRow?: (row: T) => void;
+  openDelete?: (row: T) => void;
+}
 ```
 
 ## 🔄 批量操作
@@ -822,13 +890,13 @@ type ActionItem<T> =
 
 ### 批量悬浮栏操作顺序
 
-`table.batchActions` 控制多选后悬浮操作栏，设计思路对齐行操作 `actions` 和顶部 `toolbar`。
+`actions.batch` 控制多选后悬浮操作栏，设计思路对齐 `actions.row` 和 `actions.toolbar`。旧的 `table.batchActions` 仍兼容，但新代码建议使用 `actions.batch`。
 
 内置操作类型：`batchUpdate`（批量更新字段下拉）、`export`（导出选中行）、`delete`（删除选中行）。
 
 只传 `type: "custom"` 项时，默认批量操作保持原样；包含任意内置 `type` 时，将完全接管顺序，未列出的内置操作不渲染。
 
-`AutoCrudTable` 默认不在悬浮栏重复显示导出按钮；需要悬浮栏导出时，在 `batchActions` 中显式列出 `{ type: 'export' }`。
+`AutoCrudTable` 默认不在悬浮栏重复显示导出按钮；需要悬浮栏导出时，在 `actions.batch` 中显式列出 `{ type: 'export' }`。
 
 ```tsx
 <AutoCrudTable
@@ -836,7 +904,9 @@ type ActionItem<T> =
   resource={resource}
   table={{
     batchFields: ['status', 'priority'],
-    batchActions: [
+  }}
+  actions={{
+    batch: [
       { type: 'batchUpdate' },
       {
         type: 'custom',
@@ -854,8 +924,8 @@ type ActionItem<T> =
 
 ```tsx
 <AutoCrudTable
-  table={{
-    batchActions: (defaults) => [
+  actions={{
+    batch: (defaults) => [
       defaults[0], // batchUpdate
       {
         type: 'custom',

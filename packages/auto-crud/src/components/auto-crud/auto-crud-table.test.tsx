@@ -2,8 +2,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type { UseAutoCrudResourceReturn } from '@/hooks/use-auto-crud-resource';
+import { crudActions } from '@/lib/crud-actions';
 import { dataSources } from '@/lib/registries';
-import type { AutoCrudToolbarResolver, Fields } from './auto-crud-table';
+import type {
+  AutoCrudToolbarContext,
+  AutoCrudToolbarResolver,
+  Fields,
+} from './auto-crud-table';
 import { AutoCrudTable, setToolbarResolver } from './auto-crud-table';
 
 beforeAll(() => {
@@ -117,6 +122,7 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
 
   afterEach(() => {
     setToolbarResolver(null);
+    crudActions.clear();
     dataSources.unregister('test.dynamic-regions');
     cleanup();
     vi.clearAllMocks();
@@ -191,6 +197,7 @@ describe('auto-crud table toolbar resolver', () => {
 
   afterEach(() => {
     setToolbarResolver(null);
+    crudActions.clear();
     cleanup();
     vi.clearAllMocks();
   });
@@ -342,5 +349,225 @@ describe('auto-crud table toolbar resolver', () => {
     expect(toolbarResolver.mock.calls[0]?.[2].openCreate).toBe(
       resource.handlers.openCreate,
     );
+  });
+});
+
+describe('auto-crud table unified actions', () => {
+  beforeEach(() => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    window.history.replaceState(null, '', '/stores');
+  });
+
+  afterEach(() => {
+    setToolbarResolver(null);
+    crudActions.clear();
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('merges toolbar owner actions with registered plugin actions', () => {
+    crudActions.register({
+      targetId: 'com.wordrhyme.shop.stores',
+      zone: 'toolbar',
+      ownerId: 'com.wordrhyme.test-lab',
+      actions: [
+        { type: 'export', hidden: true },
+        { type: 'create', label: 'Plugin Create' },
+        {
+          type: 'custom',
+          component: (context: AutoCrudToolbarContext) => (
+            <button type="button">Rows {context.rowIds.length}</button>
+          ),
+        },
+      ],
+    });
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={schema}
+        resource={createResource()}
+        actions={{
+          toolbar: [{ type: 'export' }, { type: 'create' }],
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: '导出' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Plugin Create' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Rows 1' })).toBeTruthy();
+  });
+
+  it('does not restore default toolbar actions after registered actions hide them all', () => {
+    crudActions.register({
+      targetId: 'com.wordrhyme.shop.stores',
+      zone: 'toolbar',
+      ownerId: 'com.wordrhyme.test-lab',
+      actions: [
+        { type: 'import', hidden: true },
+        { type: 'export', hidden: true },
+        { type: 'create', hidden: true },
+      ],
+    });
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={schema}
+        resource={createResource()}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: '导出' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '新建' })).toBeNull();
+  });
+
+  it('does not restore default row actions after registered actions hide them all', async () => {
+    crudActions.register({
+      targetId: 'com.wordrhyme.shop.stores',
+      zone: 'row',
+      ownerId: 'com.wordrhyme.test-lab',
+      actions: [
+        { type: 'view', hidden: true },
+        { type: 'edit', hidden: true },
+        { type: 'copy', hidden: true },
+        { type: 'delete', hidden: true },
+      ],
+    });
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={schema}
+        resource={createResource()}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('menuitem', { name: '查看' })).toBeNull();
+      expect(screen.queryByRole('menuitem', { name: '删除' })).toBeNull();
+    });
+  });
+
+  it('does not restore default batch actions after registered actions hide them all', () => {
+    crudActions.register({
+      targetId: 'com.wordrhyme.shop.stores',
+      zone: 'batch',
+      ownerId: 'com.wordrhyme.test-lab',
+      actions: [
+        { type: 'batchUpdate', hidden: true },
+        { type: 'delete', hidden: true },
+      ],
+    });
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={schema}
+        resource={createResource()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+
+    expect(screen.queryByText('Delete')).toBeNull();
+  });
+
+  it('renders row custom components with row context', async () => {
+    const resource = createResource();
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={schema}
+        resource={resource}
+        actions={{
+          row: [
+            {
+              type: 'custom',
+              position: 'start',
+              component: (context) => (
+                <button type="button" onClick={() => context.openView(context.row)}>
+                  Open {context.rowId}
+                </button>
+              ),
+            },
+          ],
+        }}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open 1' }));
+
+    expect(resource.handlers.openView).toHaveBeenCalledWith({
+      id: '1',
+      region: 'west',
+    });
+  });
+
+  it('renders batch custom components from actions.batch', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={schema}
+        resource={createResource()}
+        actions={{
+          batch: [
+            {
+              type: 'custom',
+              position: 'start',
+              component: (context) => (
+                <button type="button">Batch {context.rows.length}</button>
+              ),
+            },
+          ],
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+
+    expect(screen.getByRole('button', { name: 'Batch 1' })).toBeTruthy();
+  });
+
+  it('keeps legacy row actions and table.batchActions compatibility', async () => {
+    const legacyRowClick = vi.fn();
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={schema}
+        resource={createResource()}
+        actions={[
+          {
+            type: 'custom',
+            label: 'Legacy Row',
+            onClick: legacyRowClick,
+          },
+        ]}
+        table={{
+          batchActions: [
+            {
+              type: 'custom',
+              component: (context) => (
+                <button type="button">Legacy Batch {context.rows.length}</button>
+              ),
+            },
+          ],
+        }}
+      />,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Legacy Row' }));
+    expect(legacyRowClick).toHaveBeenCalledWith({ id: '1', region: 'west' });
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+    expect(screen.getByRole('button', { name: 'Legacy Batch 1' })).toBeTruthy();
   });
 });

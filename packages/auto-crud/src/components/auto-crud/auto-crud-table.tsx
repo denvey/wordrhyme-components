@@ -5,7 +5,12 @@ import type { UseAutoCrudResourceReturn } from '@/hooks/use-auto-crud-resource';
 import type { ModalVariant } from './form-modal';
 import type { CrudPermissions } from '@/types/permissions';
 import { AutoTable, type FilterMode } from './auto-table';
-import type { BatchActionConfig, BatchUpdateField } from './auto-table-action-bar';
+import type {
+  BatchActionConfig,
+  BatchActionItem,
+  BatchBuiltinActionItem,
+  BatchUpdateField,
+} from './auto-table-action-bar';
 import { CrudFormModal } from './crud-form-modal';
 import { Button } from '@pixpilot/shadcn';
 import {
@@ -39,6 +44,7 @@ import {
   normalizeOptions,
   type AutoCrudDataSourceConfig,
 } from '@/lib/registries';
+import { crudActions } from '@/lib/crud-actions';
 
 /**
  * 筛选器独立配置
@@ -144,59 +150,96 @@ export interface Field {
 
 export type Fields = Record<string, Field>;
 
-type BuiltinType = 'view' | 'edit' | 'copy' | 'delete';
-
 /** 内置操作项（覆盖默认行为或调整位置） */
-type BuiltinActionItem<T> = {
-  type: BuiltinType;
+type ActionMeta = {
+  id?: string;
+  order?: number;
+  hidden?: boolean;
+};
+
+export interface AutoCrudRowActionContext<T> {
+  crudId: string;
+  idKey: string;
+  row: T;
+  rowId?: string;
+  openView: (row: T) => void;
+  openEdit?: (row: T) => void;
+  copyRow?: (row: T) => void;
+  openDelete?: (row: T) => void;
+}
+
+type ActionComponent<TContext> =
+  | React.ReactNode
+  | ((context: TContext) => React.ReactNode);
+
+export type RowBuiltinActionType = 'view' | 'edit' | 'copy' | 'delete';
+
+export type RowBuiltinActionItem<T> = ActionMeta & {
+  type: RowBuiltinActionType;
   onClick?: (row: T) => void;
   label?: string;
   separator?: boolean;
 };
 
-/** 自定义操作项 */
-type CustomActionItem<T> = {
+export type RowCustomActionItem<T> = ActionMeta & {
   type: 'custom';
-  label: string;
-  onClick: (row: T) => void;
-  /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
+  label?: string;
+  onClick?: (row: T) => void;
+  component?: ActionComponent<AutoCrudRowActionContext<T>>;
   position?: 'start' | 'end';
   separator?: boolean;
   variant?: 'default' | 'destructive';
 };
 
-/**
- * 行操作项
- *
- * - **只传 custom**：内置保持默认，custom 追加到首/尾
- * - **包含任意内置 type**：数组完全接管，未列出的隐藏，顺序即渲染顺序
- */
-export type ActionItem<T> = BuiltinActionItem<T> | CustomActionItem<T>;
+/** @deprecated Use RowCustomActionItem instead. */
+type CustomActionItem<T> = RowCustomActionItem<T>;
 
-export type ActionConfig<T> =
-  | ActionItem<T>[]
-  | ((defaults: BuiltinActionItem<T>[]) => ActionItem<T>[]);
+/**
+ * Row action item.
+ *
+ * - Custom-only config keeps builtin row actions and appends custom actions.
+ * - Including any builtin type takes over builtin ordering.
+ */
+export type RowActionItem<T> = RowBuiltinActionItem<T> | RowCustomActionItem<T>;
+
+export type RowActionConfig<T> =
+  | RowActionItem<T>[]
+  | ((defaults: RowBuiltinActionItem<T>[]) => RowActionItem<T>[]);
+
+/** @deprecated Use RowActionItem instead. */
+export type ActionItem<T> = RowActionItem<T>;
+
+/** @deprecated Use RowActionConfig instead. */
+export type ActionConfig<T> = RowActionConfig<T>;
+
+export type AutoCrudActionsConfig<T> = {
+  toolbar?: ToolbarActionConfig;
+  row?: RowActionConfig<T>;
+  batch?: BatchActionConfig<T>;
+};
+
+export type AutoCrudActionConfig<T> = RowActionConfig<T> | AutoCrudActionsConfig<T>;
 
 /**
  * 顶部工具栏内置操作项
  */
-export type ToolbarBuiltinActionItem = {
+export type ToolbarBuiltinActionItem = ActionMeta & {
   type: 'create' | 'import' | 'export';
   /** 替代默认的行为 */
   onClick?: () => void;
   /** 替代默认的标签文本 */
   label?: string;
   /** 替代整个按钮的渲染 */
-  component?: React.ReactNode;
+  component?: ActionComponent<AutoCrudToolbarContext>;
 };
 
 /**
  * 顶部工具栏自定义操作项
  */
-export type ToolbarCustomActionItem = {
+export type ToolbarCustomActionItem = ActionMeta & {
   type: 'custom';
   /** 渲染自定义内容 */
-  component: React.ReactNode;
+  component: ActionComponent<AutoCrudToolbarContext>;
   /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
   position?: 'start' | 'end';
 };
@@ -232,21 +275,89 @@ function getDefaultToolbarActions(): ToolbarBuiltinActionItem[] {
   return [{ type: 'import' }, { type: 'export' }, { type: 'create' }];
 }
 
+function getDefaultRowActions<T>(): RowBuiltinActionItem<T>[] {
+  return [{ type: 'view' }, { type: 'edit' }, { type: 'copy' }, { type: 'delete' }];
+}
+
+function getDefaultBatchActions<T>(): BatchBuiltinActionItem<T>[] {
+  return [{ type: 'batchUpdate' }, { type: 'delete' }];
+}
+
+function isCustomAction(action: { type: string }): boolean {
+  return action.type === 'custom';
+}
+
+function resolveOwnerActions<
+  TAction extends { type: string; position?: 'start' | 'end' },
+  TDefault extends TAction,
+>(
+  config: readonly TAction[] | ((defaults: TDefault[]) => readonly TAction[]) | undefined,
+  defaults: readonly TDefault[],
+): TAction[] {
+  const resolved = typeof config === 'function' ? config([...defaults]) : config;
+  const items = resolved !== undefined && resolved.length > 0 ? [...resolved] : [];
+
+  if (items.length === 0) {
+    return [...defaults];
+  }
+
+  const hasBuiltin = items.some((item) => !isCustomAction(item));
+  if (hasBuiltin) {
+    return items;
+  }
+
+  const startItems = items.filter(
+    (item) => isCustomAction(item) && item.position === 'start',
+  );
+  const endItems = items.filter(
+    (item) => isCustomAction(item) && item.position !== 'start',
+  );
+
+  return [...startItems, ...defaults, ...endItems];
+}
+
 function resolveOwnerToolbarActions(
   toolbar: ToolbarActionConfig | undefined,
 ): ToolbarActionItem[] {
-  const resolved =
-    typeof toolbar === 'function' ? toolbar(getDefaultToolbarActions()) : toolbar;
+  return resolveOwnerActions<ToolbarActionItem, ToolbarBuiltinActionItem>(
+    toolbar,
+    getDefaultToolbarActions(),
+  );
+}
 
-  return resolved !== undefined && resolved.length > 0
-    ? [...resolved]
-    : getDefaultToolbarActions();
+function resolveOwnerRowActions<T>(
+  actions: RowActionConfig<T> | undefined,
+): RowActionItem<T>[] {
+  return resolveOwnerActions<RowActionItem<T>, RowBuiltinActionItem<T>>(
+    actions,
+    getDefaultRowActions<T>(),
+  );
+}
+
+function resolveOwnerBatchActions<T>(
+  actions: BatchActionConfig<T> | undefined,
+): BatchActionItem<T>[] {
+  return resolveOwnerActions<BatchActionItem<T>, BatchBuiltinActionItem<T>>(
+    actions,
+    getDefaultBatchActions<T>(),
+  );
+}
+
+function isUnifiedActionsConfig<T>(
+  actions: AutoCrudActionConfig<T> | undefined,
+): actions is AutoCrudActionsConfig<T> {
+  return typeof actions === 'object' && actions !== null && !Array.isArray(actions);
+}
+
+function readRowId<T>(row: T, idKey: string): string | undefined {
+  const value = (row as Record<string, unknown>)[idKey];
+  return value === null || value === undefined ? undefined : String(value);
 }
 
 function readRowIds<T>(rows: readonly T[], idKey: string): string[] {
   return rows.flatMap((row) => {
-    const value = (row as Record<string, unknown>)[idKey];
-    return value === null || value === undefined ? [] : [String(value)];
+    const value = readRowId(row, idKey);
+    return value === undefined ? [] : [value];
   });
 }
 
@@ -341,6 +452,7 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
      * 多选后悬浮批量操作栏配置
      * 用法类同 `actions` 行操作和 `toolbar` 顶部工具栏。
      * 只传 custom 时保留默认批量操作；包含任意内置 type 时完全接管顺序。
+     * @deprecated Use actions.batch instead.
      */
     batchActions?: BatchActionConfig<z.output<TSchema>>;
     /** 默认排序 */
@@ -356,11 +468,12 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     className?: string;
   };
 
-  /** 行操作配置，见 {@link ActionItem} */
-  actions?: ActionConfig<z.output<TSchema>>;
+  /** 行操作配置，或统一的 toolbar/row/batch 操作配置。 */
+  actions?: AutoCrudActionConfig<z.output<TSchema>>;
   /**
    * 顶层工具栏操作配置
    * 用法类同 `actions` 行操作。一旦配置了包含内置 `type` 的数组，它将完全接管右侧工具栏！
+   * @deprecated Use actions.toolbar instead.
    */
   toolbar?: ToolbarActionConfig;
   /** @deprecated Use toolbar instead. */
@@ -502,6 +615,14 @@ function useRegistryVersion(subscribe: (listener: () => void) => () => void) {
   );
 
   return version;
+}
+
+function useCrudActionsVersion(): number {
+  return React.useSyncExternalStore(
+    crudActions.subscribe,
+    crudActions.getSnapshot,
+    crudActions.getSnapshot,
+  );
 }
 
 function useDynamicFilterOptions(fields?: Fields): Record<string, FieldOption[]> {
@@ -1021,8 +1142,12 @@ export function resolveActions<T>(
     openDelete: ((row: T) => void) | undefined;
   },
   rowActionsLocale: { view: string; edit: string; copy: string; delete: string },
+  context: {
+    crudId: string;
+    idKey: string;
+  },
 ): ResolvedActionItem<T>[] {
-  const items =
+  const resolvedItems =
     typeof actionsOrFn === 'function'
       ? actionsOrFn([
           { type: 'view' },
@@ -1031,6 +1156,17 @@ export function resolveActions<T>(
           { type: 'delete' },
         ])
       : actionsOrFn;
+
+  const getContext = (row: T): AutoCrudRowActionContext<T> => ({
+    crudId: context.crudId,
+    idKey: context.idKey,
+    row,
+    rowId: readRowId(row, context.idKey),
+    openView: defaults.openView,
+    ...(defaults.openEdit ? { openEdit: defaults.openEdit } : {}),
+    ...(defaults.copyRow ? { copyRow: defaults.copyRow } : {}),
+    ...(defaults.openDelete ? { openDelete: defaults.openDelete } : {}),
+  });
 
   const defaultItems: ResolvedActionItem<T>[] = [
     { label: rowActionsLocale.view, onClick: defaults.openView },
@@ -1052,7 +1188,15 @@ export function resolveActions<T>(
       : []),
   ];
 
-  if (!items || items.length === 0) return defaultItems;
+  if (resolvedItems === undefined) {
+    return defaultItems;
+  }
+
+  const items = resolvedItems.filter((item) => !item.hidden);
+
+  if (items.length === 0) {
+    return [];
+  }
 
   const hasBuiltin = items.some((i) => i.type !== 'custom');
 
@@ -1062,9 +1206,11 @@ export function resolveActions<T>(
       .filter(
         (i): i is CustomActionItem<T> => i.type === 'custom' && i.position === 'start',
       )
-      .map(({ label, onClick, separator, variant }) => ({
+      .map(({ label, onClick, component, separator, variant }) => ({
         label,
         onClick,
+        component,
+        getContext,
         separator,
         variant,
       }));
@@ -1072,9 +1218,11 @@ export function resolveActions<T>(
       .filter(
         (i): i is CustomActionItem<T> => i.type === 'custom' && i.position !== 'start',
       )
-      .map(({ label, onClick, separator, variant }) => ({
+      .map(({ label, onClick, component, separator, variant }) => ({
         label,
         onClick,
+        component,
+        getContext,
         separator,
         variant,
       }));
@@ -1102,6 +1250,8 @@ export function resolveActions<T>(
         {
           label: item.label,
           onClick: item.onClick,
+          component: item.component,
+          getContext,
           separator: item.separator,
           variant: item.variant,
         },
@@ -1171,9 +1321,46 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
   const dynamicFilterOptions = useDynamicFilterOptions(resolvedFields);
   const resourceIdKey = resource.idKey ?? 'id';
+  const actionRegistryVersion = useCrudActionsVersion();
+  const unifiedActions = React.useMemo<AutoCrudActionsConfig<z.output<TSchema>>>(() => {
+    if (isUnifiedActionsConfig<z.output<TSchema>>(actionItems)) {
+      return actionItems;
+    }
+
+    return { row: actionItems };
+  }, [actionItems]);
+  const ownerToolbarConfig = unifiedActions.toolbar ?? toolbar ?? toolbarActions;
+  const ownerRowConfig = unifiedActions.row;
+  const ownerBatchConfig = unifiedActions.batch ?? tableConfig?.batchActions;
   const ownerToolbarActions = React.useMemo(
-    () => resolveOwnerToolbarActions(toolbar ?? toolbarActions),
-    [toolbar, toolbarActions],
+    () => resolveOwnerToolbarActions(ownerToolbarConfig),
+    [ownerToolbarConfig],
+  );
+  const ownerRowActions = React.useMemo(
+    () => resolveOwnerRowActions(ownerRowConfig),
+    [ownerRowConfig],
+  );
+  const ownerBatchActions = React.useMemo(
+    () => resolveOwnerBatchActions(ownerBatchConfig),
+    [ownerBatchConfig],
+  );
+  const registryToolbarActions = React.useMemo(
+    () => crudActions.resolve<ToolbarActionItem>(id, 'toolbar', ownerToolbarActions),
+    [id, ownerToolbarActions, actionRegistryVersion],
+  );
+  const registryRowActions = React.useMemo(
+    () =>
+      crudActions.resolve<RowActionItem<z.output<TSchema>>>(id, 'row', ownerRowActions),
+    [id, ownerRowActions, actionRegistryVersion],
+  );
+  const registryBatchActions = React.useMemo(
+    () =>
+      crudActions.resolve<BatchActionItem<z.output<TSchema>>>(
+        id,
+        'batch',
+        ownerBatchActions,
+      ),
+    [id, ownerBatchActions, actionRegistryVersion],
   );
   const selectedCount = selectedRows.length;
   const selectedRowIds = React.useMemo(
@@ -1212,7 +1399,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   );
   const resolvedToolbarActions = resolveToolbarActionsWithResolver(
     id,
-    ownerToolbarActions,
+    registryToolbarActions,
     toolbarContext,
   );
 
@@ -1294,6 +1481,31 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       ? (resource.modal.copySource ?? undefined)
       : (resource.modal.selected ?? undefined);
   }, [resource.modal.createOpen, resource.modal.copySource, resource.modal.selected]);
+  const rowActionDefaults = React.useMemo(
+    () => ({
+      openView: resource.handlers.openView,
+      openEdit: can.update ? resource.handlers.openEdit : undefined,
+      copyRow: can.create ? resource.handlers.copyRow : undefined,
+      openDelete: can.delete ? resource.handlers.openDelete : undefined,
+    }),
+    [
+      can.create,
+      can.delete,
+      can.update,
+      resource.handlers.copyRow,
+      resource.handlers.openDelete,
+      resource.handlers.openEdit,
+      resource.handlers.openView,
+    ],
+  );
+  const tableRowActions = React.useMemo(
+    () =>
+      resolveActions(registryRowActions, rowActionDefaults, locale.rowActions, {
+        crudId: id ?? '',
+        idKey: resourceIdKey,
+      }),
+    [id, locale.rowActions, registryRowActions, resourceIdKey, rowActionDefaults],
+  );
 
   return (
     <div className="space-y-4">
@@ -1361,16 +1573,13 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             }
             return null;
           };
+          const renderToolbarComponent = (
+            component: ActionComponent<AutoCrudToolbarContext>,
+          ) => (typeof component === 'function' ? component(toolbarContext) : component);
 
-          // 1. 未配置 toolbar → 渲染默认内置按钮
+          // Empty means the owner, resolver, or action registry explicitly hid every item.
           if (!resolvedToolbarActions || resolvedToolbarActions.length === 0) {
-            return (
-              <div className="flex items-center gap-2">
-                {renderBuiltinButton('import')}
-                {renderBuiltinButton('export')}
-                {renderBuiltinButton('create')}
-              </div>
-            );
+            return <div className="flex items-center gap-2" />;
           }
 
           const hasBuiltin = resolvedToolbarActions.some((i) => i.type !== 'custom');
@@ -1380,12 +1589,16 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             const startNodes = resolvedToolbarActions
               .filter((i) => i.type === 'custom' && i.position === 'start')
               .map((a, i) => (
-                <React.Fragment key={`start-${i}`}>{a.component}</React.Fragment>
+                <React.Fragment key={`start-${i}`}>
+                  {renderToolbarComponent(a.component)}
+                </React.Fragment>
               ));
             const endNodes = resolvedToolbarActions
               .filter((i) => i.type === 'custom' && i.position !== 'start')
               .map((a, i) => (
-                <React.Fragment key={`end-${i}`}>{a.component}</React.Fragment>
+                <React.Fragment key={`end-${i}`}>
+                  {renderToolbarComponent(a.component)}
+                </React.Fragment>
               ));
             return (
               <div className="flex items-center gap-2">
@@ -1405,7 +1618,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
                 if (action.type === 'custom') {
                   return (
                     <React.Fragment key={`custom-${index}`}>
-                      {action.component}
+                      {renderToolbarComponent(action.component)}
                     </React.Fragment>
                   );
                 }
@@ -1421,7 +1634,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
                 // 内置项：支持完全替换组件
                 if (action.component) {
                   return (
-                    <React.Fragment key={action.type}>{action.component}</React.Fragment>
+                    <React.Fragment key={action.type}>
+                      {renderToolbarComponent(action.component)}
+                    </React.Fragment>
                   );
                 }
                 // 内置项：复用工厂函数，传入用户覆盖
@@ -1444,20 +1659,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         exclude={hiddenColumns as any}
         filterMode={tableConfig?.filterModes}
         search={searchConfig}
-        actions={resolveActions(
-          actionItems,
-          {
-            openView: resource.handlers.openView,
-            openEdit: can.update ? resource.handlers.openEdit : undefined,
-            copyRow: can.create ? resource.handlers.copyRow : undefined,
-            openDelete: can.delete ? resource.handlers.openDelete : undefined,
-          },
-          locale.rowActions,
-        )}
+        actions={tableRowActions}
         onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}
         batchUpdateFields={can.update ? batchFields : undefined}
-        actionBarActions={tableConfig?.batchActions}
+        actionBarActions={registryBatchActions}
         enableExport={canExport}
         showDefaultExport={false}
         initialSorting={tableConfig?.defaultSort}
