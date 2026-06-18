@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { Card, CardContent, cn } from '@pixpilot/shadcn';
 import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from './Card';
 
 interface SectionCardProps extends React.ComponentProps<typeof Card> {
   title?: string;
@@ -10,19 +10,16 @@ interface SectionCardProps extends React.ComponentProps<typeof Card> {
 }
 
 export function ContentCard(props: SectionCardProps) {
-  const { title, children, className, marginBottom, ...other } = props;
+  const { title, children, ...other } = props;
 
   return (
-    <Card
-      className={cn('py-4 sm:py-5', { 'mb-2 sm:mb-4': marginBottom }, className)}
-      {...other}
-    >
-      <CardContent className={cn('px-4 sm:px-6')}>
-        {title != null && (
-          <h2 className={cn('text-xl font-semibold', 'mb-1 sm:mb-2')}>{title}</h2>
-        )}
-        {children}
-      </CardContent>
+    <Card {...other}>
+      {title != null && (
+        <CardHeader>
+          <CardTitle>{title}</CardTitle>
+        </CardHeader>
+      )}
+      <CardContent>{children}</CardContent>
     </Card>
   );
 }

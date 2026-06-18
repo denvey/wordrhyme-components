@@ -7,6 +7,7 @@ import {
 } from '@pixpilot/shadcn';
 
 import React from 'react';
+import { getId } from '../utils';
 
 export interface ColorPickerControlsProps extends React.ComponentProps<'div'> {
   slots?: {
@@ -18,7 +19,7 @@ export interface ColorPickerControlsProps extends React.ComponentProps<'div'> {
 }
 
 const ColorPickerControls: React.FC<ColorPickerControlsProps> = (props) => {
-  const { slots, ...rest } = props;
+  const { slots, id, ...rest } = props;
 
   return (
     <div
@@ -26,15 +27,19 @@ const ColorPickerControls: React.FC<ColorPickerControlsProps> = (props) => {
       {...rest}
       className={cn('space-y-4', rest.className)}
     >
-      <ColorPickerArea {...slots?.area} />
+      <ColorPickerArea id={getId(id, 'picker-area')} {...slots?.area} />
       <div data-slot="color-picker-controls-row" className="flex items-center gap-2">
         <ColorPickerEyeDropper
+          id={getId(id, 'eye-dropper-button')}
           {...slots?.eyeDropper}
           className={cn('hidden xs:flex ', slots?.eyeDropper.className)}
         />
         <div data-slot="color-picker-controls-sliders" className="flex-1 space-y-2">
-          <ColorPickerHueSlider {...slots?.hueSlider} />
-          <ColorPickerAlphaSlider {...slots?.alphaSlider} />
+          <ColorPickerHueSlider id={getId(id, 'hue-slider')} {...slots?.hueSlider} />
+          <ColorPickerAlphaSlider
+            id={getId(id, 'alpha-slider')}
+            {...slots?.alphaSlider}
+          />
         </div>
       </div>
     </div>

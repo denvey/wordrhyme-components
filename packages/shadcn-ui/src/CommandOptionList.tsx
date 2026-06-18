@@ -8,6 +8,7 @@ import {
   CommandList,
 } from '@pixpilot/shadcn';
 import { Check } from 'lucide-react';
+import { getId } from './utils';
 
 export interface CommandOptionListItem {
   value: string;
@@ -15,6 +16,7 @@ export interface CommandOptionListItem {
 }
 
 export interface CommandOptionListProps {
+  id?: string;
   emptyText?: string;
   options: CommandOptionListItem[];
   value?: unknown;
@@ -22,7 +24,7 @@ export interface CommandOptionListProps {
 }
 
 const CommandOptionList: React.FC<CommandOptionListProps> = (props) => {
-  const { options, value, onChange, emptyText = 'No option found.' } = props;
+  const { id, options, value, onChange, emptyText = 'No option found.' } = props;
 
   return (
     <CommandList>
@@ -32,6 +34,7 @@ const CommandOptionList: React.FC<CommandOptionListProps> = (props) => {
         {options.map((option) => (
           <CommandItem
             key={option.value}
+            id={getId(id, `option-${option.value}`)}
             value={option.value}
             onSelect={(currentValue) => {
               onChange?.(currentValue === value ? '' : currentValue);

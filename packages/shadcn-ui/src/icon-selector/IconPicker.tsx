@@ -9,6 +9,7 @@ import { Plus, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Button } from '../Button';
 import { useMediaQuery } from '../hooks';
+import { getId } from '../utils';
 import { ICON_SELECTOR_ERROR_MESSAGE } from './constants';
 import { IconPickerContainer } from './icon-picker-container';
 import IconPickerContent from './icon-picker-content';
@@ -25,6 +26,7 @@ export type IconPickerVariant = 'default' | 'icon-button';
  * Allows users to select an icon from multiple icon providers via a dialog or popover
  */
 export interface IconPickerProps {
+  id?: string;
   value?: string;
   onChange?: (value: string) => void;
   onOpenChange?: (open: boolean) => void;
@@ -50,6 +52,7 @@ export interface IconPickerProps {
 const ICON_SIZE = '!h-4 !w-4';
 
 export const IconPicker: FC<IconPickerProps> = ({
+  id,
   value,
   onChange,
   onOpenChange,
@@ -105,6 +108,7 @@ export const IconPicker: FC<IconPickerProps> = ({
 
   const selectorContent = (
     <IconPickerContent
+      id={id}
       providers={providersProp}
       onChange={handleSelectIcon}
       onSelect={() => setIsOpen(false)}
@@ -144,6 +148,7 @@ export const IconPicker: FC<IconPickerProps> = ({
         popover={popoverProps}
       >
         <Button
+          id={id}
           type="button"
           variant="outline"
           aria-label={iconButtonLabel}
@@ -152,6 +157,7 @@ export const IconPicker: FC<IconPickerProps> = ({
           {iconButtonContent}
           {shouldShowClearButton && (
             <Button
+              id={getId(id, 'clear-button')}
               type="button"
               title="Clear selected icon"
               className={cn(
@@ -201,6 +207,7 @@ export const IconPicker: FC<IconPickerProps> = ({
         popover={popoverProps}
       >
         <Button
+          id={id}
           type="button"
           variant="outline"
           className={cn('whitespace-nowrap', slots?.trigger?.className)}
@@ -211,6 +218,7 @@ export const IconPicker: FC<IconPickerProps> = ({
 
       {shouldShowClearButton && (
         <Button
+          id={getId(id, 'clear-button')}
           type="button"
           variant="outline"
           className={cn('whitespace-nowrap', slots?.clearButton?.className)}

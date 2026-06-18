@@ -6,6 +6,7 @@ import type { FC } from 'react';
 import { Icon } from '@iconify/react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getId } from '../utils';
 
 /**
  * Optimized Virtualized Icon Grid Component (TanStack Virtual version)
@@ -18,6 +19,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
  * Install: pnpm add @tanstack/react-virtual
  */
 interface VirtualizedIconGridProps {
+  id?: string;
   icons: string[];
   onSelectIcon: (iconName: string) => void;
   maxHeight?: string | number;
@@ -31,12 +33,13 @@ const DEFAULT_HEIGHT = 480;
 const MIN_COLUMNS = 3;
 
 interface IconCellProps {
+  id?: string;
   iconName: string;
   onSelectIcon: (iconName: string) => void;
 }
 
 // Memoized icon cell component - only re-renders when iconName or onSelectIcon changes
-const IconCell = React.memo<IconCellProps>(({ iconName, onSelectIcon }) => {
+const IconCell = React.memo<IconCellProps>(({ id, iconName, onSelectIcon }) => {
   if (!iconName) {
     return null;
   }
@@ -45,6 +48,7 @@ const IconCell = React.memo<IconCellProps>(({ iconName, onSelectIcon }) => {
 
   return (
     <button
+      id={getId(id, `option-${iconName}`)}
       type="button"
       onClick={() => onSelectIcon(iconName)}
       className="w-full h-full flex flex-col items-center justify-center gap-1 rounded-md border border-transparent hover:border-primary hover:bg-accent transition-colors p-1"
@@ -62,6 +66,7 @@ IconCell.displayName = 'IconCell';
 
 const VirtualizedIconGrid: FC<VirtualizedIconGridProps> = ({
   icons,
+  id,
   onSelectIcon,
   maxHeight = DEFAULT_HEIGHT,
   columnCount: providedColumnCount,
@@ -190,7 +195,11 @@ const VirtualizedIconGrid: FC<VirtualizedIconGridProps> = ({
                           minWidth: '0',
                         }}
                       >
-                        <IconCell iconName={iconName} onSelectIcon={handleSelectIcon} />
+                        <IconCell
+                          id={id}
+                          iconName={iconName}
+                          onSelectIcon={handleSelectIcon}
+                        />
                       </div>
                     ))}
                   </div>

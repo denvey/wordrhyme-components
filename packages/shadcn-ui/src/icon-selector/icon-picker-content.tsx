@@ -8,6 +8,7 @@ import { X } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Input } from '../input';
 import { LoadingOverlay } from '../LoadingOverlay';
+import { getId } from '../utils';
 import { useAsyncProviders } from './use-async-providers';
 import VirtualizedIconGrid from './virtualized-icon-grid';
 
@@ -24,6 +25,7 @@ function noIconMessage(hasIcons: boolean, isSearching: boolean) {
  * Displays searchable icon grid with provider tabs
  */
 interface IconPickerContentProps {
+  id?: string;
   providers: IconProvider[];
   onChange?: (value: string) => void;
   onSelect?: () => void;
@@ -34,6 +36,7 @@ interface IconPickerContentProps {
 }
 
 const IconPickerContent: FC<IconPickerContentProps> = ({
+  id,
   providers: providersProp,
   onChange,
   onSelect,
@@ -138,6 +141,7 @@ const IconPickerContent: FC<IconPickerContentProps> = ({
     <div className="flex flex-col gap-4 min-h-[200px] max-h-[80vh]">
       <div className="relative">
         <Input
+          id={getId(id, 'search-input')}
           placeholder="Search icons..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
@@ -146,6 +150,7 @@ const IconPickerContent: FC<IconPickerContentProps> = ({
         />
         {searchQuery && (
           <button
+            id={getId(id, 'clear-search-button')}
             type="button"
             onClick={() => setSearchQuery('')}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
@@ -161,7 +166,11 @@ const IconPickerContent: FC<IconPickerContentProps> = ({
         <Tabs value={activeProvider} onValueChange={setActiveProvider}>
           <TabsList className="w-full">
             {providers.map((provider) => (
-              <TabsTrigger key={provider.prefix} value={provider.prefix}>
+              <TabsTrigger
+                key={provider.prefix}
+                id={getId(id, `provider-${provider.prefix}`)}
+                value={provider.prefix}
+              >
                 {provider.name ?? provider.prefix}
               </TabsTrigger>
             ))}
@@ -171,6 +180,7 @@ const IconPickerContent: FC<IconPickerContentProps> = ({
             <TabsContent key={provider.prefix} value={provider.prefix}>
               <VirtualizedIconGrid
                 icons={allIconsByProvider[provider.prefix] ?? []}
+                id={id}
                 onSelectIcon={handleSelectIcon}
                 maxHeight={maxHeight}
               />
@@ -190,7 +200,7 @@ const IconPickerContent: FC<IconPickerContentProps> = ({
 
       {/* {isLoading && ( */}
       {/* <div className="h-full min-h-[100px]"> */}
-      <LoadingOverlay message="Loading icons..." loading={isLoading} />
+      <LoadingOverlay message="Loading icons..." show={isLoading} />
       {/* </div> */}
       {/* )} */}
 
@@ -198,6 +208,7 @@ const IconPickerContent: FC<IconPickerContentProps> = ({
       {isSearching && providers.length > 0 && (
         <VirtualizedIconGrid
           icons={filteredData}
+          id={id}
           onSelectIcon={handleSelectIcon}
           maxHeight={maxHeight}
         />
@@ -207,6 +218,7 @@ const IconPickerContent: FC<IconPickerContentProps> = ({
       {!isSearching && providers.length === 1 && (
         <VirtualizedIconGrid
           icons={filteredData}
+          id={id}
           onSelectIcon={handleSelectIcon}
           maxHeight={maxHeight}
         />

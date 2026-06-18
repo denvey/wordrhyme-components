@@ -24,6 +24,7 @@ export interface ColorPickerContentWrapperProps extends React.ComponentProps<
 export type ColorPickerContentProps = Required<
   Pick<ColorPickerBaseProps, 'onValueChange' | 'presetColors' | 'sections'>
 > & {
+  id?: string;
   currentValue: string;
   contentProps?: Partial<ColorPickerContentWrapperProps>;
 };
@@ -55,6 +56,7 @@ export interface ColorPickerBaseProps extends Omit<
         value?: string;
         onValueChange: (value: string) => void;
         isPickerOpen: boolean;
+        id?: string;
       }) => React.ReactNode);
 }
 

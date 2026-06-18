@@ -9,6 +9,7 @@ import {
 } from '@pixpilot/shadcn';
 import { XIcon } from 'lucide-react';
 import React from 'react';
+import { getId } from '../utils';
 import { useColorPickerContext } from './color-picker-context';
 import { ColorPickerSwatch } from './ColorPickerSwatch';
 import { useColorPickerResetOptions } from './hooks/use-color-picker-reset-options';
@@ -23,9 +24,10 @@ export interface ColorPickerInputProps extends Omit<
 }
 
 const ColorPickerInput: React.FC<ColorPickerInputProps> = (props) => {
-  const { slots, onChange, onClear, resetOptions, placeholder, title, ...rest } = props;
+  const { slots, onChange, onClear, resetOptions, placeholder, title, id, ...rest } =
+    props;
 
-  const { isPickerOpen, onValueChange } = useColorPickerContext();
+  const { id: contextId, isPickerOpen, onValueChange } = useColorPickerContext();
 
   const {
     value,
@@ -50,6 +52,7 @@ const ColorPickerInput: React.FC<ColorPickerInputProps> = (props) => {
 
   const inputValue = isResetValue ? '' : (value ?? '');
   const inputPlaceholder = isResetValue ? resetLabel : placeholder;
+  const controlId = id ?? contextId;
   const swatchChildren =
     slots?.swatch?.children ?? (isResetValue ? resetIcon : undefined);
 
@@ -57,15 +60,12 @@ const ColorPickerInput: React.FC<ColorPickerInputProps> = (props) => {
     <ColorPickerTrigger asChild>
       <InputGroup className="w-full">
         <InputGroupAddon align="inline-start">
-          <ColorPickerSwatch
-            color={swatchColor}
-            resetOptions={resetOptions}
-            {...slots?.swatch}
-          >
+          <ColorPickerSwatch color={swatchColor} {...slots?.swatch}>
             {swatchChildren}
           </ColorPickerSwatch>
         </InputGroupAddon>
         <InputGroupInput
+          id={controlId}
           value={inputValue}
           {...rest}
           title={title}
@@ -88,6 +88,7 @@ const ColorPickerInput: React.FC<ColorPickerInputProps> = (props) => {
         {showClearButton ? (
           <InputGroupAddon align="inline-end">
             <Button
+              id={getId(controlId, 'clear-button')}
               type="button"
               variant="ghost"
               size="icon"

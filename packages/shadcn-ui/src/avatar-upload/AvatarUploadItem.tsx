@@ -15,6 +15,7 @@ import {
 import { AlertCircle } from 'lucide-react';
 import React from 'react';
 import { useFileError, useFileUploadProgressCallbacks } from '../file-upload';
+import { getId } from '../utils';
 import {
   AvatarWrap,
   Image,
@@ -23,6 +24,7 @@ import {
 } from './AvatarUploadComponents';
 
 interface AvatarUploadItemProps extends FileUploadCallbacks {
+  id?: string;
   file: File;
   currentSize: ComponentSize;
   size: Size;
@@ -36,6 +38,7 @@ const AvatarUploadItem: React.FC<AvatarUploadItemProps> = (props) => {
     file,
     currentSize,
     change = 'Change',
+    id,
     onFileSuccess,
     onFileError,
     onClear,
@@ -70,14 +73,18 @@ const AvatarUploadItem: React.FC<AvatarUploadItemProps> = (props) => {
     <FileUploadItem value={file} className="p-0 border-0 m-0">
       <MainWrapper currentSize={currentSize}>
         <div className={cn('relative')}>
-          <AvatarWrap showChangeIcon={true} onClear={onClear} size={size}>
+          <AvatarWrap id={id} showChangeIcon={true} onClear={onClear} size={size}>
             <Image src={URL.createObjectURL(file)} />
           </AvatarWrap>
           {fileError != null && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button type="button" className="absolute -top-3 -left-3 p-1">
+                  <button
+                    id={getId(id, 'error-button')}
+                    type="button"
+                    className="absolute -top-3 -left-3 p-1"
+                  >
                     <AlertCircle className="h-5 w-5 text-red-500" />
                   </button>
                 </TooltipTrigger>

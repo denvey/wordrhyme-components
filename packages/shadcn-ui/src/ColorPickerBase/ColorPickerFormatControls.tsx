@@ -1,5 +1,6 @@
 import { cn, ColorPickerFormatSelect } from '@pixpilot/shadcn';
 import React from 'react';
+import { getId } from '../utils';
 import { ColorPickerFormatInput } from './ColorPickerFormatInput';
 
 export interface ColorPickerFormatControlsProps extends React.ComponentProps<'div'> {
@@ -8,12 +9,12 @@ export interface ColorPickerFormatControlsProps extends React.ComponentProps<'di
 }
 
 const ColorPickerFormatControls: React.FC<ColorPickerFormatControlsProps> = (props) => {
-  const { showFormatSelect = true, showInput = true, ...rest } = props;
+  const { showFormatSelect = true, showInput = true, id, ...rest } = props;
 
   return (
     <div {...rest} className={cn('flex items-center gap-2 w-full', rest.className)}>
-      {showFormatSelect && <ColorPickerFormatSelect />}
-      {showInput && <ColorPickerFormatInput />}
+      {showFormatSelect && <ColorPickerFormatSelect id={getId(id, 'format-select')} />}
+      {showInput && <ColorPickerFormatInput id={getId(id, 'format-input')} />}
     </div>
   );
 };

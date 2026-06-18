@@ -1,0 +1,40 @@
+{
+  "version": "0",
+  "stories": {
+    "shadcn-ui-card--complete-card": {
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "#shadcn-ui-card--complete-card"
+                  },
+                  "id": "F3fMnY2VnxpH",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "NM00P5yARpNS",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "fKRpLc3xTM8R",
+          "browserType": "chromium",
+          "id": "6iKREtMAgPmq",
+          "index": 0,
+          "title": "Should Render Complete Card"
+        }
+      ]
+    }
+  },
+  "browserOptions": {
+    "fKRpLc3xTM8R": {
+      "viewport": {
+        "height": 368,
+        "width": 657
+      },
+      "cursor": true
+    }
+  }
+}

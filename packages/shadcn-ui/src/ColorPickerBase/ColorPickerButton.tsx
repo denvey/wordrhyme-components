@@ -8,6 +8,7 @@ import {
 } from '@pixpilot/shadcn';
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from 'lucide-react';
 import React from 'react';
+import { getId } from '../utils';
 import { useColorPickerContext } from './color-picker-context';
 import { ColorPickerSwatch } from './ColorPickerSwatch';
 import { useColorPickerResetOptions } from './hooks/use-color-picker-reset-options';
@@ -31,10 +32,11 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
     onClear,
     resetOptions,
     title,
+    id,
     ...rest
   } = props;
 
-  const { isPickerOpen, onValueChange } = useColorPickerContext();
+  const { id: contextId, isPickerOpen, onValueChange } = useColorPickerContext();
 
   const {
     value,
@@ -67,10 +69,12 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
 
   const swatchChildren =
     slots?.swatch?.children ?? (isResetValue ? resetIcon : undefined);
+  const controlId = id ?? contextId;
 
   return (
     <ColorPickerTrigger asChild>
       <InputGroup
+        id={controlId}
         {...rest}
         title={title}
         className={cn(
@@ -79,11 +83,7 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
         )}
       >
         <InputGroupAddon align="inline-start">
-          <ColorPickerSwatch
-            color={swatchColor}
-            resetOptions={resetOptions}
-            {...slots?.swatch}
-          >
+          <ColorPickerSwatch color={swatchColor} {...slots?.swatch}>
             {swatchChildren}
           </ColorPickerSwatch>
         </InputGroupAddon>
@@ -93,6 +93,7 @@ const ColorPickerButton: React.FC<ColorPickerButtonProps> = (props) => {
         <InputGroupAddon align="inline-end" className="gap-1">
           {showClearButton && (
             <Button
+              id={getId(controlId, 'clear-button')}
               type="button"
               title={resetTooltip}
               variant="ghost"

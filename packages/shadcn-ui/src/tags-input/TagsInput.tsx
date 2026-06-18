@@ -15,6 +15,7 @@ import { CommandOptionList } from '../CommandOptionList';
 import { TagsInputInline } from './TagsInputInline';
 
 export interface TagsInputProps {
+  id?: string;
   value?: Array<string | number>;
   onChange?: (value: Array<string | number>) => void;
   options?: CommandOptionListItem[];
@@ -55,6 +56,7 @@ const EMPTY_OPTIONS: CommandOptionListItem[] = [];
  * - freeSolo mode for custom tags (like MUI Autocomplete)
  */
 export function TagsInput({
+  id,
   value = EMPTY_ARRAY,
   onChange,
   options = EMPTY_OPTIONS,
@@ -251,6 +253,7 @@ export function TagsInput({
   if (!hasOptions) {
     return (
       <TagsInputInline
+        id={id}
         label={label}
         className={className}
         disabled={disabled}
@@ -288,6 +291,7 @@ export function TagsInput({
         <PopoverTrigger asChild>
           <div className="w-full">
             <TagsInputInline
+              id={id}
               label={label}
               showLabel={false}
               disabled={disabled}
@@ -373,6 +377,7 @@ export function TagsInput({
         >
           <Command shouldFilter={false} value={searchValue} loop>
             <CommandOptionList
+              id={id}
               options={filteredOptions}
               value={value}
               onChange={handleSelectOption}

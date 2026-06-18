@@ -15,7 +15,7 @@ export interface ColorPickerCompactControlsProps extends Omit<
 
 const ColorPickerCompactControls: React.FC<ColorPickerCompactControlsProps> = React.memo(
   (props) => {
-    const { presetColors, sections = DEFAULT_SECTIONS, ...rest } = props;
+    const { presetColors, sections = DEFAULT_SECTIONS, id, ...rest } = props;
 
     const enabledSections = new Set(sections);
     const showPicker = enabledSections.has('picker');
@@ -30,11 +30,12 @@ const ColorPickerCompactControls: React.FC<ColorPickerCompactControlsProps> = Re
 
     return (
       <ColorPickerContent {...rest}>
-        {shouldShowPickerUi && <ColorPickerControls />}
+        {shouldShowPickerUi && <ColorPickerControls id={id} />}
 
         {showSwatch && (
           <div className="gap-2  flex flex-wrap">
             <ColorPickerColorPalette
+              id={id}
               presetColors={presetColors}
               onMoreColor={
                 canTogglePickerUi ? () => setShowFullPicker(!showFullPicker) : undefined
@@ -47,6 +48,7 @@ const ColorPickerCompactControls: React.FC<ColorPickerCompactControlsProps> = Re
           <ColorPickerFormatControls
             showFormatSelect={showFormatSelect}
             showInput={showInput}
+            id={id}
           />
         )}
       </ColorPickerContent>

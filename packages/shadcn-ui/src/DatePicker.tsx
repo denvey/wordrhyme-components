@@ -15,18 +15,20 @@ import { CalendarIcon } from 'lucide-react';
 import React from 'react';
 
 export type DatePickerProps = {
+  id?: string;
   value?: Date;
   onChange?: (date: Date | undefined) => void;
   placeholder?: string;
 } & Omit<ComponentProps<typeof Calendar>, 'selected' | 'onSelect' | 'mode'>;
 
 export function DatePicker(props: DatePickerProps) {
-  const { value, onChange, placeholder = 'Pick a date', ...calendarProps } = props;
+  const { id, value, onChange, placeholder = 'Pick a date', ...calendarProps } = props;
 
   return (
     <Popover>
       <PopoverTrigger asChild>
         <Button
+          id={id}
           variant="outline"
           className={cn(
             'w-full justify-start text-left font-normal',

@@ -10,6 +10,7 @@ import {
 import React from 'react';
 
 import { useSelectKeyboard } from './hooks/use-select-keyboard';
+import { getId } from './utils';
 
 export interface ColorSelectOption {
   label: string;
@@ -17,6 +18,7 @@ export interface ColorSelectOption {
 }
 
 type BaseColorSelectProps = {
+  id?: string;
   options?: ColorSelectOption[];
   contentProps?: React.ComponentProps<typeof SelectContent>;
   value?: string;
@@ -35,6 +37,7 @@ function ColorSelect(props: BaseColorSelectProps) {
     keyboardMode = 'dropdown',
     open: openProp,
     onOpenChange: onOpenChangeProp,
+    id,
     ...restProps
   } = props;
 
@@ -68,7 +71,7 @@ function ColorSelect(props: BaseColorSelectProps) {
       onOpenChange={handleOpenChange}
       {...restProps}
     >
-      <SelectTrigger className="w-full" onKeyDown={handleTriggerKeyDown}>
+      <SelectTrigger id={id} className="w-full" onKeyDown={handleTriggerKeyDown}>
         <SelectValue placeholder={placeholder}>
           {selectedOption && (
             <div className="flex items-center gap-2">
@@ -83,7 +86,11 @@ function ColorSelect(props: BaseColorSelectProps) {
       </SelectTrigger>
       <SelectContent {...contentProps}>
         {options?.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
+          <SelectItem
+            key={option.value}
+            id={getId(id, `option-${option.value}`)}
+            value={option.value}
+          >
             <div className="flex items-center gap-2">
               <div
                 className="h-4 w-4 rounded border border-gray-300"

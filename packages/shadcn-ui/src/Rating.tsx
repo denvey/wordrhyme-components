@@ -3,6 +3,7 @@ import { cn } from '@pixpilot/shadcn';
 import { cva } from 'class-variance-authority';
 import { Circle, Star } from 'lucide-react';
 import * as React from 'react';
+import { getId } from './utils';
 
 export type RatingColor =
   | 'default'
@@ -245,6 +246,7 @@ function Rating({
   color = 'default',
   className,
   children,
+  id,
   ...props
 }: React.PropsWithChildren<RatingProps>) {
   const isControlled = valueProp !== undefined;
@@ -330,6 +332,7 @@ function Rating({
   return (
     <RatingContext value={contextValue}>
       <div
+        id={getId(id, 'rating-group')}
         role="radiogroup"
         tabIndex={0}
         className={cn(ratingVariants({ size }), className)}
@@ -338,7 +341,11 @@ function Rating({
       >
         {children ??
           Array.from({ length: max }, (_, index) => (
-            <RatingButton key={index} index={index + 1} />
+            <RatingButton
+              key={index}
+              id={index === 0 ? id : getId(id, `option-${index + 1}`)}
+              index={index + 1}
+            />
           ))}
         {hasNameText ? (
           <input

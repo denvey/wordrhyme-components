@@ -11,7 +11,7 @@ import { STORYBOOK_PORT } from './storybook-config.js';
 
 const manager = new BrowserManager({
   browserCount: {
-    chromium: 8,
+    chromium: 15,
     firefox: 4,
     webkit: 4,
   },
@@ -21,7 +21,7 @@ const manager = new BrowserManager({
       firefox: playwright.firefox,
       webkit: playwright.webkit,
     };
-    const wsEndpoint = `${'ws://127.0.0.1:3010'}/${browserType}`;
+    const wsEndpoint = `ws://127.0.0.1:3010/${browserType}?server--ignoreDefaultArgs=["--hide-scrollbars"]`;
     return await browserTypes[browserType].connect(wsEndpoint);
   },
   isBrowserConnected: (browser) => browser.isConnected(),
@@ -46,16 +46,34 @@ const provider = createOpenRouter({
   const strorybookEndpoint = `http://${ip}:${STORYBOOK_PORT}`;
 
   setConfig({
+    concurrencyLimit: { file: 5, story: 10 },
     // When running Playwright in a separate container or remote environment,
     // set `storybookEndpoint` to a host/IP that is reachable from the remote browser runtime.
     // `localhost` only works when Storybook and Playwright run on the same machine/network namespace.
     storybookEndpoint: strorybookEndpoint,
     selectorAttributeNames: ['id', 'data-testid', 'data-slot'],
+
     getPage: async (browserType, options) => {
       const { browser, index } = await manager.getBrowser(browserType);
       // eslint-disable-next-line no-console
       console.log(`Browser ${browserType}-${index}`);
       const page = await browser.newPage(options);
+      page.setDefaultTimeout(5000);
+      await page.addStyleTag({
+        content: `
+    ::-webkit-scrollbar {
+      width: 12px;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #888;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #eee;
+    }
+  `, //
+      });
       return page;
     },
 

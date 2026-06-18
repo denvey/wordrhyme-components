@@ -31,6 +31,11 @@
 
 - **packages/shadcn**: Use only for shadcn components installed via shadcn CLI.
 - **packages/shadcn-ui**: Implement custom components here. Create a story in `packages/shadcn-ui/stories` for every new component.
+- New interactive components must support the accessibility ID convention:
+  add an optional root `id?: string` prop, assign the unsuffixed `id` to the
+  primary interactive control, and derive IDs for secondary controls with
+  `getId(id, '<meaningful-suffix>')`. Never duplicate the root ID on multiple
+  elements.
 - **packages/shadcn-formily**: For new fields, follow Formily pattern:
   ```
   export const Checkbox = connect(

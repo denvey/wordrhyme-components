@@ -19,6 +19,7 @@ const ColorPickerRoot: React.FC<ColorPickerRootProps> = (props) => {
     defaultFormat = 'hex',
     onFormatChange,
     children,
+    id,
     ...rest
   } = props;
 
@@ -42,6 +43,7 @@ const ColorPickerRoot: React.FC<ColorPickerRootProps> = (props) => {
   return (
     <ColorPickerContextContextProvider
       value={{
+        id,
         isPickerOpen: open,
         value: currentValue,
         onValueChange: handleValueChange,

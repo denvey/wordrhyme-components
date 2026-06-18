@@ -1,6 +1,7 @@
 import React from 'react';
 
 export interface ColorPickerContextStates {
+  id?: string;
   isPickerOpen: boolean;
   value: string;
   onValueChange: (value: string) => void;

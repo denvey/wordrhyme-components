@@ -5,6 +5,7 @@ import { MoonIcon, SunIcon } from 'lucide-react';
 import React from 'react';
 
 export interface ThemeModeToggleButtonProps {
+  id?: string;
   className?: string;
   /** The resolved theme value ("light" | "dark") */
   value?: string;
@@ -18,7 +19,7 @@ export interface ThemeModeToggleButtonProps {
  * Pure component - toggles between light and dark.
  */
 export function ThemeModeToggleButton(props: ThemeModeToggleButtonProps) {
-  const { className, value, onChange, disabled } = props;
+  const { id, className, value, onChange, disabled } = props;
 
   const toggleTheme = React.useCallback(() => {
     if (value === 'dark') {
@@ -31,6 +32,7 @@ export function ThemeModeToggleButton(props: ThemeModeToggleButtonProps) {
 
   return (
     <Button
+      id={id}
       variant="secondary"
       size="icon"
       className={cn('group/toggle size-8', className)}

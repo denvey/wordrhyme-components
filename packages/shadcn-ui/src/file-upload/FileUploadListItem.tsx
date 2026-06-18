@@ -17,9 +17,11 @@ import {
 import { AlertTriangle, X } from 'lucide-react';
 import prettyBytes from 'pretty-bytes';
 import React from 'react';
+import { getId } from '../utils';
 import { useFileUploadProgressCallbacks } from './hooks';
 
 interface FileUploadListItemProps extends FileUploadCallbacks {
+  id?: string;
   fileMeta: FileWithMetadata;
   deleteFile: (fileMeta: FileWithMetadata) => void;
   getFile: (fileMeta: FileWithMetadata) => File;
@@ -34,7 +36,7 @@ const Backdrop: React.FC<{ className?: string; children?: React.ReactNode }> = (
 };
 
 const FileUploadListItem = React.memo<FileUploadListItemProps>(
-  ({ fileMeta, deleteFile, getFile, itemSize, onFileSuccess, onFileError }) => {
+  ({ id, fileMeta, deleteFile, getFile, itemSize, onFileSuccess, onFileError }) => {
     const file = getFile(fileMeta);
 
     useFileUploadProgressCallbacks(file, { onFileSuccess, onFileError });
@@ -100,6 +102,7 @@ const FileUploadListItem = React.memo<FileUploadListItemProps>(
         </Tooltip>
         <FileUploadItemMetadata className="sr-only" />
         <Button
+          id={getId(id, `remove-button-${fileMeta.name}-${fileMeta.lastModified}`)}
           type="button"
           variant="secondary"
           size="icon"

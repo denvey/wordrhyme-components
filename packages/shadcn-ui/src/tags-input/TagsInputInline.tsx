@@ -22,6 +22,7 @@ import {
 import { Plus } from 'lucide-react';
 
 import { useMemo } from 'react';
+import { getId } from '../utils';
 
 export interface TagsInputInlineItem {
   key: string;
@@ -30,6 +31,7 @@ export interface TagsInputInlineItem {
 }
 
 export interface TagsInputInlineProps {
+  id?: string;
   label?: string;
   showLabel?: boolean;
   className?: string;
@@ -71,6 +73,7 @@ export interface TagsInputInlineProps {
 }
 
 export function TagsInputInline({
+  id,
   label,
   showLabel = true,
   className,
@@ -139,12 +142,18 @@ export function TagsInputInline({
         onClick={onListClick}
       >
         {items.map((item) => (
-          <TagsInputInLineItem {...(slots?.item || {})} key={item.key} value={item.value}>
+          <TagsInputInLineItem
+            {...(slots?.item || {})}
+            key={item.key}
+            id={getId(id, `item-${item.value}`)}
+            value={item.value}
+          >
             {item.label}
           </TagsInputInLineItem>
         ))}
         <TagsInputInLineInput
           {...(slots?.input || {})}
+          id={id}
           ref={inputRef}
           placeholder={inputPlaceholder}
           value={inputValue}
@@ -156,6 +165,7 @@ export function TagsInputInline({
         {addButtonVisibility !== 'never' ? (
           <Button
             {...slots?.addButton}
+            id={getId(id, 'add-button')}
             type="button"
             size="icon"
             variant="ghost"
@@ -172,7 +182,9 @@ export function TagsInputInline({
           </Button>
         ) : null}
       </TagsInputInLineList>
-      {showClear ? <TagsInputInLineClear {...(slots?.clear || {})} /> : null}
+      {showClear ? (
+        <TagsInputInLineClear id={getId(id, 'clear-button')} {...(slots?.clear || {})} />
+      ) : null}
     </TagsInputInLineRoot>
   );
 }

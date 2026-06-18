@@ -1,5 +1,109 @@
 # @pixpilot/shadcn-ui
 
+## 1.32.1
+
+### Patch Changes
+
+- adjust padding and margins for Dialog components
+
+## 1.32.0
+
+### Minor Changes
+
+- enhance Dialog component with new DialogClose functionality and improved styling
+
+## 1.31.0
+
+### Minor Changes
+
+- enhance DialogContent styling and add WideCardsRow story
+
+## 1.30.1
+
+### Patch Changes
+
+- simplify Card component and remove marginBottom prop
+
+## 1.30.0
+
+### Minor Changes
+
+- add Card component and related stories
+
+## 1.29.2
+
+### Patch Changes
+
+- correct typo in 'use client' directive
+
+## 1.29.1
+
+### Patch Changes
+
+- update package versions for release
+- 65120f4: fix release
+- Updated dependencies [65120f4]
+  - @pixpilot/shadcn@1.3.1
+
+## 1.29.0
+
+### Minor Changes
+
+- add `asChild` prop for rendering as a child element
+
+## 1.28.0
+
+### Minor Changes
+
+- add link popover with target options
+
+## 1.27.0
+
+### Minor Changes
+
+- enhance component with title, description, and close button
+
+## 1.26.0
+
+### Minor Changes
+
+- refactor loading prop to show and add delayed visibility hook
+
+## 1.25.0
+
+### Minor Changes
+
+- enhance Alert component with structured layout and new story examples
+
+## 1.24.0
+
+### Minor Changes
+
+- add id prop support across various components for improved accessibility
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn@1.3.0
+
+## 1.23.0
+
+### Minor Changes
+
+- enhance ID handling for Select component
+
+## 1.22.0
+
+### Minor Changes
+
+- implement `getId` utility for consistent ID generation
+
+## 1.21.2
+
+### Patch Changes
+
+- simplify ColorPickerSwatch usage in Button and Input components
+
 ## 1.21.1
 
 ### Patch Changes

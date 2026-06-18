@@ -1,5 +1,126 @@
 # @pixpilot/formily-shadcn
 
+## 1.12.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.32.1
+
+## 1.12.7
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.32.0
+
+## 1.12.6
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.31.0
+
+## 1.12.5
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.30.1
+
+## 1.12.4
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.30.0
+
+## 1.12.3
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.29.2
+
+## 1.12.2
+
+### Patch Changes
+
+- 65120f4: fix release
+- Updated dependencies
+- Updated dependencies [65120f4]
+  - @pixpilot/shadcn-ui@1.29.1
+  - @pixpilot/shadcn@1.3.1
+
+## 1.12.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.29.0
+
+## 1.12.0
+
+### Minor Changes
+
+- add link popover with target options
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.28.0
+
+## 1.11.27
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.27.0
+
+## 1.11.26
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.26.0
+
+## 1.11.25
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.25.0
+
+## 1.11.24
+
+### Patch Changes
+
+- Updated dependencies
+- Updated dependencies
+  - @pixpilot/shadcn@1.3.0
+  - @pixpilot/shadcn-ui@1.24.0
+
+## 1.11.23
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.23.0
+
+## 1.11.22
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.22.0
+
+## 1.11.21
+
+### Patch Changes
+
+- Updated dependencies
+  - @pixpilot/shadcn-ui@1.21.2
+
 ## 1.11.20
 
 ### Patch Changes

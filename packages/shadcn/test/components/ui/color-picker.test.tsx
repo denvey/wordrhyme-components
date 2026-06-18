@@ -5,6 +5,7 @@ import {
   ColorPicker,
   ColorPickerAlphaSlider,
   ColorPickerContent,
+  ColorPickerFormatSelect,
   ColorPickerSwatch,
   colorUtils,
 } from '../../../src/components/ui/color-picker';
@@ -220,5 +221,30 @@ describe('colorPicker - value parsing', () => {
     });
 
     expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  it('should assign id to the format select trigger and suffix option item ids', async () => {
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: vi.fn(),
+    });
+
+    render(
+      <ColorPicker defaultFormat="hex" inline>
+        <ColorPickerContent>
+          <ColorPickerFormatSelect id="color-format" open />
+        </ColorPickerContent>
+      </ColorPicker>,
+    );
+
+    const trigger = document.getElementById('color-format');
+    expect(trigger).toHaveAttribute('id', 'color-format');
+
+    await waitFor(() => {
+      expect(document.getElementById('color-format-option-hex')).toBeInTheDocument();
+      expect(document.getElementById('color-format-option-rgb')).toBeInTheDocument();
+      expect(document.getElementById('color-format-option-hsl')).toBeInTheDocument();
+      expect(document.getElementById('color-format-option-hsb')).toBeInTheDocument();
+    });
   });
 });
