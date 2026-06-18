@@ -1,20 +1,24 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@pixpilot/shadcn";
-import { Button } from "@pixpilot/shadcn";
-import { parseImportFile, generateCSVTemplate, type ParsedImportData } from "@/lib/import";
-import type { ImportResult } from "@/hooks/use-auto-crud-resource";
-import type { AutoCrudLocale } from "@/i18n/locale";
-import { zhCN } from "@/i18n/locale";
+} from '@pixpilot/shadcn';
+import { Button } from '@pixpilot/shadcn';
+import {
+  parseImportFile,
+  generateCSVTemplate,
+  type ParsedImportData,
+} from '@/lib/import';
+import type { ImportResult } from '@/hooks/use-auto-crud-resource';
+import type { AutoCrudLocale } from '@/i18n/locale';
+import { zhCN } from '@/i18n/locale';
 
-type ImportStep = "upload" | "preview" | "importing" | "result";
+type ImportStep = 'upload' | 'preview' | 'importing' | 'result';
 
 export interface ImportDialogProps {
   open: boolean;
@@ -26,7 +30,7 @@ export interface ImportDialogProps {
   /** 对话框标题（优先于 locale.title） */
   title?: string;
   /** 语言包，默认 zh-CN */
-  locale?: AutoCrudLocale["importDialog"];
+  locale?: AutoCrudLocale['importDialog'];
 }
 
 export function ImportDialog({
@@ -37,7 +41,7 @@ export function ImportDialog({
   title,
   locale = zhCN.importDialog,
 }: ImportDialogProps) {
-  const [step, setStep] = React.useState<ImportStep>("upload");
+  const [step, setStep] = React.useState<ImportStep>('upload');
   const [parsedData, setParsedData] = React.useState<ParsedImportData | null>(null);
   const [error, setError] = React.useState<string | null>(null);
   const [result, setResult] = React.useState<ImportResult | null>(null);
@@ -45,7 +49,7 @@ export function ImportDialog({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const reset = React.useCallback(() => {
-    setStep("upload");
+    setStep('upload');
     setParsedData(null);
     setError(null);
     setResult(null);
@@ -57,7 +61,7 @@ export function ImportDialog({
       if (!value) reset();
       onOpenChange(value);
     },
-    [onOpenChange, reset]
+    [onOpenChange, reset],
   );
 
   const handleFile = React.useCallback(async (file: File) => {
@@ -69,7 +73,7 @@ export function ImportDialog({
         return;
       }
       setParsedData(data);
-      setStep("preview");
+      setStep('preview');
     } catch (e) {
       setError(e instanceof Error ? e.message : locale.errorParseFailed);
     }
@@ -82,7 +86,7 @@ export function ImportDialog({
       const file = e.dataTransfer.files[0];
       if (file) handleFile(file);
     },
-    [handleFile]
+    [handleFile],
   );
 
   const handleFileInput = React.useCallback(
@@ -90,56 +94,57 @@ export function ImportDialog({
       const file = e.target.files?.[0];
       if (file) handleFile(file);
     },
-    [handleFile]
+    [handleFile],
   );
 
   const handleImport = React.useCallback(async () => {
     if (!parsedData) return;
-    setStep("importing");
+    setStep('importing');
     try {
       const importResult = await onImport(parsedData.rows);
       setResult(importResult);
-      setStep("result");
+      setStep('result');
     } catch (e) {
       setError(e instanceof Error ? e.message : locale.errorImportFailed);
-      setStep("preview");
+      setStep('preview');
     }
   }, [parsedData, onImport]);
 
   const handleDownloadTemplate = React.useCallback(() => {
     if (columns.length === 0) return;
     const csv = generateCSVTemplate(columns);
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = url;
-    link.download = "import-template.csv";
+    link.download = 'import-template.csv';
     link.click();
     URL.revokeObjectURL(url);
   }, [columns]);
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle>{title ?? locale.title}</DialogTitle>
           <DialogDescription>
-            {step === "upload" && locale.uploadDescription}
-            {step === "preview" && locale.previewDescription(parsedData?.rows.length ?? 0)}
-            {step === "importing" && locale.importingDescription}
-            {step === "result" && locale.doneDescription}
+            {step === 'upload' && locale.uploadDescription}
+            {step === 'preview' &&
+              locale.previewDescription(parsedData?.rows.length ?? 0)}
+            {step === 'importing' && locale.importingDescription}
+            {step === 'result' && locale.doneDescription}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* 上传步骤 */}
-          {step === "upload" && (
+          {step === 'upload' && (
             <>
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                   isDragging
-                    ? "border-primary bg-primary/5"
-                    : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                    ? 'border-primary bg-primary/5'
+                    : 'border-muted-foreground/25 hover:border-muted-foreground/50'
                 }`}
                 onDragOver={(e) => {
                   e.preventDefault();
@@ -164,12 +169,8 @@ export function ImportDialog({
                       d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"
                     />
                   </svg>
-                  <p className="text-sm text-muted-foreground">
-                    {locale.dragHint}
-                  </p>
-                  <p className="text-xs text-muted-foreground/60">
-                    {locale.formatHint}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{locale.dragHint}</p>
+                  <p className="text-xs text-muted-foreground/60">{locale.formatHint}</p>
                 </div>
                 <input
                   ref={fileInputRef}
@@ -194,38 +195,39 @@ export function ImportDialog({
           )}
 
           {/* 预览步骤 */}
-          {step === "preview" && parsedData && (
+          {step === 'preview' && parsedData && (
             <>
               <div className="rounded-md border">
-                <div className="max-h-[300px] overflow-auto">
-                  <table className="w-full text-sm">
+                <div className="max-h-[45vh] overflow-auto">
+                  <table className="min-w-max text-sm">
                     <thead className="sticky top-0 bg-muted">
                       <tr>
-                        <th className="px-3 py-2 text-left font-medium text-muted-foreground">#</th>
-                        {parsedData.headers.slice(0, 6).map((h) => (
-                          <th key={h} className="px-3 py-2 text-left font-medium text-muted-foreground">
+                        <th className="sticky left-0 z-10 bg-muted px-3 py-2 text-left font-medium text-muted-foreground">
+                          #
+                        </th>
+                        {parsedData.headers.map((h) => (
+                          <th
+                            key={h}
+                            className="max-w-[180px] whitespace-nowrap px-3 py-2 text-left font-medium text-muted-foreground"
+                          >
                             {h}
                           </th>
                         ))}
-                        {parsedData.headers.length > 6 && (
-                          <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                            {locale.moreColumns(parsedData.headers.length - 6)}
-                          </th>
-                        )}
                       </tr>
                     </thead>
                     <tbody>
                       {parsedData.rows.slice(0, 10).map((row, i) => (
                         <tr key={i} className="border-t">
-                          <td className="px-3 py-2 text-muted-foreground">{i + 1}</td>
-                          {parsedData.headers.slice(0, 6).map((h) => (
-                            <td key={h} className="px-3 py-2 max-w-[150px] truncate">
-                              {String(row[h] ?? "")}
+                          <td className="sticky left-0 bg-background px-3 py-2 text-muted-foreground">
+                            {i + 1}
+                          </td>
+                          {parsedData.headers.map((h) => (
+                            <td key={h} className="max-w-[180px] truncate px-3 py-2">
+                              <span title={String(row[h] ?? '')}>
+                                {String(row[h] ?? '')}
+                              </span>
                             </td>
                           ))}
-                          {parsedData.headers.length > 6 && (
-                            <td className="px-3 py-2 text-muted-foreground">...</td>
-                          )}
                         </tr>
                       ))}
                     </tbody>
@@ -246,15 +248,13 @@ export function ImportDialog({
                 <Button variant="outline" onClick={reset}>
                   {locale.reselect}
                 </Button>
-                <Button onClick={handleImport}>
-                  {locale.confirmImport}
-                </Button>
+                <Button onClick={handleImport}>{locale.confirmImport}</Button>
               </div>
             </>
           )}
 
           {/* 导入中 */}
-          {step === "importing" && (
+          {step === 'importing' && (
             <div className="flex flex-col items-center gap-4 py-8">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
               <p className="text-sm text-muted-foreground">
@@ -264,29 +264,37 @@ export function ImportDialog({
           )}
 
           {/* 结果步骤 */}
-          {step === "result" && result && (
+          {step === 'result' && result && (
             <>
               <div className="space-y-3">
                 <div className="flex gap-4">
                   <div className="flex-1 rounded-lg bg-green-50 dark:bg-green-950/30 p-3 text-center">
-                    <p className="text-2xl font-semibold text-green-600">{result.success}</p>
+                    <p className="text-2xl font-semibold text-green-600">
+                      {result.success}
+                    </p>
                     <p className="text-xs text-green-600/80">{locale.resultCreated}</p>
                   </div>
                   {(result.updated ?? 0) > 0 && (
                     <div className="flex-1 rounded-lg bg-blue-50 dark:bg-blue-950/30 p-3 text-center">
-                      <p className="text-2xl font-semibold text-blue-600">{result.updated}</p>
+                      <p className="text-2xl font-semibold text-blue-600">
+                        {result.updated}
+                      </p>
                       <p className="text-xs text-blue-600/80">{locale.resultUpdated}</p>
                     </div>
                   )}
                   {result.skipped > 0 && (
                     <div className="flex-1 rounded-lg bg-yellow-50 dark:bg-yellow-950/30 p-3 text-center">
-                      <p className="text-2xl font-semibold text-yellow-600">{result.skipped}</p>
+                      <p className="text-2xl font-semibold text-yellow-600">
+                        {result.skipped}
+                      </p>
                       <p className="text-xs text-yellow-600/80">{locale.resultSkipped}</p>
                     </div>
                   )}
                   {result.failed.length > 0 && (
                     <div className="flex-1 rounded-lg bg-red-50 dark:bg-red-950/30 p-3 text-center">
-                      <p className="text-2xl font-semibold text-red-600">{result.failed.length}</p>
+                      <p className="text-2xl font-semibold text-red-600">
+                        {result.failed.length}
+                      </p>
                       <p className="text-xs text-red-600/80">{locale.resultFailed}</p>
                     </div>
                   )}
@@ -299,16 +307,23 @@ export function ImportDialog({
                       <table className="w-full text-sm">
                         <thead className="sticky top-0 bg-red-50 dark:bg-red-950/30">
                           <tr>
-                            <th className="px-3 py-2 text-left font-medium text-red-600">{locale.failedRowHeader}</th>
-                            <th className="px-3 py-2 text-left font-medium text-red-600">{locale.failedErrorHeader}</th>
+                            <th className="px-3 py-2 text-left font-medium text-red-600">
+                              {locale.failedRowHeader}
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium text-red-600">
+                              {locale.failedErrorHeader}
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {result.failed.map((f) => (
-                            <tr key={f.row} className="border-t border-red-100 dark:border-red-900">
+                            <tr
+                              key={f.row}
+                              className="border-t border-red-100 dark:border-red-900"
+                            >
                               <td className="px-3 py-2 text-red-600">{f.row + 1}</td>
                               <td className="px-3 py-2 text-red-600/80">
-                                {f.errors.join("; ")}
+                                {f.errors.join('; ')}
                               </td>
                             </tr>
                           ))}

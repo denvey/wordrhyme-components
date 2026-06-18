@@ -27,6 +27,7 @@ import { AutoTableSimpleFilters } from './auto-table-simple-filters';
 import {
   AutoTableActionBar,
   type BatchActionConfig,
+  type BatchDeleteConfirmation,
   type BatchUpdateField,
 } from './auto-table-action-bar';
 import { useDataTable } from '@/hooks/use-data-table';
@@ -101,6 +102,8 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
   actionBarExtra?: React.ReactNode;
   /** 批量悬浮操作配置 */
   actionBarActions?: BatchActionConfig<z.infer<T>>;
+  /** 批量删除二次确认文案 */
+  deleteConfirmation?: BatchDeleteConfirmation;
   /** 初始排序 */
   initialSorting?: any[];
   /** 是否启用导出功能 (默认 true) */
@@ -131,6 +134,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   batchUpdateFields,
   actionBarExtra,
   actionBarActions,
+  deleteConfirmation,
   initialSorting,
   enableExport = true,
   showDefaultExport = true,
@@ -337,6 +341,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           showDefaultExport={showDefaultExport}
           extraActions={actionBarExtra}
           actions={actionBarActions}
+          deleteConfirmation={deleteConfirmation}
         />
       )}
     </div>

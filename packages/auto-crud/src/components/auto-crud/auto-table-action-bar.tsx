@@ -12,12 +12,20 @@ import {
   ActionBarSeparator,
 } from '@/components/ui/action-bar';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  Button,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@pixpilot/shadcn';
-import { Button } from '@pixpilot/shadcn';
 import { exportTableToCSV } from '@/lib/export';
 
 /** 批量更新字段配置 */
@@ -86,6 +94,20 @@ export type BatchActionConfig<TData> =
   | BatchActionItem<TData>[]
   | ((defaults: BatchBuiltinActionItem<TData>[]) => BatchActionItem<TData>[]);
 
+export interface BatchDeleteConfirmation {
+  title: string;
+  description: (count: number) => string;
+  cancel: string;
+  confirm: string;
+}
+
+const DEFAULT_DELETE_CONFIRMATION: BatchDeleteConfirmation = {
+  title: '确认批量删除',
+  description: (count) => `此操作无法撤销。确定要删除选中的 ${count} 条记录吗？`,
+  cancel: '取消',
+  confirm: '确认删除',
+};
+
 function isBatchCustomAction<TData>(
   action: BatchActionItem<TData>,
 ): action is BatchCustomActionItem<TData> {
@@ -109,6 +131,8 @@ interface AutoTableActionBarProps<TData> {
   extraActions?: React.ReactNode;
   /** 批量操作配置，支持和行操作/顶部工具栏一致的顺序接管语义 */
   actions?: BatchActionConfig<TData>;
+  /** 批量删除二次确认文案 */
+  deleteConfirmation?: BatchDeleteConfirmation;
 }
 
 export function AutoTableActionBar<TData>({
@@ -121,9 +145,17 @@ export function AutoTableActionBar<TData>({
   enableDelete = true,
   extraActions,
   actions,
+  deleteConfirmation = DEFAULT_DELETE_CONFIRMATION,
 }: AutoTableActionBarProps<TData>) {
   const rows = table.getFilteredSelectedRowModel().rows;
   const selectedRows = React.useMemo(() => rows.map((row) => row.original), [rows]);
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (selectedRows.length === 0) {
+      setDeleteDialogOpen(false);
+    }
+  }, [selectedRows.length]);
 
   const clearSelection = React.useCallback(() => {
     table.toggleAllRowsSelected(false);
@@ -155,10 +187,34 @@ export function AutoTableActionBar<TData>({
   }, [table]);
 
   const onDelete = React.useCallback(() => {
-    if (onDeleteSelected) {
+    if (onDeleteSelected && selectedRows.length > 0) {
       onDeleteSelected(selectedRows);
+      clearSelection();
     }
-  }, [selectedRows, onDeleteSelected]);
+    setDeleteDialogOpen(false);
+  }, [selectedRows, onDeleteSelected, clearSelection]);
+
+  const runDeleteAction = React.useCallback(
+    (
+      action: BatchBuiltinActionItem<TData>,
+      event: React.MouseEvent<HTMLButtonElement>,
+    ) => {
+      if (selectedRows.length === 0) {
+        setDeleteDialogOpen(false);
+        return;
+      }
+
+      if (action.onClick) {
+        action.onClick(selectedRows, actionContext, event);
+        clearSelection();
+        setDeleteDialogOpen(false);
+        return;
+      }
+
+      onDelete();
+    },
+    [actionContext, clearSelection, onDelete, selectedRows],
+  );
 
   const handleBatchUpdate = React.useCallback(
     (field: string, value: string) => {
@@ -241,18 +297,38 @@ export function AutoTableActionBar<TData>({
 
       if (action.type === 'delete') {
         return (
-          <ActionBarItem
+          <AlertDialog
             key="delete"
-            variant="destructive"
-            onClick={(event) =>
-              action.onClick
-                ? action.onClick(selectedRows, actionContext, event)
-                : onDelete()
-            }
+            open={deleteDialogOpen}
+            onOpenChange={setDeleteDialogOpen}
           >
-            <Trash2 />
-            {action.label ?? 'Delete'}
-          </ActionBarItem>
+            <ActionBarItem
+              variant="destructive"
+              onClick={() => setDeleteDialogOpen(true)}
+              onSelect={(event) => event.preventDefault()}
+            >
+              <Trash2 />
+              {action.label ?? 'Delete'}
+            </ActionBarItem>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>{deleteConfirmation.title}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {deleteConfirmation.description(selectedRows.length)}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{deleteConfirmation.cancel}</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30"
+                  disabled={selectedRows.length === 0}
+                  onClick={(event) => runDeleteAction(action, event)}
+                >
+                  {deleteConfirmation.confirm}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         );
       }
 
@@ -263,12 +339,15 @@ export function AutoTableActionBar<TData>({
       batchUpdateFields?.length,
       enableDelete,
       enableExport,
+      deleteConfirmation,
+      deleteDialogOpen,
       onDelete,
       onDeleteSelected,
       onUpdateSelected,
       onExport,
       renderBatchUpdate,
       renderComponent,
+      runDeleteAction,
       selectedRows,
     ],
   );

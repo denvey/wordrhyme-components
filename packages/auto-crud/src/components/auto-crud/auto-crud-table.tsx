@@ -1664,6 +1664,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}
         batchUpdateFields={can.update ? batchFields : undefined}
         actionBarActions={registryBatchActions}
+        deleteConfirmation={locale.bulkDeleteModal}
         enableExport={canExport}
         showDefaultExport={false}
         initialSorting={tableConfig?.defaultSort}
