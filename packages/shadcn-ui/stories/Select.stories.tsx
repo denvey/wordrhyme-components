@@ -34,6 +34,15 @@ const meta: Meta<StoryArgs> = {
       control: 'boolean',
       description: 'Whether to show a clear button when a value is selected',
     },
+    mode: {
+      control: { type: 'radio' },
+      options: ['simple', 'searchable'],
+      description: 'Select interaction mode.',
+    },
+    multiple: {
+      control: 'boolean',
+      description: 'Whether searchable mode should allow multiple values.',
+    },
     keyboardMode: {
       control: { type: 'radio' },
       options: ['dropdown', 'cycle'],
@@ -69,6 +78,52 @@ export const Default: Story = {
     const [value, setValue] = useState<string>('');
 
     return <Select {...args} value={value} onChange={setValue} />;
+  },
+};
+
+/**
+ * Searchable select powered by the command/popover picker.
+ */
+export const Searchable: Story = {
+  args: {
+    mode: 'searchable',
+    options: [
+      { value: 'admin', label: 'Admin', keywords: ['owner', 'manager'] },
+      { value: 'editor', label: 'Editor', keywords: ['writer'] },
+      { value: 'viewer', label: 'Viewer', keywords: ['readonly'] },
+    ],
+    placeholder: 'Choose a role',
+    searchPlaceholder: 'Search roles...',
+  },
+  render: function SearchableSelect(args) {
+    const [value, setValue] = useState<string>('editor');
+
+    return <Select {...args} mode="searchable" value={value} onChange={setValue} />;
+  },
+};
+
+/**
+ * Searchable select with multiple values.
+ */
+export const SearchableMultiple: Story = {
+  args: {
+    mode: 'searchable',
+    multiple: true,
+    options: [
+      { value: 'design', label: 'Design' },
+      { value: 'frontend', label: 'Frontend' },
+      { value: 'backend', label: 'Backend' },
+      { value: 'ops', label: 'Operations' },
+    ],
+    placeholder: 'Choose teams',
+    searchPlaceholder: 'Search teams...',
+  },
+  render: function SearchableMultipleSelect(args) {
+    const [value, setValue] = useState<string[]>(['frontend']);
+
+    return (
+      <Select {...args} mode="searchable" multiple value={value} onChange={setValue} />
+    );
   },
 };
 

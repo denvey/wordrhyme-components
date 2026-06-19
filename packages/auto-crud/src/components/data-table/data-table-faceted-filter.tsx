@@ -7,7 +7,7 @@ import { Badge } from '@wordrhyme/shadcn';
 import { Button } from '@wordrhyme/shadcn';
 import { Separator } from '@wordrhyme/shadcn';
 import type { Option } from '@/types/data-table';
-import { MultiCombobox } from '@wordrhyme/shadcn-ui';
+import { Select } from '@wordrhyme/shadcn-ui';
 
 interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;
@@ -45,12 +45,17 @@ export function DataTableFacetedFilter<TData, TValue>({
     column?.setFilterValue(nextValues.length ? nextValues : undefined);
   };
 
+  const onSelectChange = (nextValue: string | string[]) => {
+    onChange(Array.isArray(nextValue) ? nextValue : nextValue ? [nextValue] : []);
+  };
+
   return (
-    <MultiCombobox
-      value={selectedValues}
-      onChange={onChange}
+    <Select
+      mode="searchable"
+      multiple={Boolean(multiple)}
+      value={multiple ? selectedValues : (selectedValues[0] ?? '')}
+      onChange={onSelectChange}
       options={comboboxOptions}
-      selectionMode={multiple ? 'multiple' : 'single'}
       searchPlaceholder={title}
       hasMore={column?.columnDef.meta?.autoCrudFilterHasMore}
       loading={column?.columnDef.meta?.autoCrudFilterLoading}

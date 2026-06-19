@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react';
 import { useControlled } from '@internal/hooks';
 import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
+import type { SelectSimpleProps } from '../Select';
 import { Select } from '../Select';
 import { getId } from '../utils';
 import { Slider as ShadcnSlider } from './Slider';
@@ -17,7 +18,7 @@ export type SliderSelectOption =
     };
 
 type SliderSelectSelectProps = Omit<
-  ComponentProps<typeof Select>,
+  SelectSimpleProps,
   'options' | 'value' | 'onChange'
 > & {
   containerClassName?: string;

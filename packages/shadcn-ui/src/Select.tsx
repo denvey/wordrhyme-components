@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 
 import {
   cn,
@@ -12,20 +12,34 @@ import { XIcon } from 'lucide-react';
 import React from 'react';
 
 import { useSelectKeyboard } from './hooks/use-select-keyboard';
+import {
+  MultiCombobox,
+  type MultiComboboxOption,
+  type MultiComboboxProps,
+  type MultiComboboxTriggerRenderProps,
+} from './multi-combobox';
 import { getId } from './utils';
 
 export interface SelectOption {
   value: string | number;
-  label: string;
+  label: ReactNode;
+  searchText?: string | string[];
+  keywords?: string[];
+  count?: number;
+  disabled?: boolean;
+  icon?: React.ComponentType<{ className?: string }>;
 }
 
 export type SelectContentProps = React.ComponentProps<typeof SelectContent>;
+export type SelectMode = 'simple' | 'searchable';
+export type SelectTriggerRenderProps = MultiComboboxTriggerRenderProps;
 
-type BaseSelectProps = {
+export type SelectSimpleProps = {
   /**
    * Array of options to display in the select dropdown
    */
   options?: SelectOption[];
+  mode?: 'simple';
   /**
    * Additional props to pass to the SelectContent component
    */
@@ -69,7 +83,134 @@ type BaseSelectProps = {
   'value' | 'onValueChange' | 'children' | 'disabled' | 'name' | 'required'
 >;
 
-function Select(props: BaseSelectProps) {
+type SelectSearchableCommonProps = Omit<
+  MultiComboboxProps,
+  'defaultValue' | 'onChange' | 'options' | 'selectionMode' | 'value'
+> & {
+  mode: 'searchable';
+  options?: SelectOption[];
+};
+
+export type SelectSearchableSingleProps = SelectSearchableCommonProps & {
+  multiple?: false;
+  value?: string;
+  defaultValue?: string;
+  onChange?: (value: string) => void;
+};
+
+export type SelectSearchableMultipleProps = SelectSearchableCommonProps & {
+  multiple: true;
+  value?: string[];
+  defaultValue?: string[];
+  onChange?: (value: string[]) => void;
+};
+
+export type SelectSearchableDynamicProps = SelectSearchableCommonProps & {
+  multiple: boolean;
+  value?: string | string[];
+  defaultValue?: string | string[];
+  onChange?: (value: string | string[]) => void;
+};
+
+export type SelectSearchableProps =
+  | SelectSearchableSingleProps
+  | SelectSearchableMultipleProps
+  | SelectSearchableDynamicProps;
+
+export type SelectProps = SelectSimpleProps | SelectSearchableProps;
+
+function normalizeSearchableOptions(
+  options: SelectOption[] | undefined,
+): MultiComboboxOption[] | undefined {
+  return options?.map((option) => ({
+    ...option,
+    value: String(option.value),
+  }));
+}
+
+function toSingleValueArray(value: string | undefined) {
+  return value ? [value] : [];
+}
+
+function getSingleSearchableValue(value: string | string[] | undefined) {
+  if (Array.isArray(value)) {
+    return value[0] ?? '';
+  }
+
+  return value ?? '';
+}
+
+function getMultipleSearchableValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value : value ? [value] : [];
+}
+
+function splitMode<T extends { mode?: SelectMode }>(props: T) {
+  const { mode, ...rest } = props;
+  return { mode, rest };
+}
+
+function SearchableSelect(props: SelectSearchableProps) {
+  const { rest: searchableProps } = splitMode(props);
+  const {
+    multiple = false,
+    options,
+    value,
+    defaultValue,
+    onChange,
+    ...comboboxProps
+  } = searchableProps;
+  const normalizedOptions = React.useMemo(
+    () => normalizeSearchableOptions(options),
+    [options],
+  );
+
+  if (multiple) {
+    const handleChange = onChange as ((value: string[]) => void) | undefined;
+
+    return (
+      <MultiCombobox
+        {...comboboxProps}
+        value={value === undefined ? undefined : getMultipleSearchableValue(value)}
+        defaultValue={
+          defaultValue === undefined
+            ? undefined
+            : getMultipleSearchableValue(defaultValue)
+        }
+        onChange={(nextValue) => {
+          handleChange?.(nextValue);
+        }}
+        options={normalizedOptions}
+        selectionMode="multiple"
+      />
+    );
+  }
+
+  const handleChange = onChange as ((value: string) => void) | undefined;
+
+  return (
+    <MultiCombobox
+      {...comboboxProps}
+      value={
+        value === undefined
+          ? undefined
+          : toSingleValueArray(getSingleSearchableValue(value))
+      }
+      defaultValue={
+        defaultValue === undefined
+          ? undefined
+          : toSingleValueArray(getSingleSearchableValue(defaultValue))
+      }
+      onChange={(nextValue) => {
+        handleChange?.(nextValue[0] ?? '');
+      }}
+      options={normalizedOptions}
+      selectionMode="single"
+    />
+  );
+}
+
+function SimpleSelect(props: SelectSimpleProps) {
+  const { rest: simpleProps } = splitMode(props);
   const {
     options,
     value = '',
@@ -85,7 +226,7 @@ function Select(props: BaseSelectProps) {
     className,
     id,
     ...restProps
-  } = props;
+  } = simpleProps;
 
   const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false);
   const open = openProp ?? uncontrolledOpen;
@@ -155,6 +296,14 @@ function Select(props: BaseSelectProps) {
       </SelectContent>
     </ShadcnSelect>
   );
+}
+
+function Select(props: SelectProps) {
+  if (props.mode === 'searchable') {
+    return <SearchableSelect {...props} />;
+  }
+
+  return <SimpleSelect {...props} />;
 }
 
 export { Select };

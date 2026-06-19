@@ -55,11 +55,20 @@ export { DataTableFacetedFilter } from './components/data-table/data-table-facet
 export { DataTablePagination } from './components/data-table/data-table-pagination';
 export { DataTableToolbar } from './components/data-table/data-table-toolbar';
 export { DataTableViewOptions } from './components/data-table/data-table-view-options';
-export { MultiCombobox } from '@wordrhyme/shadcn-ui';
+export { MultiCombobox, Select } from '@wordrhyme/shadcn-ui';
 export type {
   MultiComboboxOption,
   MultiComboboxProps,
   MultiComboboxTriggerRenderProps,
+  SelectMode,
+  SelectOption,
+  SelectProps,
+  SelectSearchableDynamicProps,
+  SelectSearchableMultipleProps,
+  SelectSearchableProps,
+  SelectSearchableSingleProps,
+  SelectSimpleProps,
+  SelectTriggerRenderProps,
 } from '@wordrhyme/shadcn-ui';
 
 // AutoCrud registries

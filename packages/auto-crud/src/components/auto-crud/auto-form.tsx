@@ -9,7 +9,6 @@ import {
   forwardRef,
   useState,
 } from 'react';
-import type { ComponentProps } from 'react';
 import type { Field } from '@formily/core';
 import { createForm } from '@formily/core';
 import { action, observable } from '@formily/reactive';
@@ -25,7 +24,11 @@ import { Button, cn, Switch as UiSwitch } from '@wordrhyme/shadcn';
 import { createEditFormSchema } from '@/lib/schema-bridge/zod-to-formily';
 import type { FormSchemaOverrides } from '@/lib/schema-bridge/types';
 import { buildFormOverrides, type Fields } from '@/lib/field-config';
-import { MultiCombobox, type MultiComboboxProps } from '@wordrhyme/shadcn-ui';
+import {
+  Select,
+  type SelectSearchableMultipleProps,
+  type SelectSearchableSingleProps,
+} from '@wordrhyme/shadcn-ui';
 import {
   components,
   dataSources,
@@ -71,8 +74,8 @@ type AutoCrudComboboxOption = {
 };
 
 type AutoCrudComboboxProps = Omit<
-  MultiComboboxProps,
-  'onChange' | 'options' | 'selectionMode' | 'value'
+  SelectSearchableSingleProps,
+  'mode' | 'multiple' | 'onChange' | 'options' | 'value'
 > & {
   value?: string;
   onChange?: (value: string) => void;
@@ -80,8 +83,8 @@ type AutoCrudComboboxProps = Omit<
 };
 
 type AutoCrudMultiComboboxProps = Omit<
-  ComponentProps<typeof MultiCombobox>,
-  'options'
+  SelectSearchableMultipleProps,
+  'mode' | 'multiple' | 'options'
 > & {
   options?: AutoCrudComboboxOption[];
 };
@@ -134,19 +137,19 @@ function AutoCrudCombobox({
   ...props
 }: AutoCrudComboboxProps) {
   return (
-    <MultiCombobox
+    <Select
       {...props}
-      value={value ? [value] : []}
+      mode="searchable"
+      value={value ?? ''}
       options={options}
-      selectionMode="single"
-      onChange={(nextValues) => onChange?.(nextValues[0] ?? '')}
+      onChange={(nextValue: string) => onChange?.(nextValue)}
       className={cn(COMBOBOX_LIST_CLASS, className)}
     />
   );
 }
 
 function AutoCrudMultiCombobox({ options = [], ...props }: AutoCrudMultiComboboxProps) {
-  return <MultiCombobox {...props} options={options} />;
+  return <Select {...props} mode="searchable" multiple options={options} />;
 }
 
 const defaultFieldComponents = {

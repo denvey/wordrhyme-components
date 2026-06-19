@@ -23,7 +23,7 @@ import { Label } from '@wordrhyme/shadcn';
 import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import { Separator } from '@wordrhyme/shadcn';
 import { Slider } from '@wordrhyme/shadcn';
-import { MultiCombobox } from '@wordrhyme/shadcn-ui';
+import { Select } from '@wordrhyme/shadcn-ui';
 import { getDefaultFilterOperator } from '@/lib/data-table';
 import { formatDate } from '@/lib/format';
 import { generateId } from '@/lib/id';
@@ -484,12 +484,17 @@ function SimpleFacetedFilter({
   onPopupScroll,
   onSearch,
 }: SimpleFacetedFilterProps) {
+  const onSelectChange = (nextValue: string | string[]) => {
+    onChange(Array.isArray(nextValue) ? nextValue : nextValue ? [nextValue] : []);
+  };
+
   return (
-    <MultiCombobox
-      value={value}
-      onChange={onChange}
+    <Select
+      mode="searchable"
+      multiple={Boolean(multiple)}
+      value={multiple ? value : (value[0] ?? '')}
+      onChange={onSelectChange}
       options={options}
-      selectionMode={multiple ? 'multiple' : 'single'}
       searchPlaceholder={title}
       hasMore={hasMore}
       loading={loading}
