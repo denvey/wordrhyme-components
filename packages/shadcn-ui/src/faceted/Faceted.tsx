@@ -186,8 +186,12 @@ function FacetedBadgeList(props: FacetedBadgeListProps) {
   );
 }
 
-function FacetedContent(props: React.ComponentProps<typeof PopoverContent>) {
-  const { className, children, ...contentProps } = props;
+interface FacetedContentProps extends React.ComponentProps<typeof PopoverContent> {
+  commandProps?: React.ComponentProps<typeof Command>;
+}
+
+function FacetedContent(props: FacetedContentProps) {
+  const { className, children, commandProps, ...contentProps } = props;
 
   return (
     <PopoverContent
@@ -198,7 +202,7 @@ function FacetedContent(props: React.ComponentProps<typeof PopoverContent>) {
         className,
       )}
     >
-      <Command>{children}</Command>
+      <Command {...commandProps}>{children}</Command>
     </PopoverContent>
   );
 }

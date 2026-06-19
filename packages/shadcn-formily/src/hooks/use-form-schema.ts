@@ -1,5 +1,8 @@
 import type { ISchema } from '@formily/react';
-import type { JsonSchemaFormComponents } from '../components/json-schema-form-renderer/types';
+import type {
+  JsonSchemaFormComponents,
+  JsonSchemaFormScope,
+} from '../components/json-schema-form-renderer/types';
 import { useMemo } from 'react';
 
 import { extractFieldsDecorators, transformSchema } from '../utils';
@@ -9,6 +12,7 @@ import { useSchemaField } from './use-schema-field';
 export function useFormSchema(
   schema: ISchema,
   componentsProp: Partial<JsonSchemaFormComponents> | undefined,
+  scope?: JsonSchemaFormScope,
 ) {
   const formSchema = useMemo(() => {
     // Extract decorator mappings from fields for transformSchema
@@ -16,7 +20,7 @@ export function useFormSchema(
     return transformSchema(schema, fieldsDecorators);
   }, [schema, componentsProp]);
 
-  const SchemaField = useSchemaField(formSchema, componentsProp);
+  const SchemaField = useSchemaField(formSchema, componentsProp, scope);
 
   return { formSchema, SchemaField };
 }

@@ -67,9 +67,11 @@ export { createForm } from '@formily/core';
 export type { Form as IForm } from '@formily/core';
 
 export {
+  connect,
   Field,
   FormConsumer,
   FormProvider,
+  mapProps,
   ObjectField,
   VoidField,
 } from '@formily/react';

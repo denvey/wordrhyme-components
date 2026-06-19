@@ -1,5 +1,14 @@
 # @pixpilot/formily-shadcn
 
+## 1.12.9
+
+### Patch Changes
+
+- Fix auto-crud remote filter search pagination and publish matching Wordrhyme UI dependencies.
+- Updated dependencies
+  - @wordrhyme/shadcn-ui@1.32.2
+  - @wordrhyme/shadcn@1.3.2
+
 ## 1.12.8
 
 ### Patch Changes

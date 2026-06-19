@@ -11,11 +11,12 @@ const JsonSchemaFormRenderer: React.FC<JsonSchemaFormRendererProps> = (props) =>
     children,
     settings: configProp,
     components: componentsProp,
+    scope,
     form,
     ...rest
   } = props;
 
-  const { formSchema, SchemaField } = useFormSchema(schema, componentsProp);
+  const { formSchema, SchemaField } = useFormSchema(schema, componentsProp, scope);
 
   const config = useMemo((): FormSettings => {
     return {

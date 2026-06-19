@@ -26,6 +26,20 @@ export function DataTableFacetedFilter<TData, TValue>({
   const selectedValues = Array.isArray(columnFilterValue)
     ? columnFilterValue.filter((value): value is string => typeof value === 'string')
     : [];
+  const currentOptions = column?.columnDef.meta?.autoCrudFilterOptions ?? options;
+  const currentOptionValues = new Set(currentOptions.map((option) => option.value));
+  const selectedOptionValues = new Set(selectedValues);
+  const comboboxOptions =
+    currentOptions === options
+      ? currentOptions
+      : [
+          ...options.filter(
+            (option) =>
+              selectedOptionValues.has(option.value) &&
+              !currentOptionValues.has(option.value),
+          ),
+          ...currentOptions,
+        ];
 
   const onChange = (nextValues: string[]) => {
     column?.setFilterValue(nextValues.length ? nextValues : undefined);
@@ -35,9 +49,15 @@ export function DataTableFacetedFilter<TData, TValue>({
     <MultiCombobox
       value={selectedValues}
       onChange={onChange}
-      options={options}
+      options={comboboxOptions}
       selectionMode={multiple ? 'multiple' : 'single'}
       searchPlaceholder={title}
+      hasMore={column?.columnDef.meta?.autoCrudFilterHasMore}
+      loading={column?.columnDef.meta?.autoCrudFilterLoading}
+      searchValue={column?.columnDef.meta?.autoCrudFilterSearchValue}
+      shouldFilter={column?.columnDef.meta?.autoCrudFilterShouldFilter}
+      onPopupScroll={column?.columnDef.meta?.autoCrudFilterOnPopupScroll}
+      onSearch={column?.columnDef.meta?.autoCrudFilterOnSearch}
       contentClassName="w-50"
       matchTriggerWidth={false}
       clearText="Clear filters"

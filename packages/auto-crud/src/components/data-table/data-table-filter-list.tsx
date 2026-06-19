@@ -645,6 +645,7 @@ function onFilterInputRender<TData>({
     case 'select':
     case 'multiSelect': {
       const inputListboxId = `${inputId}-listbox`;
+      const optionList = columnMeta?.autoCrudFilterOptions ?? columnMeta?.options;
 
       const multiple = filter.variant === 'multiSelect';
       const selectedValues = multiple
@@ -684,15 +685,23 @@ function onFilterInputRender<TData>({
               />
             </Button>
           </FacetedTrigger>
-          <FacetedContent id={inputListboxId} className="w-[200px]">
+          <FacetedContent
+            id={inputListboxId}
+            className="w-[200px]"
+            commandProps={{
+              shouldFilter: columnMeta?.autoCrudFilterShouldFilter,
+            }}
+          >
             <FacetedInput
               aria-label={`Search ${columnMeta?.label} options`}
               placeholder={columnMeta?.placeholder ?? 'Search options...'}
+              value={columnMeta?.autoCrudFilterSearchValue}
+              onValueChange={columnMeta?.autoCrudFilterOnSearch}
             />
-            <FacetedList>
+            <FacetedList onScroll={columnMeta?.autoCrudFilterOnPopupScroll}>
               <FacetedEmpty>No options found.</FacetedEmpty>
               <FacetedGroup>
-                {columnMeta?.options?.map((option) => (
+                {optionList?.map((option) => (
                   <FacetedItem key={option.value} value={option.value}>
                     {option.icon && <option.icon />}
                     <span>{option.label}</span>
@@ -702,6 +711,23 @@ function onFilterInputRender<TData>({
                   </FacetedItem>
                 ))}
               </FacetedGroup>
+              {columnMeta?.autoCrudFilterLoading && (
+                <FacetedGroup>
+                  <div
+                    role="status"
+                    aria-live="polite"
+                    className="py-2 text-center text-sm text-muted-foreground"
+                  >
+                    Loading...
+                  </div>
+                </FacetedGroup>
+              )}
+              {!columnMeta?.autoCrudFilterLoading &&
+                columnMeta?.autoCrudFilterHasMore && (
+                  <div role="status" aria-live="polite" className="sr-only">
+                    Load more
+                  </div>
+                )}
             </FacetedList>
           </FacetedContent>
         </Faceted>

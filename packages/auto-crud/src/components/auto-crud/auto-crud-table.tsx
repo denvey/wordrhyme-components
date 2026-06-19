@@ -2,6 +2,7 @@
 
 import type { z } from 'zod';
 import type { UseAutoCrudResourceReturn } from '@/hooks/use-auto-crud-resource';
+import type { JsonSchemaFormScope } from '@wordrhyme/formily-shadcn';
 import type { ModalVariant } from './form-modal';
 import type { CrudPermissions } from '@/types/permissions';
 import { AutoTable, type FilterMode } from './auto-table';
@@ -40,11 +41,13 @@ import * as React from 'react';
 import { type LocaleProp, resolveLocale } from '@/i18n/locale';
 import {
   dataSources,
+  normalizeHasMore,
   normalizeDataSourceConfig,
   normalizeOptions,
   type AutoCrudDataSourceConfig,
 } from '@/lib/registries';
 import { crudActions } from '@/lib/crud-actions';
+import { buildFormOverrides } from '@/lib/field-config';
 
 /**
  * 筛选器独立配置
@@ -462,6 +465,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   form?: {
     /** 表单覆盖配置（兼容旧 API，优先级低于 fieldOverrides） */
     overrides?: Record<string, any>;
+    /** Formily schema expression/reaction scope */
+    scope?: JsonSchemaFormScope;
     /** 表单列数 */
     columns?: number;
     /** 弹窗自定义容器类名（支持控制大小、最大高度等） */
@@ -586,6 +591,39 @@ function toBatchOptions(options?: FieldOption[]) {
   return options?.map(({ label, value }) => ({ label, value }));
 }
 
+const POPUP_SCROLL_LOAD_THRESHOLD = 24;
+
+function isNearPopupScrollBottom(target: HTMLElement) {
+  return (
+    target.scrollHeight - target.scrollTop - target.clientHeight <=
+    POPUP_SCROLL_LOAD_THRESHOLD
+  );
+}
+
+function mergeFilterOptions(
+  current: FieldOption[] | undefined,
+  incoming: FieldOption[],
+): FieldOption[] {
+  const optionsByValue = new Map((current ?? []).map((option) => [option.value, option]));
+  for (const option of incoming) {
+    optionsByValue.set(option.value, option);
+  }
+
+  return Array.from(optionsByValue.values());
+}
+
+type DynamicFilterState = {
+  hasMoreByField: Record<string, boolean>;
+  labelOptionsByField: Record<string, FieldOption[]>;
+  loadingByField: Record<string, boolean>;
+  optionsByField: Record<string, FieldOption[]>;
+  registeredByField: Record<string, boolean>;
+  searchValues: Record<string, string>;
+  searchableByField: Record<string, boolean>;
+  loadMore: (field: string) => void;
+  setSearchValue: (field: string, value: string) => void;
+};
+
 function getFilterDataSource(config: Field): AutoCrudDataSourceConfig | undefined {
   if (config.filter && typeof config.filter === 'object') {
     return config.filter.dataSource ?? config.dataSource;
@@ -625,10 +663,29 @@ function useCrudActionsVersion(): number {
   );
 }
 
-function useDynamicFilterOptions(fields?: Fields): Record<string, FieldOption[]> {
+function useDynamicFilterOptions(fields?: Fields): DynamicFilterState {
   const registryVersion = useRegistryVersion(dataSources.subscribe);
+  const [searchValues, setSearchValues] = React.useState<Record<string, string>>({});
+  const [hasMoreByField, setHasMoreByField] = React.useState<Record<string, boolean>>({});
+  const [labelOptionsByField, setLabelOptionsByField] = React.useState<
+    Record<string, FieldOption[]>
+  >({});
+  const [loadingByField, setLoadingByField] = React.useState<Record<string, boolean>>({});
   const [optionsByField, setOptionsByField] = React.useState<
     Record<string, FieldOption[]>
+  >({});
+  const controllersRef = React.useRef<Record<string, AbortController | undefined>>({});
+  const hasMoreByFieldRef = React.useRef<Record<string, boolean>>({});
+  const loadingByFieldRef = React.useRef<Record<string, boolean>>({});
+  const optionsByFieldRef = React.useRef<Record<string, FieldOption[]>>({});
+  const pageByFieldRef = React.useRef<Record<string, number>>({});
+  const requestVersionsRef = React.useRef<Record<string, number>>({});
+  const searchValuesRef = React.useRef<Record<string, string>>({});
+  const sourceEntriesByFieldRef = React.useRef<
+    Record<string, NonNullable<ReturnType<typeof normalizeDataSourceConfig>>>
+  >({});
+  const timersRef = React.useRef<
+    Record<string, ReturnType<typeof setTimeout> | undefined>
   >({});
 
   const sourceEntries = React.useMemo(() => {
@@ -642,52 +699,296 @@ function useDynamicFilterOptions(fields?: Fields): Record<string, FieldOption[]>
     });
   }, [fields]);
 
+  const sourceEntriesByField = React.useMemo(
+    () => Object.fromEntries(sourceEntries.map(({ field, source }) => [field, source])),
+    [sourceEntries],
+  );
+
+  React.useEffect(() => {
+    searchValuesRef.current = searchValues;
+  }, [searchValues]);
+
+  React.useEffect(() => {
+    sourceEntriesByFieldRef.current = sourceEntriesByField;
+  }, [sourceEntriesByField]);
+
+  const registeredByField = React.useMemo(
+    () =>
+      Object.fromEntries(
+        sourceEntries.map(({ field, source }) => [
+          field,
+          dataSources.get(source.key) !== undefined,
+        ]),
+      ),
+    [sourceEntries, registryVersion],
+  );
+
+  const searchableByField = React.useMemo(
+    () =>
+      Object.fromEntries(
+        sourceEntries.map(({ field, source }) => [
+          field,
+          dataSources.get(source.key)?.search === true,
+        ]),
+      ),
+    [sourceEntries, registryVersion],
+  );
+
+  const setFieldState = React.useCallback(
+    <T,>(
+      setter: React.Dispatch<React.SetStateAction<Record<string, T>>>,
+      ref: React.MutableRefObject<Record<string, T>>,
+      field: string,
+      value: T,
+    ) => {
+      ref.current = {
+        ...ref.current,
+        [field]: value,
+      };
+      setter(ref.current);
+    },
+    [],
+  );
+
+  const removeInactiveFieldState = React.useCallback(
+    <T,>(
+      setter: React.Dispatch<React.SetStateAction<Record<string, T>>>,
+      ref: React.MutableRefObject<Record<string, T>>,
+      activeFields: Set<string>,
+    ) => {
+      const nextEntries = Object.entries(ref.current).filter(([field]) =>
+        activeFields.has(field),
+      );
+      if (nextEntries.length === Object.keys(ref.current).length) return;
+
+      ref.current = Object.fromEntries(nextEntries) as Record<string, T>;
+      setter(ref.current);
+    },
+    [],
+  );
+
+  const setFieldOptions = React.useCallback((field: string, options: FieldOption[]) => {
+    optionsByFieldRef.current = {
+      ...optionsByFieldRef.current,
+      [field]: options,
+    };
+    setOptionsByField(optionsByFieldRef.current);
+  }, []);
+
+  const setFieldLoading = React.useCallback(
+    (field: string, loading: boolean) => {
+      setFieldState(setLoadingByField, loadingByFieldRef, field, loading);
+    },
+    [setFieldState],
+  );
+
+  const setFieldHasMore = React.useCallback(
+    (field: string, hasMore: boolean) => {
+      setFieldState(setHasMoreByField, hasMoreByFieldRef, field, hasMore);
+    },
+    [setFieldState],
+  );
+
+  const clearFieldRequest = React.useCallback((field: string) => {
+    const timer = timersRef.current[field];
+    if (timer) clearTimeout(timer);
+    timersRef.current[field] = undefined;
+
+    controllersRef.current[field]?.abort();
+    controllersRef.current[field] = undefined;
+  }, []);
+
+  const resetField = React.useCallback(
+    (field: string, { clearLabels = false }: { clearLabels?: boolean } = {}) => {
+      clearFieldRequest(field);
+      setFieldOptions(field, []);
+      setFieldLoading(field, false);
+      setFieldHasMore(field, false);
+      pageByFieldRef.current = {
+        ...pageByFieldRef.current,
+        [field]: 0,
+      };
+      if (clearLabels) {
+        setLabelOptionsByField((current) => {
+          const { [field]: _, ...rest } = current;
+          return rest;
+        });
+      }
+    },
+    [clearFieldRequest, setFieldHasMore, setFieldLoading, setFieldOptions],
+  );
+
+  const loadFieldOptions = React.useCallback(
+    (field: string, append = false) => {
+      if (append) {
+        if (loadingByFieldRef.current[field] || !hasMoreByFieldRef.current[field]) {
+          return;
+        }
+      }
+
+      const source = sourceEntriesByFieldRef.current[field];
+      const entry = source ? dataSources.get(source.key) : undefined;
+      if (!source || !entry) {
+        resetField(field);
+        return;
+      }
+
+      const requestVersion = (requestVersionsRef.current[field] ?? 0) + 1;
+      requestVersionsRef.current = {
+        ...requestVersionsRef.current,
+        [field]: requestVersion,
+      };
+
+      clearFieldRequest(field);
+      const controller =
+        typeof AbortController === 'undefined' ? undefined : new AbortController();
+      controllersRef.current[field] = controller;
+
+      const search = entry.search ? (searchValuesRef.current[field] ?? '') : undefined;
+      const page = entry.loadMore
+        ? append
+          ? (pageByFieldRef.current[field] ?? 0) + 1
+          : 1
+        : undefined;
+
+      setFieldLoading(field, true);
+      if (!append) {
+        setFieldHasMore(field, false);
+      }
+
+      const timer = setTimeout(
+        () => {
+          void Promise.resolve(
+            entry.load({
+              field,
+              page,
+              pageSize: entry.loadMore ? entry.pageSize : undefined,
+              search,
+              values: {},
+              signal: controller?.signal,
+            }),
+          ).then(
+            (result) => {
+              if (
+                requestVersionsRef.current[field] !== requestVersion ||
+                controller?.signal.aborted
+              ) {
+                return;
+              }
+
+              const options = normalizeOptions(result);
+              const nextOptions = append
+                ? mergeFilterOptions(optionsByFieldRef.current[field], options)
+                : options;
+              const hasMore = normalizeHasMore(result);
+
+              setFieldOptions(field, nextOptions);
+              setLabelOptionsByField((current) => ({
+                ...current,
+                [field]: mergeFilterOptions(current[field], nextOptions),
+              }));
+              pageByFieldRef.current = {
+                ...pageByFieldRef.current,
+                [field]: page ?? 0,
+              };
+              setFieldHasMore(field, hasMore);
+              setFieldLoading(field, false);
+            },
+            (error: unknown) => {
+              if (controller?.signal.aborted) return;
+              console.warn(
+                `[AutoCrud] Failed to load filter data source "${source.key}".`,
+                error,
+              );
+
+              if (!append) {
+                setFieldOptions(field, []);
+                setFieldHasMore(field, false);
+                pageByFieldRef.current = {
+                  ...pageByFieldRef.current,
+                  [field]: 0,
+                };
+              }
+              setFieldLoading(field, false);
+            },
+          );
+        },
+        !append && entry.search ? entry.debounceMs : 0,
+      );
+      timersRef.current[field] = timer;
+    },
+    [clearFieldRequest, resetField, setFieldHasMore, setFieldLoading, setFieldOptions],
+  );
+
+  const setSearchValue = React.useCallback((field: string, value: string) => {
+    searchValuesRef.current = {
+      ...searchValuesRef.current,
+      [field]: value,
+    };
+    setSearchValues((current) =>
+      current[field] === value
+        ? current
+        : {
+            ...current,
+            [field]: value,
+          },
+    );
+  }, []);
+
   React.useEffect(() => {
     if (sourceEntries.length === 0) {
+      hasMoreByFieldRef.current = {};
+      loadingByFieldRef.current = {};
+      optionsByFieldRef.current = {};
+      pageByFieldRef.current = {};
+      Object.keys(controllersRef.current).forEach(clearFieldRequest);
+      setHasMoreByField({});
+      setLoadingByField({});
       setOptionsByField({});
       return;
     }
 
-    let active = true;
-    const controller =
-      typeof AbortController === 'undefined' ? undefined : new AbortController();
+    const activeFields = new Set(sourceEntries.map(({ field }) => field));
+    removeInactiveFieldState(setHasMoreByField, hasMoreByFieldRef, activeFields);
+    removeInactiveFieldState(setLoadingByField, loadingByFieldRef, activeFields);
+    removeInactiveFieldState(setOptionsByField, optionsByFieldRef, activeFields);
 
-    void Promise.all(
-      sourceEntries.map(async ({ field, source }) => {
-        const entry = dataSources.get(source.key);
-        if (!entry) return [field, []] as const;
+    for (const field of Object.keys(controllersRef.current)) {
+      if (!activeFields.has(field)) clearFieldRequest(field);
+    }
 
-        try {
-          const options = normalizeOptions(
-            await entry.load({
-              field,
-              values: {},
-              signal: controller?.signal,
-            }),
-          );
-          return [field, options] as const;
-        } catch (error) {
-          if (!controller?.signal.aborted) {
-            console.warn(
-              `[AutoCrud] Failed to load filter data source "${source.key}".`,
-              error,
-            );
-          }
-          return [field, []] as const;
-        }
-      }),
-    ).then((entries) => {
-      if (!active) return;
-      setOptionsByField(Object.fromEntries(entries));
-    });
+    for (const { field } of sourceEntries) {
+      loadFieldOptions(field);
+    }
+  }, [
+    clearFieldRequest,
+    loadFieldOptions,
+    removeInactiveFieldState,
+    sourceEntries,
+    registryVersion,
+    searchValues,
+  ]);
 
-    return () => {
-      active = false;
-      controller?.abort();
-    };
-  }, [sourceEntries, registryVersion]);
+  React.useEffect(
+    () => () => {
+      for (const field of Object.keys(controllersRef.current)) {
+        clearFieldRequest(field);
+      }
+    },
+    [clearFieldRequest],
+  );
 
-  return optionsByField;
+  return {
+    hasMoreByField,
+    labelOptionsByField,
+    loadingByField,
+    optionsByField,
+    registeredByField,
+    searchValues,
+    searchableByField,
+    loadMore: (field: string) => loadFieldOptions(field, true),
+    setSearchValue,
+  };
 }
 
 function getOptionLabel(value: unknown, options?: FieldOption[]) {
@@ -702,7 +1003,7 @@ function getOptionLabel(value: unknown, options?: FieldOption[]) {
 function buildTableOverrides(
   fields?: Fields,
   legacyOverrides?: Record<string, any>,
-  dynamicFilterOptions?: Record<string, FieldOption[]>,
+  dynamicFilterState?: DynamicFilterState,
 ): Record<string, any> {
   const result: Record<string, any> = { ...legacyOverrides };
 
@@ -710,9 +1011,20 @@ function buildTableOverrides(
     for (const [key, config] of Object.entries(fields)) {
       const fieldOptions = normalizeFieldOptions(config.enum);
       const tableOptions = toTableOptions(fieldOptions);
-      const dynamicOptions = !fieldOptions
-        ? toTableOptions(normalizeFieldOptions(dynamicFilterOptions?.[key]))
-        : undefined;
+      const filterDataSourceRegistered = dynamicFilterState?.registeredByField[key];
+      const filterDataSourceSearchable = dynamicFilterState?.searchableByField[key];
+      const currentDynamicOptions =
+        !fieldOptions && filterDataSourceRegistered
+          ? toTableOptions(dynamicFilterState?.optionsByField[key] ?? [])
+          : undefined;
+      const dynamicOptions =
+        !fieldOptions && filterDataSourceRegistered
+          ? toTableOptions(
+              dynamicFilterState?.labelOptionsByField[key] ??
+                dynamicFilterState?.optionsByField[key] ??
+                [],
+            )
+          : undefined;
 
       // 提取 table.meta（无论 filter 配置如何都需要保留）
       const tableMeta =
@@ -729,7 +1041,22 @@ function buildTableOverrides(
       const fieldDataSourceMeta = dynamicOptions
         ? {
             options: dynamicOptions,
+            autoCrudFilterOptions: currentDynamicOptions ?? dynamicOptions,
+            autoCrudFilterHasMore: dynamicFilterState?.hasMoreByField[key] ?? false,
+            autoCrudFilterLoading: dynamicFilterState?.loadingByField[key] ?? false,
+            autoCrudFilterOnPopupScroll: (event: React.UIEvent<HTMLElement>) => {
+              if (!isNearPopupScrollBottom(event.currentTarget)) return;
+              dynamicFilterState?.loadMore(key);
+            },
             variant: 'multiSelect',
+            ...(filterDataSourceSearchable
+              ? {
+                  autoCrudFilterSearchValue: dynamicFilterState?.searchValues[key] ?? '',
+                  autoCrudFilterOnSearch: (value: string) =>
+                    dynamicFilterState?.setSearchValue(key, value),
+                  autoCrudFilterShouldFilter: false,
+                }
+              : undefined),
           }
         : undefined;
 
@@ -803,89 +1130,6 @@ function buildTableOverrides(
         result[key] = {
           ...result[key],
           ...tableProps,
-        };
-      }
-    }
-  }
-
-  return result;
-}
-
-/**
- * 从统一配置生成表单 overrides
- * Critical #2: 支持 denyFields 隐藏敏感字段
- */
-function buildFormOverrides(
-  fields?: Fields,
-  legacyOverrides?: Record<string, any>,
-  denyFields?: string[],
-): Record<string, any> {
-  const result: Record<string, any> = { ...legacyOverrides };
-
-  // 将 denyFields 添加到表单 overrides 中，设置 x-hidden
-  if (denyFields) {
-    for (const field of denyFields) {
-      result[field] = {
-        ...result[field],
-        'x-hidden': true,
-      };
-    }
-  }
-
-  if (fields) {
-    for (const [key, config] of Object.entries(fields)) {
-      const formConfig =
-        config.form && typeof config.form === 'object' ? config.form : undefined;
-      const formOptions = normalizeFieldOptions(
-        formConfig?.enum as FieldOption[] | undefined,
-      );
-      const fieldOptions = formOptions ?? normalizeFieldOptions(config.enum);
-      const fieldDataSource =
-        fieldOptions || !config.dataSource
-          ? undefined
-          : normalizeDataSourceConfig(config.dataSource);
-
-      // 处理共用配置
-      if (config.label) {
-        result[key] = {
-          ...result[key],
-          title: config.label,
-        };
-      }
-
-      if (config.hidden) {
-        result[key] = {
-          ...result[key],
-          'x-hidden': true,
-        };
-      }
-
-      if (fieldOptions) {
-        result[key] = {
-          ...result[key],
-          enum: fieldOptions,
-        };
-      }
-
-      if (fieldDataSource) {
-        result[key] = {
-          ...result[key],
-          'x-data-source': config.dataSource,
-        };
-      }
-
-      // 处理 form: false 简写
-      if (config.form === false) {
-        result[key] = {
-          ...result[key],
-          'x-hidden': true,
-        };
-      }
-      // 处理 form 对象配置
-      else if (config.form && typeof config.form === 'object') {
-        result[key] = {
-          ...result[key],
-          ...config.form,
         };
       }
     }
@@ -1690,6 +1934,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         loading={resource.mutations.isCreating || resource.mutations.isUpdating}
         variant={resource.modal.variant}
         overrides={formOverrides}
+        scope={formConfig?.scope}
         locale={locale.formModal}
         gridColumns={formConfig?.columns}
         className={formConfig?.className}
@@ -1703,7 +1948,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.modal.selected}
         schema={resolvedSchema}
         fields={resolvedFields}
-        dynamicOptions={dynamicFilterOptions}
+        dynamicOptions={dynamicFilterOptions.optionsByField}
         denyFields={denyFields}
         locale={locale}
       />

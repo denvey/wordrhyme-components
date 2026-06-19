@@ -17,6 +17,8 @@ export type AutoCrudOption = {
 
 export type AutoCrudDataSourceContext = {
   field: string;
+  page?: number;
+  pageSize?: number;
   search?: string;
   values?: Record<string, unknown>;
   signal?: AbortSignal;
@@ -25,6 +27,7 @@ export type AutoCrudDataSourceContext = {
 export type AutoCrudDataSourceResult =
   | AutoCrudOption[]
   | {
+      hasMore?: boolean;
       options?: AutoCrudOption[];
     };
 
@@ -39,12 +42,20 @@ export type AutoCrudDataSourceRegistration =
   | {
       dependencies?: string[];
       reset?: boolean;
+      search?: boolean;
+      debounceMs?: number;
+      loadMore?: boolean;
+      pageSize?: number;
       load: AutoCrudDataSourceLoader;
     };
 
 export type AutoCrudDataSourceEntry = {
   dependencies: string[];
   reset: boolean;
+  search: boolean;
+  debounceMs: number;
+  loadMore: boolean;
+  pageSize: number;
   load: AutoCrudDataSourceLoader;
 };
 
@@ -106,6 +117,10 @@ function normalizeDataSourceRegistration(
     return {
       dependencies: [],
       reset: false,
+      search: false,
+      debounceMs: 300,
+      loadMore: false,
+      pageSize: 20,
       load: registration,
     };
   }
@@ -115,6 +130,16 @@ function normalizeDataSourceRegistration(
       ? registration.dependencies
       : [],
     reset: registration.reset === true,
+    search: registration.search === true,
+    debounceMs:
+      typeof registration.debounceMs === 'number' && registration.debounceMs >= 0
+        ? registration.debounceMs
+        : 300,
+    loadMore: registration.loadMore === true,
+    pageSize:
+      typeof registration.pageSize === 'number' && registration.pageSize > 0
+        ? registration.pageSize
+        : 20,
     load: registration.load,
   };
 }
@@ -166,4 +191,8 @@ export function normalizeOptions(
       ...option,
       value: String(option.value),
     }));
+}
+
+export function normalizeHasMore(result: AutoCrudDataSourceResult | undefined): boolean {
+  return !Array.isArray(result) && result?.hasMore === true;
 }

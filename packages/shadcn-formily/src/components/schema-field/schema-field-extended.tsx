@@ -1,6 +1,9 @@
 import type { ISchema } from '@formily/react';
 import type { FormComponentConfig } from '../../types/form';
-import type { JsonSchemaFormComponents } from '../json-schema-form-renderer/types';
+import type {
+  JsonSchemaFormComponents,
+  JsonSchemaFormScope,
+} from '../json-schema-form-renderer/types';
 import { createSchemaField } from '@formily/react';
 
 import { useFormSchema } from '../../hooks/use-form-schema';
@@ -35,11 +38,12 @@ type JsonSchemaFieldExtendedProps = Omit<
   'components'
 > & {
   components?: JsonSchemaFormComponents;
+  scope?: JsonSchemaFormScope;
   schema: ISchema;
 };
 
 const JsonSchemaFieldExtended: React.FC<JsonSchemaFieldExtendedProps> = (props) => {
-  const { components, schema, ...rest } = props;
+  const { components, schema, scope, ...rest } = props;
 
   // Merge extendedComponentRegistry with user-provided components
   // User components will override extended components with the same key
@@ -48,7 +52,7 @@ const JsonSchemaFieldExtended: React.FC<JsonSchemaFieldExtendedProps> = (props) 
     components,
   );
 
-  const { formSchema, SchemaField } = useFormSchema(schema, mergedComponents);
+  const { formSchema, SchemaField } = useFormSchema(schema, mergedComponents, scope);
 
   return <SchemaField {...rest} schema={formSchema} />;
 };

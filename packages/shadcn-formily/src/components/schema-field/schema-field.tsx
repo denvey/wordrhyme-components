@@ -1,6 +1,9 @@
 import type { ISchema } from '@formily/react';
 import type { FormComponentConfig } from '../../types/form';
-import type { JsonSchemaFormComponents } from '../json-schema-form-renderer';
+import type {
+  JsonSchemaFormComponents,
+  JsonSchemaFormScope,
+} from '../json-schema-form-renderer';
 
 import { createSchemaField } from '@formily/react';
 import { TagsInput } from '@wordrhyme/shadcn-ui';
@@ -39,11 +42,12 @@ type SchemaFieldDefaultProps = Omit<
   'components'
 > & {
   components?: JsonSchemaFormComponents;
+  scope?: JsonSchemaFormScope;
   schema: ISchema;
 };
 
 const JsonSchemaField: React.FC<SchemaFieldDefaultProps> = (props) => {
-  const { components, schema, ...rest } = props;
+  const { components, schema, scope, ...rest } = props;
 
   // Merge defaultComponentRegistry with user-provided components
   // User components will override default components with the same key
@@ -55,6 +59,7 @@ const JsonSchemaField: React.FC<SchemaFieldDefaultProps> = (props) => {
   const { formSchema, SchemaField: SchemaFieldComponent } = useFormSchema(
     schema,
     mergedComponents,
+    scope,
   );
 
   return <SchemaFieldComponent {...rest} schema={formSchema} />;

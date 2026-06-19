@@ -1,6 +1,6 @@
 'use client';
 
-import type { ComponentProps, CSSProperties, ReactNode, WheelEvent } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import * as React from 'react';
 import {
   Badge,
@@ -48,8 +48,16 @@ export interface MultiComboboxProps extends Omit<
   options?: MultiComboboxOption[];
   placeholder?: string;
   searchPlaceholder?: string;
+  searchValue?: string;
+  defaultSearchValue?: string;
+  onSearch?: (value: string) => void;
   emptyText?: string;
   clearText?: string;
+  hasMore?: boolean;
+  loadMoreText?: string;
+  loading?: boolean;
+  loadingText?: string;
+  onPopupScroll?: React.UIEventHandler<HTMLElement>;
   selectedText?: string;
   selectionMode?: 'single' | 'multiple';
   disabled?: boolean;
@@ -62,47 +70,6 @@ export interface MultiComboboxProps extends Omit<
 }
 
 const DEFAULT_OPTIONS: MultiComboboxOption[] = [];
-
-const SCROLLABLE_COMMAND_GROUP_STYLE: CSSProperties = {
-  maxHeight: '300px',
-  overscrollBehavior: 'contain',
-  overflowX: 'hidden',
-  overflowY: 'auto',
-};
-
-function getWheelDeltaY(event: WheelEvent<HTMLElement>) {
-  if (event.deltaMode === 1) {
-    return event.deltaY * 16;
-  }
-
-  if (event.deltaMode === 2) {
-    return event.deltaY * event.currentTarget.clientHeight;
-  }
-
-  return event.deltaY;
-}
-
-function handleScrollableCommandGroupWheel(event: WheelEvent<HTMLElement>) {
-  const target = event.currentTarget;
-
-  if (target.scrollHeight <= target.clientHeight) {
-    return;
-  }
-
-  const maxScrollTop = target.scrollHeight - target.clientHeight;
-  const nextScrollTop = Math.max(
-    0,
-    Math.min(target.scrollTop + getWheelDeltaY(event), maxScrollTop),
-  );
-
-  if (nextScrollTop === target.scrollTop) {
-    return;
-  }
-
-  event.preventDefault();
-  event.stopPropagation();
-  target.scrollTop = nextScrollTop;
-}
 
 function collectSearchText(...parts: unknown[]) {
   const texts: string[] = [];
@@ -238,8 +205,16 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
   options = DEFAULT_OPTIONS,
   placeholder = 'Select options...',
   searchPlaceholder = 'Search...',
+  searchValue,
+  defaultSearchValue = '',
+  onSearch,
   emptyText = 'No options found.',
   clearText = 'Clear selection',
+  hasMore = false,
+  loadMoreText = 'Load more',
+  loading = false,
+  loadingText = 'Loading...',
+  onPopupScroll,
   selectedText = 'selected',
   selectionMode = 'multiple',
   disabled,
@@ -254,7 +229,15 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
 }) => {
   const [open, setOpen] = React.useState(false);
   const [internalValue, setInternalValue] = React.useState(defaultValue ?? []);
+  const [internalSearchValue, setInternalSearchValue] =
+    React.useState(defaultSearchValue);
+  const [popoverContainer, setPopoverContainer] = React.useState<HTMLDivElement | null>(
+    null,
+  );
+  const [useLocalPopoverContainer, setUseLocalPopoverContainer] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
   const selectedValues = value ?? internalValue;
+  const currentSearchValue = searchValue ?? internalSearchValue;
   const selectedValueSet = React.useMemo(() => new Set(selectedValues), [selectedValues]);
   const selectedOptions = React.useMemo(
     () => options.filter((option) => selectedValueSet.has(option.value)),
@@ -285,6 +268,30 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
     },
     [commitChange, readOnly],
   );
+
+  const handleSearchChange = React.useCallback(
+    (nextValue: string) => {
+      if (searchValue === undefined) {
+        setInternalSearchValue(nextValue);
+      }
+
+      onSearch?.(nextValue);
+    },
+    [onSearch, searchValue],
+  );
+
+  const handleOptionsScroll = React.useCallback(
+    (event: React.UIEvent<HTMLElement>) => {
+      onPopupScroll?.(event);
+    },
+    [onPopupScroll],
+  );
+
+  React.useEffect(() => {
+    setUseLocalPopoverContainer(
+      Boolean(rootRef.current?.closest('[data-slot="dialog-content"]')),
+    );
+  }, []);
 
   const onItemSelect = React.useCallback(
     (option: MultiComboboxOption) => {
@@ -333,71 +340,103 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent
-        className={cn('w-full p-0', contentClassName)}
-        style={
-          matchTriggerWidth ? { width: 'var(--radix-popover-trigger-width)' } : undefined
-        }
-      >
-        <Command className={className} filter={filter} {...commandProps}>
-          <CommandInput placeholder={searchPlaceholder} />
-          <CommandList className="max-h-full">
-            <CommandEmpty>{emptyText}</CommandEmpty>
-            <CommandGroup
-              className="max-h-[300px] scroll-py-1 overflow-y-auto overflow-x-hidden"
-              onWheelCapture={handleScrollableCommandGroupWheel}
-              style={SCROLLABLE_COMMAND_GROUP_STYLE}
-            >
-              {options.map((option) => {
-                const isSelected = selectedValueSet.has(option.value);
-                const Icon = option.icon;
+    <div ref={rootRef} className="contents">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <div ref={setPopoverContainer} className="contents" />
+        <PopoverContent
+          container={useLocalPopoverContainer ? popoverContainer : undefined}
+          className={cn('w-full p-0', contentClassName)}
+          style={
+            matchTriggerWidth
+              ? { width: 'var(--radix-popover-trigger-width)' }
+              : undefined
+          }
+        >
+          <Command className={className} filter={filter} {...commandProps}>
+            <CommandInput
+              placeholder={searchPlaceholder}
+              value={currentSearchValue}
+              onValueChange={handleSearchChange}
+            />
+            <CommandList className="max-h-none overflow-visible">
+              <div
+                data-multi-combobox-viewport=""
+                className="max-h-[300px] overflow-x-hidden overflow-y-auto overscroll-contain"
+                onScroll={handleOptionsScroll}
+              >
+                <CommandEmpty>{emptyText}</CommandEmpty>
+                <CommandGroup className="scroll-py-1">
+                  {options.map((option) => {
+                    const isSelected = selectedValueSet.has(option.value);
+                    const Icon = option.icon;
 
-                return (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    keywords={getOptionKeywords(option)}
-                    disabled={option.disabled}
-                    onSelect={() => onItemSelect(option)}
-                  >
-                    <div
-                      className={cn(
-                        'flex size-4 items-center justify-center rounded-sm border border-primary',
-                        isSelected
-                          ? 'bg-primary text-primary-foreground'
-                          : 'opacity-50 [&_svg]:invisible',
-                      )}
-                    >
-                      <Check />
-                    </div>
-                    {Icon && <Icon className="size-4" />}
-                    <span className="truncate">{getOptionText(option)}</span>
-                    {option.count !== undefined && (
-                      <span className="ml-auto font-mono text-xs">{option.count}</span>
-                    )}
-                  </CommandItem>
-                );
-              })}
-            </CommandGroup>
-            {selectedValues.length > 0 && !readOnly && (
-              <>
-                <CommandSeparator />
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={() => commitChange([])}
-                    className="justify-center text-center"
-                  >
-                    {clearText}
-                  </CommandItem>
+                    return (
+                      <CommandItem
+                        key={option.value}
+                        value={option.value}
+                        keywords={getOptionKeywords(option)}
+                        disabled={option.disabled}
+                        onSelect={() => onItemSelect(option)}
+                      >
+                        <div
+                          className={cn(
+                            'flex size-4 items-center justify-center rounded-sm border border-primary',
+                            isSelected
+                              ? 'bg-primary text-primary-foreground'
+                              : 'opacity-50 [&_svg]:invisible',
+                          )}
+                        >
+                          <Check />
+                        </div>
+                        {Icon && <Icon className="size-4" />}
+                        <span className="truncate">{getOptionText(option)}</span>
+                        {option.count !== undefined && (
+                          <span className="ml-auto font-mono text-xs">
+                            {option.count}
+                          </span>
+                        )}
+                      </CommandItem>
+                    );
+                  })}
                 </CommandGroup>
-              </>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+                {loading ? (
+                  <>
+                    <CommandSeparator />
+                    <CommandGroup>
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className="py-2 text-center text-sm text-muted-foreground"
+                      >
+                        {loadingText}
+                      </div>
+                    </CommandGroup>
+                  </>
+                ) : hasMore ? (
+                  <div role="status" aria-live="polite" className="sr-only">
+                    {loadMoreText}
+                  </div>
+                ) : null}
+                {selectedValues.length > 0 && !readOnly && (
+                  <>
+                    <CommandSeparator />
+                    <CommandGroup>
+                      <CommandItem
+                        onSelect={() => commitChange([])}
+                        className="justify-center text-center"
+                      >
+                        {clearText}
+                      </CommandItem>
+                    </CommandGroup>
+                  </>
+                )}
+              </div>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 };
 

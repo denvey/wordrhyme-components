@@ -31,6 +31,22 @@ import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { cn } from '@/lib/utils';
 import type { ExtendedColumnFilter, Option } from '@/types/data-table';
 
+function mergeSelectedFilterOptions(
+  currentOptions: Option[],
+  labelOptions: Option[],
+  selectedValues: string[],
+) {
+  const currentValues = new Set(currentOptions.map((option) => option.value));
+
+  return [
+    ...labelOptions.filter(
+      (option) =>
+        selectedValues.includes(option.value) && !currentValues.has(option.value),
+    ),
+    ...currentOptions,
+  ];
+}
+
 interface AutoTableSimpleFiltersProps<TData> {
   table: Table<TData>;
   shallow?: boolean;
@@ -345,18 +361,33 @@ export function AutoTableSimpleFilters<TData>({
             );
 
           case 'select':
-          case 'multiSelect':
+          case 'multiSelect': {
+            const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
+            const currentOptions = meta.autoCrudFilterOptions ?? meta.options ?? [];
+            const filterOptions = mergeSelectedFilterOptions(
+              currentOptions,
+              meta.options ?? [],
+              selectedValues,
+            );
+
             return (
               <div key={column.id} className={isHidden ? 'hidden' : ''} data-filter-item>
                 <SimpleFacetedFilter
                   title={meta.label ?? column.id}
-                  options={meta.options ?? []}
+                  options={filterOptions}
                   multiple={meta.variant === 'multiSelect'}
-                  value={Array.isArray(value) ? value : value ? [value] : []}
+                  value={selectedValues}
+                  hasMore={meta.autoCrudFilterHasMore}
+                  loading={meta.autoCrudFilterLoading}
+                  searchValue={meta.autoCrudFilterSearchValue}
+                  shouldFilter={meta.autoCrudFilterShouldFilter}
                   onChange={(v) => updateFilter(column.id, v.length ? v : undefined)}
+                  onPopupScroll={meta.autoCrudFilterOnPopupScroll}
+                  onSearch={meta.autoCrudFilterOnSearch}
                 />
               </div>
             );
+          }
 
           case 'range':
             return (
@@ -431,7 +462,13 @@ interface SimpleFacetedFilterProps {
   options: Option[];
   multiple?: boolean;
   value: string[];
+  hasMore?: boolean;
+  loading?: boolean;
+  searchValue?: string;
+  shouldFilter?: boolean;
   onChange: (value: string[]) => void;
+  onPopupScroll?: React.UIEventHandler<HTMLElement>;
+  onSearch?: (value: string) => void;
 }
 
 function SimpleFacetedFilter({
@@ -439,7 +476,13 @@ function SimpleFacetedFilter({
   options,
   multiple,
   value,
+  hasMore,
+  loading,
+  searchValue,
+  shouldFilter,
   onChange,
+  onPopupScroll,
+  onSearch,
 }: SimpleFacetedFilterProps) {
   return (
     <MultiCombobox
@@ -448,6 +491,12 @@ function SimpleFacetedFilter({
       options={options}
       selectionMode={multiple ? 'multiple' : 'single'}
       searchPlaceholder={title}
+      hasMore={hasMore}
+      loading={loading}
+      searchValue={searchValue}
+      shouldFilter={shouldFilter}
+      onPopupScroll={onPopupScroll}
+      onSearch={onSearch}
       contentClassName="w-50"
       matchTriggerWidth={false}
       clearText="Clear filters"

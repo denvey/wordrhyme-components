@@ -1,5 +1,8 @@
 import type { ISchema } from '@formily/react';
-import type { JsonSchemaFormComponents } from '../components/json-schema-form-renderer/types';
+import type {
+  JsonSchemaFormComponents,
+  JsonSchemaFormScope,
+} from '../components/json-schema-form-renderer/types';
 import type { FormComponentRecord } from '../types/form';
 
 import { createSchemaField } from '@formily/react';
@@ -13,6 +16,7 @@ import { extractComponents } from '../utils/extract-components';
 export function useSchemaField(
   formSchema: ISchema,
   componentsProp: Partial<JsonSchemaFormComponents> | undefined,
+  scope: JsonSchemaFormScope | undefined,
 ) {
   return React.useMemo(() => {
     // Use only user-provided components (headless approach)
@@ -36,9 +40,9 @@ export function useSchemaField(
 
     const schemaField = createSchemaField({
       components,
-      scope: {},
+      scope,
     });
 
     return schemaField;
-  }, [formSchema, componentsProp]);
+  }, [formSchema, componentsProp, scope]);
 }

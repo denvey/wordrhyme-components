@@ -1,5 +1,13 @@
 # @pixpilot/shadcn-ui
 
+## 1.32.2
+
+### Patch Changes
+
+- Fix auto-crud remote filter search pagination and publish matching Wordrhyme UI dependencies.
+- Updated dependencies
+  - @wordrhyme/shadcn@1.3.2
+
 ## 1.32.1
 
 ### Patch Changes

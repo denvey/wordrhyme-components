@@ -41,6 +41,10 @@ function getOptionCommandValue(option: Option) {
   return [option.value, option.label, option.searchText].filter(Boolean).join(' ');
 }
 
+function getColumnFilterOptions<TData>(column: Column<TData>) {
+  return column.columnDef.meta?.autoCrudFilterOptions ?? column.columnDef.meta?.options;
+}
+
 interface DataTableFilterMenuProps<TData> extends React.ComponentProps<
   typeof PopoverContent
 > {
@@ -211,6 +215,19 @@ export function DataTableFilterMenu<TData>({
     [filters, onFilterRemove],
   );
 
+  const selectedColumnMeta = selectedColumn?.columnDef.meta;
+  const commandInputValue =
+    selectedColumnMeta?.autoCrudFilterOnSearch !== undefined
+      ? (selectedColumnMeta.autoCrudFilterSearchValue ?? '')
+      : inputValue;
+  const onCommandInputValueChange = React.useCallback(
+    (value: string) => {
+      setInputValue(value);
+      selectedColumn?.columnDef.meta?.autoCrudFilterOnSearch?.(value);
+    },
+    [selectedColumn],
+  );
+
   return (
     <div role="list" className="flex flex-wrap items-center gap-2">
       {filters.map((filter) => (
@@ -253,7 +270,11 @@ export function DataTableFilterMenu<TData>({
           className="w-full max-w-(--radix-popover-content-available-width) p-0"
           {...props}
         >
-          <Command loop className="[&_[cmdk-input-wrapper]_svg]:hidden">
+          <Command
+            loop
+            shouldFilter={selectedColumnMeta?.autoCrudFilterShouldFilter}
+            className="[&_[cmdk-input-wrapper]_svg]:hidden"
+          >
             <CommandInput
               ref={inputRef}
               placeholder={
@@ -261,11 +282,11 @@ export function DataTableFilterMenu<TData>({
                   ? (selectedColumn.columnDef.meta?.label ?? selectedColumn.id)
                   : 'Search fields...'
               }
-              value={inputValue}
-              onValueChange={setInputValue}
+              value={commandInputValue}
+              onValueChange={onCommandInputValueChange}
               onKeyDown={onInputKeyDown}
             />
-            <CommandList>
+            <CommandList onScroll={selectedColumnMeta?.autoCrudFilterOnPopupScroll}>
               {selectedColumn ? (
                 <>
                   {selectedColumn.columnDef.meta?.options && (
@@ -276,6 +297,23 @@ export function DataTableFilterMenu<TData>({
                     value={inputValue}
                     onSelect={(value) => onFilterAdd(selectedColumn, value)}
                   />
+                  {selectedColumnMeta?.autoCrudFilterLoading && (
+                    <CommandGroup>
+                      <div
+                        role="status"
+                        aria-live="polite"
+                        className="py-2 text-center text-sm text-muted-foreground"
+                      >
+                        Loading...
+                      </div>
+                    </CommandGroup>
+                  )}
+                  {!selectedColumnMeta?.autoCrudFilterLoading &&
+                    selectedColumnMeta?.autoCrudFilterHasMore && (
+                      <div role="status" aria-live="polite" className="sr-only">
+                        Load more
+                      </div>
+                    )}
                 </>
               ) : (
                 <>
@@ -510,7 +548,7 @@ function FilterValueSelector<TData>({
     case 'multiSelect':
       return (
         <CommandGroup>
-          {column.columnDef.meta?.options?.map((option) => (
+          {getColumnFilterOptions(column)?.map((option) => (
             <CommandItem
               key={option.value}
               value={getOptionCommandValue(option)}
@@ -662,6 +700,7 @@ function onFilterInputRender<TData>({
       const inputListboxId = `${inputId}-listbox`;
 
       const options = column.columnDef.meta?.options ?? [];
+      const optionList = getColumnFilterOptions(column) ?? [];
       const selectedValues = Array.isArray(filter.value) ? filter.value : [filter.value];
 
       const selectedOptions = options.filter((option) =>
@@ -708,12 +747,16 @@ function onFilterInputRender<TData>({
             </Button>
           </PopoverTrigger>
           <PopoverContent id={inputListboxId} align="start" className="w-48 p-0">
-            <Command>
-              <CommandInput placeholder="Search options..." />
-              <CommandList>
+            <Command shouldFilter={column.columnDef.meta?.autoCrudFilterShouldFilter}>
+              <CommandInput
+                placeholder="Search options..."
+                value={column.columnDef.meta?.autoCrudFilterSearchValue}
+                onValueChange={column.columnDef.meta?.autoCrudFilterOnSearch}
+              />
+              <CommandList onScroll={column.columnDef.meta?.autoCrudFilterOnPopupScroll}>
                 <CommandEmpty>No options found.</CommandEmpty>
                 <CommandGroup>
-                  {options.map((option) => (
+                  {optionList.map((option) => (
                     <CommandItem
                       key={option.value}
                       value={getOptionCommandValue(option)}
@@ -742,6 +785,23 @@ function onFilterInputRender<TData>({
                     </CommandItem>
                   ))}
                 </CommandGroup>
+                {column.columnDef.meta?.autoCrudFilterLoading && (
+                  <CommandGroup>
+                    <div
+                      role="status"
+                      aria-live="polite"
+                      className="py-2 text-center text-sm text-muted-foreground"
+                    >
+                      Loading...
+                    </div>
+                  </CommandGroup>
+                )}
+                {!column.columnDef.meta?.autoCrudFilterLoading &&
+                  column.columnDef.meta?.autoCrudFilterHasMore && (
+                    <div role="status" aria-live="polite" className="sr-only">
+                      Load more
+                    </div>
+                  )}
               </CommandList>
             </Command>
           </PopoverContent>

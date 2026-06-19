@@ -1,5 +1,15 @@
 # @wordrhyme/auto-crud
 
+## 1.3.1
+
+### Patch Changes
+
+- Fix auto-crud remote filter search pagination and publish matching Wordrhyme UI dependencies.
+- Updated dependencies
+  - @wordrhyme/formily-shadcn@1.12.9
+  - @wordrhyme/shadcn-ui@1.32.2
+  - @wordrhyme/shadcn@1.3.2
+
 ## 1.2.0
 
 ### Minor Changes

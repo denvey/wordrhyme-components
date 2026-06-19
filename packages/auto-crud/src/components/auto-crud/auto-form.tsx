@@ -1,29 +1,51 @@
 'use client';
 
 import { z } from 'zod';
-import { useEffect, useMemo, useImperativeHandle, forwardRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useImperativeHandle,
+  forwardRef,
+  useState,
+} from 'react';
 import type { ComponentProps } from 'react';
-import type { Field, Form as FormilyCoreForm } from '@formily/core';
-import { createForm, onFieldValueChange } from '@formily/core';
-import { Form, JsonSchemaField, type FormLayoutOptions } from '@wordrhyme/formily-shadcn';
-import { connect, mapProps } from '@formily/react';
+import type { Field } from '@formily/core';
+import { createForm } from '@formily/core';
+import { action, observable } from '@formily/reactive';
+import {
+  connect,
+  Form,
+  JsonSchemaField,
+  mapProps,
+  type FormLayoutOptions,
+  type JsonSchemaFormScope,
+} from '@wordrhyme/formily-shadcn';
 import { Button, cn, Switch as UiSwitch } from '@wordrhyme/shadcn';
 import { createEditFormSchema } from '@/lib/schema-bridge/zod-to-formily';
 import type { FormSchemaOverrides } from '@/lib/schema-bridge/types';
+import { buildFormOverrides, type Fields } from '@/lib/field-config';
 import { MultiCombobox, type MultiComboboxProps } from '@wordrhyme/shadcn-ui';
 import {
   components,
   dataSources,
+  normalizeHasMore,
   normalizeDataSourceConfig,
   normalizeOptions,
   type AutoCrudDataSourceConfig,
+  type AutoCrudDataSourceEntry,
 } from '@/lib/registries';
 
-interface AutoFormProps<T extends z.ZodObject<z.ZodRawShape>> {
+export interface AutoFormProps<T extends z.ZodObject<z.ZodRawShape>> {
   schema: T;
   initialValues?: Partial<z.infer<T>>;
   onSubmit: (values: z.infer<T>) => void | Promise<void>;
+  /** 统一字段配置，推荐用于描述 auto-crud 字段级表单行为 */
+  fields?: Fields;
+  /** Formily 字段 schema 覆盖配置，保留兼容旧 API */
   overrides?: FormSchemaOverrides;
+  /** Formily schema expression/reaction scope */
+  scope?: JsonSchemaFormScope;
   mode?: 'create' | 'edit';
   loading?: boolean;
   gridColumns?: number;
@@ -65,7 +87,7 @@ type AutoCrudMultiComboboxProps = Omit<
 };
 
 const COMBOBOX_LIST_CLASS =
-  '[&_[cmdk-list]]:max-h-[360px] [&_[cmdk-list]]:overflow-x-hidden [&_[cmdk-list]]:overflow-y-auto';
+  '[&_[data-multi-combobox-viewport]]:max-h-[360px] [&_[data-multi-combobox-viewport]]:overflow-x-hidden [&_[data-multi-combobox-viewport]]:overflow-y-auto';
 
 // 使用与应用一致的 Switch 样式
 const FormilySwitch = connect(
@@ -91,7 +113,10 @@ const FormilyMultiCombobox = connect(
       onInput: 'onChange',
     },
     (props, field) => {
-      const fieldValue = (field as Field).value;
+      const fieldValue =
+        field && typeof field === 'object' && 'value' in field
+          ? (field as Field).value
+          : props.value;
 
       return {
         ...props,
@@ -133,10 +158,51 @@ const defaultFieldComponents = {
   Switch: { component: FormilySwitch, decorator: 'FormItem' },
 };
 
-function useRegistryVersion(subscribe: (listener: () => void) => () => void) {
+const AUTO_CRUD_DATA_SOURCE_SCOPE_KEY = '$autoCrudDataSource';
+
+type AutoCrudDataSourceReactionState = {
+  controller?: AbortController;
+  dependencyKey?: string;
+  initialized: boolean;
+  hasMore: boolean;
+  loadKey?: string;
+  appendLoading: boolean;
+  options: AutoCrudComboboxOption[];
+  page: number;
+  registryVersion?: number;
+  requestVersion: number;
+  search?: string;
+  searchTimer?: ReturnType<typeof setTimeout>;
+};
+
+type AutoCrudDataSourceRegistryState = {
+  version: number;
+};
+
+const POPUP_SCROLL_LOAD_THRESHOLD = 24;
+
+const dataSourceReactionStates = new WeakMap<Field, AutoCrudDataSourceReactionState>();
+
+function createBoundAction<TArgs extends unknown[]>(
+  callback: (...args: TArgs) => void,
+): (...args: TArgs) => void {
+  return action.bound?.(callback) ?? ((...args) => action(() => callback(...args)));
+}
+
+function useRegistryVersion(
+  subscribe: (listener: () => void) => () => void,
+  onChange?: () => void,
+) {
   const [version, setVersion] = useState(0);
 
-  useEffect(() => subscribe(() => setVersion((current) => current + 1)), [subscribe]);
+  useEffect(
+    () =>
+      subscribe(() => {
+        onChange?.();
+        setVersion((current) => current + 1);
+      }),
+    [onChange, subscribe],
+  );
 
   return version;
 }
@@ -145,124 +211,376 @@ function isDataSourceConfig(value: unknown): value is AutoCrudDataSourceConfig {
   return typeof value === 'string' && value.length > 0;
 }
 
-function collectDataSourceConfigs(
-  schema: Record<string, any>,
-  result: Record<string, AutoCrudDataSourceConfig> = {},
-): Record<string, AutoCrudDataSourceConfig> {
-  const properties = schema.properties;
-  if (!properties || typeof properties !== 'object') return result;
+function getSchemaDataSourceConfig(
+  schema: Record<string, unknown>,
+): AutoCrudDataSourceConfig | undefined {
+  const customDataSource = schema['x-data-source'];
+  const schemaDataSource = schema.dataSource;
 
-  for (const [key, property] of Object.entries(properties)) {
-    if (!property || typeof property !== 'object' || Array.isArray(property)) continue;
-
-    const record = property as Record<string, unknown>;
-    const customDataSource = record['x-data-source'];
-    const schemaDataSource = record.dataSource;
-    const dataSourceConfig = isDataSourceConfig(customDataSource)
-      ? customDataSource
-      : isDataSourceConfig(schemaDataSource)
-        ? schemaDataSource
-        : undefined;
-
-    if (dataSourceConfig) result[key] = dataSourceConfig;
-    collectDataSourceConfigs(record, result);
-  }
-
-  return result;
+  return isDataSourceConfig(customDataSource)
+    ? customDataSource
+    : isDataSourceConfig(schemaDataSource)
+      ? schemaDataSource
+      : undefined;
 }
 
-function useFormDataSources(form: FormilyCoreForm<any>, schema: Record<string, any>) {
-  const registryVersion = useRegistryVersion(dataSources.subscribe);
+function mergeReactions(existing: unknown, reaction: string): unknown {
+  if (existing == null) return reaction;
+  if (existing === reaction) return existing;
+  if (Array.isArray(existing)) {
+    return existing.includes(reaction) ? existing : [...existing, reaction];
+  }
 
-  useEffect(() => {
-    type SourceEntry = readonly [
-      string,
-      NonNullable<ReturnType<typeof normalizeDataSourceConfig>>,
-    ];
-    const sourceEntries = Object.entries(collectDataSourceConfigs(schema))
-      .map(([fieldName, config]) => {
-        const normalized = normalizeDataSourceConfig(config);
-        return normalized ? ([fieldName, normalized] as const) : undefined;
-      })
-      .filter((entry): entry is SourceEntry => entry !== undefined);
+  return [existing, reaction];
+}
 
-    if (sourceEntries.length === 0) return;
+function applyDataSourceReactions(schema: Record<string, any>): void {
+  const dataSourceConfig = getSchemaDataSourceConfig(schema);
+  if (dataSourceConfig) {
+    const reaction = `{{${AUTO_CRUD_DATA_SOURCE_SCOPE_KEY}(${JSON.stringify(
+      dataSourceConfig,
+    )})}}`;
+    schema['x-reactions'] = mergeReactions(schema['x-reactions'], reaction);
+  }
 
-    let active = true;
-    const effectId = Symbol('autoCrudDataSources');
-    const loadVersions = new Map<string, number>();
-    const controller =
-      typeof AbortController === 'undefined' ? undefined : new AbortController();
+  const properties = schema.properties;
+  if (properties && typeof properties === 'object' && !Array.isArray(properties)) {
+    for (const property of Object.values(properties)) {
+      if (property && typeof property === 'object' && !Array.isArray(property)) {
+        applyDataSourceReactions(property as Record<string, any>);
+      }
+    }
+  }
 
-    const loadFieldOptions = async (
-      fieldName: string,
-      source: NonNullable<ReturnType<typeof normalizeDataSourceConfig>>,
-    ) => {
-      const version = (loadVersions.get(fieldName) ?? 0) + 1;
-      loadVersions.set(fieldName, version);
+  const items = schema.items;
+  if (Array.isArray(items)) {
+    for (const item of items) {
+      if (item && typeof item === 'object') {
+        applyDataSourceReactions(item as Record<string, any>);
+      }
+    }
+  } else if (items && typeof items === 'object') {
+    applyDataSourceReactions(items as Record<string, any>);
+  }
+}
 
-      const entry = dataSources.get(source.key);
-      if (!entry) {
-        form.setFieldState(fieldName, (state) => {
-          state.dataSource = [];
-        });
+function getDataSourceReactionState(field: Field): AutoCrudDataSourceReactionState {
+  const existing = dataSourceReactionStates.get(field);
+  if (existing) return existing;
+
+  const next: AutoCrudDataSourceReactionState = {
+    hasMore: false,
+    initialized: false,
+    appendLoading: false,
+    options: [],
+    page: 0,
+    requestVersion: 0,
+  };
+  dataSourceReactionStates.set(field, next);
+  return next;
+}
+
+function mergeDataSourceOptions(
+  current: AutoCrudComboboxOption[],
+  incoming: AutoCrudComboboxOption[],
+) {
+  const optionsByValue = new Map(current.map((option) => [option.value, option]));
+  for (const option of incoming) {
+    optionsByValue.set(option.value, option);
+  }
+
+  return Array.from(optionsByValue.values());
+}
+
+function isNearPopupScrollBottom(target: HTMLElement) {
+  return (
+    target.scrollHeight - target.scrollTop - target.clientHeight <=
+    POPUP_SCROLL_LOAD_THRESHOLD
+  );
+}
+
+function getDataSourceDependencyValues(entry: AutoCrudDataSourceEntry, field: Field) {
+  return Object.fromEntries(
+    entry.dependencies.map((dependency) => [
+      dependency,
+      field.form.getValuesIn(dependency),
+    ]),
+  );
+}
+
+function loadAutoCrudDataSource({
+  entry,
+  field,
+  registryVersion,
+  search,
+  sourceKey,
+  state,
+  append = false,
+}: {
+  entry: AutoCrudDataSourceEntry;
+  field: Field;
+  registryVersion: number;
+  search?: string;
+  sourceKey: string;
+  state: AutoCrudDataSourceReactionState;
+  append?: boolean;
+}) {
+  const values = getDataSourceDependencyValues(entry, field);
+  const dependencyKey = JSON.stringify(values);
+  const searchValue = entry.search ? (search ?? '') : undefined;
+  const page = entry.loadMore ? (append ? state.page + 1 : 1) : undefined;
+  const loadKey = JSON.stringify({
+    values,
+    search: searchValue,
+  });
+
+  if (!append && state.loadKey === loadKey && state.registryVersion === registryVersion) {
+    return;
+  }
+
+  if (
+    entry.reset &&
+    state.dependencyKey !== undefined &&
+    state.dependencyKey !== dependencyKey
+  ) {
+    field.setValue(undefined);
+  }
+
+  state.dependencyKey = dependencyKey;
+  if (!append) {
+    state.loadKey = loadKey;
+    state.options = [];
+    state.page = 0;
+    state.hasMore = false;
+  }
+  state.registryVersion = registryVersion;
+  state.controller?.abort();
+
+  const requestVersion = state.requestVersion + 1;
+  state.requestVersion = requestVersion;
+  const controller =
+    typeof AbortController === 'undefined' ? undefined : new AbortController();
+  state.controller = controller;
+
+  if (append) {
+    state.appendLoading = true;
+    field.setComponentProps({ loading: true });
+  } else {
+    field.setLoading(true);
+    field.setComponentProps({
+      loading: true,
+      ...(entry.loadMore ? { hasMore: false } : {}),
+    });
+  }
+
+  void Promise.resolve(
+    entry.load({
+      field: field.path.toString(),
+      page,
+      pageSize: entry.loadMore ? entry.pageSize : undefined,
+      search: searchValue,
+      values,
+      signal: controller?.signal,
+    }),
+  ).then(
+    createBoundAction((result) => {
+      if (
+        dataSourceReactionStates.get(field)?.requestVersion !== requestVersion ||
+        controller?.signal.aborted
+      ) {
         return;
       }
 
-      try {
-        const options = normalizeOptions(
-          await entry.load({
-            field: fieldName,
-            values: Object.fromEntries(
-              entry.dependencies.map((dependency) => [
-                dependency,
-                form.getValuesIn(dependency),
-              ]),
-            ),
-            signal: controller?.signal,
-          }),
-        );
-
-        if (!active || loadVersions.get(fieldName) !== version) return;
-        form.setFieldState(fieldName, (state) => {
-          state.dataSource = options;
-        });
-      } catch (error) {
-        if (!active || controller?.signal.aborted) return;
-        console.warn(`[AutoCrud] Failed to load data source "${source.key}".`, error);
-        form.setFieldState(fieldName, (state) => {
-          state.dataSource = [];
-        });
+      const options = normalizeOptions(result);
+      const nextOptions = append
+        ? mergeDataSourceOptions(state.options, options)
+        : options;
+      state.options = nextOptions;
+      state.page = page ?? 0;
+      state.hasMore = entry.loadMore ? normalizeHasMore(result) : false;
+      state.appendLoading = false;
+      field.setDataSource(nextOptions);
+      field.setLoading(false);
+      field.setComponentProps({
+        loading: false,
+        ...(entry.loadMore ? { hasMore: state.hasMore } : {}),
+      });
+    }),
+    createBoundAction((error: unknown) => {
+      if (
+        dataSourceReactionStates.get(field)?.requestVersion !== requestVersion ||
+        controller?.signal.aborted
+      ) {
+        return;
       }
-    };
 
-    for (const [fieldName, source] of sourceEntries) {
-      void loadFieldOptions(fieldName, source);
+      console.warn(`[AutoCrud] Failed to load data source "${sourceKey}".`, error);
+      if (!append) {
+        state.options = [];
+        state.hasMore = false;
+        field.setDataSource([]);
+      }
+      state.appendLoading = false;
+      field.setLoading(false);
+      field.setComponentProps({
+        loading: false,
+        ...(entry.loadMore ? { hasMore: state.hasMore } : {}),
+      });
+    }),
+  );
+}
+
+function applySearchComponentProps({
+  entry,
+  field,
+  registryState,
+  sourceKey,
+  state,
+}: {
+  entry: AutoCrudDataSourceEntry;
+  field: Field;
+  registryState: AutoCrudDataSourceRegistryState;
+  sourceKey: string;
+  state: AutoCrudDataSourceReactionState;
+}) {
+  if (!entry.search) return;
+
+  field.setComponentProps({
+    searchValue: state.search ?? '',
+    shouldFilter: false,
+    onSearch: (search: string) => {
+      if (state.search === search) return;
+
+      state.search = search;
+      field.setComponentProps({ searchValue: search });
+
+      if (state.searchTimer) {
+        clearTimeout(state.searchTimer);
+      }
+
+      state.searchTimer = setTimeout(() => {
+        const currentEntry = dataSources.get(sourceKey);
+        if (!currentEntry) {
+          state.controller?.abort();
+          field.setDataSource([]);
+          field.setLoading(false);
+          field.setComponentProps({ loading: false });
+          return;
+        }
+
+        loadAutoCrudDataSource({
+          entry: currentEntry,
+          field,
+          registryVersion: registryState.version,
+          search,
+          sourceKey,
+          state,
+        });
+      }, entry.debounceMs);
+    },
+  });
+}
+
+function applyLoadMoreComponentProps({
+  entry,
+  field,
+  registryState,
+  sourceKey,
+  state,
+}: {
+  entry: AutoCrudDataSourceEntry;
+  field: Field;
+  registryState: AutoCrudDataSourceRegistryState;
+  sourceKey: string;
+  state: AutoCrudDataSourceReactionState;
+}) {
+  if (!entry.loadMore) return;
+
+  field.setComponentProps({
+    hasMore: state.hasMore,
+    loading: state.appendLoading,
+    onPopupScroll: (event: React.UIEvent<HTMLElement>) => {
+      if (!isNearPopupScrollBottom(event.currentTarget)) return;
+      if (!state.hasMore || state.appendLoading) return;
+
+      const currentEntry = dataSources.get(sourceKey);
+      if (!currentEntry) {
+        state.controller?.abort();
+        state.hasMore = false;
+        state.appendLoading = false;
+        field.setDataSource([]);
+        field.setLoading(false);
+        field.setComponentProps({ hasMore: false, loading: false });
+        return;
+      }
+
+      loadAutoCrudDataSource({
+        append: true,
+        entry: currentEntry,
+        field,
+        registryVersion: registryState.version,
+        search: state.search,
+        sourceKey,
+        state,
+      });
+    },
+  });
+}
+
+function createAutoCrudDataSourceReaction(
+  config: AutoCrudDataSourceConfig,
+  registryState: AutoCrudDataSourceRegistryState,
+) {
+  const source = normalizeDataSourceConfig(config);
+
+  return (field: Field) => {
+    const registryVersion = registryState.version;
+    const state = getDataSourceReactionState(field);
+    if (!state.initialized) {
+      field.disposers.push(() => {
+        state.controller?.abort();
+        if (state.searchTimer) clearTimeout(state.searchTimer);
+      });
+      state.initialized = true;
     }
 
-    form.addEffects(effectId, () => {
-      for (const dependency of new Set(
-        sourceEntries.flatMap(
-          ([, source]) => dataSources.get(source.key)?.dependencies ?? [],
-        ),
-      )) {
-        onFieldValueChange(dependency, () => {
-          for (const [fieldName, source] of sourceEntries) {
-            const entry = dataSources.get(source.key);
-            if (!entry?.dependencies.includes(dependency)) continue;
-            if (entry.reset) form.setValuesIn(fieldName, undefined);
-            void loadFieldOptions(fieldName, source);
-          }
-        });
-      }
-    });
+    if (!source) {
+      field.setDataSource([]);
+      field.setLoading(false);
+      return;
+    }
 
-    return () => {
-      active = false;
-      controller?.abort();
-      form.removeEffects(effectId);
-    };
-  }, [form, schema, registryVersion]);
+    const entry = dataSources.get(source.key);
+    if (!entry) {
+      state.controller?.abort();
+      field.setDataSource([]);
+      field.setLoading(false);
+      return;
+    }
+
+    applySearchComponentProps({
+      entry,
+      field,
+      registryState,
+      sourceKey: source.key,
+      state,
+    });
+    applyLoadMoreComponentProps({
+      entry,
+      field,
+      registryState,
+      sourceKey: source.key,
+      state,
+    });
+    loadAutoCrudDataSource({
+      entry,
+      field,
+      registryVersion,
+      search: state.search,
+      sourceKey: source.key,
+      state,
+    });
+  };
 }
 
 function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
@@ -270,7 +588,9 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
     schema: zodSchema,
     initialValues,
     onSubmit,
+    fields,
     overrides,
+    scope: scopeProp,
     mode = 'create',
     loading = false,
     gridColumns = 1,
@@ -285,16 +605,35 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [JSON.stringify(initialValues)],
   );
-
-  const formSchema = useMemo(
-    () =>
-      createEditFormSchema(zodSchema, {
-        overrides,
-        layout: 'grid',
-        gridColumns,
-      }),
-    [zodSchema, overrides, gridColumns],
+  const dataSourceRegistryState = useMemo(
+    () => observable<AutoCrudDataSourceRegistryState>({ version: 0 }),
+    [],
   );
+  const updateDataSourceRegistryState = useCallback(() => {
+    action(() => {
+      dataSourceRegistryState.version += 1;
+    });
+  }, [dataSourceRegistryState]);
+  const dataSourceRegistryVersion = useRegistryVersion(
+    dataSources.subscribe,
+    updateDataSourceRegistryState,
+  );
+  const formOverrides = useMemo(
+    () => buildFormOverrides(fields, overrides),
+    [fields, overrides],
+  );
+
+  const formSchema = useMemo(() => {
+    const nextSchema = createEditFormSchema(zodSchema, {
+      overrides: formOverrides,
+      layout: 'grid',
+      gridColumns,
+    });
+
+    applyDataSourceReactions(nextSchema);
+
+    return nextSchema;
+  }, [zodSchema, formOverrides, gridColumns, dataSourceRegistryVersion]);
   const formLayout = useMemo<FormLayoutOptions>(() => {
     const inlineLabel = labelAlign === 'left' || labelAlign === 'right';
 
@@ -320,8 +659,14 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
     }),
     [formComponentVersion],
   );
-
-  useFormDataSources(form, formSchema);
+  const scope = useMemo<JsonSchemaFormScope>(
+    () => ({
+      ...scopeProp,
+      [AUTO_CRUD_DATA_SOURCE_SCOPE_KEY]: (config: AutoCrudDataSourceConfig) =>
+        createAutoCrudDataSourceReaction(config, dataSourceRegistryState),
+    }),
+    [dataSourceRegistryState, scopeProp],
+  );
 
   const handleSubmit = async () => {
     await form.validate();
@@ -336,7 +681,7 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
 
   return (
     <Form form={form} layout={formLayout}>
-      <JsonSchemaField schema={formSchema} components={fieldComponents} />
+      <JsonSchemaField schema={formSchema} components={fieldComponents} scope={scope} />
       {showSubmitButton && (
         <div className="flex justify-end gap-2 mt-6">
           <Button type="button" onClick={handleSubmit} disabled={loading}>

@@ -2,7 +2,10 @@
 
 import type { ISchema } from '@formily/react';
 import type { FormComponentConfig } from '../../types/form';
-import type { JsonSchemaFormComponents } from '../json-schema-form-renderer';
+import type {
+  JsonSchemaFormComponents,
+  JsonSchemaFormScope,
+} from '../json-schema-form-renderer';
 import { createSchemaField } from '@formily/react';
 import { useFormSchema } from '../../hooks/use-form-schema';
 import { useMergedSchemaComponents } from '../../hooks/use-merged-schema-components';
@@ -72,17 +75,18 @@ type SchemaFieldBasicsProps = Omit<
   'components'
 > & {
   components?: JsonSchemaFormComponents;
+  scope?: JsonSchemaFormScope;
   schema: ISchema;
 };
 
 const JsonSchemaFieldBasics: React.FC<SchemaFieldBasicsProps> = (props) => {
-  const { components, schema, ...rest } = props;
+  const { components, schema, scope, ...rest } = props;
 
   // Merge basicComponentRegistry with user-provided components
   // User components will override basic components with the same key
   const mergedComponents = useMergedSchemaComponents(basicComponentRegistry, components);
 
-  const { formSchema, SchemaField } = useFormSchema(schema, mergedComponents);
+  const { formSchema, SchemaField } = useFormSchema(schema, mergedComponents, scope);
 
   return <SchemaField {...rest} schema={formSchema} />;
 };

@@ -11,12 +11,15 @@ export interface JsonSchemaFormComponents {
   decorators?: Record<string, React.ComponentType<any>>;
 }
 
+export type JsonSchemaFormScope = Record<string, unknown>;
+
 export interface JsonSchemaFormRendererProps extends React.ComponentProps<
   typeof FormilyForm
 > {
   schema: ISchema;
   children?: React.ReactNode;
   components?: Partial<JsonSchemaFormComponents>;
+  scope?: JsonSchemaFormScope;
 }
 
 export interface JsonSchemaFormProps extends Omit<

@@ -158,6 +158,199 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
     await waitFor(() => expect(loader).toHaveBeenCalled());
   });
 
+  it('passes simple filter search text to searchable dataSource loaders', async () => {
+    const loader = vi.fn(({ field, search }) => {
+      expect(field).toBe('region');
+
+      return [
+        {
+          label: `Region ${search || 'initial'}`,
+          value: `region-${search || 'initial'}`,
+        },
+      ];
+    });
+
+    dataSources.register('test.dynamic-regions', {
+      search: true,
+      debounceMs: 0,
+      load: loader,
+    });
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource()}
+        fields={fields}
+        table={{ filterModes: ['simple'] }}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(loader).toHaveBeenCalledWith(
+        expect.objectContaining({
+          field: 'region',
+          search: '',
+        }),
+      ),
+    );
+
+    let trigger: HTMLElement | null = null;
+    await waitFor(() => {
+      trigger = queryDynamicFilterTrigger();
+      expect(trigger).toBeTruthy();
+    });
+    if (!trigger) throw new Error('Dynamic filter trigger was not rendered');
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByPlaceholderText('Dynamic Region'), {
+      target: { value: 'beta' },
+    });
+
+    await waitFor(() =>
+      expect(loader).toHaveBeenCalledWith(
+        expect.objectContaining({
+          field: 'region',
+          search: 'beta',
+        }),
+      ),
+    );
+    await screen.findByText('Region beta');
+  });
+
+  it('loads additional simple filter options from paginated dataSource loaders', async () => {
+    const loader = vi.fn(({ field, page, pageSize }) => {
+      expect(field).toBe('region');
+
+      const start = ((page ?? 1) - 1) * (pageSize ?? 2);
+      const options = ['alpha', 'beta', 'gamma'].slice(start, start + (pageSize ?? 2));
+
+      return {
+        hasMore: start + options.length < 3,
+        options: options.map((value) => ({
+          label: `Region ${value}`,
+          value,
+        })),
+      };
+    });
+
+    dataSources.register('test.dynamic-regions', {
+      loadMore: true,
+      pageSize: 2,
+      load: loader,
+    });
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource()}
+        fields={fields}
+        table={{ filterModes: ['simple'] }}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(loader).toHaveBeenCalledWith(
+        expect.objectContaining({
+          field: 'region',
+          page: 1,
+          pageSize: 2,
+        }),
+      ),
+    );
+
+    let trigger: HTMLElement | null = null;
+    await waitFor(() => {
+      trigger = queryDynamicFilterTrigger();
+      expect(trigger).toBeTruthy();
+    });
+    if (!trigger) throw new Error('Dynamic filter trigger was not rendered');
+    fireEvent.click(trigger);
+    await screen.findByText('Region alpha');
+    expect(screen.queryByText('Region gamma')).toBeNull();
+
+    const viewport = document.querySelector(
+      '[data-multi-combobox-viewport]',
+    ) as HTMLElement;
+    Object.defineProperties(viewport, {
+      clientHeight: { configurable: true, value: 100 },
+      scrollHeight: { configurable: true, value: 220 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+    viewport.scrollTop = 120;
+    fireEvent.scroll(viewport);
+
+    await waitFor(() =>
+      expect(loader).toHaveBeenCalledWith(
+        expect.objectContaining({
+          field: 'region',
+          page: 2,
+          pageSize: 2,
+        }),
+      ),
+    );
+    await screen.findByText('Region gamma');
+  });
+
+  it('keeps dynamic view labels after searchable filter results narrow', async () => {
+    const loader = vi.fn(({ field, search }) => {
+      expect(field).toBe('region');
+
+      if (search === 'beta') {
+        return [{ label: 'Region beta', value: 'beta' }];
+      }
+
+      return [
+        { label: 'East Dynamic', value: 'east' },
+        { label: 'West Dynamic', value: 'west' },
+      ];
+    });
+
+    dataSources.register('test.dynamic-regions', {
+      search: true,
+      debounceMs: 0,
+      load: loader,
+    });
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: {
+            viewOpen: true,
+            selected: { id: '1', region: 'west' },
+          },
+        })}
+        fields={fields}
+        table={{ filterModes: ['simple'] }}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('West Dynamic').length).toBeGreaterThanOrEqual(1);
+    });
+
+    let trigger: HTMLElement | null = null;
+    await waitFor(() => {
+      trigger = queryDynamicFilterTrigger();
+      expect(trigger).toBeTruthy();
+    });
+    if (!trigger) throw new Error('Dynamic filter trigger was not rendered');
+    fireEvent.click(trigger);
+    fireEvent.change(screen.getByPlaceholderText('Dynamic Region'), {
+      target: { value: 'beta' },
+    });
+
+    await waitFor(() =>
+      expect(loader).toHaveBeenCalledWith(
+        expect.objectContaining({
+          field: 'region',
+          search: 'beta',
+        }),
+      ),
+    );
+    await screen.findByText('Region beta');
+    expect(screen.getAllByText('West Dynamic').length).toBeGreaterThanOrEqual(1);
+  });
+
   it('uses dynamic dataSource options for view labels', async () => {
     const loader = vi.fn(() => [
       { label: 'East Dynamic', value: 'east' },

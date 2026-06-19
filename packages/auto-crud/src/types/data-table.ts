@@ -21,6 +21,20 @@ declare module '@tanstack/react-table' {
     icon?: React.FC<React.SVGProps<SVGSVGElement>>;
     /** 控制在哪些筛选模式下显示（未设置则在所有模式显示） */
     modes?: Array<'simple' | 'advanced' | 'command'>;
+    /** 内部：远程筛选选项搜索值 */
+    autoCrudFilterSearchValue?: string;
+    /** 内部：远程筛选选项搜索回调 */
+    autoCrudFilterOnSearch?: (value: string) => void;
+    /** 内部：是否启用本地选项过滤 */
+    autoCrudFilterShouldFilter?: boolean;
+    /** 内部：远程筛选当前弹窗选项，和稳定标签缓存分离 */
+    autoCrudFilterOptions?: Option[];
+    /** 内部：远程筛选是否还有更多选项 */
+    autoCrudFilterHasMore?: boolean;
+    /** 内部：远程筛选是否正在加载 */
+    autoCrudFilterLoading?: boolean;
+    /** 内部：远程筛选弹窗滚动回调 */
+    autoCrudFilterOnPopupScroll?: React.UIEventHandler<HTMLElement>;
   }
 }
 

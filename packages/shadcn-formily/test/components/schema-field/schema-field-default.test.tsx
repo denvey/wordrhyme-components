@@ -10,6 +10,9 @@ import { JsonSchemaField } from '../../../src/components/schema-field/schema-fie
 const MockCustomInput = () => <div data-testid="custom-input">Custom Input</div>;
 const MockCustomCombobox = () => <div data-testid="custom-combobox">Custom Combobox</div>;
 const MockNewComponent = () => <div data-testid="new-component">New Component</div>;
+const MockScopedComponent = ({ text }: { text?: string }) => (
+  <div data-testid="scoped-component">{text}</div>
+);
 
 describe('jsonSchemaFieldDefault', () => {
   const basicSchema: ISchema = {
@@ -224,5 +227,39 @@ describe('jsonSchemaFieldDefault', () => {
 
     // Basic Input component should still work
     expect(container).toBeTruthy();
+  });
+
+  it('should pass scope to schema expressions', () => {
+    const form = createForm();
+    const schema: ISchema = {
+      type: 'object',
+      properties: {
+        scoped: {
+          type: 'string',
+          'x-component': 'ScopedComponent',
+          'x-component-props': {
+            text: '{{$scopedText}}',
+          },
+        },
+      },
+    };
+
+    const customComponents: JsonSchemaFormComponents = {
+      fields: {
+        ScopedComponent: { component: MockScopedComponent },
+      },
+    };
+
+    const { getByTestId } = render(
+      <FormProvider form={form}>
+        <JsonSchemaField
+          schema={schema}
+          components={customComponents}
+          scope={{ $scopedText: 'Scoped value' }}
+        />
+      </FormProvider>,
+    );
+
+    expect(getByTestId('scoped-component').textContent).toBe('Scoped value');
   });
 });
