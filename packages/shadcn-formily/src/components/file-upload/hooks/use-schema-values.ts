@@ -1,4 +1,4 @@
-import type { FileMetadata } from '@pixpilot/shadcn-ui';
+import type { FileMetadata } from '@wordrhyme/shadcn-ui';
 import { useFieldSchema } from '@formily/react';
 
 /**

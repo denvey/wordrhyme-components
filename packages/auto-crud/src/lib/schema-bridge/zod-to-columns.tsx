@@ -4,16 +4,16 @@ import * as React from 'react';
 import type { ColumnDef, Row } from '@tanstack/react-table';
 import { z } from 'zod';
 import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header';
-import { Badge } from '@pixpilot/shadcn';
-import { Button } from '@pixpilot/shadcn';
-import { Checkbox } from '@pixpilot/shadcn';
+import { Badge } from '@wordrhyme/shadcn';
+import { Button } from '@wordrhyme/shadcn';
+import { Checkbox } from '@wordrhyme/shadcn';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { Ellipsis } from 'lucide-react';
 import { formatDate } from '@/lib/format';
 import { humanize } from '@/lib/humanize';

@@ -3,7 +3,7 @@
 import type { Column } from "@tanstack/react-table";
 import * as React from "react";
 
-import { Input } from "@pixpilot/shadcn";
+import { Input } from "@wordrhyme/shadcn";
 import { cn } from "@/lib/utils";
 import type { ExtendedColumnFilter } from "@/types/data-table";
 

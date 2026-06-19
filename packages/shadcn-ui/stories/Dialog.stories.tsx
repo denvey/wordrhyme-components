@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Label } from '@pixpilot/shadcn';
+import { Label } from '@wordrhyme/shadcn';
 import * as React from 'react';
 import { Button } from '../src/Button';
 import {

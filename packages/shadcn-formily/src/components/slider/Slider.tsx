@@ -1,6 +1,6 @@
 import { connect } from '@formily/react';
 
-import { Slider as ShadcnSlider } from '@pixpilot/shadcn-ui';
+import { Slider as ShadcnSlider } from '@wordrhyme/shadcn-ui';
 import { sliderMapProps } from './map-props';
 
 /**

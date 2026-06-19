@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { ColorPickerTrigger } from '@pixpilot/shadcn';
+import { ColorPickerTrigger } from '@wordrhyme/shadcn';
 import React from 'react';
 import { ColorPickerBase } from '../src/ColorPickerBase';
 

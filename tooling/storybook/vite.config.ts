@@ -14,12 +14,18 @@ const workspaceAliases = workspacePackages.reduce<Record<string, string>>(
       return aliases;
     }
 
-    if (pkg === 'shadcn') {
-      aliases['@pixpilot/shadcn'] = srcPath;
+    const packageJsonPath = path.resolve(packagesDir, pkg, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) {
       return aliases;
     }
 
-    aliases[`@pixpilot/${pkg}`] = srcPath;
+    const packageJson = JSON.parse(
+      fs.readFileSync(packageJsonPath, 'utf8'),
+    ) as { name?: string };
+    if (packageJson.name) {
+      aliases[packageJson.name] = srcPath;
+    }
+
     return aliases;
   },
   {
@@ -28,7 +34,7 @@ const workspaceAliases = workspacePackages.reduce<Record<string, string>>(
 );
 
 const workspaceAliasPackages = Object.keys(workspaceAliases).filter((alias) =>
-  alias.startsWith('@pixpilot/'),
+  alias !== '@',
 );
 
 export default defineConfig({

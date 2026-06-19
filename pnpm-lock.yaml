@@ -232,18 +232,6 @@ importers:
 
   packages/auto-crud:
     dependencies:
-      '@dnd-kit/core':
-        specifier: ^6.3.1
-        version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@dnd-kit/modifiers':
-        specifier: ^9.0.0
-        version: 9.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
-      '@dnd-kit/sortable':
-        specifier: ^10.0.0
-        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
-      '@dnd-kit/utilities':
-        specifier: ^3.2.2
-        version: 3.2.2(react@19.2.4)
       '@formily/core':
         specifier: ^2.3.7
         version: 2.3.7
@@ -256,15 +244,6 @@ importers:
       '@formily/reactive':
         specifier: ^2.3.7
         version: 2.3.7
-      '@pixpilot/formily-shadcn':
-        specifier: workspace:*
-        version: link:../shadcn-formily
-      '@pixpilot/shadcn':
-        specifier: workspace:*
-        version: link:../shadcn
-      '@pixpilot/shadcn-ui':
-        specifier: workspace:*
-        version: link:../shadcn-ui
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.15
         version: 1.1.15(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -316,6 +295,15 @@ importers:
       '@tanstack/react-virtual':
         specifier: ^3.13.23
         version: 3.13.25(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@wordrhyme/formily-shadcn':
+        specifier: workspace:*
+        version: link:../shadcn-formily
+      '@wordrhyme/shadcn':
+        specifier: workspace:*
+        version: link:../shadcn
+      '@wordrhyme/shadcn-ui':
+        specifier: workspace:*
+        version: link:../shadcn-ui
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -659,10 +647,10 @@ importers:
 
   packages/shadcn-auth:
     dependencies:
-      '@pixpilot/shadcn':
+      '@wordrhyme/shadcn':
         specifier: workspace:*
         version: link:../shadcn
-      '@pixpilot/shadcn-ui':
+      '@wordrhyme/shadcn-ui':
         specifier: workspace:*
         version: link:../shadcn-ui
       lucide-react:
@@ -753,15 +741,15 @@ importers:
       '@pixpilot/env':
         specifier: catalog:prod
         version: 0.2.3
-      '@pixpilot/shadcn':
-        specifier: workspace:*
-        version: link:../shadcn
-      '@pixpilot/shadcn-ui':
-        specifier: workspace:*
-        version: link:../shadcn-ui
       '@pixpilot/string':
         specifier: catalog:prod
         version: 3.0.0
+      '@wordrhyme/shadcn':
+        specifier: workspace:*
+        version: link:../shadcn
+      '@wordrhyme/shadcn-ui':
+        specifier: workspace:*
+        version: link:../shadcn-ui
       json-schema-traverse:
         specifier: ^1.0.0
         version: 1.0.0
@@ -820,6 +808,18 @@ importers:
 
   packages/shadcn-ui:
     dependencies:
+      '@dnd-kit/core':
+        specifier: ^6.3.1
+        version: 6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@dnd-kit/modifiers':
+        specifier: ^9.0.0
+        version: 9.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+      '@dnd-kit/sortable':
+        specifier: ^10.0.0
+        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.4(react@19.2.4))(react@19.2.4))(react@19.2.4)
+      '@dnd-kit/utilities':
+        specifier: ^3.2.2
+        version: 3.2.2(react@19.2.4)
       '@ebay/nice-modal-react':
         specifier: ^1.2.13
         version: 1.2.13(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -835,12 +835,12 @@ importers:
       '@pixpilot/hash':
         specifier: catalog:prod
         version: 0.2.0
-      '@pixpilot/shadcn':
-        specifier: workspace:*
-        version: link:../shadcn
       '@pixpilot/string':
         specifier: catalog:prod
         version: 3.0.0
+      '@radix-ui/react-direction':
+        specifier: ^1.1.1
+        version: 1.1.1(@types/react@19.2.15)(react@19.2.4)
       '@radix-ui/react-slot':
         specifier: ^1.2.4
         version: 1.2.4(@types/react@19.2.15)(react@19.2.4)
@@ -868,6 +868,9 @@ importers:
       '@tiptap/starter-kit':
         specifier: ^3.22.3
         version: 3.23.6
+      '@wordrhyme/shadcn':
+        specifier: workspace:*
+        version: link:../shadcn
       class-variance-authority:
         specifier: catalog:prod
         version: 0.7.1
@@ -917,6 +920,9 @@ importers:
       '@types/react':
         specifier: catalog:dev
         version: 19.2.15
+      '@types/react-dom':
+        specifier: catalog:dev
+        version: 19.2.3(@types/react@19.2.15)
       eslint:
         specifier: catalog:dev
         version: 9.39.4(jiti@2.6.1)
@@ -999,21 +1005,21 @@ importers:
       '@iconify/react':
         specifier: catalog:prod
         version: 6.0.2(react@19.2.4)
-      '@pixpilot/formily-shadcn':
-        specifier: workspace:*
-        version: link:../../packages/shadcn-formily
-      '@pixpilot/shadcn':
-        specifier: workspace:*
-        version: link:../../packages/shadcn
-      '@pixpilot/shadcn-auth':
-        specifier: workspace:*
-        version: link:../../packages/shadcn-auth
-      '@pixpilot/shadcn-ui':
-        specifier: workspace:*
-        version: link:../../packages/shadcn-ui
       '@pixpilot/string':
         specifier: catalog:prod
         version: 3.0.0
+      '@wordrhyme/formily-shadcn':
+        specifier: workspace:*
+        version: link:../../packages/shadcn-formily
+      '@wordrhyme/shadcn':
+        specifier: workspace:*
+        version: link:../../packages/shadcn
+      '@wordrhyme/shadcn-auth':
+        specifier: workspace:*
+        version: link:../../packages/shadcn-auth
+      '@wordrhyme/shadcn-ui':
+        specifier: workspace:*
+        version: link:../../packages/shadcn-ui
       next-themes:
         specifier: catalog:prod
         version: 0.4.6(react-dom@19.2.4(react@19.2.4))(react@19.2.4)

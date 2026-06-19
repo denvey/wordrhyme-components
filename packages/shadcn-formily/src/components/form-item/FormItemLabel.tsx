@@ -1,6 +1,6 @@
 import type { SyncReactNode } from '../../types';
 import type { FormItemLabelProps as LabelProps } from './form-item-types';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 
 import { FormItemDescriptionPopover } from './FormItemDescriptionPopover';
 

@@ -1,3 +1,3 @@
-import { TabsContent } from '@pixpilot/shadcn';
+import { TabsContent } from '@wordrhyme/shadcn';
 
 export { TabsContent };

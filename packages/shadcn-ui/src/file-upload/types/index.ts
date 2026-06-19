@@ -1,4 +1,4 @@
-import type { FileUploadProps as OrgFileUploadProps } from '@pixpilot/shadcn';
+import type { FileUploadProps as OrgFileUploadProps } from '@wordrhyme/shadcn';
 
 export interface FileMetadata {
   name: string;

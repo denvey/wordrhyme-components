@@ -1,6 +1,6 @@
 import type { ArrayField as FormilyArrayField } from '@formily/core';
 import { observer, useField, useFieldSchema } from '@formily/react';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
 import { getArrayItemInfo } from '../../utils';
 import { useArrayComponents } from '../array-base';

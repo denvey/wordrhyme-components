@@ -14,9 +14,9 @@ import { parseAsStringEnum, useQueryState } from '@/hooks/use-url-state';
 import * as React from 'react';
 
 import { DataTableRangeFilter } from '@/components/data-table/data-table-range-filter';
-import { Badge } from '@pixpilot/shadcn';
-import { Button } from '@pixpilot/shadcn';
-import { Calendar } from '@pixpilot/shadcn';
+import { Badge } from '@wordrhyme/shadcn';
+import { Button } from '@wordrhyme/shadcn';
+import { Calendar } from '@wordrhyme/shadcn';
 import {
   Command,
   CommandEmpty,
@@ -24,7 +24,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import {
   Faceted,
   FacetedBadgeList,
@@ -35,23 +35,23 @@ import {
   FacetedItem,
   FacetedList,
   FacetedTrigger,
-} from '@/components/ui/faceted';
-import { Input } from '@pixpilot/shadcn';
-import { Popover, PopoverContent, PopoverTrigger } from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn-ui';
+import { Input } from '@wordrhyme/shadcn';
+import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import {
   Sortable,
   SortableContent,
   SortableItem,
   SortableItemHandle,
   SortableOverlay,
-} from '@/components/ui/sortable';
+} from '@wordrhyme/shadcn-ui';
 import { dataTableConfig } from '@/config/data-table';
 import { useDebouncedCallback } from '@/hooks/use-debounced-callback';
 import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';

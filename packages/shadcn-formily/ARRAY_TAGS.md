@@ -19,10 +19,10 @@ A Formily-integrated array field component for managing simple arrays of strings
 
 ## Installation
 
-This component is part of the `@pixpilot/shadcn-formily` package. The underlying `TagsInput` component from `@pixpilot/shadcn-ui` is used internally.
+This component is part of the `@wordrhyme/formily-shadcn` package. The underlying `TagsInput` component from `@wordrhyme/shadcn-ui` is used internally.
 
 ```bash
-pnpm add @pixpilot/shadcn-formily @pixpilot/shadcn-ui
+pnpm add @wordrhyme/formily-shadcn @wordrhyme/shadcn-ui
 ```
 
 ## Basic Usage
@@ -30,7 +30,7 @@ pnpm add @pixpilot/shadcn-formily @pixpilot/shadcn-ui
 ### Declarative Schema
 
 ```tsx
-import { createForm, Form, SchemaField } from '@pixpilot/shadcn-formily';
+import { createForm, Form, SchemaField } from '@wordrhyme/formily-shadcn';
 
 const form = createForm({
   values: {
@@ -62,7 +62,7 @@ const schema = {
 ### JSX Component
 
 ```tsx
-import { ArrayTags } from '@pixpilot/shadcn-formily';
+import { ArrayTags } from '@wordrhyme/formily-shadcn';
 
 <ArrayTags
   value={['tag1', 'tag2']}
@@ -272,5 +272,5 @@ The component uses the shadcn/ui design system and can be customized using:
 ## Related Components
 
 - `TagsInputInLine` - The non-array version for single tag input
-- `TagsInput` - The base UI component from @pixpilot/shadcn-ui
+- `TagsInput` - The base UI component from @wordrhyme/shadcn-ui
 - Other array components: `ArrayDialog`, `ArrayPopover`, `ArrayCollapse`, `ArrayCards`

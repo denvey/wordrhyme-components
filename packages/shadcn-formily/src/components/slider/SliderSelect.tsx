@@ -1,6 +1,6 @@
 import { connect } from '@formily/react';
 
-import { SliderSelect as BaseSliderSelect } from '@pixpilot/shadcn-ui';
+import { SliderSelect as BaseSliderSelect } from '@wordrhyme/shadcn-ui';
 import { sliderSelectMapProps } from './map-props';
 
 /**

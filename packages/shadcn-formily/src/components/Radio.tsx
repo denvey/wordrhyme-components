@@ -1,6 +1,6 @@
 import type { FC } from 'react';
 import { connect } from '@formily/react';
-import { Label, RadioGroup, RadioGroupItem } from '@pixpilot/shadcn';
+import { Label, RadioGroup, RadioGroupItem } from '@wordrhyme/shadcn';
 
 export interface RadioGroupOption {
   value: string;

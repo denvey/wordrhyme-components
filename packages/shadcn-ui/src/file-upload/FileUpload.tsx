@@ -1,6 +1,6 @@
 import type { UseFileUploadStoreResult } from './hooks/use-file-upload-store';
 import type { FileUploadCallbacks, FileUploadProps } from './types';
-import { cn, FileUploadDropzone, FileUpload as OrgFileUpload } from '@pixpilot/shadcn';
+import { cn, FileUploadDropzone, FileUpload as OrgFileUpload } from '@wordrhyme/shadcn';
 import { Upload } from 'lucide-react';
 import * as React from 'react';
 import { FileUploadItems } from './FileUploadItems';

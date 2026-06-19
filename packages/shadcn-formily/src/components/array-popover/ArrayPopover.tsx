@@ -1,6 +1,6 @@
 import type { ArrayComponentProps } from '../array-base';
 import { observer } from '@formily/react';
-import { cn, Popover, PopoverTrigger } from '@pixpilot/shadcn';
+import { cn, Popover, PopoverTrigger } from '@wordrhyme/shadcn';
 import React from 'react';
 import { useFormContext } from '../../hooks';
 import { ArrayBase, ArrayComponentProvider } from '../array-base';

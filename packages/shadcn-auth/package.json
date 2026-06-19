@@ -1,5 +1,5 @@
 {
-  "name": "@pixpilot/shadcn-auth",
+  "name": "@wordrhyme/shadcn-auth",
   "type": "module",
   "version": "1.0.59",
   "packageManager": "pnpm@10.33.0",
@@ -47,8 +47,8 @@
     "react-dom": ">=18.0.0"
   },
   "dependencies": {
-    "@pixpilot/shadcn": "workspace:*",
-    "@pixpilot/shadcn-ui": "workspace:*",
+    "@wordrhyme/shadcn": "workspace:*",
+    "@wordrhyme/shadcn-ui": "workspace:*",
     "lucide-react": "catalog:prod"
   },
   "devDependencies": {

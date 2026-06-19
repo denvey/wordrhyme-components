@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { Button } from '@pixpilot/shadcn-ui';
+import { Button } from '@wordrhyme/shadcn-ui';
 import React from 'react';
 import { createForm, Form, SchemaField } from '../src';
 

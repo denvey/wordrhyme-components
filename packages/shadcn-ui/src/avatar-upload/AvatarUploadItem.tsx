@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
   useFileUpload,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { AlertCircle } from 'lucide-react';
 import React from 'react';
 import { useFileError, useFileUploadProgressCallbacks } from '../file-upload';

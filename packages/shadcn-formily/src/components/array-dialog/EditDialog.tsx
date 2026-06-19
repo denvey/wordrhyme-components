@@ -12,7 +12,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@pixpilot/shadcn-ui';
+} from '@wordrhyme/shadcn-ui';
 import React from 'react';
 import { useFormContext } from '../../hooks';
 import { ArrayItemDraftFields } from '../array-common/ArrayItemDraftFields';

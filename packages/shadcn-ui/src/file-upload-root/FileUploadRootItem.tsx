@@ -8,7 +8,7 @@ import {
   FileUploadItem,
   FileUploadItemProgress,
   useFileUpload,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { XIcon } from 'lucide-react';
 import prettyBytes from 'pretty-bytes';
 import React from 'react';

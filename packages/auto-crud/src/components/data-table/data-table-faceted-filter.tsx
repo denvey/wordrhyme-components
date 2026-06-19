@@ -3,11 +3,11 @@
 import type { Column } from '@tanstack/react-table';
 import { PlusCircle, XCircle } from 'lucide-react';
 
-import { Badge } from '@pixpilot/shadcn';
-import { Button } from '@pixpilot/shadcn';
-import { Separator } from '@pixpilot/shadcn';
+import { Badge } from '@wordrhyme/shadcn';
+import { Button } from '@wordrhyme/shadcn';
+import { Separator } from '@wordrhyme/shadcn';
 import type { Option } from '@/types/data-table';
-import { MultiCombobox } from '@/components/ui/multi-combobox';
+import { MultiCombobox } from '@wordrhyme/shadcn-ui';
 
 interface DataTableFacetedFilterProps<TData, TValue> {
   column?: Column<TData, TValue>;

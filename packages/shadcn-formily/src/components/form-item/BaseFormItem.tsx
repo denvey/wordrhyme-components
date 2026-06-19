@@ -8,8 +8,8 @@ import type {
   LabelPlacement,
 } from './form-item-types';
 import { useField } from '@formily/react';
-import { cn } from '@pixpilot/shadcn';
-import { getId } from '@pixpilot/shadcn-ui';
+import { cn } from '@wordrhyme/shadcn';
+import { getId } from '@wordrhyme/shadcn-ui';
 
 import React from 'react';
 import { useFormContext, useLabel } from '../../hooks';
@@ -106,7 +106,7 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
   const labelElement = effectiveLabel != null && (
     <FormItemLabel
       data-slot="form-item-label"
-      id={getId(id, 'label')}
+      id={id}
       label={effectiveLabel}
       asterisk={asterisk}
       error={feedbackStatus === 'error'}

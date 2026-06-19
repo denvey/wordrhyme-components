@@ -7,14 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
 import { cn } from "../../lib/utils";
 
 export type ModalVariant = "dialog" | "sheet";

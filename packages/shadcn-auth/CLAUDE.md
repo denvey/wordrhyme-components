@@ -1,6 +1,6 @@
 [根目录](../../../CLAUDE.md) > [shadcn-components](../../CLAUDE.md) > [packages](../) > **shadcn-auth**
 
-# @pixpilot/shadcn-auth
+# @wordrhyme/shadcn-auth
 
 > 认证表单组件库，提供登录、注册、密码重置等预构建表单。
 
@@ -43,7 +43,7 @@ export { GoogleSignIn } from './GoogleSignIn';
 ### 使用示例
 
 ```tsx
-import { SignInForm } from '@pixpilot/shadcn-auth';
+import { SignInForm } from '@wordrhyme/shadcn-auth';
 
 function LoginPage() {
   const handleSignIn = async (data: { email: string; password: string }) => {
@@ -65,8 +65,8 @@ function LoginPage() {
 ### 核心依赖
 | 包名 | 用途 |
 |------|------|
-| @pixpilot/shadcn | 基础 UI 组件 |
-| @pixpilot/shadcn-ui | 扩展 UI 组件 |
+| @wordrhyme/shadcn | 基础 UI 组件 |
+| @wordrhyme/shadcn-ui | 扩展 UI 组件 |
 | lucide-react | 图标 |
 
 ### Peer Dependencies

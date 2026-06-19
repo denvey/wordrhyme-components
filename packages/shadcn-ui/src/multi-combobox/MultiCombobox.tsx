@@ -16,7 +16,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 
 export interface MultiComboboxOption {

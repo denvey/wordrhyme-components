@@ -1,6 +1,6 @@
 import type { ColorPickerContentWrapperProps } from './types';
 
-import { ColorPickerContent as BaseColorPickerContent, cn } from '@pixpilot/shadcn';
+import { ColorPickerContent as BaseColorPickerContent, cn } from '@wordrhyme/shadcn';
 import React from 'react';
 
 const ColorPickerContent: React.FC<ColorPickerContentWrapperProps> = (props) => {

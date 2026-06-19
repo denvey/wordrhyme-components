@@ -12,7 +12,7 @@ import type {
   BatchUpdateField,
 } from './auto-table-action-bar';
 import { CrudFormModal } from './crud-form-modal';
-import { Button } from '@pixpilot/shadcn';
+import { Button } from '@wordrhyme/shadcn';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,16 +22,16 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@pixpilot/shadcn';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@pixpilot/shadcn';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/shadcn';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/shadcn';
 import {
   parseZodField,
   type ResolvedActionItem,
 } from '@/lib/schema-bridge/zod-to-columns';
 import { formatDate } from '@/lib/format';
 import { humanize } from '@/lib/humanize';
-import { Badge } from '@pixpilot/shadcn';
+import { Badge } from '@wordrhyme/shadcn';
 import { ImportDialog } from './import-dialog';
 import type { ExportMode } from './export-dialog';
 import { Download, Loader2, Upload } from 'lucide-react';

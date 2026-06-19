@@ -1,6 +1,6 @@
 /* eslint-disable no-console */
 /* eslint-disable no-alert */
-import type { FileMetadata } from '@pixpilot/shadcn-ui';
+import type { FileMetadata } from '@wordrhyme/shadcn-ui';
 import type { Meta, StoryObj } from '@storybook/react';
 import type { FileUploadInlineProps } from '../src';
 import React from 'react';

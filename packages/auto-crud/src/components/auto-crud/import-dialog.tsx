@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@pixpilot/shadcn';
-import { Button } from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
+import { Button } from '@wordrhyme/shadcn';
 import {
   parseImportFile,
   generateCSVTemplate,

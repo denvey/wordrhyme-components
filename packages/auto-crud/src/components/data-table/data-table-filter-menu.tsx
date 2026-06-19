@@ -6,8 +6,8 @@ import * as React from 'react';
 
 import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { DataTableRangeFilter } from '@/components/data-table/data-table-range-filter';
-import { Button } from '@pixpilot/shadcn';
-import { Calendar } from '@pixpilot/shadcn';
+import { Button } from '@wordrhyme/shadcn';
+import { Calendar } from '@wordrhyme/shadcn';
 import {
   Command,
   CommandEmpty,
@@ -15,16 +15,16 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@pixpilot/shadcn';
-import { Input } from '@pixpilot/shadcn';
-import { Popover, PopoverContent, PopoverTrigger } from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
+import { Input } from '@wordrhyme/shadcn';
+import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { useDebouncedCallback } from '@/hooks/use-debounced-callback';
 import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';
 import { formatDate } from '@/lib/format';

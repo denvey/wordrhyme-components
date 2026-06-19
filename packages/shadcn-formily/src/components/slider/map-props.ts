@@ -3,7 +3,7 @@ import type {
   SliderProps,
   SliderSelectProps,
   SliderSelectValue,
-} from '@pixpilot/shadcn-ui';
+} from '@wordrhyme/shadcn-ui';
 import { mapProps, useFieldSchema } from '@formily/react';
 
 export const sliderMapProps = mapProps(

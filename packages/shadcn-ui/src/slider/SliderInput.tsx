@@ -1,7 +1,8 @@
-import type { InputProps } from '@pixpilot/shadcn-ui';
 import { useControlled } from '@internal/hooks';
-import { cn, getId, Input } from '@pixpilot/shadcn-ui';
+import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
+import { Input, type InputProps } from '../input';
+import { getId } from '../utils';
 import { Slider as ShadcnSlider } from './Slider';
 
 export interface SliderInputProps extends React.ComponentProps<typeof ShadcnSlider> {

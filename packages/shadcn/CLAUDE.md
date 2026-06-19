@@ -1,6 +1,6 @@
 [根目录](../../../CLAUDE.md) > [shadcn-components](../../CLAUDE.md) > [packages](../) > **shadcn**
 
-# @pixpilot/shadcn
+# @wordrhyme/shadcn
 
 > 基础 Shadcn UI 组件库，基于 Radix UI 原语构建的可复用 React 组件集合。
 

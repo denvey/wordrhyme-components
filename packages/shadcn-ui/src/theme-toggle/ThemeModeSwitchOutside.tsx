@@ -1,6 +1,6 @@
 'use client';
 
-import { cn, Switch } from '@pixpilot/shadcn';
+import { cn, Switch } from '@wordrhyme/shadcn';
 import { MoonIcon, SunIcon } from 'lucide-react';
 import React from 'react';
 

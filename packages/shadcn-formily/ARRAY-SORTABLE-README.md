@@ -12,7 +12,7 @@ This package provides drag-and-drop sorting and customizable actions for array c
 ## Basic Usage
 
 ```tsx
-import { createForm, Form, SchemaField } from '@pixpilot/shadcn-formily';
+import { createForm, Form, SchemaField } from '@wordrhyme/formily-shadcn';
 
 const form = createForm({
   values: {
@@ -28,7 +28,7 @@ const form = createForm({
 ### Via Form Settings
 
 ```tsx
-import { Form } from '@pixpilot/shadcn-formily';
+import { Form } from '@wordrhyme/formily-shadcn';
 
 <Form form={form} settings={{ array: { sortable: false } }}>
   {/* array content */}

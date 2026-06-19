@@ -15,7 +15,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
 import { cn } from "@/lib/utils";
 
 interface DataTableColumnHeaderProps<TData, TValue>

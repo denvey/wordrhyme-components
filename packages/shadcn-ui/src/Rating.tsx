@@ -1,5 +1,5 @@
 import type { VariantProps } from 'class-variance-authority';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import { cva } from 'class-variance-authority';
 import { Circle, Star } from 'lucide-react';
 import * as React from 'react';

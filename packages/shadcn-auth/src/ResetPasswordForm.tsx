@@ -1,6 +1,6 @@
 'use client';
-import { Button, Card, CardContent, Input, Label } from '@pixpilot/shadcn';
-import { Alert } from '@pixpilot/shadcn-ui';
+import { Button, Card, CardContent, Input, Label } from '@wordrhyme/shadcn';
+import { Alert } from '@wordrhyme/shadcn-ui';
 import { Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
 

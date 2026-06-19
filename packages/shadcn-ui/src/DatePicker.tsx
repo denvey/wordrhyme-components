@@ -8,7 +8,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 
 import { CalendarIcon } from 'lucide-react';
 

@@ -1,6 +1,6 @@
 /* eslint-disable ts/strict-boolean-expressions */
 'use client';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import { Loader2 } from 'lucide-react';
 import React from 'react';
 import { useDelayedVisibility } from './hooks';

@@ -5,12 +5,12 @@ import { useEffect, useMemo, useImperativeHandle, forwardRef, useState } from 'r
 import type { ComponentProps } from 'react';
 import type { Field, Form as FormilyCoreForm } from '@formily/core';
 import { createForm, onFieldValueChange } from '@formily/core';
-import { Form, JsonSchemaField, type FormLayoutOptions } from '@pixpilot/formily-shadcn';
+import { Form, JsonSchemaField, type FormLayoutOptions } from '@wordrhyme/formily-shadcn';
 import { connect, mapProps } from '@formily/react';
-import { Button, cn, Switch as UiSwitch } from '@pixpilot/shadcn';
+import { Button, cn, Switch as UiSwitch } from '@wordrhyme/shadcn';
 import { createEditFormSchema } from '@/lib/schema-bridge/zod-to-formily';
 import type { FormSchemaOverrides } from '@/lib/schema-bridge/types';
-import { MultiCombobox, type MultiComboboxProps } from '@/components/ui/multi-combobox';
+import { MultiCombobox, type MultiComboboxProps } from '@wordrhyme/shadcn-ui';
 import {
   components,
   dataSources,

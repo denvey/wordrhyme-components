@@ -2,7 +2,7 @@ import type { FC } from 'react';
 
 import type { IconProvider, IconProviderProps } from './types';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@pixpilot/shadcn';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@wordrhyme/shadcn';
 import { X } from 'lucide-react';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';

@@ -10,7 +10,7 @@ import {
   Label,
   OrContinueWithSeparator,
   Separator,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { GoogleSignIn } from './GoogleSignIn';

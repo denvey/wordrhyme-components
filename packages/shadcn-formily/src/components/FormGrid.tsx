@@ -1,4 +1,4 @@
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
 
 export interface IFormGridProps extends React.HTMLAttributes<HTMLDivElement> {}

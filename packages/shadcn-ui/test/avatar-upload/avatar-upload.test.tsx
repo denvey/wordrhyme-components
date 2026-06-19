@@ -5,8 +5,10 @@ import { AvatarUpload } from '../../src/avatar-upload/AvatarUpload';
 
 const fileUploadSpy = vi.fn();
 
-vi.mock('@pixpilot/shadcn', () => {
+vi.mock('@wordrhyme/shadcn', () => {
   return {
+    cn: (...inputs: Array<string | false | null | undefined>) =>
+      inputs.filter(Boolean).join(' '),
     FileUpload: ({ children, onAccept, multiple }: any) => {
       fileUploadSpy({ onAccept, multiple });
 

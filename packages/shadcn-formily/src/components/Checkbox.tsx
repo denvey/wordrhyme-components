@@ -1,5 +1,5 @@
 import { connect, mapProps } from '@formily/react';
-import { Checkbox as ShadcnCheckbox } from '@pixpilot/shadcn';
+import { Checkbox as ShadcnCheckbox } from '@wordrhyme/shadcn';
 import type * as React from 'react';
 
 import { setCheckboxDefaultDecoratorProps } from '../utils/formily-decorator';

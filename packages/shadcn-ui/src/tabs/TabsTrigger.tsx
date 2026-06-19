@@ -1,5 +1,5 @@
 import type { BaseTabsTriggerProps, TabsVariant } from './types';
-import { TabsTrigger as BaseTabsTrigger, cn } from '@pixpilot/shadcn';
+import { TabsTrigger as BaseTabsTrigger, cn } from '@wordrhyme/shadcn';
 import React from 'react';
 import { useTabsContext } from './TabsContext';
 

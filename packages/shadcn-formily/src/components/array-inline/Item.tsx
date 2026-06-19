@@ -3,7 +3,7 @@ import type { Schema } from '@formily/react';
 import type { ArrayItemProps } from '../array-base';
 
 import { RecursionField, useField, useFieldSchema } from '@formily/react';
-import { cn } from '@pixpilot/shadcn-ui';
+import { cn } from '@wordrhyme/shadcn-ui';
 import React from 'react';
 import { getXComponentProps } from '../../utils';
 import { ArrayBase } from '../array-base';

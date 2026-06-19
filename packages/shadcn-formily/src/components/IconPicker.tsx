@@ -4,11 +4,11 @@ import type {
   IconPickerProps,
   IconProvider,
   IconProviderProps,
-} from '@pixpilot/shadcn-ui';
+} from '@wordrhyme/shadcn-ui';
 import type { FC } from 'react';
 
 import { connect, mapProps } from '@formily/react';
-import { IconPicker as MainIconPicker } from '@pixpilot/shadcn-ui';
+import { IconPicker as MainIconPicker } from '@wordrhyme/shadcn-ui';
 
 import { useFormContext } from '../hooks';
 

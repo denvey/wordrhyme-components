@@ -3,7 +3,7 @@ import type {
   ColorPickerSwatch as BaseColorPickerSwatch,
   Button,
   ColorPickerProps,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import type { ComponentProps, ReactNode } from 'react';
 
 export interface PresetColor {

@@ -321,11 +321,10 @@ interface CrudPermissions {
 
 | 包名 | 版本 | 用途 |
 |------|------|------|
-| @pixpilot/shadcn | workspace:* | 基础 UI 组件 |
-| @pixpilot/formily-shadcn | workspace:* | Formily 表单集成 |
-| @pixpilot/shadcn-ui | workspace:* | 扩展 UI 组件 |
+| @wordrhyme/shadcn | workspace:* | 基础 UI 组件 |
+| @wordrhyme/formily-shadcn | workspace:* | Formily 表单集成 |
+| @wordrhyme/shadcn-ui | workspace:* | 扩展 UI 组件 |
 | @tanstack/react-table | ^8.21.3 | 数据表格核心 |
-| @dnd-kit/* | ^6.3.1 | 拖拽排序 |
 
 ### Peer Dependencies
 

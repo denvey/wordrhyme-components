@@ -1,4 +1,4 @@
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 
 import React from 'react';
 import { Button } from '../Button';

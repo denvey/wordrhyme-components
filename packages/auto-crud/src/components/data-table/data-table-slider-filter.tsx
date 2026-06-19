@@ -3,16 +3,16 @@
 import type { Column } from "@tanstack/react-table";
 import { PlusCircle, XCircle } from "lucide-react";
 import * as React from "react";
-import { Button } from "@pixpilot/shadcn";
-import { Input } from "@pixpilot/shadcn";
-import { Label } from "@pixpilot/shadcn";
+import { Button } from "@wordrhyme/shadcn";
+import { Input } from "@wordrhyme/shadcn";
+import { Label } from "@wordrhyme/shadcn";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@pixpilot/shadcn";
-import { Separator } from "@pixpilot/shadcn";
-import { Slider } from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
+import { Separator } from "@wordrhyme/shadcn";
+import { Slider } from "@wordrhyme/shadcn";
 import { cn } from "@/lib/utils";
 
 interface Range {

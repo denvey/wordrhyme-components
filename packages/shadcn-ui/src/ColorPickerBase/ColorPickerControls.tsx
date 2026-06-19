@@ -4,7 +4,7 @@ import {
   ColorPickerArea,
   ColorPickerEyeDropper,
   ColorPickerHueSlider,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 
 import React from 'react';
 import { getId } from '../utils';

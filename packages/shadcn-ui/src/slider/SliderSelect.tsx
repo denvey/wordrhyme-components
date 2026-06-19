@@ -1,7 +1,7 @@
 import type { ComponentProps } from 'react';
 
 import { useControlled } from '@internal/hooks';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
 import { Select } from '../Select';
 import { getId } from '../utils';

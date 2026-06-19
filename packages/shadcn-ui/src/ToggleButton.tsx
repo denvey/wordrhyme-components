@@ -1,6 +1,6 @@
 'use client';
 
-import type { buttonVariants } from '@pixpilot/shadcn';
+import type { buttonVariants } from '@wordrhyme/shadcn';
 import type { VariantProps } from 'class-variance-authority';
 import React, { useCallback } from 'react';
 import { Button } from './Button';

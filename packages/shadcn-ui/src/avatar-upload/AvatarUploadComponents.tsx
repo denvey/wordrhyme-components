@@ -1,5 +1,5 @@
 import type { ComponentSize, ComponentSizes } from './types';
-import { Button, cn } from '@pixpilot/shadcn';
+import { Button, cn } from '@wordrhyme/shadcn';
 import { Pencil, X } from 'lucide-react';
 
 import React from 'react';

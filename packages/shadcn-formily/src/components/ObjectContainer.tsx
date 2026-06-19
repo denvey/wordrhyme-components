@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
   cn,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { useDescription, useFormContext, useLabel } from '../hooks';
 
 import {

@@ -1,8 +1,8 @@
 import type { ArrayField as FormilyArrayField } from '@formily/core';
 
-import type { TagsInputProps } from '@pixpilot/shadcn-ui';
+import type { TagsInputProps } from '@wordrhyme/shadcn-ui';
 import { observer, useField, useFieldSchema } from '@formily/react';
-import { TagsInput } from '@pixpilot/shadcn-ui';
+import { TagsInput } from '@wordrhyme/shadcn-ui';
 import React from 'react';
 
 export interface ArrayTagsProps extends TagsInputProps {

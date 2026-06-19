@@ -18,17 +18,8 @@ cp -r "$SOURCE_DIR/components/auto-crud" "$TARGET_DIR/components/"
 echo "📦 复制 data-table 组件..."
 cp -r "$SOURCE_DIR/components/data-table" "$TARGET_DIR/components/"
 
-# 3. 复制 UI 组件（只复制自定义组件）
-echo "📦 复制自定义 UI 组件..."
-mkdir -p "$TARGET_DIR/components/ui"
-cp "$SOURCE_DIR/components/ui/action-bar.tsx" "$TARGET_DIR/components/ui/" 2>/dev/null || true
-cp "$SOURCE_DIR/components/ui/faceted.tsx" "$TARGET_DIR/components/ui/" 2>/dev/null || true
-cp "$SOURCE_DIR/components/ui/sortable.tsx" "$TARGET_DIR/components/ui/" 2>/dev/null || true
-cp "$SOURCE_DIR/components/ui/form.tsx" "$TARGET_DIR/components/ui/" 2>/dev/null || true
-cp "$SOURCE_DIR/components/ui/kbd.tsx" "$TARGET_DIR/components/ui/" 2>/dev/null || true
-cp "$SOURCE_DIR/components/ui/sonner.tsx" "$TARGET_DIR/components/ui/" 2>/dev/null || true
-cp "$SOURCE_DIR/components/ui/skeleton.tsx" "$TARGET_DIR/components/ui/" 2>/dev/null || true
-cp "$SOURCE_DIR/components/ui/textarea.tsx" "$TARGET_DIR/components/ui/" 2>/dev/null || true
+# 3. UI 组件已迁移到 @wordrhyme/shadcn 和 @wordrhyme/shadcn-ui
+echo "📦 跳过 UI 组件复制，使用共享 UI 包..."
 
 # 4. 复制 hooks
 echo "📦 复制 hooks..."

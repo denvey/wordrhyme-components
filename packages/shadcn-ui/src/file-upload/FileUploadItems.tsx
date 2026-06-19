@@ -2,7 +2,7 @@
 
 import type { FileUploadCallbacks } from './types';
 import type { FileWithMetadata } from './utils';
-import { cn, FileUploadList } from '@pixpilot/shadcn';
+import { cn, FileUploadList } from '@wordrhyme/shadcn';
 import { Plus } from 'lucide-react';
 import { FileUploadListItem } from './FileUploadListItem';
 

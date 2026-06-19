@@ -1,12 +1,12 @@
 [根目录](../../../CLAUDE.md) > [shadcn-components](../../CLAUDE.md) > [packages](../) > **shadcn-ui**
 
-# @pixpilot/shadcn-ui
+# @wordrhyme/shadcn-ui
 
 > 扩展 UI 组件库，提供 FileUpload、ColorPicker、RichTextEditor 等高级组件。
 
 ## 模块职责
 
-本模块在 @pixpilot/shadcn 基础上提供更复杂的 UI 组件：
+本模块在 @wordrhyme/shadcn 基础上提供更复杂的 UI 组件：
 
 - 文件上传组件（FileUpload, AvatarUpload）
 - 颜色选择器（ColorPicker, ColorSelect）
@@ -89,7 +89,7 @@ export { Button } from './Button';
 export { useMediaQuery, useIsMobile, ... } from './hooks';
 
 // 工具
-export { cn } from '@pixpilot/shadcn';
+export { cn } from '@wordrhyme/shadcn';
 ```
 
 ## 关键依赖与配置
@@ -97,7 +97,7 @@ export { cn } from '@pixpilot/shadcn';
 ### 核心依赖
 | 包名 | 用途 |
 |------|------|
-| @pixpilot/shadcn | 基础 UI 组件 |
+| @wordrhyme/shadcn | 基础 UI 组件 |
 | @tiptap/core | 富文本编辑器核心 |
 | @tiptap/react | TipTap React 绑定 |
 | @tiptap/starter-kit | TipTap 基础扩展 |

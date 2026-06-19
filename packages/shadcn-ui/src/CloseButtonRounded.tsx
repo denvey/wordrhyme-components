@@ -1,4 +1,4 @@
-import { Button, cn } from '@pixpilot/shadcn';
+import { Button, cn } from '@wordrhyme/shadcn';
 import { X } from 'lucide-react';
 import React from 'react';
 

@@ -7,7 +7,7 @@ import {
   SelectTrigger,
   SelectValue,
   Select as ShadcnSelect,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { XIcon } from 'lucide-react';
 import React from 'react';
 

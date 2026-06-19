@@ -1,4 +1,4 @@
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton } from "@wordrhyme/shadcn-ui";
 import {
   Table,
   TableBody,
@@ -6,7 +6,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
 import { cn } from "@/lib/utils";
 
 interface DataTableSkeletonProps extends React.ComponentProps<"div"> {

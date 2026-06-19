@@ -23,9 +23,9 @@
 - **Config files:** Use kebab-case unless the framework or library has a different standard—follow the convention for that tool.
   - Example: `tsconfig.json`
 
-## Component Types from @pixpilot/shadcn and @pixpilot/shadcn-ui
+## Component Types from @wordrhyme/shadcn and @wordrhyme/shadcn-ui
 
-**CRITICAL: Never use `typeof Component` with components from @pixpilot/shadcn\* packages.** This causes tsdown to inline broken type references like `typeof void 0`. Instead, import and use the exported `*Props` types (e.g., `DatePickerProps` instead of `typeof ShadcnDatePicker`). The ESLint rule `custom/no-typeof-shadcn-components` will catch this.
+**CRITICAL: Never use `typeof Component` with components from @wordrhyme/shadcn\* packages.** This causes tsdown to inline broken type references like `typeof void 0`. Instead, import and use the exported `*Props` types (e.g., `DatePickerProps` instead of `typeof ShadcnDatePicker`). The ESLint rule `custom/no-typeof-shadcn-components` will catch this.
 
 ## Creating Components
 

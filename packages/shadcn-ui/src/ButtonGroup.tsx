@@ -1,11 +1,11 @@
-import type { buttonGroupVariants as shadcnButtonGroupVariants } from '@pixpilot/shadcn';
+import type { buttonGroupVariants as shadcnButtonGroupVariants } from '@wordrhyme/shadcn';
 import type { VariantProps } from 'class-variance-authority';
 
 import {
   ButtonGroup as ShadcnButtonGroup,
   ButtonGroupSeparator as ShadcnButtonGroupSeparator,
   ButtonGroupText as ShadcnButtonGroupText,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import * as React from 'react';
 
 export type ButtonGroupProps = React.ComponentProps<'div'> &

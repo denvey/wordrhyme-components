@@ -1,5 +1,5 @@
 import { RecursionField, useFieldSchema } from '@formily/react';
-import { cn, PopoverAnchor } from '@pixpilot/shadcn';
+import { cn, PopoverAnchor } from '@wordrhyme/shadcn';
 import React from 'react';
 import { ArrayBase } from '../array-base';
 import { SortableItem } from '../array-sortable';

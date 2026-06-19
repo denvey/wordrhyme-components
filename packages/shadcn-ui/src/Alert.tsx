@@ -1,5 +1,5 @@
 import type { AlertVariant } from './variant-config';
-import { AlertDescription, AlertTitle, Alert as ShadAlert, cn } from '@pixpilot/shadcn';
+import { AlertDescription, AlertTitle, Alert as ShadAlert, cn } from '@wordrhyme/shadcn';
 import React from 'react';
 import { variantConfig } from './variant-config';
 

@@ -8,7 +8,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   TagsInputInLineLabel,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CommandOptionList } from '../CommandOptionList';

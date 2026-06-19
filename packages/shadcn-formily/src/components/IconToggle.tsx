@@ -1,5 +1,5 @@
 import { connect, mapProps } from '@formily/react';
-import { IconToggle as ShadcnIconToggle } from '@pixpilot/shadcn-ui';
+import { IconToggle as ShadcnIconToggle } from '@wordrhyme/shadcn-ui';
 
 import { setCheckboxDefaultDecoratorProps } from '../utils/formily-decorator';
 

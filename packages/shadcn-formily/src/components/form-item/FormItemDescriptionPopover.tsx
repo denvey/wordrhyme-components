@@ -1,5 +1,5 @@
 import type { SyncReactNode } from '../../types';
-import { cn, Popover, PopoverContent, PopoverTrigger } from '@pixpilot/shadcn';
+import { cn, Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import { HelpCircleIcon } from 'lucide-react';
 import React from 'react';
 

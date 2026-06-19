@@ -8,10 +8,10 @@
 
 shadcn-components 是一个基于 Turborepo 的 Monorepo，包含多个 npm 包：
 
-- **@pixpilot/shadcn** - 基础 Shadcn UI 组件封装
-- **@pixpilot/shadcn-ui** - 扩展 UI 组件（FileUpload, ColorPicker 等）
-- **@pixpilot/formily-shadcn** - Formily 表单框架与 Shadcn 集成
-- **@pixpilot/shadcn-auth** - 认证相关表单组件
+- **@wordrhyme/shadcn** - 基础 Shadcn UI 组件封装
+- **@wordrhyme/shadcn-ui** - 扩展 UI 组件（FileUpload, ColorPicker 等）
+- **@wordrhyme/formily-shadcn** - Formily 表单框架与 Shadcn 集成
+- **@wordrhyme/shadcn-auth** - 认证相关表单组件
 
 ## 入口与启动
 
@@ -61,7 +61,7 @@ pnpm test
 
 ## 对外接口
 
-### @pixpilot/shadcn
+### @wordrhyme/shadcn
 
 基础 UI 组件，基于 Radix UI 封装：
 
@@ -72,10 +72,10 @@ export {
   Card, Badge, Avatar, Separator, Tabs,
   Form, Calendar, Slider, RadioGroup,
   cn, // className 合并工具
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 ```
 
-### @pixpilot/shadcn-ui
+### @wordrhyme/shadcn-ui
 
 扩展 UI 组件：
 
@@ -86,10 +86,10 @@ export {
   DatePicker, Combobox, IconSelector,
   RichTextEditor, Pagination, ThemeToggle,
   LoadingOverlay, ConfirmationDialog,
-} from '@pixpilot/shadcn-ui';
+} from '@wordrhyme/shadcn-ui';
 ```
 
-### @pixpilot/formily-shadcn
+### @wordrhyme/formily-shadcn
 
 Formily 集成组件：
 
@@ -113,10 +113,10 @@ export {
 
   // Schema 渲染
   JsonSchemaFormRenderer, transformSchema,
-} from '@pixpilot/formily-shadcn';
+} from '@wordrhyme/formily-shadcn';
 ```
 
-### @pixpilot/shadcn-auth
+### @wordrhyme/shadcn-auth
 
 认证表单组件：
 
@@ -124,7 +124,7 @@ export {
 export {
   AuthForms, SignInForm, SignUpForm,
   ResetPasswordForm, GoogleSignIn,
-} from '@pixpilot/shadcn-auth';
+} from '@wordrhyme/shadcn-auth';
 ```
 
 ## 关键依赖与配置

@@ -24,11 +24,11 @@
     "@iconify-json/mdi": "catalog:prod",
     "@iconify-json/tabler": "catalog:prod",
     "@iconify/react": "catalog:prod",
-    "@pixpilot/formily-shadcn": "workspace:*",
-    "@pixpilot/shadcn": "workspace:*",
-    "@pixpilot/shadcn-auth": "workspace:*",
-    "@pixpilot/shadcn-ui": "workspace:*",
     "@pixpilot/string": "catalog:prod",
+    "@wordrhyme/formily-shadcn": "workspace:*",
+    "@wordrhyme/shadcn": "workspace:*",
+    "@wordrhyme/shadcn-auth": "workspace:*",
+    "@wordrhyme/shadcn-ui": "workspace:*",
     "next-themes": "catalog:prod"
   },
   "devDependencies": {

@@ -10,7 +10,7 @@ import {
   ActionBarItem,
   ActionBarSelection,
   ActionBarSeparator,
-} from '@/components/ui/action-bar';
+} from '@wordrhyme/shadcn-ui';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,7 +25,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { exportTableToCSV } from '@/lib/export';
 
 /** 批量更新字段配置 */

@@ -20,7 +20,7 @@ ArrayDialog and ArrayPopover support an auto-save mode where changes are applied
 Changes are applied instantly to the form state. No Save/Cancel buttons are shown.
 
 ```tsx
-import { createForm, Form, SchemaField } from '@pixpilot/shadcn-formily';
+import { createForm, Form, SchemaField } from '@wordrhyme/formily-shadcn';
 
 const form = createForm({
   values: {
@@ -61,7 +61,7 @@ const form = createForm({
 Changes require explicit confirmation. Save/Cancel buttons are displayed.
 
 ```tsx
-import { Form, SchemaField } from '@pixpilot/shadcn-formily';
+import { Form, SchemaField } from '@wordrhyme/formily-shadcn';
 
 <Form form={form}>
   <SchemaField>
@@ -99,7 +99,7 @@ import { Form, SchemaField } from '@pixpilot/shadcn-formily';
 The same auto-save behavior works with ArrayPopover:
 
 ```tsx
-import { SchemaField } from '@pixpilot/shadcn-formily';
+import { SchemaField } from '@wordrhyme/formily-shadcn';
 
 <SchemaField.Array
   name="items"

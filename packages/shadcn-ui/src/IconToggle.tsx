@@ -1,5 +1,5 @@
 import type { ToggleButtonProps } from './ToggleButton';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
 import { ToggleButton } from './ToggleButton';
 import { isSvgMarkupString, svgMarkupToMaskUrl } from './utils';

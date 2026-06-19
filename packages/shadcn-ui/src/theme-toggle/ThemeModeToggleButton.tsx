@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, cn } from '@pixpilot/shadcn';
+import { Button, cn } from '@wordrhyme/shadcn';
 import { MoonIcon, SunIcon } from 'lucide-react';
 import React from 'react';
 

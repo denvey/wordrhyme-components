@@ -1,5 +1,5 @@
 {
-  "name": "@pixpilot/formily-shadcn",
+  "name": "@wordrhyme/formily-shadcn",
   "type": "module",
   "version": "1.12.8",
   "packageManager": "pnpm@10.33.0",
@@ -68,9 +68,9 @@
     "@iconify-json/mdi": "catalog:prod",
     "@iconify/react": "catalog:prod",
     "@pixpilot/env": "catalog:prod",
-    "@pixpilot/shadcn": "workspace:*",
-    "@pixpilot/shadcn-ui": "workspace:*",
     "@pixpilot/string": "catalog:prod",
+    "@wordrhyme/shadcn": "workspace:*",
+    "@wordrhyme/shadcn-ui": "workspace:*",
     "json-schema-traverse": "^1.0.0",
     "lucide-react": "^0.562.0",
     "pretty-bytes": "catalog:prod"

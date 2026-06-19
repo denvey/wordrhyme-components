@@ -4,10 +4,10 @@ import type {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 
 import type { VariantProps } from 'class-variance-authority';
-import { cn, Button as OrgButton } from '@pixpilot/shadcn';
+import { cn, Button as OrgButton } from '@wordrhyme/shadcn';
 import { Slottable } from '@radix-ui/react-slot';
 
 import React, { useCallback } from 'react';

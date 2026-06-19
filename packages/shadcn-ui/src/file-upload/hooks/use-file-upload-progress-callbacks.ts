@@ -1,5 +1,5 @@
 import type { FileUploadCallbacks } from '../types';
-import { useFileUpload } from '@pixpilot/shadcn';
+import { useFileUpload } from '@wordrhyme/shadcn';
 import { useEffect, useMemo, useRef } from 'react';
 import { getFileMeta } from '../utils';
 

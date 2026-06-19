@@ -1,7 +1,7 @@
 'use client';
 
 import type { ColorPickerRootProps } from './types';
-import { ColorPicker } from '@pixpilot/shadcn';
+import { ColorPicker } from '@wordrhyme/shadcn';
 import { useState } from 'react';
 
 import { ColorPickerContextContextProvider } from './color-picker-context';

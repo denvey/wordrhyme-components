@@ -1,4 +1,4 @@
-import type { FileUploadProgressCallBacks } from '@pixpilot/shadcn-ui';
+import type { FileUploadProgressCallBacks } from '@wordrhyme/shadcn-ui';
 
 export interface FormFileUploadOptions extends FileUploadProgressCallBacks {
   component: string;

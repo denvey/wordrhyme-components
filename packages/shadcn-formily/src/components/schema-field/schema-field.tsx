@@ -3,7 +3,7 @@ import type { FormComponentConfig } from '../../types/form';
 import type { JsonSchemaFormComponents } from '../json-schema-form-renderer';
 
 import { createSchemaField } from '@formily/react';
-import { TagsInput } from '@pixpilot/shadcn-ui';
+import { TagsInput } from '@wordrhyme/shadcn-ui';
 import { useFormSchema } from '../../hooks/use-form-schema';
 import { useMergedSchemaComponents } from '../../hooks/use-merged-schema-components';
 import { extractComponents } from '../../utils/extract-components';
@@ -15,7 +15,7 @@ import { Slider, SliderInput, SliderSelect } from '../slider';
 import { TagsInputInLine } from '../TagsInputInline';
 import { basicComponentRegistry } from './schema-field-basics';
 
-export const defaultComponentRegistry: Record<string, FormComponentConfig> = {
+export const defaultComponentRegistry = {
   ...basicComponentRegistry,
   ColorPicker: { component: ColorPicker, decorator: 'FormItem' },
   Combobox: { component: Combobox, decorator: 'FormItem' },
@@ -26,15 +26,11 @@ export const defaultComponentRegistry: Record<string, FormComponentConfig> = {
   SliderSelect: { component: SliderSelect, decorator: 'FormItem' },
   TagsInput: { component: TagsInput, decorator: 'FormItem' },
   TagsInputInLine: { component: TagsInputInLine, decorator: 'FormItem' },
-};
+} satisfies Record<string, FormComponentConfig>;
 
-export const defaultComponents: Record<
-  string,
-  FormComponentConfig['component']
-> = extractComponents(defaultComponentRegistry);
+export const defaultComponents = extractComponents(defaultComponentRegistry);
 
-export const SchemaField: ReturnType<typeof createSchemaField> =
-  createSchemaField({
+export const SchemaField = createSchemaField({
   components: defaultComponents,
 });
 

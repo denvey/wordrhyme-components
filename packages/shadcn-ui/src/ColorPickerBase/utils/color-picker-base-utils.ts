@@ -1,4 +1,4 @@
-import { colorUtils } from '@pixpilot/shadcn';
+import { colorUtils } from '@wordrhyme/shadcn';
 
 export type ColorPickerBaseFormat = 'hex' | 'rgb' | 'hsl' | 'hsb';
 

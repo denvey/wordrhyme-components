@@ -1,9 +1,9 @@
 import type { Field } from '@formily/core';
-import type { RichTextEditorProps } from '@pixpilot/shadcn-ui';
+import type { RichTextEditorProps } from '@wordrhyme/shadcn-ui';
 
 import type { FC } from 'react';
 import { connect, mapProps } from '@formily/react';
-import { RichTextEditor as OrgRichTextEditor } from '@pixpilot/shadcn-ui';
+import { RichTextEditor as OrgRichTextEditor } from '@wordrhyme/shadcn-ui';
 import { useCallback, useMemo } from 'react';
 import { useFormContext } from '../hooks';
 

@@ -1,4 +1,4 @@
-import { cn } from '@pixpilot/shadcn-ui';
+import { cn } from '@wordrhyme/shadcn-ui';
 import React from 'react';
 import { useFormConfig } from '../../hooks';
 import { useArray } from '../array-base/array-context';

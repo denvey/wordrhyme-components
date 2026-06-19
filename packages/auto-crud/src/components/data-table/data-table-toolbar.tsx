@@ -8,8 +8,8 @@ import { DataTableDateFilter } from "@/components/data-table/data-table-date-fil
 import { DataTableFacetedFilter } from "@/components/data-table/data-table-faceted-filter";
 import { DataTableSliderFilter } from "@/components/data-table/data-table-slider-filter";
 import { DataTableViewOptions } from "@/components/data-table/data-table-view-options";
-import { Button } from "@pixpilot/shadcn";
-import { Input } from "@pixpilot/shadcn";
+import { Button } from "@wordrhyme/shadcn";
+import { Input } from "@wordrhyme/shadcn";
 import { cn } from "@/lib/utils";
 
 interface DataTableToolbarProps<TData> extends React.ComponentProps<"div"> {

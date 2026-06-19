@@ -2,7 +2,7 @@ import type { Schema } from '@formily/react';
 import type { ActiveItemManager } from '../array-common/create-active-item-manager';
 import { observer } from '@formily/react';
 
-import { Button, cn, PopoverContent } from '@pixpilot/shadcn';
+import { Button, cn, PopoverContent } from '@wordrhyme/shadcn';
 import { XIcon } from 'lucide-react';
 import React from 'react';
 import { useFormContext } from '../../hooks';

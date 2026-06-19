@@ -1,5 +1,5 @@
 import type { PresetColor } from '../types';
-import { colorUtils, Tooltip, TooltipContent, TooltipTrigger } from '@pixpilot/shadcn';
+import { colorUtils, Tooltip, TooltipContent, TooltipTrigger } from '@wordrhyme/shadcn';
 import { useCallback } from 'react';
 import { ColorPickerPaletteButton } from './PaletteButton';
 

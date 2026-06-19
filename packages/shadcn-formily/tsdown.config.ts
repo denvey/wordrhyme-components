@@ -14,7 +14,8 @@ export default defineConfig({
     '@formily/react',
     '@formily/reactive',
     '@formily/shared',
-    '@pixpilot/shadcn',
+    '@wordrhyme/shadcn',
+    '@wordrhyme/shadcn-ui',
     'lucide-react',
   ],
 });

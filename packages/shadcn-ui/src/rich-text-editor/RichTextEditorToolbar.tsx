@@ -3,7 +3,7 @@ import type { PredefinedToolbarOption } from './predefined-toolbar-items';
 import type { RichTextEditorSlots, ToolbarItems } from './RichTextEditor';
 
 import type { ToolbarButtonTooltipMode } from './ToolbarButton';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
 import { LinkPopoverToolbarButton } from './LinkPopoverToolbarButton';
 import { predefinedToolbarItems } from './predefined-toolbar-items';

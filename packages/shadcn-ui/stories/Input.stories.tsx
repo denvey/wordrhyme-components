@@ -3,7 +3,7 @@ import { Input } from '../src/input';
 
 /**
  * Input component with optional prefix/suffix.
- * Built on top of `@pixpilot/shadcn` Input + InputGroup.
+ * Built on top of `@wordrhyme/shadcn` Input + InputGroup.
  */
 const meta = {
   title: 'shadcn-ui/Input',

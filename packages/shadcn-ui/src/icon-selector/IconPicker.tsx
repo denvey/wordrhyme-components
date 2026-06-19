@@ -1,10 +1,10 @@
-import type { PopoverContent } from '@pixpilot/shadcn';
+import type { PopoverContent } from '@wordrhyme/shadcn';
 import type { FC } from 'react';
 
 import type { IconProvider } from './types';
 
 import { Icon } from '@iconify/react';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import { Plus, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { Button } from '../Button';

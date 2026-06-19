@@ -1,5 +1,5 @@
 import type { Field } from '@formily/core';
-import type { FileMetadata } from '@pixpilot/shadcn-ui';
+import type { FileMetadata } from '@wordrhyme/shadcn-ui';
 import type { UploadFieldCallbacks } from '../../../src/components/file-upload/map-upload-props';
 import { describe, expect, it, vi } from 'vitest';
 import { mapUploadProps } from '../../../src/components/file-upload/map-upload-props';

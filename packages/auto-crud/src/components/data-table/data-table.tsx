@@ -9,7 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@wordrhyme/shadcn";
 import { getColumnPinningStyle } from "@/lib/data-table";
 import { cn } from "@/lib/utils";
 

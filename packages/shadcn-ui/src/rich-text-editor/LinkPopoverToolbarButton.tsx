@@ -1,6 +1,6 @@
 import type { Editor } from '@tiptap/core';
 import type { ToolbarButtonTooltipMode } from './ToolbarButton';
-import { cn, Label, RadioGroup, RadioGroupItem } from '@pixpilot/shadcn';
+import { cn, Label, RadioGroup, RadioGroupItem } from '@wordrhyme/shadcn';
 import { Link as LinkIcon } from 'lucide-react';
 import React from 'react';
 import { Button } from '../Button';

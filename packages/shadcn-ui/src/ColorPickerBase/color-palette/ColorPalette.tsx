@@ -1,5 +1,5 @@
 import type { PresetColor } from '../types';
-import { cn, ColorPickerEyeDropper } from '@pixpilot/shadcn';
+import { cn, ColorPickerEyeDropper } from '@wordrhyme/shadcn';
 import { Droplet } from 'lucide-react';
 import React from 'react';
 import { getId } from '../../utils';

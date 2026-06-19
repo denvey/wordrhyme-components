@@ -5,7 +5,7 @@ import type { ArrayItemLabelProps } from './ArrayItemLabel';
 import type { ArrayEmptyProps } from './Empty';
 
 import type { ArrayItemComponentRegistryProps, FieldComponentProps } from './types';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
 import { getArrayComponents } from './get-array-components';
 

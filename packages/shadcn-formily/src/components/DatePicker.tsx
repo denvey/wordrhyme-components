@@ -1,8 +1,8 @@
 'use client';
 
-import type { DatePickerProps as ShadcnDatePickerProps } from '@pixpilot/shadcn-ui';
+import type { DatePickerProps as ShadcnDatePickerProps } from '@wordrhyme/shadcn-ui';
 import { connect, mapProps } from '@formily/react';
-import { DatePicker as ShadcnDatePicker } from '@pixpilot/shadcn-ui';
+import { DatePicker as ShadcnDatePicker } from '@wordrhyme/shadcn-ui';
 
 type BaseDatePickerProps = {
   value?: Date;

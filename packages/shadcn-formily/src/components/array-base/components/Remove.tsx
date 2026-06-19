@@ -1,6 +1,6 @@
 import type { IArrayBaseOperationProps } from '../types';
 import { useField } from '@formily/react';
-import { Button } from '@pixpilot/shadcn-ui';
+import { Button } from '@wordrhyme/shadcn-ui';
 import { Trash2Icon } from 'lucide-react';
 import React from 'react';
 import { useArray, useIndex } from '../array-context';

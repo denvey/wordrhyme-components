@@ -6,7 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
   Select as ShadcnSelect,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import React from 'react';
 
 import { useSelectKeyboard } from './hooks/use-select-keyboard';

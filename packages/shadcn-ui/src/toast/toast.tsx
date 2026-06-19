@@ -1,4 +1,4 @@
-import type { AlertBaseProps, AlertVariant } from '@pixpilot/shadcn-ui';
+import type { AlertBaseProps, AlertVariant } from '../Alert';
 
 import type { ToastT } from 'sonner';
 import type { AlertToastProps } from './types';

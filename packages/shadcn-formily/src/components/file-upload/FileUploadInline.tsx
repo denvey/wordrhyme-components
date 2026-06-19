@@ -1,8 +1,8 @@
 import type { Field } from '@formily/core';
-import type { FileUploadInlineProps as ShadcnFileUploadInlineProps } from '@pixpilot/shadcn-ui';
+import type { FileUploadInlineProps as ShadcnFileUploadInlineProps } from '@wordrhyme/shadcn-ui';
 import type { FormilyUploadProps } from './map-upload-props';
 import { connect, mapProps } from '@formily/react';
-import { FileUploadInline as ShadcnFileUploadInline } from '@pixpilot/shadcn-ui';
+import { FileUploadInline as ShadcnFileUploadInline } from '@wordrhyme/shadcn-ui';
 import React from 'react';
 import { mapUploadProps } from './map-upload-props';
 import { useFileUploadFeedback } from './use-file-upload-feedback';

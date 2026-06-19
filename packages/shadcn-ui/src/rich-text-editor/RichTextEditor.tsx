@@ -1,7 +1,7 @@
 import type { Editor, EditorEvents, Extension } from '@tiptap/core';
 import type { UseEditorOptions } from '@tiptap/react';
 import type { ToolbarButtonTooltipMode } from './ToolbarButton';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import TextAlign from '@tiptap/extension-text-align';

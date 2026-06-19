@@ -1,7 +1,7 @@
 import type { FC } from 'react';
 import { connect, mapProps, useField } from '@formily/react';
 
-import { Select as BaseSelect } from '@pixpilot/shadcn-ui';
+import { Select as BaseSelect } from '@wordrhyme/shadcn-ui';
 
 import { resolveFieldOptions } from '../utils/resolve-field-options';
 

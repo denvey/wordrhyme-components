@@ -1,5 +1,5 @@
-import type { Button } from '@pixpilot/shadcn';
-import { buttonVariants } from '@pixpilot/shadcn';
+import type { Button } from '@wordrhyme/shadcn';
+import { buttonVariants } from '@wordrhyme/shadcn';
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react';
 
 import * as React from 'react';

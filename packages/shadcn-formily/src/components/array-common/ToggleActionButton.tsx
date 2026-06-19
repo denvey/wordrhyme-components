@@ -1,6 +1,6 @@
 import type { ActionContext, ToggleAction } from '../array-base';
 
-import { Button, cn } from '@pixpilot/shadcn-ui';
+import { Button, cn } from '@wordrhyme/shadcn-ui';
 import React from 'react';
 
 export const ToggleActionButton: React.FC<{

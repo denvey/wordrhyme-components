@@ -1,6 +1,6 @@
-import type { ButtonExtendedProps as UiButtonProps } from '@pixpilot/shadcn-ui';
+import type { ButtonExtendedProps as UiButtonProps } from '@wordrhyme/shadcn-ui';
 import { useField } from '@formily/react';
-import { ButtonExtended, cn } from '@pixpilot/shadcn-ui';
+import { ButtonExtended, cn } from '@wordrhyme/shadcn-ui';
 import { PlusIcon } from 'lucide-react';
 import React from 'react';
 import { getDefaultValue } from '../../../utils';

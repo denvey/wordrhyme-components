@@ -6,7 +6,7 @@ import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { XIcon } from 'lucide-react';
 import React from 'react';
 import { getId } from '../utils';

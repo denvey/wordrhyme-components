@@ -7,8 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@pixpilot/shadcn";
-import { Button } from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
+import { Button } from "@wordrhyme/shadcn";
 import { CheckCircle2, FileDown, Loader2 } from "lucide-react";
 
 export type ExportMode = "selected" | "filtered";

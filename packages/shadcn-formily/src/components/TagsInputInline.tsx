@@ -3,7 +3,7 @@
 import type { Field } from '@formily/core';
 import { connect, mapProps } from '@formily/react';
 
-import { TagsInput as BaseTagsInputInLine } from '@pixpilot/shadcn-ui';
+import { TagsInput as BaseTagsInputInLine } from '@wordrhyme/shadcn-ui';
 
 /**
  * Formily-connected TagsInputInLine component

@@ -7,7 +7,7 @@ import type {
   ToggleAction,
 } from '../array-base';
 import type { IArrayBaseContext } from '../array-base/array-context';
-import { Button } from '@pixpilot/shadcn-ui';
+import { Button } from '@wordrhyme/shadcn-ui';
 import React from 'react';
 import { RenderBuiltInOperation } from './RenderBuiltInOperation';
 import { ToggleActionButton } from './ToggleActionButton';

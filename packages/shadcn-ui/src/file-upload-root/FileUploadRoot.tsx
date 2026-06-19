@@ -9,7 +9,7 @@ import {
   FileUploadDropzone,
   FileUploadList,
   FileUploadTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { useCallback } from 'react';
 import { useFileUploadStore } from '../file-upload';
 import { FileUploadRootItem } from './FileUploadRootItem';

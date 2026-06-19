@@ -17,7 +17,7 @@ import {
   TagsInputInLineLabel,
   TagsInputInLineList,
   TagsInputInLineRoot,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 
 import { Plus } from 'lucide-react';
 

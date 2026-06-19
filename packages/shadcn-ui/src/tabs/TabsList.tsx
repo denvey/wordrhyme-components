@@ -1,5 +1,5 @@
 import type { TabsVariant } from './types';
-import { TabsList as BaseTabsList, cn } from '@pixpilot/shadcn';
+import { TabsList as BaseTabsList, cn } from '@wordrhyme/shadcn';
 import React from 'react';
 import { TabsContext } from './TabsContext';
 

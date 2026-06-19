@@ -8,14 +8,14 @@ interface DateRange {
   to?: Date | undefined;
 }
 
-import { Button } from "@pixpilot/shadcn";
-import { Calendar } from "@pixpilot/shadcn";
+import { Button } from "@wordrhyme/shadcn";
+import { Calendar } from "@wordrhyme/shadcn";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@pixpilot/shadcn";
-import { Separator } from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
+import { Separator } from "@wordrhyme/shadcn";
 import { formatDate } from "@/lib/format";
 
 type DateSelection = Date[] | DateRange;

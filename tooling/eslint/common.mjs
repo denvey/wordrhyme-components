@@ -3,7 +3,7 @@ const noAtComponentsImport = {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Disallow import from @/components, use @pixpilot/shadcn instead',
+      description: 'Disallow import from @/components, use @wordrhyme/shadcn instead',
     },
     fixable: 'code',
     schema: [],
@@ -14,10 +14,10 @@ const noAtComponentsImport = {
         if (node.source.value.startsWith('@/components')) {
           context.report({
             node: node.source,
-            message: 'Use @pixpilot/shadcn instead of @/components',
+            message: 'Use @wordrhyme/shadcn instead of @/components',
             fix(fixer) {
               const oldValue = node.source.value;
-              const newValue = oldValue.replace(/^@\/components/u, '@pixpilot/shadcn');
+              const newValue = oldValue.replace(/^@\/components/u, '@wordrhyme/shadcn');
               return fixer.replaceText(node.source, `'${newValue}'`);
             },
           });
@@ -31,7 +31,7 @@ const noAtComponentsImport = {
  * ESLint rule to prevent ComponentProps<typeof Component> pattern with shadcn components.
  *
  * This rule detects when developers use `ComponentProps<typeof ShadcnComponent>` pattern
- * with components from @pixpilot/shadcn or @pixpilot/shadcn-ui packages.
+ * with components from @wordrhyme/shadcn or @wordrhyme/shadcn-ui packages.
  *
  * WHY THIS IS A PROBLEM:
  * When bundling TypeScript with tsdown, using `typeof ShadcnComponent` causes the bundler
@@ -51,11 +51,11 @@ const noAtComponentsImport = {
  *
  * EXAMPLE FIX:
  * ❌ WRONG:
- *   import { ShadcnDatePicker } from '@pixpilot/shadcn-ui';
+ *   import { ShadcnDatePicker } from '@wordrhyme/shadcn-ui';
  *   type MyProps = ComponentProps<typeof ShadcnDatePicker>;
  *
  * ✅ CORRECT:
- *   import { DatePickerProps } from '@pixpilot/shadcn-ui';
+ *   import { DatePickerProps } from '@wordrhyme/shadcn-ui';
  *   type MyProps = DatePickerProps;
  */
 const noTypeofShadcnComponents = {
@@ -63,7 +63,7 @@ const noTypeofShadcnComponents = {
     type: 'problem',
     docs: {
       description:
-        'Disallow typeof operator on @pixpilot/shadcn* components. Use exported *Props types instead to avoid bundler issues with inlined types.',
+        'Disallow typeof operator on @wordrhyme/shadcn* components. Use exported *Props types instead to avoid bundler issues with inlined types.',
     },
     fixable: false,
     schema: [],
@@ -75,7 +75,7 @@ const noTypeofShadcnComponents = {
     return {
       ImportDeclaration(node) {
         const source = node.source.value;
-        if (!source.startsWith('@pixpilot/shadcn-ui')) {
+        if (!source.startsWith('@wordrhyme/shadcn-ui')) {
           return;
         }
 
@@ -99,7 +99,7 @@ const noTypeofShadcnComponents = {
         if (importedShadcnComponents.has(componentName)) {
           context.report({
             node,
-            message: `Do not use typeof ${componentName} with @pixpilot/shadcn components. This causes the bundler to inline the component type, creating broken type references and poor type portability. Instead, import and use the exported ${componentName}Props type from the package's public API.`,
+            message: `Do not use typeof ${componentName} with @wordrhyme/shadcn components. This causes the bundler to inline the component type, creating broken type references and poor type portability. Instead, import and use the exported ${componentName}Props type from the package's public API.`,
           });
         }
       },

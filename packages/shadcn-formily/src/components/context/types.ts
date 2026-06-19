@@ -3,7 +3,7 @@ import type {
   IconProvider,
   PopoverContentProps,
   RichTextEditorProps,
-} from '@pixpilot/shadcn-ui';
+} from '@wordrhyme/shadcn-ui';
 import type { FormSpace } from '../../types/form';
 import type { DescriptionPlacement, LabelPlacement } from '../../types/form-item';
 import type { ActionItem } from '../array-base';

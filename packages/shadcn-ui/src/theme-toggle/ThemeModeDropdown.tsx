@@ -7,7 +7,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { Check, Monitor, Moon, Sun } from 'lucide-react';
 import React from 'react';
 import { getId } from '../utils';

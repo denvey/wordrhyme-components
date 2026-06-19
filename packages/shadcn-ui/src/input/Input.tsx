@@ -1,11 +1,11 @@
-import type { InputProps as ShadcnInputProps } from '@pixpilot/shadcn';
+import type { InputProps as ShadcnInputProps } from '@wordrhyme/shadcn';
 import {
   cn,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   Input as ShadcnInput,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import * as React from 'react';
 
 export type InputProps = ShadcnInputProps & {

@@ -1,4 +1,4 @@
-import type { ButtonExtendedProps } from '@pixpilot/shadcn-ui';
+import type { ButtonExtendedProps } from '@wordrhyme/shadcn-ui';
 import type { IArrayBaseContext } from './array-context';
 
 import type { ArrayBaseComponents } from './components/types';

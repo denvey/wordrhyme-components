@@ -4,7 +4,7 @@ import { z } from "zod";
 import { useRef } from "react";
 import { FormModal, type ModalVariant } from "./form-modal";
 import { AutoForm, type AutoFormRef } from "./auto-form";
-import { Button } from "@pixpilot/shadcn";
+import { Button } from "@wordrhyme/shadcn";
 import type { FormSchemaOverrides } from "@/lib/schema-bridge/types";
 import type { AutoCrudLocale } from "@/i18n/locale";
 import { zhCN } from "@/i18n/locale";

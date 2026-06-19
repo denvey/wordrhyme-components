@@ -1,6 +1,6 @@
 import type { Field } from '@formily/core';
 import { connect, mapProps } from '@formily/react';
-import { Textarea as ShadcnTextarea } from '@pixpilot/shadcn';
+import { Textarea as ShadcnTextarea } from '@wordrhyme/shadcn';
 
 /**
  * Formily-connected Textarea component

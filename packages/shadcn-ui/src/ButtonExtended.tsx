@@ -1,5 +1,5 @@
 'use client';
-import type { buttonVariants } from '@pixpilot/shadcn';
+import type { buttonVariants } from '@wordrhyme/shadcn';
 
 import type { VariantProps } from 'class-variance-authority';
 import {
@@ -8,7 +8,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { Slottable } from '@radix-ui/react-slot';
 
 import { Loader2 } from 'lucide-react';

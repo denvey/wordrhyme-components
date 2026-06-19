@@ -1,5 +1,5 @@
 import { connect } from '@formily/react';
-import { Separator as ShadcnSeparator } from '@pixpilot/shadcn';
+import { Separator as ShadcnSeparator } from '@wordrhyme/shadcn';
 import type * as React from 'react';
 
 /**

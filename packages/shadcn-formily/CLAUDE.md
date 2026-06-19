@@ -1,6 +1,6 @@
 [根目录](../../../CLAUDE.md) > [shadcn-components](../../CLAUDE.md) > [packages](../) > **shadcn-formily**
 
-# @pixpilot/formily-shadcn
+# @wordrhyme/formily-shadcn
 
 > Formily 表单框架与 Shadcn UI 组件的集成库，支持 JSON Schema 驱动的表单渲染。
 
@@ -82,7 +82,7 @@ export { ArrayCollapse } from './components/array-collapse';
 ### 使用示例
 
 ```typescript
-import { Form, FormItem, Input, Select, createForm, SchemaField } from '@pixpilot/formily-shadcn';
+import { Form, FormItem, Input, Select, createForm, SchemaField } from '@wordrhyme/formily-shadcn';
 
 const form = createForm();
 
@@ -118,8 +118,8 @@ const schema = {
 | @formily/core | ^2.3.7 | 表单状态管理 |
 | @formily/react | ^2.3.7 | React 绑定 |
 | @formily/reactive | ^2.3.7 | 响应式状态 |
-| @pixpilot/shadcn | workspace:* | 基础 UI 组件 |
-| @pixpilot/shadcn-ui | workspace:* | 扩展 UI 组件 |
+| @wordrhyme/shadcn | workspace:* | 基础 UI 组件 |
+| @wordrhyme/shadcn-ui | workspace:* | 扩展 UI 组件 |
 
 ### Peer Dependencies
 - react >= 18.0.0

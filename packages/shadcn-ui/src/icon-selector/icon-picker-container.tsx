@@ -10,7 +10,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 
 /**
  * Mount type for the icon picker

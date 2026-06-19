@@ -1,8 +1,8 @@
 import type { ArrayField as FormilyArrayField } from '@formily/core';
 
-import type { ToggleGroupProps } from '@pixpilot/shadcn-ui';
+import type { ToggleGroupProps } from '@wordrhyme/shadcn-ui';
 import { observer, useField, useFieldSchema } from '@formily/react';
-import { ToggleGroup, ToggleGroupItem } from '@pixpilot/shadcn-ui';
+import { ToggleGroup, ToggleGroupItem } from '@wordrhyme/shadcn-ui';
 import React from 'react';
 
 import { resolveFieldOptions } from '../../utils/resolve-field-options';

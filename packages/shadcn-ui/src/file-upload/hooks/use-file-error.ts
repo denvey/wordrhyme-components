@@ -1,4 +1,4 @@
-import { useFileUpload } from '@pixpilot/shadcn';
+import { useFileUpload } from '@wordrhyme/shadcn';
 
 export function useFileError(file: File): string | null {
   const fileError = useFileUpload((store) => {

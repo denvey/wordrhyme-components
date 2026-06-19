@@ -1,4 +1,4 @@
-import { cn, ColorPickerFormatSelect } from '@pixpilot/shadcn';
+import { cn, ColorPickerFormatSelect } from '@wordrhyme/shadcn';
 import React from 'react';
 import { getId } from '../utils';
 import { ColorPickerFormatInput } from './ColorPickerFormatInput';
@@ -13,7 +13,7 @@ const ColorPickerFormatControls: React.FC<ColorPickerFormatControlsProps> = (pro
 
   return (
     <div {...rest} className={cn('flex items-center gap-2 w-full', rest.className)}>
-      {showFormatSelect && <ColorPickerFormatSelect id={getId(id, 'format-select')} />}
+      {showFormatSelect && <ColorPickerFormatSelect />}
       {showInput && <ColorPickerFormatInput id={getId(id, 'format-input')} />}
     </div>
   );

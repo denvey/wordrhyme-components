@@ -30,7 +30,7 @@ vi.mock('@formily/react', () => ({
   useField: vi.fn(),
 }));
 
-vi.mock('@pixpilot/shadcn-ui', () => ({
+vi.mock('@wordrhyme/shadcn-ui', () => ({
   ButtonExtended: (
     props: React.ButtonHTMLAttributes<HTMLButtonElement> & {
       disabledTooltip?: unknown;

@@ -1,4 +1,4 @@
-import { ColorPickerTrigger as OrgColorPickerTrigger } from '@pixpilot/shadcn';
+import { ColorPickerTrigger as OrgColorPickerTrigger } from '@wordrhyme/shadcn';
 import React from 'react';
 
 export type ColorPickerTriggerProps = React.ComponentPropsWithoutRef<

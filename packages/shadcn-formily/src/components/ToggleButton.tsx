@@ -1,5 +1,5 @@
 import { connect, mapProps } from '@formily/react';
-import { ToggleButton as ShadcnToggleButton } from '@pixpilot/shadcn-ui';
+import { ToggleButton as ShadcnToggleButton } from '@wordrhyme/shadcn-ui';
 
 import { setCheckboxDefaultDecoratorProps } from '../utils/formily-decorator';
 

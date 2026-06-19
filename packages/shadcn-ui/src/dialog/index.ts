@@ -1,4 +1,4 @@
-import { Dialog, DialogDescription, DialogTitle, DialogTrigger } from '@pixpilot/shadcn';
+import { Dialog, DialogDescription, DialogTitle, DialogTrigger } from '@wordrhyme/shadcn';
 import {
   DialogBody,
   DialogClose,

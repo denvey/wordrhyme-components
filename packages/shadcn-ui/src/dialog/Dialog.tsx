@@ -2,7 +2,7 @@ import {
   DialogClose as BaseDialogClose,
   DialogContent as BaseDialogContent,
   cn,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import * as React from 'react';
 
 export interface DialogContentProps extends React.ComponentPropsWithoutRef<

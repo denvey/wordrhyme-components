@@ -5,7 +5,7 @@ import {
   ColorPickerTrigger,
   InputGroup,
   InputGroupAddon,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { ChevronDownIcon, ChevronUpIcon, XIcon } from 'lucide-react';
 import React from 'react';
 import { getId } from '../utils';

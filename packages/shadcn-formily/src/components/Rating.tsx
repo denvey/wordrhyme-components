@@ -1,6 +1,6 @@
 import { connect, mapProps } from '@formily/react';
-import { cn } from '@pixpilot/shadcn';
-import { Rating as BaseRating } from '@pixpilot/shadcn-ui';
+import { cn } from '@wordrhyme/shadcn';
+import { Rating as BaseRating } from '@wordrhyme/shadcn-ui';
 
 /**
  * Formily-connected Rating component

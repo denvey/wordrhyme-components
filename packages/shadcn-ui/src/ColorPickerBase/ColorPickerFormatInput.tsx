@@ -1,7 +1,7 @@
 import {
   ColorPickerInput as BaseColorPickerInput,
   useColorPicker,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 
 import React from 'react';
 

@@ -1,4 +1,4 @@
-# @pixpilot/formily-shadcn
+# @wordrhyme/formily-shadcn
 
 Formily integration for shadcn/ui components. Build powerful, schema-driven forms with shadcn/ui's beautiful components and Formily's reactive form management.
 
@@ -15,7 +15,7 @@ Formily integration for shadcn/ui components. Build powerful, schema-driven form
 ## Installation
 
 ```bash
-pnpm add @pixpilot/formily-shadcn @formily/core @formily/react
+pnpm add @wordrhyme/formily-shadcn @formily/core @formily/react
 ```
 
 ## Quick Start
@@ -23,7 +23,7 @@ pnpm add @pixpilot/formily-shadcn @formily/core @formily/react
 ### Basic Form
 
 ```tsx
-import { createForm, Form, SchemaField } from '@pixpilot/formily-shadcn';
+import { createForm, Form, SchemaField } from '@wordrhyme/formily-shadcn';
 
 const form = createForm();
 
@@ -100,7 +100,7 @@ import {
   ArrayField as FormilyArrayField,
   FormItem,
   Input,
-} from '@pixpilot/formily-shadcn';
+} from '@wordrhyme/formily-shadcn';
 
 <FormilyArrayField name="contacts">
   {(field) => (
@@ -202,7 +202,7 @@ The `useFieldNameAsLabel` option controls whether field names are automatically 
 **Example with JsonSchemaFormRenderer (enabled by default):**
 
 ```tsx
-import { JsonSchemaFormRenderer } from '@pixpilot/formily-shadcn';
+import { JsonSchemaFormRenderer } from '@wordrhyme/formily-shadcn';
 
 const schema = {
   type: 'object',
@@ -224,7 +224,7 @@ export function MyForm() {
 **Example with Form component (requires explicit configuration):**
 
 ```tsx
-import { createForm, Form, SchemaField } from '@pixpilot/formily-shadcn';
+import { createForm, Form, SchemaField } from '@wordrhyme/formily-shadcn';
 
 const form = createForm();
 

@@ -18,7 +18,7 @@ import { AlertToast } from '../src/toast/AlertToast';
  * @example
  * ```tsx
  * import { Toaster } from 'sonner';
- * import { toast } from '@pixpilot/shadcn-ui';
+ * import { toast } from '@wordrhyme/shadcn-ui';
  *
  * function App() {
  *   return (

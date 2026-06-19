@@ -10,7 +10,7 @@
 import type { StoryObj } from '@storybook/react';
 import type { ISchema } from '../src';
 import { onFieldInputValueChange, onFieldValueChange } from '@formily/core';
-import { Button } from '@pixpilot/shadcn';
+import { Button } from '@wordrhyme/shadcn';
 import { InfoIcon, PinIcon } from 'lucide-react';
 import { createForm, Form, JsonSchemaFormExtended, SchemaField } from '../src';
 

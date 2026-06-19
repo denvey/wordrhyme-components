@@ -1,7 +1,7 @@
 import type { Form as IForm } from '@formily/core';
 import type { FormContextStates, FormContextStatesRequired } from './context';
 import { FormProvider } from '@formily/react';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
 import { FormContextContextProvider } from './context';
 import { FormItemContainer } from './FormItemContainer';

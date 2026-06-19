@@ -8,14 +8,14 @@ import { DataTableFilterList } from '@/components/data-table/data-table-filter-l
 import { DataTableFilterMenu } from '@/components/data-table/data-table-filter-menu';
 import { DataTableSortList } from '@/components/data-table/data-table-sort-list';
 import { DataTableViewOptions } from '@/components/data-table/data-table-view-options';
-import { Button, Input } from '@pixpilot/shadcn';
+import { Button, Input } from '@wordrhyme/shadcn';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import {
   parseAsInteger,
   parseAsString,

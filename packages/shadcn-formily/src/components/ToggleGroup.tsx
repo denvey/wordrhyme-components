@@ -1,11 +1,11 @@
 import type { Field } from '@formily/core';
-import type { ToggleGroupItemProps, ToggleGroupProps } from '@pixpilot/shadcn-ui';
+import type { ToggleGroupItemProps, ToggleGroupProps } from '@wordrhyme/shadcn-ui';
 import { connect, mapProps } from '@formily/react';
 import {
   cn,
   ToggleGroup as ShadcnToggleGroup,
   ToggleGroupItem,
-} from '@pixpilot/shadcn-ui';
+} from '@wordrhyme/shadcn-ui';
 import * as React from 'react';
 
 import { resolveFieldOptions } from '../utils/resolve-field-options';

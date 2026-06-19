@@ -13,7 +13,7 @@ import {
   TooltipContent,
   TooltipTrigger,
   useFileUpload,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { AlertTriangle, X } from 'lucide-react';
 import prettyBytes from 'pretty-bytes';
 import React from 'react';

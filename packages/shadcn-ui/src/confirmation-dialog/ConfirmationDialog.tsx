@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { getId } from '../utils';
 import { variantConfig } from '../variant-config';
 

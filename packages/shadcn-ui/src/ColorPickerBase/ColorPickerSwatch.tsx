@@ -1,4 +1,4 @@
-import { cn, ColorPickerSwatch as OrgColorPickerSwatch } from '@pixpilot/shadcn';
+import { cn, ColorPickerSwatch as OrgColorPickerSwatch } from '@wordrhyme/shadcn';
 import React from 'react';
 
 export interface ColorPickerSwatchProps extends React.ComponentProps<

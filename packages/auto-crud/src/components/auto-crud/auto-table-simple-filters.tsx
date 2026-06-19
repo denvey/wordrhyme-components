@@ -15,15 +15,15 @@ interface DateRange {
   to?: Date | undefined;
 }
 
-import { Badge } from '@pixpilot/shadcn';
-import { Button } from '@pixpilot/shadcn';
-import { Calendar } from '@pixpilot/shadcn';
-import { Input } from '@pixpilot/shadcn';
-import { Label } from '@pixpilot/shadcn';
-import { Popover, PopoverContent, PopoverTrigger } from '@pixpilot/shadcn';
-import { Separator } from '@pixpilot/shadcn';
-import { Slider } from '@pixpilot/shadcn';
-import { MultiCombobox } from '@/components/ui/multi-combobox';
+import { Badge } from '@wordrhyme/shadcn';
+import { Button } from '@wordrhyme/shadcn';
+import { Calendar } from '@wordrhyme/shadcn';
+import { Input } from '@wordrhyme/shadcn';
+import { Label } from '@wordrhyme/shadcn';
+import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
+import { Separator } from '@wordrhyme/shadcn';
+import { Slider } from '@wordrhyme/shadcn';
+import { MultiCombobox } from '@wordrhyme/shadcn-ui';
 import { getDefaultFilterOperator } from '@/lib/data-table';
 import { formatDate } from '@/lib/format';
 import { generateId } from '@/lib/id';

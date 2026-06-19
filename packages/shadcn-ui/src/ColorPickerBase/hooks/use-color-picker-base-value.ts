@@ -22,7 +22,7 @@ export function useColorPickerBaseValue(params: {
   /**
    * Prevent "Maximum update depth exceeded" in controlled mode.
    *
-   * The underlying @pixpilot/shadcn ColorPicker calls onValueChange inside a layout-effect
+   * The underlying @wordrhyme/shadcn ColorPicker calls onValueChange inside a layout-effect
    * when syncing a controlled 'value' prop (it calls both store.setColor() and store.setHsv(),
    * each of which emits onValueChange). This can create a feedback loop if the parent
    * re-renders and passes back the same normalized value, causing infinite re-renders

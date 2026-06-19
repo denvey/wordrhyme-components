@@ -4,7 +4,7 @@ import {
   PopoverAnchor,
   PopoverTrigger,
   PopoverContent as RadixPopoverContent,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import React from 'react';
 
 export interface PopoverContentProps extends React.ComponentProps<

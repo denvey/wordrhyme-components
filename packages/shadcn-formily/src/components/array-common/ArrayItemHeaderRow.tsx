@@ -1,5 +1,5 @@
 import type { Schema } from '@formily/react';
-import { cn } from '@pixpilot/shadcn-ui';
+import { cn } from '@wordrhyme/shadcn-ui';
 import React from 'react';
 import { useArrayComponents } from '../array-base';
 import { ArrayDragHandle } from './ArrayDragHandle';

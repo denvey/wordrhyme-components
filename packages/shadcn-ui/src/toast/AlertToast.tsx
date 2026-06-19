@@ -1,5 +1,5 @@
 import type { AlertToastProps } from './types';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import { XIcon } from 'lucide-react';
 import React from 'react';
 import { Alert } from '../Alert';

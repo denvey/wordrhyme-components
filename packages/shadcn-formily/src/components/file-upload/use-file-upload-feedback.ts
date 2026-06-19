@@ -2,7 +2,7 @@ import type { Field } from '@formily/core';
 import type {
   FileUploadBaseProps,
   FileUploadProgressCallBacks,
-} from '@pixpilot/shadcn-ui';
+} from '@wordrhyme/shadcn-ui';
 import { useField } from '@formily/react';
 import prettyBytes from 'pretty-bytes';
 import React from 'react';

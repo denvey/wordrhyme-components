@@ -32,8 +32,8 @@ Use `JsonSchemaFormRenderer` when you:
 ### Example Usage
 
 ```tsx
-import { FormItem, JsonSchemaFormRenderer } from '@pixpilot/formily-shadcn';
-import { Input } from '@pixpilot/shadcn-ui';
+import { FormItem, JsonSchemaFormRenderer } from '@wordrhyme/formily-shadcn';
+import { Input } from '@wordrhyme/shadcn-ui';
 
 const schema = {
   type: 'object',
@@ -90,7 +90,7 @@ Use `JsonSchemaForm` when you:
 ### Example Usage
 
 ```tsx
-import { JsonSchemaForm } from '@pixpilot/formily-shadcn';
+import { JsonSchemaForm } from '@wordrhyme/formily-shadcn';
 
 const schema = {
   type: 'object',
@@ -153,7 +153,7 @@ function MyForm() {
 You can still provide custom components with `JsonSchemaForm`. Your components will take precedence over the defaults:
 
 ```tsx
-import { JsonSchemaForm } from '@pixpilot/formily-shadcn';
+import { JsonSchemaForm } from '@wordrhyme/formily-shadcn';
 import { MyCustomInput } from './my-custom-input';
 
 function MyForm() {
@@ -191,7 +191,7 @@ When building a form, you have two options based on your needs:
 For typical form building with all standard components available:
 
 ```tsx
-import { JsonSchemaForm } from '@pixpilot/formily-shadcn';
+import { JsonSchemaForm } from '@wordrhyme/formily-shadcn';
 
 function MyForm() {
   return (
@@ -213,8 +213,8 @@ function MyForm() {
 When you want to provide only specific components or build a custom component registry:
 
 ```tsx
-import { FormItem, JsonSchemaFormRenderer } from '@pixpilot/formily-shadcn';
-import { Checkbox, Input } from '@pixpilot/shadcn-ui';
+import { FormItem, JsonSchemaFormRenderer } from '@wordrhyme/formily-shadcn';
+import { Checkbox, Input } from '@wordrhyme/shadcn-ui';
 
 function MyForm() {
   return (
@@ -242,7 +242,7 @@ If you want the headless version but need access to all standard components:
 import {
   defaultComponentRegistry,
   JsonSchemaFormRenderer,
-} from '@pixpilot/formily-shadcn';
+} from '@wordrhyme/formily-shadcn';
 
 function MyForm() {
   return (
@@ -311,4 +311,4 @@ interface ComponentRegistry {
 }
 ```
 
-The `defaultComponentRegistry` is exported from `@pixpilot/formily-shadcn` and can be imported for inspection or extension.
+The `defaultComponentRegistry` is exported from `@wordrhyme/formily-shadcn` and can be imported for inspection or extension.

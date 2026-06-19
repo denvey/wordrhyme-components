@@ -1,7 +1,7 @@
 'use client';
 
 import type { FileUploadInlineProps } from './types';
-import { Button, cn } from '@pixpilot/shadcn';
+import { Button, cn } from '@wordrhyme/shadcn';
 import { CloudUpload } from 'lucide-react';
 
 import { FileUploadRoot } from '../file-upload-root';

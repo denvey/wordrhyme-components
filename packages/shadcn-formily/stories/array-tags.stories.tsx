@@ -4,7 +4,7 @@
 /* eslint-disable no-magic-numbers */
 import type { Meta, StoryObj } from '@storybook/react';
 import type { ISchema } from '../src';
-import { Button } from '@pixpilot/shadcn';
+import { Button } from '@wordrhyme/shadcn';
 import { createForm, Form, JsonSchemaFormExtended, SchemaField } from '../src';
 
 const meta: Meta<typeof Form> = {

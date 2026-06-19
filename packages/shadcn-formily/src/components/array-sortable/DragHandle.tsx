@@ -1,4 +1,4 @@
-import { Button } from '@pixpilot/shadcn-ui';
+import { Button } from '@wordrhyme/shadcn-ui';
 import { GripVerticalIcon } from 'lucide-react';
 import React from 'react';
 import { useSortableItemContext } from './SortableItem';

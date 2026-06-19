@@ -7,7 +7,7 @@ import {
   cn,
   CardHeader as OrgCardHeader,
   CardTitle as OrgCardTitle,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import React from 'react';
 
 export function CardTitle({

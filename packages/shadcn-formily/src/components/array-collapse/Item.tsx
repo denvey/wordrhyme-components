@@ -3,7 +3,7 @@ import type { ArrayField as FormilyArrayField } from '@formily/core';
 import type { PanelStateManager } from '../../utils';
 import type { ArrayItemProps } from '../array-base';
 import { RecursionField, useField, useFieldSchema } from '@formily/react';
-import { cn } from '@pixpilot/shadcn';
+import { cn } from '@wordrhyme/shadcn';
 import { ChevronDownIcon } from 'lucide-react';
 import React from 'react';
 import { getXComponentProps } from '../../utils';

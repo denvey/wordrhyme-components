@@ -1,5 +1,5 @@
 import type { Field } from '@formily/core';
-import type { FileMetadata } from '@pixpilot/shadcn-ui';
+import type { FileMetadata } from '@wordrhyme/shadcn-ui';
 
 type SingleFileUploadValue = FileMetadata | null;
 

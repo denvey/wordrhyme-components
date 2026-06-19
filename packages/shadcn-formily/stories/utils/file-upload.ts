@@ -1,4 +1,4 @@
-import type { FileUploadProgressCallBacks } from '@pixpilot/shadcn-ui';
+import type { FileUploadProgressCallBacks } from '@wordrhyme/shadcn-ui';
 import type { FormFileUploadOptions } from '../../src/components/file-upload';
 
 export async function delay(val: number): Promise<void> {

@@ -1,5 +1,5 @@
 import { connect, mapProps } from '@formily/react';
-import { Input } from '@pixpilot/shadcn-ui';
+import { Input } from '@wordrhyme/shadcn-ui';
 
 import { mapNumberInputProps } from './number-input-map-props';
 

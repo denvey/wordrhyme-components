@@ -43,7 +43,7 @@ interface FormLayoutOptions {
 ### Basic Example
 
 ```tsx
-import { createForm, Form } from '@pixpilot/formily-shadcn';
+import { createForm, Form } from '@wordrhyme/formily-shadcn';
 
 const form = createForm();
 
@@ -65,7 +65,7 @@ export function MyForm() {
 ### With JSON Schema Form
 
 ```tsx
-import { JsonSchemaForm } from '@pixpilot/formily-shadcn';
+import { JsonSchemaForm } from '@wordrhyme/formily-shadcn';
 
 const schema = {
   type: 'object',
@@ -107,7 +107,7 @@ Controls the spacing between form elements. Choose the density that best fits yo
 - **`responsive`**: Automatically adjusts based on screen size - compact on mobile, normal on tablet, comfortable on desktop
 
 ```tsx
-import { Form } from '@pixpilot/formily-shadcn';
+import { Form } from '@wordrhyme/formily-shadcn';
 
 <Form form={form} layout={{ density: 'comfortable' }}>
   {/* Form content */}
@@ -123,7 +123,7 @@ Determines where field descriptions appear relative to the input:
 - **`popover`**: Description appears in a popover when hovering over a help icon
 
 ```tsx
-import { Form } from '@pixpilot/formily-shadcn';
+import { Form } from '@wordrhyme/formily-shadcn';
 
 <Form form={form} layout={{ descriptionPlacement: 'popover' }}>
   {/* Form content */}
@@ -154,7 +154,7 @@ Controls where labels appear relative to the input field:
 - **`end`**: Label appears to the right of the input (inline layout, useful for checkboxes/switches)
 
 ```tsx
-import { Form } from '@pixpilot/formily-shadcn';
+import { Form } from '@wordrhyme/formily-shadcn';
 
 <Form form={form} layout={{ labelPlacement: 'start' }}>
   {/* Form content */}
@@ -170,7 +170,7 @@ Customize the appearance of form elements by providing custom CSS classes.
 Apply custom classes to FormItem elements:
 
 ```tsx
-import { Form } from '@pixpilot/formily-shadcn';
+import { Form } from '@wordrhyme/formily-shadcn';
 
 <Form
   form={form}
@@ -194,7 +194,7 @@ import { Form } from '@pixpilot/formily-shadcn';
 Apply custom classes to ObjectContainer elements (used for nested objects in schemas):
 
 ```tsx
-import { Form } from '@pixpilot/formily-shadcn';
+import { Form } from '@wordrhyme/formily-shadcn';
 
 <Form
   form={form}
@@ -219,7 +219,7 @@ import { Form } from '@pixpilot/formily-shadcn';
 Here's a comprehensive example combining multiple layout options:
 
 ```tsx
-import { JsonSchemaForm } from '@pixpilot/formily-shadcn';
+import { JsonSchemaForm } from '@wordrhyme/formily-shadcn';
 
 const schema = {
   type: 'object',
@@ -303,7 +303,7 @@ If you're updating existing code that used individual props like `density`, `des
 **Old approach:**
 
 ```tsx
-import { Form } from '@pixpilot/formily-shadcn';
+import { Form } from '@wordrhyme/formily-shadcn';
 
 <Form
   form={form}
@@ -316,7 +316,7 @@ import { Form } from '@pixpilot/formily-shadcn';
 **New approach:**
 
 ```tsx
-import { Form } from '@pixpilot/formily-shadcn';
+import { Form } from '@wordrhyme/formily-shadcn';
 
 <Form
   form={form}

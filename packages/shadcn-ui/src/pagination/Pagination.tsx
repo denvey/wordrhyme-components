@@ -6,7 +6,7 @@ import {
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import React from 'react';
 import { getId } from '../utils';
@@ -110,6 +110,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   onPageChange,
   maxVisiblePages = 6,
   variant = 'full',
+  size = 'medium',
   showPageInfo = false,
   className,
 }) => {
@@ -211,6 +212,9 @@ export const Pagination: React.FC<PaginationProps> = ({
   };
 
   const pages = getPageNumbers();
+  const linkSize =
+    size === 'small' ? 'icon-sm' : size === 'large' ? 'icon-lg' : 'icon';
+  const navSize = size === 'small' ? 'sm' : size === 'large' ? 'lg' : 'default';
 
   // Compact variant: << < 2/10 > >>
   if (variant === 'compact') {
@@ -222,6 +226,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               id={getId(id, 'first-page-button')}
               onClick={handlePageClick(1)}
               aria-label="Go to first page"
+              size={linkSize}
               className="gap-1 px-2"
             >
               <ChevronsLeft className="h-4 w-4" />
@@ -231,6 +236,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             <PaginationPrevious
               id={getId(id, 'previous-page-button')}
               onClick={handlePageClick(Math.max(1, page - 1))}
+              size={navSize}
             />
           </PaginationItem>
           <PaginationItem>
@@ -242,6 +248,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             <PaginationNext
               id={getId(id, 'next-page-button')}
               onClick={handlePageClick(Math.min(totalPages, page + 1))}
+              size={navSize}
             />
           </PaginationItem>
           <PaginationItem>
@@ -249,6 +256,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               id={getId(id, 'last-page-button')}
               onClick={handlePageClick(totalPages)}
               aria-label="Go to last page"
+              size={linkSize}
               className="gap-1 px-2"
             >
               <ChevronsRight className="h-4 w-4" />
@@ -274,12 +282,14 @@ export const Pagination: React.FC<PaginationProps> = ({
               <PaginationPrevious
                 id={id}
                 onClick={handlePageClick(Math.max(1, page - 1))}
+                size={navSize}
               />
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
                 id={getId(id, 'next-page-button')}
                 onClick={handlePageClick(Math.min(totalPages, page + 1))}
+                size={navSize}
               />
             </PaginationItem>
           </PaginationContent>
@@ -302,6 +312,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             <PaginationPrevious
               id={getId(id, 'previous-page-button')}
               onClick={handlePageClick(Math.max(1, page - 1))}
+              size={navSize}
             />
           </PaginationItem>
           {pages.map((p) =>
@@ -315,6 +326,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                   id={p === page ? id : getId(id, `page-${p}`)}
                   onClick={handlePageClick(p)}
                   isActive={p === page}
+                  size={linkSize}
                 >
                   {p}
                 </PaginationLink>
@@ -325,6 +337,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             <PaginationNext
               id={getId(id, 'next-page-button')}
               onClick={handlePageClick(Math.min(totalPages, page + 1))}
+              size={navSize}
             />
           </PaginationItem>
         </PaginationContent>

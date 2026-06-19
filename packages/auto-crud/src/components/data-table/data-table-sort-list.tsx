@@ -9,8 +9,8 @@ import {
 } from "lucide-react";
 import * as React from "react";
 
-import { Badge } from "@pixpilot/shadcn";
-import { Button } from "@pixpilot/shadcn";
+import { Badge } from "@wordrhyme/shadcn";
+import { Button } from "@wordrhyme/shadcn";
 import {
   Command,
   CommandEmpty,
@@ -18,26 +18,26 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@pixpilot/shadcn";
+} from "@wordrhyme/shadcn";
 import {
   Sortable,
   SortableContent,
   SortableItem,
   SortableItemHandle,
   SortableOverlay,
-} from "@/components/ui/sortable";
+} from "@wordrhyme/shadcn-ui";
 import { dataTableConfig } from "@/config/data-table";
 import { cn } from "@/lib/utils";
 

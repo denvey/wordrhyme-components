@@ -6,7 +6,7 @@ import {
   CommandGroup,
   CommandItem,
   CommandList,
-} from '@pixpilot/shadcn';
+} from '@wordrhyme/shadcn';
 import { Check } from 'lucide-react';
 import { getId } from './utils';
 

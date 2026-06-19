@@ -2,7 +2,7 @@
 import type { IArrayBaseOperationProps } from '../types';
 import { useField } from '@formily/react';
 import { clone } from '@formily/shared';
-import { Button } from '@pixpilot/shadcn-ui';
+import { Button } from '@wordrhyme/shadcn-ui';
 import { CopyIcon } from 'lucide-react';
 import React from 'react';
 import { useArray, useIndex } from '../array-context';
