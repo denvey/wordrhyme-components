@@ -1,5 +1,17 @@
 # @pixpilot/shadcn-ui
 
+## 1.32.4
+
+### Patch Changes
+
+- Hide the multi-select checkbox indicator in searchable single-select option lists while keeping multi-select checkboxes intact.
+
+## 1.32.3
+
+### Patch Changes
+
+- Publish the unified Select implementation with searchable single-select and multi-select modes so AutoCrud simple filters can render their custom triggers correctly.
+
 ## 1.32.2
 
 ### Patch Changes

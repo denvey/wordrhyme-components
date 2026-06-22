@@ -226,6 +226,7 @@ function FacetedItem(props: FacetedItemProps) {
   const isSelected = context.multiple
     ? Array.isArray(context.value) && context.value.includes(value)
     : context.value === value;
+  const isMultiple = Boolean(context.multiple);
 
   const onItemSelect = React.useCallback(
     (currentValue: string) => {
@@ -247,16 +248,16 @@ function FacetedItem(props: FacetedItemProps) {
       onSelect={() => onItemSelect(value)}
       {...itemProps}
     >
-      <span
-        className={cn(
-          'flex size-4 items-center justify-center rounded-sm border border-primary',
-          isSelected
-            ? 'bg-primary text-primary-foreground'
-            : 'opacity-50 [&_svg]:invisible',
-        )}
-      >
-        <Check className="size-4" />
-      </span>
+      {isMultiple && (
+        <span
+          className={cn(
+            'flex size-4 items-center justify-center rounded-sm border border-primary',
+            isSelected ? 'bg-primary text-primary-foreground' : 'opacity-50',
+          )}
+        >
+          <Check className={cn('size-4', isSelected ? 'opacity-100' : 'opacity-0')} />
+        </span>
+      )}
       {children}
     </CommandItem>
   );

@@ -1,5 +1,21 @@
 # @wordrhyme/auto-crud
 
+## 1.3.5
+
+### Patch Changes
+
+- Release against @wordrhyme/shadcn-ui@1.32.4 so searchable single-select filters no longer show a multi-select checkbox indicator.
+- Updated dependencies
+  - @wordrhyme/shadcn-ui@1.32.4
+
+## 1.3.4
+
+### Patch Changes
+
+- Fix published AutoCrud simple filters by releasing against @wordrhyme/shadcn-ui@1.32.3, which includes the searchable Select API used by filter triggers.
+- Updated dependencies
+  - @wordrhyme/shadcn-ui@1.32.3
+
 ## 1.3.3
 
 ### Patch Changes

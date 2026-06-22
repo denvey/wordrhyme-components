@@ -370,6 +370,7 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
                   {options.map((option) => {
                     const isSelected = selectedValueSet.has(option.value);
                     const Icon = option.icon;
+                    const isMultiple = selectionMode === 'multiple';
 
                     return (
                       <CommandItem
@@ -377,18 +378,30 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
                         value={option.value}
                         keywords={getOptionKeywords(option)}
                         disabled={option.disabled}
+                        className={cn(
+                          selectionMode === 'single' &&
+                            isSelected &&
+                            'bg-accent text-accent-foreground',
+                        )}
                         onSelect={() => onItemSelect(option)}
                       >
-                        <div
-                          className={cn(
-                            'flex size-4 items-center justify-center rounded-sm border border-primary',
-                            isSelected
-                              ? 'bg-primary text-primary-foreground'
-                              : 'opacity-50 [&_svg]:invisible',
-                          )}
-                        >
-                          <Check />
-                        </div>
+                        {isMultiple && (
+                          <div
+                            className={cn(
+                              'flex size-4 items-center justify-center rounded-sm border border-primary',
+                              isSelected
+                                ? 'bg-primary text-primary-foreground'
+                                : 'opacity-50',
+                            )}
+                          >
+                            <Check
+                              className={cn(
+                                'size-4',
+                                isSelected ? 'opacity-100' : 'opacity-0',
+                              )}
+                            />
+                          </div>
+                        )}
                         {Icon && <Icon className="size-4" />}
                         <span className="truncate">{getOptionText(option)}</span>
                         {option.count !== undefined && (
