@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.3.2
+
+### Patch Changes
+
+- Add a default AutoCrudTable refresh toolbar action that refetches the current list query, with optional resource handler compatibility for manually constructed resources.
+
 ## 1.3.1
 
 ### Patch Changes
