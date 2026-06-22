@@ -63,7 +63,7 @@
     "eslint": "catalog:dev",
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
-    "tailwindcss": "^4.2.2",
+    "tailwindcss": "^4.3.1",
     "tsdown": "catalog:dev",
     "typescript": "catalog:dev",
     "typescript-eslint": "catalog:dev"
