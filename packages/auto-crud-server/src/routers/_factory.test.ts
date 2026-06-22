@@ -1325,6 +1325,60 @@ describe('createCrudRouter', () => {
       );
     });
 
+    it.each([
+      {
+        id: 'com.wordrhyme.shop.stores',
+        pluginId: 'com.wordrhyme.shop',
+        hookId: 'shop.stores.create',
+      },
+      {
+        id: 'com.example.catalog.products',
+        pluginId: 'com.example.catalog',
+        hookId: 'com-example-catalog.products.create',
+      },
+    ])(
+      'should derive lifecycle hook id from plugin context for $pluginId',
+      async ({ id, pluginId, hookId }) => {
+        const tx = createMockDb();
+        const db = {
+          transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
+            callback(tx),
+          ),
+        };
+        const hooks = {
+          emit: vi.fn().mockResolvedValue(undefined),
+        };
+        const crudRouter = createCrudRouter({
+          id,
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          selectSchema: taskSchema,
+        });
+
+        const caller = crudRouter.createCaller({
+          db,
+          hooks,
+          pluginId,
+        } as any) as MutationCaller;
+
+        await caller.create({
+          title: 'New Task',
+          status: 'todo',
+        });
+
+        expect(hooks.emit).toHaveBeenCalledWith(
+          hookId,
+          expect.objectContaining({
+            entityId: 'new-id',
+          }),
+          expect.objectContaining({
+            tx,
+          }),
+        );
+      },
+    );
+
     it('should roll back create base write when lifecycle hook fails', async () => {
       const committedRows: unknown[] = [];
       const pendingRows: unknown[] = [];

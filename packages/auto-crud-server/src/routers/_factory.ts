@@ -99,6 +99,10 @@ type CrudLifecycleHooks = {
   ) => Promise<T>;
 };
 
+function normalizePluginRouteId(pluginId: string): string {
+  return pluginId.replace(/^com\.wordrhyme\./, '').replace(/\./g, '-');
+}
+
 interface ResolvedConfig<TContext, TSelect> {
   procedureFactory: (operation: CrudOperation) => AnyProcedure;
   guard?: (ctx: TContext, operation: CrudOperation) => boolean | Promise<boolean>;
@@ -507,9 +511,18 @@ function readCrudTarget(config: { id?: string }): { id: string } | null {
 function buildCrudLifecycleHookId<TContext>(
   config: CrudExtensionConfigRef<TContext>,
   operation: CrudLifecycleOperation,
+  ctx?: TContext,
 ): string | null {
   const target = readCrudTarget(config);
   if (!target) return null;
+
+  const pluginId = (ctx as { pluginId?: unknown } | undefined)?.pluginId;
+  if (typeof pluginId === 'string' && target.id.startsWith(`${pluginId}.`)) {
+    const resourceId = target.id.slice(pluginId.length + 1);
+    if (resourceId) {
+      return `${normalizePluginRouteId(pluginId)}.${resourceId}.${operation}`;
+    }
+  }
 
   return `${target.id}.${operation}`;
 }
@@ -524,7 +537,7 @@ function shouldWrapCrudLifecycleTransaction<TContext>(
   config: CrudExtensionConfigRef<TContext>,
 ): boolean {
   return Boolean(
-    buildCrudLifecycleHookId(config, 'create') && getCrudLifecycleHooks(ctx),
+    buildCrudLifecycleHookId(config, 'create', ctx) && getCrudLifecycleHooks(ctx),
   );
 }
 
@@ -534,7 +547,7 @@ async function emitCrudWriteLifecycle<TContext>(
   operation: CrudLifecycleOperation,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  const hookId = buildCrudLifecycleHookId(config, operation);
+  const hookId = buildCrudLifecycleHookId(config, operation, ctx);
   const hooks = getCrudLifecycleHooks(ctx);
   if (!hookId || !hooks) return;
 
