@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.3.3
+
+### Patch Changes
+
+- Render the default AutoCrudTable refresh action as an icon-only button while preserving its accessible label.
+
 ## 1.3.2
 
 ### Patch Changes

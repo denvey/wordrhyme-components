@@ -1791,23 +1791,23 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           ): React.ReactNode => {
             if (type === 'refresh') {
               const onRefresh = overrides?.onClick ?? resource.handlers.refresh;
+              const label = overrides?.label ?? locale.toolbar.refresh;
               if (!onRefresh) return null;
               return (
                 <Button
                   key="refresh"
                   variant="outline"
-                  size="sm"
+                  size="icon-sm"
+                  aria-label={label}
+                  title={label}
                   onClick={onRefresh}
                   disabled={resource.tableData.isFetching}
                 >
                   <RefreshCw
                     className={
-                      resource.tableData.isFetching
-                        ? 'mr-2 h-4 w-4 animate-spin'
-                        : 'mr-2 h-4 w-4'
+                      resource.tableData.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'
                     }
                   />
-                  {overrides?.label ?? locale.toolbar.refresh}
                 </Button>
               );
             }
