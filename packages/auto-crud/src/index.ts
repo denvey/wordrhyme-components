@@ -21,6 +21,7 @@ export type {
   ToolbarActionItem,
   ToolbarActionConfig,
   ToolbarBuiltinActionItem,
+  ToolbarBuiltinActionType,
   ToolbarCustomActionItem,
 } from './components/auto-crud/auto-crud-table';
 export { setToolbarResolver } from './components/auto-crud/auto-crud-table';

@@ -35,7 +35,7 @@ import { humanize } from '@/lib/humanize';
 import { Badge } from '@wordrhyme/shadcn';
 import { ImportDialog } from './import-dialog';
 import type { ExportMode } from './export-dialog';
-import { Download, Loader2, Upload } from 'lucide-react';
+import { Download, Loader2, RefreshCw, Upload } from 'lucide-react';
 import { exportAllToCSV } from '@/lib/export';
 import * as React from 'react';
 import { type LocaleProp, resolveLocale } from '@/i18n/locale';
@@ -226,8 +226,10 @@ export type AutoCrudActionConfig<T> = RowActionConfig<T> | AutoCrudActionsConfig
 /**
  * 顶部工具栏内置操作项
  */
+export type ToolbarBuiltinActionType = 'refresh' | 'create' | 'import' | 'export';
+
 export type ToolbarBuiltinActionItem = ActionMeta & {
-  type: 'create' | 'import' | 'export';
+  type: ToolbarBuiltinActionType;
   /** 替代默认的行为 */
   onClick?: () => void;
   /** 替代默认的标签文本 */
@@ -259,6 +261,8 @@ export interface AutoCrudToolbarContext {
   rowIds: string[];
   selectedRowIds: string[];
   selectedCount: number;
+  refresh?: () => Promise<unknown>;
+  isRefreshing: boolean;
   openCreate?: () => void;
 }
 
@@ -275,7 +279,12 @@ export function setToolbarResolver(resolver: AutoCrudToolbarResolver | null): vo
 }
 
 function getDefaultToolbarActions(): ToolbarBuiltinActionItem[] {
-  return [{ type: 'import' }, { type: 'export' }, { type: 'create' }];
+  return [
+    { type: 'refresh' },
+    { type: 'import' },
+    { type: 'export' },
+    { type: 'create' },
+  ];
 }
 
 function getDefaultRowActions<T>(): RowBuiltinActionItem<T>[] {
@@ -1637,9 +1646,20 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       rowIds,
       selectedRowIds,
       selectedCount,
+      isRefreshing: resource.tableData.isFetching,
+      ...(resource.handlers.refresh ? { refresh: resource.handlers.refresh } : {}),
       ...(toolbarOpenCreate ? { openCreate: toolbarOpenCreate } : {}),
     }),
-    [id, resourceIdKey, rowIds, selectedRowIds, selectedCount, toolbarOpenCreate],
+    [
+      id,
+      resourceIdKey,
+      rowIds,
+      selectedRowIds,
+      selectedCount,
+      resource.handlers.refresh,
+      resource.tableData.isFetching,
+      toolbarOpenCreate,
+    ],
   );
   const resolvedToolbarActions = resolveToolbarActionsWithResolver(
     id,
@@ -1766,9 +1786,31 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         {(() => {
           // --- 内置按钮工厂 ---
           const renderBuiltinButton = (
-            type: 'import' | 'export' | 'create',
+            type: ToolbarBuiltinActionType,
             overrides?: { onClick?: () => void; label?: string },
           ): React.ReactNode => {
+            if (type === 'refresh') {
+              const onRefresh = overrides?.onClick ?? resource.handlers.refresh;
+              if (!onRefresh) return null;
+              return (
+                <Button
+                  key="refresh"
+                  variant="outline"
+                  size="sm"
+                  onClick={onRefresh}
+                  disabled={resource.tableData.isFetching}
+                >
+                  <RefreshCw
+                    className={
+                      resource.tableData.isFetching
+                        ? 'mr-2 h-4 w-4 animate-spin'
+                        : 'mr-2 h-4 w-4'
+                    }
+                  />
+                  {overrides?.label ?? locale.toolbar.refresh}
+                </Button>
+              );
+            }
             if (type === 'import' && canImport) {
               return (
                 <Button
@@ -1847,6 +1889,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             return (
               <div className="flex items-center gap-2">
                 {startNodes}
+                {renderBuiltinButton('refresh')}
                 {renderBuiltinButton('import')}
                 {renderBuiltinButton('export')}
                 {renderBuiltinButton('create')}
@@ -1866,12 +1909,22 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
                     </React.Fragment>
                   );
                 }
-                const builtinVisible =
-                  action.type === 'import'
-                    ? canImport
-                    : action.type === 'export'
-                      ? canExport
-                      : can.create;
+                const builtinVisible = (() => {
+                  switch (action.type) {
+                    case 'refresh':
+                      return !!(
+                        resource.handlers.refresh ||
+                        action.onClick ||
+                        action.component
+                      );
+                    case 'import':
+                      return canImport;
+                    case 'export':
+                      return canExport;
+                    case 'create':
+                      return can.create;
+                  }
+                })();
                 if (!builtinVisible) {
                   return null;
                 }

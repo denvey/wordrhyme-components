@@ -300,6 +300,8 @@ export interface UseAutoCrudResourceReturn<
     deleteMany: (rows: TListItem[]) => void;
     updateMany: (rows: TListItem[], data: Record<string, unknown>) => void;
     setVariant: (variant: ModalVariant) => void;
+    /** 刷新当前列表数据 */
+    refresh?: () => Promise<unknown>;
     /** 导入数据（router 有 import 路由时自动可用） */
     import: ((rows: Record<string, unknown>[]) => Promise<ImportResult>) | null;
     /** 导出筛选结果（router 有 export procedure 或传入 exportFetcher 时自动可用）。导出选中行由 AutoCrudTable 内部处理 */
@@ -794,6 +796,10 @@ export function useAutoCrudResource<
 
   const canExport = !!(exportFetcher || exportQuery);
 
+  const refresh = useCallback(async (): Promise<unknown> => {
+    return listQuery.refetch();
+  }, [listQuery]);
+
   // 返回值
   return {
     idKey,
@@ -825,6 +831,7 @@ export function useAutoCrudResource<
       deleteMany,
       updateMany,
       setVariant,
+      refresh,
       import: importMutation ? handleImport : null,
       export: canExport ? handleExport : null,
     },

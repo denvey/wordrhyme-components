@@ -1,12 +1,15 @@
-import { keepPreviousData } from "@tanstack/react-query";
-import { act } from "react";
-import { createRoot } from "react-dom/client";
-import { z } from "zod";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { keepPreviousData } from '@tanstack/react-query';
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { z } from 'zod';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { useAutoCrudResource } from "../use-auto-crud-resource";
+import {
+  useAutoCrudResource,
+  type UseAutoCrudResourceReturn,
+} from '../use-auto-crud-resource';
 
-vi.mock("sonner", () => ({
+vi.mock('sonner', () => ({
   toast: {
     success: vi.fn(),
     error: vi.fn(),
@@ -17,8 +20,10 @@ vi.mock("sonner", () => ({
 
 const schema = z.object({
   id: z.string(),
-  status: z.enum(["draft", "published"]),
+  status: z.enum(['draft', 'published']),
 });
+
+type Row = z.output<typeof schema>;
 
 function createRouter() {
   return {
@@ -36,16 +41,20 @@ function createRouter() {
   };
 }
 
-function renderResourceHook(router: ReturnType<typeof createRouter>) {
-  const container = document.createElement("div");
+function renderResourceHook(
+  router: ReturnType<typeof createRouter>,
+  onRender?: (resource: UseAutoCrudResourceReturn<typeof schema, Row>) => void,
+) {
+  const container = document.createElement('div');
   document.body.appendChild(container);
   const root = createRoot(container);
 
   function TestComponent() {
-    useAutoCrudResource({
+    const resource = useAutoCrudResource({
       router,
       schema,
     });
+    onRender?.(resource);
     return null;
   }
 
@@ -61,12 +70,14 @@ function renderResourceHook(router: ReturnType<typeof createRouter>) {
   };
 }
 
-describe("useAutoCrudResource", () => {
+describe('useAutoCrudResource', () => {
   let cleanup: (() => void) | undefined;
 
   beforeEach(() => {
-    (globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
-    window.history.replaceState(null, "", "/products");
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    window.history.replaceState(null, '', '/products');
   });
 
   afterEach(() => {
@@ -75,7 +86,7 @@ describe("useAutoCrudResource", () => {
     vi.clearAllMocks();
   });
 
-  it("marks list queries stale so clearing filters refetches cached list data", () => {
+  it('marks list queries stale so clearing filters refetches cached list data', () => {
     const router = createRouter();
 
     cleanup = renderResourceHook(router);
@@ -91,9 +102,32 @@ describe("useAutoCrudResource", () => {
     );
   });
 
-  it("updates list query input when a readable filter is cleared from the URL", async () => {
+  it('exposes a refresh handler that refetches the current list query', async () => {
     const router = createRouter();
-    window.history.replaceState(null, "", "/products?status=published");
+    const refetch = vi.fn();
+    let resource: UseAutoCrudResourceReturn<typeof schema, Row> | undefined;
+
+    router.list.useQuery.mockReturnValue({
+      data: { data: [], pageCount: 0 },
+      isLoading: false,
+      isFetching: false,
+      refetch,
+    });
+
+    cleanup = renderResourceHook(router, (nextResource) => {
+      resource = nextResource;
+    });
+
+    await act(async () => {
+      await resource?.handlers.refresh?.();
+    });
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('updates list query input when a readable filter is cleared from the URL', async () => {
+    const router = createRouter();
+    window.history.replaceState(null, '', '/products?status=published');
 
     cleanup = renderResourceHook(router);
 
@@ -101,8 +135,8 @@ describe("useAutoCrudResource", () => {
       expect.objectContaining({
         filters: [
           expect.objectContaining({
-            id: "status",
-            value: ["published"],
+            id: 'status',
+            value: ['published'],
           }),
         ],
       }),
@@ -110,8 +144,8 @@ describe("useAutoCrudResource", () => {
     );
 
     await act(async () => {
-      window.history.replaceState(null, "", "/products");
-      window.dispatchEvent(new Event("urlchange"));
+      window.history.replaceState(null, '', '/products');
+      window.dispatchEvent(new Event('urlchange'));
       await Promise.resolve();
     });
 

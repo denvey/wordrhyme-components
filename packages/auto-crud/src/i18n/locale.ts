@@ -13,6 +13,7 @@
 
 export interface AutoCrudLocale {
   toolbar: {
+    refresh: string;
     create: string;
     import: string;
     export: string;
@@ -89,6 +90,7 @@ export interface AutoCrudLocale {
 
 export const zhCN: AutoCrudLocale = {
   toolbar: {
+    refresh: '刷新',
     create: '新建',
     import: '导入',
     export: '导出',
@@ -159,6 +161,7 @@ export const zhCN: AutoCrudLocale = {
 
 export const enUS: AutoCrudLocale = {
   toolbar: {
+    refresh: 'Refresh',
     create: 'New',
     import: 'Import',
     export: 'Export',
@@ -231,6 +234,7 @@ export const enUS: AutoCrudLocale = {
 
 export const jaJP: AutoCrudLocale = {
   toolbar: {
+    refresh: '更新',
     create: '新規作成',
     import: 'インポート',
     export: 'エクスポート',
@@ -298,6 +302,7 @@ export const jaJP: AutoCrudLocale = {
 
 export const koKR: AutoCrudLocale = {
   toolbar: {
+    refresh: '새로고침',
     create: '새로 만들기',
     import: '가져오기',
     export: '내보내기',
@@ -365,6 +370,7 @@ export const koKR: AutoCrudLocale = {
 
 export const frFR: AutoCrudLocale = {
   toolbar: {
+    refresh: 'Actualiser',
     create: 'Nouveau',
     import: 'Importer',
     export: 'Exporter',
@@ -433,6 +439,7 @@ export const frFR: AutoCrudLocale = {
 
 export const deDE: AutoCrudLocale = {
   toolbar: {
+    refresh: 'Aktualisieren',
     create: 'Neu',
     import: 'Importieren',
     export: 'Exportieren',
@@ -502,6 +509,7 @@ export const deDE: AutoCrudLocale = {
 
 export const esES: AutoCrudLocale = {
   toolbar: {
+    refresh: 'Actualizar',
     create: 'Nuevo',
     import: 'Importar',
     export: 'Exportar',

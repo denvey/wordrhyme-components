@@ -58,7 +58,9 @@ function createResource(
   options: {
     data?: Row[];
     idKey?: UseAutoCrudResourceReturn<typeof schema, Row>['idKey'];
+    isFetching?: boolean;
     modal?: Partial<UseAutoCrudResourceReturn<typeof schema, Row>['modal']>;
+    refresh?: UseAutoCrudResourceReturn<typeof schema, Row>['handlers']['refresh'] | null;
   } = {},
 ): UseAutoCrudResourceReturn<typeof schema, Row> {
   const resource: UseAutoCrudResourceReturn<typeof schema, Row> = {
@@ -67,7 +69,7 @@ function createResource(
       data: options.data ?? [{ id: '1', region: 'west' }],
       pageCount: 1,
       isLoading: false,
-      isFetching: false,
+      isFetching: options.isFetching ?? false,
     },
     modal: {
       createOpen: false,
@@ -97,6 +99,7 @@ function createResource(
       deleteMany: vi.fn(),
       updateMany: vi.fn(),
       setVariant: vi.fn(),
+      ...(options.refresh === null ? {} : { refresh: options.refresh ?? vi.fn() }),
       import: null,
       export: null,
     },
@@ -395,24 +398,68 @@ describe('auto-crud table toolbar resolver', () => {
     vi.clearAllMocks();
   });
 
+  it('renders a default refresh action and calls the resource refresh handler', () => {
+    const refresh = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={createResource({ refresh })}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '刷新' }));
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('omits the default refresh action when a manual resource has no refresh handler', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={createResource({ refresh: null })}
+      />,
+    );
+
+    expect(screen.queryByRole('button', { name: '刷新' })).toBeNull();
+  });
+
+  it('does not restore default refresh action when toolbar takes over builtins', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={createResource()}
+        toolbar={[{ type: 'export' }]}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '导出' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '刷新' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '新建' })).toBeNull();
+  });
+
   it('passes current row ids from resource idKey to the injected toolbar resolver', () => {
     const toolbarResolver = vi.fn<AutoCrudToolbarResolver>((_targetId, ownerActions) => [
       ...ownerActions,
       { type: 'custom' as const, component: <button type="button">Injected</button> },
     ]);
     setToolbarResolver(toolbarResolver);
+    const resource = createResource({
+      idKey: 'spuId',
+      data: [
+        { id: '1', spuId: 'spu-1', region: 'west' },
+        { id: '2', region: 'east' },
+      ],
+    });
 
     render(
       <AutoCrudTable
         id="com.wordrhyme.shop.products"
         schema={schema}
-        resource={createResource({
-          idKey: 'spuId',
-          data: [
-            { id: '1', spuId: 'spu-1', region: 'west' },
-            { id: '2', region: 'east' },
-          ],
-        })}
+        resource={resource}
         toolbar={[{ type: 'export' }]}
       />,
     );
@@ -426,6 +473,8 @@ describe('auto-crud table toolbar resolver', () => {
         rowIds: ['spu-1'],
         selectedRowIds: [],
         selectedCount: 0,
+        refresh: resource.handlers.refresh,
+        isRefreshing: false,
       }),
     );
     expect(screen.getByText('Injected')).toBeTruthy();
@@ -599,6 +648,7 @@ describe('auto-crud table unified actions', () => {
       zone: 'toolbar',
       ownerId: 'com.wordrhyme.test-lab',
       actions: [
+        { type: 'refresh', hidden: true },
         { type: 'import', hidden: true },
         { type: 'export', hidden: true },
         { type: 'create', hidden: true },
@@ -613,6 +663,7 @@ describe('auto-crud table unified actions', () => {
       />,
     );
 
+    expect(screen.queryByRole('button', { name: '刷新' })).toBeNull();
     expect(screen.queryByRole('button', { name: '导出' })).toBeNull();
     expect(screen.queryByRole('button', { name: '新建' })).toBeNull();
   });
