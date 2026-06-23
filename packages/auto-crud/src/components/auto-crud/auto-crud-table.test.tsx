@@ -414,6 +414,45 @@ describe('auto-crud table toolbar resolver', () => {
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
+  it('disables the refresh action and spins the icon while fetching', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={createResource({ isFetching: true })}
+      />,
+    );
+
+    const refreshButton = screen.getByRole('button', { name: '刷新' });
+    const refreshIcon = refreshButton.querySelector('svg');
+
+    expect((refreshButton as HTMLButtonElement).disabled).toBe(true);
+    expect(refreshIcon?.classList.contains('animate-spin')).toBe(true);
+  });
+
+  it('shows simple filter mode by default and orders table controls', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={createResource()}
+      />,
+    );
+
+    const modeButton = screen.getByRole('button', {
+      name: 'Switch filter mode, current: Simple',
+    });
+    const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+    const viewButton = screen.getByRole('combobox', { name: 'Toggle columns' });
+
+    expect(
+      modeButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      sortButton.compareDocumentPosition(viewButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('omits the default refresh action when a manual resource has no refresh handler', () => {
     render(
       <AutoCrudTable

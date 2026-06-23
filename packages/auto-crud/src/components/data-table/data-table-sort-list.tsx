@@ -1,16 +1,11 @@
-"use client";
+'use client';
 
-import type { ColumnSort, SortDirection, Table } from "@tanstack/react-table";
-import {
-  ArrowDownUp,
-  ChevronsUpDown,
-  GripVertical,
-  Trash2,
-} from "lucide-react";
-import * as React from "react";
+import type { ColumnSort, SortDirection, Table } from '@tanstack/react-table';
+import { ArrowDownUp, ChevronsUpDown, GripVertical, Trash2 } from 'lucide-react';
+import * as React from 'react';
 
-import { Badge } from "@wordrhyme/shadcn";
-import { Button } from "@wordrhyme/shadcn";
+import { Badge } from '@wordrhyme/shadcn';
+import { Button } from '@wordrhyme/shadcn';
 import {
   Command,
   CommandEmpty,
@@ -18,34 +13,31 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from "@wordrhyme/shadcn";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@wordrhyme/shadcn";
+} from '@wordrhyme/shadcn';
+import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@wordrhyme/shadcn";
+} from '@wordrhyme/shadcn';
 import {
   Sortable,
   SortableContent,
   SortableItem,
   SortableItemHandle,
   SortableOverlay,
-} from "@wordrhyme/shadcn-ui";
-import { dataTableConfig } from "@/config/data-table";
-import { cn } from "@/lib/utils";
+} from '@wordrhyme/shadcn-ui';
+import { dataTableConfig } from '@/config/data-table';
+import { cn } from '@/lib/utils';
 
-const SORT_SHORTCUT_KEY = "s";
-const REMOVE_SORT_SHORTCUTS = ["backspace", "delete"];
+const SORT_SHORTCUT_KEY = 's';
+const REMOVE_SORT_SHORTCUTS = ['backspace', 'delete'];
 
-interface DataTableSortListProps<TData>
-  extends React.ComponentProps<typeof PopoverContent> {
+interface DataTableSortListProps<TData> extends React.ComponentProps<
+  typeof PopoverContent
+> {
   table: Table<TData>;
   disabled?: boolean;
 }
@@ -110,9 +102,7 @@ export function DataTableSortList<TData>({
 
   const onSortRemove = React.useCallback(
     (sortId: string) => {
-      onSortingChange((prevSorting) =>
-        prevSorting.filter((item) => item.id !== sortId),
-      );
+      onSortingChange((prevSorting) => prevSorting.filter((item) => item.id !== sortId));
     },
     [onSortingChange],
   );
@@ -127,8 +117,7 @@ export function DataTableSortList<TData>({
       if (
         event.target instanceof HTMLInputElement ||
         event.target instanceof HTMLTextAreaElement ||
-        (event.target instanceof HTMLElement &&
-          event.target.contentEditable === "true")
+        (event.target instanceof HTMLElement && event.target.contentEditable === 'true')
       ) {
         return;
       }
@@ -143,16 +132,13 @@ export function DataTableSortList<TData>({
       }
     }
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   const onTriggerKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (
-        REMOVE_SORT_SHORTCUTS.includes(event.key.toLowerCase()) &&
-        sorting.length > 0
-      ) {
+      if (REMOVE_SORT_SHORTCUTS.includes(event.key.toLowerCase()) && sorting.length > 0) {
         event.preventDefault();
         onSortingReset();
       }
@@ -170,13 +156,14 @@ export function DataTableSortList<TData>({
         <PopoverTrigger asChild>
           <Button
             variant="outline"
-            size="sm"
-            className="font-normal"
+            size="icon-sm"
+            aria-label="Sort rows"
+            title="Sort rows"
+            className={cn(sorting.length > 0 && 'w-auto gap-1 px-2')}
             onKeyDown={onTriggerKeyDown}
             disabled={disabled}
           >
             <ArrowDownUp className="text-muted-foreground" />
-            Sort
             {sorting.length > 0 && (
               <Badge
                 variant="secondary"
@@ -195,18 +182,18 @@ export function DataTableSortList<TData>({
         >
           <div className="flex flex-col gap-1">
             <h4 id={labelId} className="font-medium leading-none">
-              {sorting.length > 0 ? "Sort by" : "No sorting applied"}
+              {sorting.length > 0 ? 'Sort by' : 'No sorting applied'}
             </h4>
             <p
               id={descriptionId}
               className={cn(
-                "text-muted-foreground text-sm",
-                sorting.length > 0 && "sr-only",
+                'text-muted-foreground text-sm',
+                sorting.length > 0 && 'sr-only',
               )}
             >
               {sorting.length > 0
-                ? "Modify sorting to organize your rows."
-                : "Add sorting to organize your rows."}
+                ? 'Modify sorting to organize your rows.'
+                : 'Add sorting to organize your rows.'}
             </p>
           </div>
           {sorting.length > 0 && (
@@ -286,8 +273,7 @@ function DataTableSortItem({
   const directionListboxId = `${sortItemId}-direction-listbox`;
 
   const [showFieldSelector, setShowFieldSelector] = React.useState(false);
-  const [showDirectionSelector, setShowDirectionSelector] =
-    React.useState(false);
+  const [showDirectionSelector, setShowDirectionSelector] = React.useState(false);
 
   const onItemKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -358,9 +344,9 @@ function DataTableSortItem({
         <Select
           open={showDirectionSelector}
           onOpenChange={setShowDirectionSelector}
-          value={sort.desc ? "desc" : "asc"}
+          value={sort.desc ? 'desc' : 'asc'}
           onValueChange={(value: SortDirection) =>
-            onSortUpdate(sort.id, { desc: value === "desc" })
+            onSortUpdate(sort.id, { desc: value === 'desc' })
           }
         >
           <SelectTrigger
@@ -391,11 +377,7 @@ function DataTableSortItem({
           <Trash2 />
         </Button>
         <SortableItemHandle asChild>
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-8 shrink-0 rounded"
-          >
+          <Button variant="outline" size="icon" className="size-8 shrink-0 rounded">
             <GripVertical />
           </Button>
         </SortableItemHandle>

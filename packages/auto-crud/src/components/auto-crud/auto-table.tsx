@@ -127,7 +127,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   exclude,
   actions,
   pinnedColumns,
-  filterMode = 'simple',
+  filterMode,
   search = false,
   onDeleteSelected,
   onUpdateSelected,
@@ -236,15 +236,15 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     onSelectedRowsChange?.(selectedRows);
   }, [selectedRows, onSelectedRowsChange]);
 
-  // 过滤模式切换组件（放在 View 旁边）
+  // 过滤模式切换组件（放在表格右侧控制区）
   const FilterModeSelect = showToggle ? (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           variant="outline"
-          size="sm"
-          className="h-8 w-8 p-0"
+          size="icon-sm"
           aria-label={`Switch filter mode, current: ${filterModeConfig[currentMode].label}`}
+          title={filterModeConfig[currentMode].tooltip}
         >
           {(() => {
             const Icon = filterModeConfig[currentMode].icon;
@@ -320,12 +320,11 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           data-filter-parent
         >
           {currentMode !== 'simple' && searchInput}
-          {currentMode !== 'simple' && <DataTableSortList table={table} align="start" />}
           {filtersContent}
         </div>
         <div className="flex items-center gap-2">
-          {currentMode === 'simple' && <DataTableSortList table={table} align="end" />}
           {FilterModeSelect}
+          <DataTableSortList table={table} align="end" />
           <DataTableViewOptions table={table} align="end" />
         </div>
       </div>
