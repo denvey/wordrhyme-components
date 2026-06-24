@@ -9,6 +9,9 @@ import middleware from 'storybook-addon-playwright/middleware';
 import { BrowserManager } from 'storybook-addon-playwright/utils';
 import { STORYBOOK_PORT } from './storybook-config.js';
 
+// eslint-disable-next-line no-restricted-properties, node/prefer-global/process
+const playwrightWsEndpoint = process.env.STORYBOOK_PLAYWRIGHT_WS_ENDPOINT;
+
 const manager = new BrowserManager({
   browserCount: {
     chromium: 15,
@@ -21,8 +24,15 @@ const manager = new BrowserManager({
       firefox: playwright.firefox,
       webkit: playwright.webkit,
     };
-    const wsEndpoint = `ws://127.0.0.1:3010/${browserType}?server--ignoreDefaultArgs=["--hide-scrollbars"]`;
-    return await browserTypes[browserType].connect(wsEndpoint);
+
+    if (playwrightWsEndpoint) {
+      const wsEndpoint = `${playwrightWsEndpoint.replace(/\/$/u, '')}/${browserType}?server--ignoreDefaultArgs=["--hide-scrollbars"]`;
+      return await browserTypes[browserType].connect(wsEndpoint);
+    }
+
+    return await browserTypes[browserType].launch({
+      ignoreDefaultArgs: ['--hide-scrollbars'],
+    });
   },
   isBrowserConnected: (browser) => browser.isConnected(),
 });
