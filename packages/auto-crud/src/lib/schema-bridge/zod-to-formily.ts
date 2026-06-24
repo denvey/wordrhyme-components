@@ -4,6 +4,16 @@ import type { CreateFormSchemaOptions, FieldType, ParsedZodField } from './types
 import { fieldTypeToFormilyComponent, inferComponentByFieldName } from './types';
 import { parseZodField } from './zod-to-columns';
 
+const DEFAULT_FORM_MANAGED_FIELDS = [
+  'id',
+  'createdAt',
+  'updatedAt',
+  'createdBy',
+  'createdByType',
+  'updatedBy',
+  'updatedByType',
+] as const;
+
 /**
  * 将字符串转为人类可读格式
  */
@@ -125,7 +135,7 @@ export function createFormSchema<T extends z.ZodObject<z.ZodRawShape>>(
 }
 
 /**
- * 为编辑模式创建 Form Schema（排除 id, createdAt, updatedAt）
+ * 为编辑模式创建 Form Schema（排除平台托管字段）
  */
 export function createEditFormSchema<T extends z.ZodObject<z.ZodRawShape>>(
   schema: T,
@@ -133,6 +143,6 @@ export function createEditFormSchema<T extends z.ZodObject<z.ZodRawShape>>(
 ): ISchema {
   return createFormSchema(schema, {
     ...options,
-    exclude: ['id', 'createdAt', 'updatedAt'],
+    exclude: [...DEFAULT_FORM_MANAGED_FIELDS],
   });
 }

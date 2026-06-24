@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
+import { pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import {
   baseExportInputSchema,
   baseGetInputSchema,
@@ -38,6 +39,10 @@ type CrudCaller = {
 type MutationCaller = {
   create: (input: Record<string, unknown>) => Promise<any>;
   createMany: (input: Array<Record<string, unknown>>) => Promise<any>;
+  import: (input: {
+    rows: Array<Record<string, unknown>>;
+    onConflict: string;
+  }) => Promise<any>;
   upsert: (input: Record<string, unknown>) => Promise<any>;
   update: (input: { id: string; data: Record<string, unknown> }) => Promise<any>;
   updateMany: (input: { ids: string[]; data: Record<string, unknown> }) => Promise<any>;
@@ -161,6 +166,15 @@ const mockProcedureWithMeta = {
   meta: vi.fn().mockReturnThis(),
 };
 
+function createProcedureMock() {
+  return {
+    input: vi.fn().mockReturnThis(),
+    output: vi.fn().mockReturnThis(),
+    query: vi.fn().mockReturnThis(),
+    mutation: vi.fn().mockReturnThis(),
+  };
+}
+
 // ============================================================
 // 测试套件
 // ============================================================
@@ -208,6 +222,101 @@ describe('createCrudRouter', () => {
       };
 
       expect(() => createCrudRouter(config)).not.toThrow();
+    });
+
+    it('should omit default managed audit fields and custom omitFields from derived schemas', () => {
+      const auditTable = pgTable('audit_items', {
+        id: text('id').primaryKey(),
+        title: text('title').notNull(),
+        organizationId: text('organization_id'),
+        createdAt: timestamp('created_at'),
+        updatedAt: timestamp('updated_at'),
+        createdBy: text('created_by'),
+        createdByType: text('created_by_type'),
+        updatedBy: text('updated_by'),
+        updatedByType: text('updated_by_type'),
+      });
+      const createProcedure = createProcedureMock();
+      const updateProcedure = createProcedureMock();
+
+      createCrudRouter({
+        table: auditTable,
+        omitFields: ['organizationId'],
+        procedure: {
+          create: createProcedure as any,
+          update: updateProcedure as any,
+          default: createProcedureMock() as any,
+        },
+      });
+
+      const createSchema = createProcedure.input.mock.calls[0]?.[0] as
+        | z.ZodObject<z.ZodRawShape>
+        | undefined;
+      expect(createSchema?.shape).toHaveProperty('title');
+      expect(createSchema?.shape).not.toHaveProperty('id');
+      expect(createSchema?.shape).not.toHaveProperty('organizationId');
+      expect(createSchema?.shape).not.toHaveProperty('createdAt');
+      expect(createSchema?.shape).not.toHaveProperty('updatedAt');
+      expect(createSchema?.shape).not.toHaveProperty('createdBy');
+      expect(createSchema?.shape).not.toHaveProperty('createdByType');
+      expect(createSchema?.shape).not.toHaveProperty('updatedBy');
+      expect(createSchema?.shape).not.toHaveProperty('updatedByType');
+
+      const updateInputSchema = updateProcedure.input.mock.calls[0]?.[0] as
+        | z.ZodObject<z.ZodRawShape>
+        | undefined;
+      const updateDataSchema = updateInputSchema?.shape.data as
+        | (z.ZodObject<z.ZodRawShape> & { shape: z.ZodRawShape })
+        | undefined;
+      expect(updateDataSchema?.shape).toHaveProperty('title');
+      expect(updateDataSchema?.shape).not.toHaveProperty('createdBy');
+      expect(updateDataSchema?.shape).not.toHaveProperty('createdByType');
+      expect(updateDataSchema?.shape).not.toHaveProperty('updatedBy');
+      expect(updateDataSchema?.shape).not.toHaveProperty('updatedByType');
+    });
+
+    it('should ignore default omit fields that are not present in derived schemas', () => {
+      const minimalTable = pgTable('minimal_items', {
+        id: text('id').primaryKey(),
+        title: text('title').notNull(),
+      });
+
+      expect(() =>
+        createCrudRouter({
+          table: minimalTable,
+          procedure: {
+            default: createProcedureMock() as any,
+          },
+        }),
+      ).not.toThrow();
+    });
+
+    it('should preserve optional id in auto-derived upsert schemas', () => {
+      const upsertProcedure = createProcedureMock();
+      const auditTable = pgTable('upsert_items', {
+        id: text('id').primaryKey(),
+        title: text('title').notNull(),
+        createdAt: timestamp('created_at'),
+      });
+
+      createCrudRouter({
+        table: auditTable,
+        procedure: {
+          upsert: upsertProcedure as any,
+          default: createProcedureMock() as any,
+        },
+      });
+
+      const upsertSchema = upsertProcedure.input.mock.calls[0]?.[0] as
+        | z.ZodObject<z.ZodRawShape>
+        | undefined;
+      expect(upsertSchema?.shape).toHaveProperty('id');
+      expect(upsertSchema?.shape).toHaveProperty('title');
+      expect(upsertSchema?.shape).not.toHaveProperty('createdAt');
+      expect(() => upsertSchema?.parse({ title: 'New item' })).not.toThrow();
+      expect(() =>
+        upsertSchema?.parse({ id: 'existing-id', title: 'Existing item' }),
+      ).not.toThrow();
     });
   });
 
@@ -824,6 +933,56 @@ describe('createCrudRouter', () => {
       expect(sqlText).toContain(' asc');
     });
 
+    it('should apply createdAt descending as the default list order when available', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: {
+          ...mockTable,
+          createdAt: { name: 'createdAt' },
+        } as any,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+      });
+
+      expect(db.builders[0]?.orderBy).toHaveBeenCalledTimes(1);
+      expect(collectSqlText(db.builders[0]?.orderBy.mock.calls[0]?.[0])).toContain(
+        ' desc',
+      );
+    });
+
+    it('should not apply default createdAt ordering when sortableColumns excludes it', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: {
+          ...mockTable,
+          createdAt: { name: 'createdAt' },
+        } as any,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        sortableColumns: ['title'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+      });
+
+      expect(db.builders[0]?.orderBy).not.toHaveBeenCalled();
+    });
+
     it('should apply custom expression columns for advanced orderBy cases', async () => {
       const db = createListMockDb([
         { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
@@ -853,6 +1012,41 @@ describe('createCrudRouter', () => {
 
       expect(sqlText).toContain('lower(');
       expect(sqlText).toContain(' desc');
+    });
+
+    it('should preserve id from imported rows for auto-derived upsert writes', async () => {
+      const importTable = pgTable('import_items', {
+        id: text('id').primaryKey(),
+        title: text('title').notNull(),
+        createdAt: timestamp('created_at'),
+      });
+      const selectBuilder = {
+        from: vi.fn(() => selectBuilder),
+        where: vi.fn(() => [{ id: 'row-1' }]),
+      };
+      const insertBuilder = {
+        values: vi.fn(() => insertBuilder),
+        onConflictDoUpdate: vi.fn(() => insertBuilder),
+        returning: vi.fn(() => [{ id: 'row-1' }]),
+      };
+      const db = {
+        select: vi.fn(() => selectBuilder),
+        insert: vi.fn(() => insertBuilder),
+      };
+      const crudRouter = createCrudRouter({
+        table: importTable,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as MutationCaller;
+      const result = await caller.import({
+        rows: [{ id: 'row-1', title: 'Imported item' }],
+        onConflict: 'upsert',
+      });
+
+      expect(insertBuilder.values).toHaveBeenCalledWith([
+        { id: 'row-1', title: 'Imported item' },
+      ]);
+      expect(result).toEqual({ success: 0, updated: 1, skipped: 0, failed: [] });
     });
 
     it('should not filter expression columns that are not allowed', async () => {

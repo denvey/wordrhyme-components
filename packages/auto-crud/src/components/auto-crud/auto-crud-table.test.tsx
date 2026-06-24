@@ -44,6 +44,19 @@ const fields: Fields = {
   },
 };
 
+const auditSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  createdBy: z.string().nullable().optional(),
+  createdByType: z.enum(['user', 'system', 'plugin', 'api-token']).optional(),
+  updatedBy: z.string().nullable().optional(),
+  updatedByType: z.enum(['user', 'system', 'plugin', 'api-token']).optional(),
+});
+
+type AuditRow = z.infer<typeof auditSchema>;
+
 function queryDynamicFilterTrigger() {
   return (
     Array.from(
@@ -110,6 +123,69 @@ function createResource(
     modal: {
       ...resource.modal,
       ...options.modal,
+    },
+  };
+}
+
+function createAuditResource(
+  options: {
+    importHandler?: NonNullable<
+      UseAutoCrudResourceReturn<typeof auditSchema, AuditRow>['handlers']['import']
+    >;
+    defaultSort?: UseAutoCrudResourceReturn<typeof auditSchema, AuditRow>['defaultSort'];
+  } = {},
+): UseAutoCrudResourceReturn<typeof auditSchema, AuditRow> {
+  return {
+    idKey: 'id',
+    tableData: {
+      data: [
+        {
+          id: '1',
+          name: 'North Store',
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          updatedAt: new Date('2026-01-02T00:00:00Z'),
+          createdBy: 'user-1',
+          createdByType: 'user',
+          updatedBy: 'system',
+          updatedByType: 'system',
+        },
+      ],
+      pageCount: 1,
+      isLoading: false,
+      isFetching: false,
+    },
+    defaultSort: options.defaultSort,
+    modal: {
+      createOpen: false,
+      editOpen: false,
+      deleteOpen: false,
+      viewOpen: false,
+      selected: null,
+      copySource: null,
+      variant: 'dialog',
+    },
+    mutations: {
+      isCreating: false,
+      isUpdating: false,
+      isDeleting: false,
+      isImporting: false,
+    },
+    handlers: {
+      openCreate: vi.fn(),
+      openEdit: vi.fn(),
+      openDelete: vi.fn(),
+      openView: vi.fn(),
+      copyRow: vi.fn(),
+      closeModals: vi.fn(),
+      submitCreate: vi.fn(),
+      submitUpdate: vi.fn(),
+      confirmDelete: vi.fn(),
+      deleteMany: vi.fn(),
+      updateMany: vi.fn(),
+      setVariant: vi.fn(),
+      refresh: vi.fn(),
+      import: options.importHandler ?? null,
+      export: null,
     },
   };
 }
@@ -478,6 +554,160 @@ describe('auto-crud table toolbar resolver', () => {
     expect(screen.getByRole('button', { name: '导出' })).toBeTruthy();
     expect(screen.queryByRole('button', { name: '刷新' })).toBeNull();
     expect(screen.queryByRole('button', { name: '新建' })).toBeNull();
+  });
+
+  it('hides platform actor audit columns by default', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={auditSchema}
+        resource={createAuditResource()}
+      />,
+    );
+
+    expect(screen.queryAllByText('Name').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Created At').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Updated At').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Created By')).toHaveLength(0);
+    expect(screen.queryAllByText('Created By Type')).toHaveLength(0);
+    expect(screen.queryAllByText('Updated By')).toHaveLength(0);
+    expect(screen.queryAllByText('Updated By Type')).toHaveLength(0);
+  });
+
+  it('defaults table sorting to createdAt descending when the schema has createdAt', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={auditSchema}
+        resource={createAuditResource()}
+      />,
+    );
+
+    const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+    expect(sortButton.textContent).toContain('1');
+
+    fireEvent.click(sortButton);
+    const sortList = screen.getByRole('list');
+    expect(sortList.textContent).toContain('Created At');
+    expect(sortList.textContent).toContain('Desc');
+  });
+
+  it('uses resource default sorting ahead of table defaultSort', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={auditSchema}
+        resource={createAuditResource({
+          defaultSort: [{ id: 'name', desc: false }],
+        })}
+        table={{
+          defaultSort: [{ id: 'createdAt', desc: true }],
+        }}
+      />,
+    );
+
+    const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+    fireEvent.click(sortButton);
+    const sortList = screen.getByRole('list');
+    expect(sortList.textContent).toContain('Name');
+    expect(sortList.textContent).toContain('Asc');
+    expect(sortList.textContent).not.toContain('Created At');
+  });
+
+  it('allows actor audit columns when fields explicitly show them', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={auditSchema}
+        resource={createAuditResource()}
+        fields={{
+          createdByType: {
+            label: 'Creator Type',
+            table: { hidden: false },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryAllByText('Creator Type').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Updated By Type')).toHaveLength(0);
+  });
+
+  it('allows actor audit columns when legacy table overrides explicitly show them', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={auditSchema}
+        resource={createAuditResource()}
+        table={{
+          overrides: {
+            createdBy: {
+              label: 'Creator',
+              hidden: false,
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryAllByText('Creator').length).toBeGreaterThan(0);
+    expect(screen.queryAllByText('Updated By')).toHaveLength(0);
+  });
+
+  it('keeps id in import templates while excluding platform managed audit fields', async () => {
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    const originalAnchorClick = HTMLAnchorElement.prototype.click;
+    const createObjectURL = vi.fn<(blob: Blob) => string>(() => 'blob:import-template');
+    const revokeObjectURL = vi.fn<(url: string) => void>();
+    const readBlobText = (blob: Blob) =>
+      new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.onerror = () => reject(reader.error);
+        reader.readAsText(blob);
+      });
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURL,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: revokeObjectURL,
+    });
+    HTMLAnchorElement.prototype.click = vi.fn();
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.stores"
+        schema={auditSchema}
+        resource={createAuditResource({
+          importHandler: vi
+            .fn()
+            .mockResolvedValue({ success: 0, updated: 0, skipped: 0, failed: [] }),
+        })}
+      />,
+    );
+
+    try {
+      fireEvent.click(screen.getByRole('button', { name: '导入' }));
+      fireEvent.click(await screen.findByRole('button', { name: '下载 CSV 模板' }));
+
+      const blob = createObjectURL.mock.calls[0]?.[0] as Blob | undefined;
+      expect(blob).toBeTruthy();
+      await expect(readBlobText(blob!)).resolves.toBe('id,name\n');
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:import-template');
+    } finally {
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        value: originalCreateObjectURL,
+      });
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        value: originalRevokeObjectURL,
+      });
+      HTMLAnchorElement.prototype.click = originalAnchorClick;
+    }
   });
 
   it('passes current row ids from resource idKey to the injected toolbar resolver', () => {

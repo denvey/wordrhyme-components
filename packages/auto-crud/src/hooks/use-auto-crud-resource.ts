@@ -12,6 +12,7 @@ import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { createTableSchema } from '@/lib/schema-bridge/zod-to-columns';
 import { getSortingStateParser } from '@/lib/parsers';
 import { coerceRowValues } from '@/lib/import';
+import { getDefaultSortingForSchema, type AutoCrudSorting } from '@/lib/default-sorting';
 import type { Fields } from '@/components/auto-crud/auto-crud-table';
 
 /**
@@ -248,6 +249,12 @@ export interface UseAutoCrudResourceOptions<
   exportFetcher?: (
     params: any,
   ) => Promise<{ data: Record<string, unknown>[]; total: number; hasMore: boolean }>;
+  /**
+   * 默认排序。
+   * - undefined: schema 有 createdAt 时默认 createdAt desc
+   * - false: 不应用默认排序
+   */
+  defaultSort?: AutoCrudSorting | false;
 }
 
 /**
@@ -280,6 +287,8 @@ export interface UseAutoCrudResourceReturn<
   schema?: z.ZodObject<z.ZodRawShape>;
   /** Optional field config override from host metadata. */
   fields?: Fields;
+  /** Default sorting used by this resource's list query. */
+  defaultSort?: AutoCrudSorting;
   modal: ModalState<TListItem>;
   mutations: {
     isCreating: boolean;
@@ -442,6 +451,7 @@ export function useAutoCrudResource<
     hooks,
     toast: toastAdapter,
     exportFetcher,
+    defaultSort: defaultSortOption,
   } = options;
 
   // 使用注入的 toast 或默认 sonner
@@ -465,6 +475,13 @@ export function useAutoCrudResource<
     () => mergeMetadataSchema(schema, metadata?.schema),
     [schema, metadata?.schema],
   );
+  const defaultSorting = useMemo(
+    () =>
+      defaultSortOption === false
+        ? []
+        : (defaultSortOption ?? getDefaultSortingForSchema(resolvedSchema)),
+    [defaultSortOption, resolvedSchema],
+  );
   const metadataFields = useMemo(
     () => readMetadataFields(metadata?.fields),
     [metadata?.fields],
@@ -482,7 +499,7 @@ export function useAutoCrudResource<
     {
       page: parseAsInteger.withDefault(1),
       perPage: parseAsInteger.withDefault(10),
-      sort: getSortingStateParser().withDefault([]),
+      sort: getSortingStateParser<Record<string, unknown>>().withDefault(defaultSorting),
       joinOperator: parseAsStringEnum(['and', 'or']).withDefault('and'),
       search: parseAsString.withDefault(''),
     },
@@ -811,6 +828,7 @@ export function useAutoCrudResource<
     },
     schema: resolvedSchema,
     fields: metadataFields,
+    defaultSort: defaultSorting,
     modal,
     mutations: {
       isCreating: createMutation.isPending,

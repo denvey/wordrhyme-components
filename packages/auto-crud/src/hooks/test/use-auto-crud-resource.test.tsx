@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   useAutoCrudResource,
+  type UseAutoCrudResourceOptions,
   type UseAutoCrudResourceReturn,
 } from '../use-auto-crud-resource';
 
@@ -23,7 +24,12 @@ const schema = z.object({
   status: z.enum(['draft', 'published']),
 });
 
+const schemaWithCreatedAt = schema.extend({
+  createdAt: z.date(),
+});
+
 type Row = z.output<typeof schema>;
+type CreatedAtRow = z.output<typeof schemaWithCreatedAt>;
 
 function createRouter() {
   return {
@@ -70,6 +76,35 @@ function renderResourceHook(
   };
 }
 
+function renderCreatedAtResourceHook(
+  router: ReturnType<typeof createRouter>,
+  options?: UseAutoCrudResourceOptions<typeof schemaWithCreatedAt, CreatedAtRow>,
+) {
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  function TestComponent() {
+    useAutoCrudResource({
+      router,
+      schema: schemaWithCreatedAt,
+      options,
+    });
+    return null;
+  }
+
+  act(() => {
+    root.render(<TestComponent />);
+  });
+
+  return () => {
+    act(() => {
+      root.unmount();
+    });
+    container.remove();
+  };
+}
+
 describe('useAutoCrudResource', () => {
   let cleanup: (() => void) | undefined;
 
@@ -99,6 +134,37 @@ describe('useAutoCrudResource', () => {
         placeholderData: keepPreviousData,
         staleTime: 0,
       },
+    );
+  });
+
+  it('defaults list sorting to createdAt descending when the schema has createdAt', () => {
+    const router = createRouter();
+
+    cleanup = renderCreatedAtResourceHook(router);
+
+    expect(router.list.useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sort: [{ id: 'createdAt', desc: true }],
+      }),
+      {
+        placeholderData: keepPreviousData,
+        staleTime: 0,
+      },
+    );
+  });
+
+  it('uses configured default sorting for list queries', () => {
+    const router = createRouter();
+
+    cleanup = renderCreatedAtResourceHook(router, {
+      defaultSort: [{ id: 'status', desc: false }],
+    });
+
+    expect(router.list.useQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sort: [{ id: 'status', desc: false }],
+      }),
+      expect.any(Object),
     );
   });
 

@@ -37,6 +37,7 @@ import { ImportDialog } from './import-dialog';
 import type { ExportMode } from './export-dialog';
 import { Download, Loader2, RefreshCw, Upload } from 'lucide-react';
 import { exportAllToCSV } from '@/lib/export';
+import { getDefaultSortingForSchema } from '@/lib/default-sorting';
 import * as React from 'react';
 import { type LocaleProp, resolveLocale } from '@/i18n/locale';
 import {
@@ -152,6 +153,51 @@ export interface Field {
 }
 
 export type Fields = Record<string, Field>;
+
+const DEFAULT_FORM_MANAGED_FIELDS = [
+  'id',
+  'createdAt',
+  'updatedAt',
+  'createdBy',
+  'createdByType',
+  'updatedBy',
+  'updatedByType',
+] as const;
+
+const DEFAULT_IMPORT_MANAGED_FIELDS = [
+  'createdAt',
+  'updatedAt',
+  'createdBy',
+  'createdByType',
+  'updatedBy',
+  'updatedByType',
+] as const;
+
+const DEFAULT_HIDDEN_AUDIT_FIELDS = [
+  'createdBy',
+  'createdByType',
+  'updatedBy',
+  'updatedByType',
+] as const;
+
+function isDefaultHiddenAuditField(key: string): boolean {
+  return DEFAULT_HIDDEN_AUDIT_FIELDS.includes(
+    key as (typeof DEFAULT_HIDDEN_AUDIT_FIELDS)[number],
+  );
+}
+
+function isFieldTableExplicitlyVisible(config?: Field): boolean {
+  return (
+    config?.hidden === false ||
+    (config?.table !== false &&
+      typeof config?.table === 'object' &&
+      config.table.hidden === false)
+  );
+}
+
+function isTableOverrideExplicitlyVisible(config?: Record<string, any>): boolean {
+  return config?.hidden === false;
+}
 
 /** 内置操作项（覆盖默认行为或调整位置） */
 type ActionMeta = {
@@ -1154,11 +1200,37 @@ function buildHiddenColumns(
   fields?: Fields,
   legacyHidden?: string[],
   denyFields?: string[],
+  legacyOverrides?: Record<string, any>,
 ): string[] {
-  const hidden = new Set([...(legacyHidden ?? []), ...(denyFields ?? [])]);
+  const legacyHiddenSet = new Set(legacyHidden ?? []);
+  const denySet = new Set(denyFields ?? []);
+  const hidden = new Set([
+    ...DEFAULT_HIDDEN_AUDIT_FIELDS,
+    ...legacyHiddenSet,
+    ...denySet,
+  ]);
+
+  for (const key of DEFAULT_HIDDEN_AUDIT_FIELDS) {
+    if (
+      !legacyHiddenSet.has(key) &&
+      !denySet.has(key) &&
+      isTableOverrideExplicitlyVisible(legacyOverrides?.[key])
+    ) {
+      hidden.delete(key);
+    }
+  }
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
+      if (
+        isDefaultHiddenAuditField(key) &&
+        !legacyHiddenSet.has(key) &&
+        !denySet.has(key) &&
+        isFieldTableExplicitlyVisible(config)
+      ) {
+        hidden.delete(key);
+      }
+
       // 检查全局隐藏
       if (config.hidden) {
         hidden.add(key);
@@ -1329,8 +1401,12 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const denySet = new Set(denyFields ?? []);
   const fields = Object.entries(shape).filter(([key]) => {
     if (denySet.has(key)) return false; // deny 字段不显示
-    const override = fieldConfig?.[key];
-    return !override?.hidden;
+    const config = fieldConfig?.[key];
+    if (config?.hidden) return false;
+    if (isDefaultHiddenAuditField(key) && !isFieldTableExplicitlyVisible(config)) {
+      return false;
+    }
+    return true;
   });
 
   const content = (
@@ -1670,7 +1746,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   // 从 schema 提取可导入的列名（排除 deny 字段）
   const importColumns = React.useMemo(() => {
     const shape = resolvedSchema.shape;
-    const denySet = new Set(denyFields ?? []);
+    const denySet = new Set([...DEFAULT_IMPORT_MANAGED_FIELDS, ...(denyFields ?? [])]);
     return Object.keys(shape).filter((key) => !denySet.has(key));
   }, [resolvedSchema, denyFields]);
 
@@ -1718,14 +1794,27 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       buildTableOverrides(resolvedFields, tableConfig?.overrides, dynamicFilterOptions),
     [resolvedFields, tableConfig?.overrides, dynamicFilterOptions],
   );
+  const defaultSort = React.useMemo(
+    () =>
+      resource.defaultSort ??
+      tableConfig?.defaultSort ??
+      getDefaultSortingForSchema(resolvedSchema),
+    [resource.defaultSort, resolvedSchema, tableConfig?.defaultSort],
+  );
   // Critical #2: 传入 denyFields 到表单 overrides
   const formOverrides = React.useMemo(
     () => buildFormOverrides(resolvedFields, formConfig?.overrides, denyFields),
     [resolvedFields, formConfig?.overrides, denyFields],
   );
   const hiddenColumns = React.useMemo(
-    () => buildHiddenColumns(resolvedFields, tableConfig?.hidden, denyFields),
-    [resolvedFields, tableConfig?.hidden, denyFields],
+    () =>
+      buildHiddenColumns(
+        resolvedFields,
+        tableConfig?.hidden,
+        denyFields,
+        tableConfig?.overrides,
+      ),
+    [resolvedFields, tableConfig?.hidden, denyFields, tableConfig?.overrides],
   );
   const searchConfig = React.useMemo(() => {
     const tableSearch = tableConfig?.search;
@@ -1964,7 +2053,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         deleteConfirmation={locale.bulkDeleteModal}
         enableExport={canExport}
         showDefaultExport={false}
-        initialSorting={tableConfig?.defaultSort}
+        initialSorting={defaultSort}
         onSelectedRowsChange={handleSelectedRowsChange}
         getSelectedRows={getSelectedRowsRef}
       />

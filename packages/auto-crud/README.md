@@ -268,7 +268,7 @@ interface AutoCrudTableProps<TSchema> {
     batchFields?: (string | BatchUpdateField)[]; // 批量更新字段
     /** @deprecated 新代码请使用 actions.batch */
     batchActions?: BatchActionConfig<z.output<TSchema>>;
-    defaultSort?: any[]; // 默认排序
+    defaultSort?: any[]; // 手动 resource 的 UI 默认排序；useAutoCrudResource 请配置 options.defaultSort
   };
   form?: {
     overrides?: Record<string, any>; // 表单覆盖配置
@@ -280,11 +280,13 @@ interface AutoCrudTableProps<TSchema> {
    * 旧写法 actions={[...]} 仍表示行操作；
    * 新写法 actions={{ toolbar, row, batch }} 可集中配置三类操作。
    */
-  actions?: RowActionConfig<z.output<TSchema>> | {
-    toolbar?: ToolbarActionConfig;
-    row?: RowActionConfig<z.output<TSchema>>;
-    batch?: BatchActionConfig<z.output<TSchema>>;
-  };
+  actions?:
+    | RowActionConfig<z.output<TSchema>>
+    | {
+        toolbar?: ToolbarActionConfig;
+        row?: RowActionConfig<z.output<TSchema>>;
+        batch?: BatchActionConfig<z.output<TSchema>>;
+      };
   /** @deprecated 新代码请使用 actions.toolbar */
   toolbar?: ToolbarActionConfig;
   /** @deprecated 新代码请使用 actions.toolbar */
@@ -302,6 +304,11 @@ interface AutoCrudTableProps<TSchema> {
 interface UseAutoCrudResourceConfig<TData> {
   dataSource: DataSource<TData>; // 数据源
   schema: z.ZodType<TData>; // Zod Schema
+  options?: {
+    defaultSort?: Array<{ id: string; desc: boolean }> | false;
+    // undefined: schema 有 createdAt 时默认 createdAt desc
+    // false: 不应用默认排序
+  };
 }
 ```
 
@@ -776,7 +783,12 @@ crudActions.register({
   actions={{
     row: [
       { type: 'custom', label: '分配', onClick: (row) => assign(row.id) },
-      { type: 'custom', label: '预览', onClick: (row) => preview(row), position: 'start' },
+      {
+        type: 'custom',
+        label: '预览',
+        onClick: (row) => preview(row),
+        position: 'start',
+      },
     ],
   }}
 />
@@ -849,7 +861,9 @@ type RowCustomActionItem<T> = ActionMeta & {
   type: 'custom';
   label?: string;
   onClick?: (row: T) => void;
-  component?: React.ReactNode | ((context: AutoCrudRowActionContext<T>) => React.ReactNode);
+  component?:
+    | React.ReactNode
+    | ((context: AutoCrudRowActionContext<T>) => React.ReactNode);
   position?: 'start' | 'end'; // 仅无内置项时生效，默认 end
   separator?: boolean;
   variant?: 'default' | 'destructive';
@@ -992,7 +1006,7 @@ import {
   createSelectColumn, // 创建选择列
   createActionsColumn, // 创建操作列
   createFormSchema, // Zod Schema → Formily Schema
-  createEditFormSchema, // 创建编辑表单 Schema（排除 id, createdAt, updatedAt）
+  createEditFormSchema, // 创建编辑表单 Schema（排除平台托管字段）
 } from '@wordrhyme/auto-crud';
 ```
 
@@ -1254,7 +1268,15 @@ function CustomCrudPage() {
   });
 
   const formSchema = createFormSchema(taskSchema, {
-    exclude: ["id", "createdAt", "updatedAt"],
+    exclude: [
+      "id",
+      "createdAt",
+      "updatedAt",
+      "createdBy",
+      "createdByType",
+      "updatedBy",
+      "updatedByType",
+    ],
   });
 
   return (

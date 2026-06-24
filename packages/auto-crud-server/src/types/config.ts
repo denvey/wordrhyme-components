@@ -702,7 +702,7 @@ export interface CrudRouterConfig<
 
   /**
    * 要从 schema 排除的字段（自动派生时使用）
-   * @default ["id", "createdAt", "updatedAt"]
+   * @default ["id", "createdAt", "updatedAt", "createdBy", "createdByType", "updatedBy", "updatedByType"]
    */
   omitFields?: TableColumnKeys<TTable>[];
 

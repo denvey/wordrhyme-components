@@ -1,7 +1,7 @@
 {
   "name": "@wordrhyme/auto-crud-server",
   "type": "module",
-  "version": "1.1.6",
+  "version": "1.1.8",
   "packageManager": "pnpm@10.25.0",
   "description": "tRPC server utilities for auto-crud - automatic CRUD routers for Drizzle ORM",
   "author": "wordrhyme",

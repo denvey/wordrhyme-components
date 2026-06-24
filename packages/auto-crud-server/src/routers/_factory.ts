@@ -305,7 +305,15 @@ const importInputSchema = z.object({
 // Schema 解析
 // ============================================================
 
-const DEFAULT_OMIT_FIELDS = ['id', 'createdAt', 'updatedAt'] as const;
+const DEFAULT_OMIT_FIELDS = [
+  'id',
+  'createdAt',
+  'updatedAt',
+  'createdBy',
+  'createdByType',
+  'updatedBy',
+  'updatedByType',
+] as const;
 
 function shouldEnableCrudExtensionSchema<TContext>(
   config: CrudExtensionConfigRef<TContext>,
@@ -330,15 +338,21 @@ function withCrudExtensionInput<TContext>(
  */
 function resolveSchemas<TTable extends PgTable>(
   config: CrudRouterConfig<TTable>,
+  idField = 'id',
 ): {
   selectSchema: z.ZodTypeAny;
   schema: z.ZodObject<z.ZodRawShape>;
+  upsertSchema: z.ZodTypeAny;
+  importSchema: z.ZodTypeAny;
   updateSchema: z.ZodTypeAny;
 } {
-  const { table, omitFields = DEFAULT_OMIT_FIELDS } = config;
+  const { table } = config;
+  const omitFields = [...new Set([...DEFAULT_OMIT_FIELDS, ...(config.omitFields ?? [])])];
 
   // 1. schema: 主 Schema（用于 create/upsert）
   let schema: z.ZodObject<z.ZodRawShape>;
+  let upsertSchema: z.ZodTypeAny;
+  let importSchema: z.ZodTypeAny;
   if (config.schema) {
     // 严格模式：验证是否为 ZodObject
     if (!isZodObject(config.schema)) {
@@ -348,6 +362,8 @@ function resolveSchemas<TTable extends PgTable>(
       );
     }
     schema = config.schema as z.ZodObject<z.ZodRawShape>;
+    upsertSchema = schema;
+    importSchema = schema;
   } else {
     const rawSchema = createInsertSchema(table);
 
@@ -362,13 +378,26 @@ function resolveSchemas<TTable extends PgTable>(
 
     // 构建 omit 配置
     const omitConfig = Object.fromEntries(
-      (omitFields as string[]).map((f) => [f, true as const]),
+      omitFields
+        .filter((field) => field in rawSchema.shape)
+        .map((field) => [field, true as const]),
     ) as Record<string, true>;
 
     schema = (rawSchema as z.ZodObject<z.ZodRawShape>).omit(omitConfig);
+    const idSchema = (rawSchema as z.ZodObject<z.ZodRawShape>).shape[idField] as
+      | z.ZodTypeAny
+      | undefined;
+    const schemaWithOptionalId =
+      idSchema && !(idField in schema.shape)
+        ? schema.extend({ [idField]: idSchema.optional() } as z.ZodRawShape)
+        : schema;
+    upsertSchema = schemaWithOptionalId;
+    importSchema = schemaWithOptionalId;
   }
 
   schema = withCrudExtensionInput(schema, config) as z.ZodObject<z.ZodRawShape>;
+  upsertSchema = withCrudExtensionInput(upsertSchema, config);
+  importSchema = withCrudExtensionInput(importSchema, config);
 
   // 2. selectSchema: 优先使用配置，其次使用 schema，最后从 table 创建
   let selectSchema: z.ZodTypeAny;
@@ -391,7 +420,7 @@ function resolveSchemas<TTable extends PgTable>(
         })
   ) as z.ZodTypeAny;
 
-  return { selectSchema, schema, updateSchema };
+  return { selectSchema, schema, upsertSchema, importSchema, updateSchema };
 }
 
 // ============================================================
@@ -1055,9 +1084,8 @@ export function createCrudRouter<
 
   // 解析 Schema（自动派生或使用显式传入的）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { selectSchema, schema, updateSchema } = resolveSchemas(
-    config as unknown as CrudRouterConfig<TTable>,
-  );
+  const { selectSchema, schema, upsertSchema, importSchema, updateSchema } =
+    resolveSchemas(config as unknown as CrudRouterConfig<TTable>, idField);
 
   // ===== 构建 output schemas（类型防火墙核心） =====
   // .output() 让 tRPC 使用 Zod schema 推导的输出类型，
@@ -1297,9 +1325,13 @@ export function createCrudRouter<
               query = query.where(where);
             }
 
-            if (effectiveInput.sort?.length) {
-              const sortField = effectiveInput.sort[0];
-              if (sortField && validateColumn(sortField.id, sortableColumns)) {
+            const sortField =
+              effectiveInput.sort?.[0] ??
+              (getTableColumn(table, 'createdAt')
+                ? { id: 'createdAt', desc: true }
+                : undefined);
+            if (sortField) {
+              if (validateColumn(sortField.id, sortableColumns)) {
                 const column = resolveColumnTarget({
                   table,
                   columnId: sortField.id,
@@ -1743,7 +1775,7 @@ export function createCrudRouter<
     // Upsert（存在则更新，不存在则创建）
     upsert: resolved
       .procedureFactory('upsert')
-      .input(schema)
+      .input(upsertSchema)
       .output(upsertOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .mutation(
@@ -2058,7 +2090,7 @@ export function createCrudRouter<
             // 逐行验证
             for (let i = 0; i < importData.rows.length; i++) {
               const row = importData.rows[i];
-              const result = schema.safeParse(row);
+              const result = importSchema.safeParse(row);
               if (result.success) {
                 const splitRow = splitCrudExtensionWriteInput(
                   result.data as TInsert,

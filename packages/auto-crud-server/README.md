@@ -83,7 +83,7 @@ import { tasks } from '@/db/schema';
 // 🚀 零配置！一行代码生成完整 CRUD 路由
 export const tasksRouter = createCrudRouter({
   table: tasks,
-  // Schema 自动从 table 派生，排除 id, createdAt, updatedAt
+  // Schema 自动从 table 派生，排除平台托管字段
 });
 ```
 
@@ -168,6 +168,9 @@ export { handler as GET, handler as POST };
   joinOperator?: "and" | "or";  // 多条件连接方式
 }
 ```
+
+未传 `sort` 或传空数组时，如果表存在 `createdAt` 且未被 `sortableColumns`
+白名单排除，列表默认按 `createdAt` 降序返回。
 
 **输出**:
 
@@ -491,18 +494,18 @@ interface CrudRouterConfig<TTable, TSelect, TInsert, TUpdate> {
   idField?: string; // ID 字段名，默认 "id"
   filterableColumns?: CrudColumnRef<TTable>[]; // 可过滤字段白名单
   sortableColumns?: CrudColumnRef<TTable>[]; // 可排序字段白名单
-  omitFields?: string[]; // 自动派生时排除的字段
-  // 默认 ["id", "createdAt", "updatedAt"]
+  omitFields?: string[]; // 自动派生时额外排除的业务字段
+  // 默认已排除 ["id", "createdAt", "updatedAt", "createdBy", "createdByType", "updatedBy", "updatedByType"]
 }
 ```
 
 #### Schema 派生规则
 
-| 配置              | 派生行为                                    |
-| ----------------- | ------------------------------------------- |
-| 无 `schema`       | 从 `table` 自动派生，排除 `omitFields`      |
-| 无 `updateSchema` | 从 `schema.partial().refine(nonEmpty)` 派生 |
-| 无 `selectSchema` | 若有 `schema` 则使用它，否则从 `table` 派生 |
+| 配置              | 派生行为                                             |
+| ----------------- | ---------------------------------------------------- |
+| 无 `schema`       | 从 `table` 自动派生，排除默认托管字段和 `omitFields` |
+| 无 `updateSchema` | 从 `schema.partial().refine(nonEmpty)` 派生          |
+| 无 `selectSchema` | 若有 `schema` 则使用它，否则从 `table` 派生          |
 
 #### 使用示例
 
@@ -528,7 +531,7 @@ const usersRouter = createCrudRouter({
 // 4. 自定义排除字段
 const ordersRouter = createCrudRouter({
   table: orders,
-  omitFields: ['id', 'createdAt', 'updatedAt', 'internalCode'],
+  omitFields: ['internalCode'],
 });
 ```
 
@@ -992,8 +995,8 @@ export const usersRouter = createCrudRouter({
 ```typescript
 export const ordersRouter = createCrudRouter({
   table: orders,
-  // 自动派生 schema 时排除这些字段
-  omitFields: ['id', 'createdAt', 'updatedAt', 'internalCode'],
+  // 自动派生 schema 时额外排除这些字段；默认托管字段无需重复写
+  omitFields: ['internalCode'],
 });
 ```
 
