@@ -15,12 +15,21 @@ export type AutoCrudOption = {
   disabled?: boolean;
 };
 
+export type AutoCrudDataSourceContextType = 'form' | 'filter' | 'resolve';
+
+export type AutoCrudDataSourceResolveFields =
+  | readonly string[]
+  | ((context: { field: string }) => readonly string[]);
+
 export type AutoCrudDataSourceContext = {
   field: string;
+  type: AutoCrudDataSourceContextType;
   page?: number;
   pageSize?: number;
+  query?: string;
+  /** @deprecated Use `query` instead. */
   search?: string;
-  values?: Record<string, unknown>;
+  values?: Record<string, unknown> | Record<string, unknown>[];
   signal?: AbortSignal;
 };
 
@@ -46,6 +55,7 @@ export type AutoCrudDataSourceRegistration =
       debounceMs?: number;
       loadMore?: boolean;
       pageSize?: number;
+      resolveFields?: AutoCrudDataSourceResolveFields;
       load: AutoCrudDataSourceLoader;
     };
 
@@ -56,6 +66,7 @@ export type AutoCrudDataSourceEntry = {
   debounceMs: number;
   loadMore: boolean;
   pageSize: number;
+  resolveFields?: AutoCrudDataSourceResolveFields;
   load: AutoCrudDataSourceLoader;
 };
 
@@ -140,6 +151,7 @@ function normalizeDataSourceRegistration(
       typeof registration.pageSize === 'number' && registration.pageSize > 0
         ? registration.pageSize
         : 20,
+    resolveFields: registration.resolveFields,
     load: registration.load,
   };
 }

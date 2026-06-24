@@ -16,6 +16,7 @@
   "scripts": {
     "storybook": "tsx ./scripts/storybook.js",
     "build-storybook": "storybook build",
+    "typecheck": "tsc --noEmit",
     "clean": "git clean -xdf .cache storybook-static",
     "clean:all": "git clean -xdf .cache storybook-static node_modules"
   },

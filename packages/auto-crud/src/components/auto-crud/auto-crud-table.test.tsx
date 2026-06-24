@@ -44,6 +44,17 @@ const fields: Fields = {
   },
 };
 
+const displayFields: Fields = {
+  region: {
+    label: 'Dynamic Region',
+    dataSource: 'test.dynamic-regions',
+    filter: false,
+    table: {
+      index: 10,
+    },
+  },
+};
+
 const auditSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -74,6 +85,12 @@ function createResource(
     isFetching?: boolean;
     modal?: Partial<UseAutoCrudResourceReturn<typeof schema, Row>['modal']>;
     refresh?: UseAutoCrudResourceReturn<typeof schema, Row>['handlers']['refresh'] | null;
+    importHandler?: NonNullable<
+      UseAutoCrudResourceReturn<typeof schema, Row>['handlers']['import']
+    >;
+    exportHandler?: NonNullable<
+      UseAutoCrudResourceReturn<typeof schema, Row>['handlers']['export']
+    >;
   } = {},
 ): UseAutoCrudResourceReturn<typeof schema, Row> {
   const resource: UseAutoCrudResourceReturn<typeof schema, Row> = {
@@ -113,8 +130,8 @@ function createResource(
       updateMany: vi.fn(),
       setVariant: vi.fn(),
       ...(options.refresh === null ? {} : { refresh: options.refresh ?? vi.fn() }),
-      import: null,
-      export: null,
+      import: options.importHandler ?? null,
+      export: options.exportHandler ?? null,
     },
   };
 
@@ -220,9 +237,11 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
     expect(await screen.findByPlaceholderText('Dynamic Region')).toBeTruthy();
     expect(queryDynamicFilterTrigger()).toBeNull();
 
-    const loader = vi.fn(({ field, values }) => {
+    const loader = vi.fn(({ field, type, values }) => {
       expect(field).toBe('region');
-      expect(values).toEqual({});
+      if (type === 'filter') {
+        expect(values).toEqual({});
+      }
 
       return [
         { label: 'East Dynamic', value: 'east' },
@@ -234,12 +253,15 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
 
     await waitFor(() => expect(queryDynamicFilterTrigger()).toBeTruthy());
     expect(await screen.findByText('West Dynamic')).toBeTruthy();
-    await waitFor(() => expect(loader).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(loader).toHaveBeenCalledWith(expect.objectContaining({ type: 'filter' })),
+    );
   });
 
   it('passes simple filter search text to searchable dataSource loaders', async () => {
-    const loader = vi.fn(({ field, search }) => {
+    const loader = vi.fn(({ field, query, search }) => {
       expect(field).toBe('region');
+      expect(query).toBe(search);
 
       return [
         {
@@ -268,6 +290,8 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
       expect(loader).toHaveBeenCalledWith(
         expect.objectContaining({
           field: 'region',
+          type: 'filter',
+          query: '',
           search: '',
         }),
       ),
@@ -288,6 +312,7 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
       expect(loader).toHaveBeenCalledWith(
         expect.objectContaining({
           field: 'region',
+          query: 'beta',
           search: 'beta',
         }),
       ),
@@ -370,8 +395,9 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
   });
 
   it('keeps dynamic view labels after searchable filter results narrow', async () => {
-    const loader = vi.fn(({ field, search }) => {
+    const loader = vi.fn(({ field, query, search }) => {
       expect(field).toBe('region');
+      expect(query).toBe(search);
 
       if (search === 'beta') {
         return [{ label: 'Region beta', value: 'beta' }];
@@ -422,6 +448,7 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
       expect(loader).toHaveBeenCalledWith(
         expect.objectContaining({
           field: 'region',
+          query: 'beta',
           search: 'beta',
         }),
       ),
@@ -456,6 +483,250 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
       expect(screen.getAllByText('West Dynamic').length).toBeGreaterThanOrEqual(2);
     });
     await waitFor(() => expect(loader).toHaveBeenCalled());
+  });
+});
+
+describe('AutoCrudTable resolve dataSource', () => {
+  beforeEach(() => {
+    (
+      globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    ).IS_REACT_ACT_ENVIRONMENT = true;
+    window.history.replaceState(null, '', '/stores');
+    dataSources.unregister('test.dynamic-regions');
+  });
+
+  afterEach(() => {
+    setToolbarResolver(null);
+    crudActions.clear();
+    dataSources.unregister('test.dynamic-regions');
+    cleanup();
+    vi.clearAllMocks();
+  });
+
+  it('resolves current page labels once with deduped values', async () => {
+    const rows: Row[] = [
+      { id: '1', region: 'west' },
+      { id: '2', region: 'east' },
+      { id: '3', region: 'west' },
+    ];
+    const loader = vi.fn(({ field, type, values }) => {
+      expect(field).toBe('region');
+      expect(type).toBe('resolve');
+      expect(values).toEqual([{ region: 'west' }, { region: 'east' }]);
+
+      return [
+        { label: 'West Dynamic', value: 'west' },
+        { label: 'East Dynamic', value: 'east' },
+      ];
+    });
+
+    dataSources.register('test.dynamic-regions', loader);
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({ data: rows })}
+        fields={displayFields}
+      />,
+    );
+
+    await screen.findAllByText('West Dynamic');
+    await screen.findByText('East Dynamic');
+    expect(loader).toHaveBeenCalledTimes(1);
+  });
+
+  it('adds registered resolve fields to current page values', async () => {
+    const loader = vi.fn(({ values }) => {
+      expect(values).toEqual([
+        { region: 'west', regionType: 'market' },
+        { region: 'east', regionType: 'warehouse' },
+      ]);
+
+      return [
+        { label: 'West Dynamic', value: 'west' },
+        { label: 'East Dynamic', value: 'east' },
+      ];
+    });
+
+    dataSources.register('test.dynamic-regions', {
+      resolveFields: ({ field }) => [`${field}Type`],
+      load: loader,
+    });
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          data: [
+            { id: '1', region: 'west', regionType: 'market' },
+            { id: '2', region: 'east', regionType: 'warehouse' },
+          ] as Array<Row & { regionType: string }>,
+        })}
+        fields={displayFields}
+      />,
+    );
+
+    await screen.findByText('West Dynamic');
+    await screen.findByText('East Dynamic');
+  });
+
+  it('skips display resolution for hidden and denied fields', async () => {
+    const loader = vi.fn(() => [{ label: 'West Dynamic', value: 'west' }]);
+    dataSources.register('test.dynamic-regions', loader);
+
+    const deniedRender = render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource()}
+        fields={displayFields}
+        permissions={{ deny: ['region'] }}
+      />,
+    );
+
+    await waitFor(() => expect(loader).not.toHaveBeenCalled());
+
+    deniedRender.unmount();
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource()}
+        fields={{
+          region: {
+            label: 'Dynamic Region',
+            dataSource: 'test.dynamic-regions',
+            filter: false,
+            hidden: true,
+          },
+        }}
+      />,
+    );
+
+    await waitFor(() => expect(loader).not.toHaveBeenCalled());
+  });
+
+  it('uses resolved dataSource labels in cells and view modal', async () => {
+    const loader = vi.fn(() => [{ label: 'West Dynamic', value: 'west' }]);
+    dataSources.register('test.dynamic-regions', loader);
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: {
+            viewOpen: true,
+            selected: { id: '1', region: 'west' },
+          },
+        })}
+        fields={displayFields}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('West Dynamic').length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it('only requests cache misses when current page data changes', async () => {
+    const loader = vi.fn(({ values }) =>
+      (Array.isArray(values) ? values : []).map((item) => ({
+        label: `Region ${String(item.region)}`,
+        value: String(item.region),
+      })),
+    );
+    dataSources.register('test.dynamic-regions', loader);
+
+    const { rerender } = render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          data: [
+            { id: '1', region: 'west' },
+            { id: '2', region: 'east' },
+          ],
+        })}
+        fields={displayFields}
+      />,
+    );
+
+    await waitFor(() =>
+      expect(loader).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'resolve',
+          values: [{ region: 'west' }, { region: 'east' }],
+        }),
+      ),
+    );
+
+    rerender(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          data: [
+            { id: '3', region: 'east' },
+            { id: '4', region: 'north' },
+          ],
+        })}
+        fields={displayFields}
+      />,
+    );
+
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(2));
+    expect(loader.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        type: 'resolve',
+        values: [{ region: 'north' }],
+      }),
+    );
+  });
+
+  it('re-resolves cached values when resolve field context changes', async () => {
+    const loader = vi.fn(({ values }) =>
+      (Array.isArray(values) ? values : []).map((item) => ({
+        label: `Region ${String(item.regionType)}`,
+        value: String(item.region),
+      })),
+    );
+
+    dataSources.register('test.dynamic-regions', {
+      resolveFields: ['regionType'],
+      load: loader,
+    });
+
+    const { rerender } = render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          data: [{ id: '1', region: 'west', regionType: 'market' }] as Array<
+            Row & { regionType: string }
+          >,
+        })}
+        fields={displayFields}
+      />,
+    );
+
+    await screen.findByText('Region market');
+
+    rerender(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          data: [{ id: '2', region: 'west', regionType: 'warehouse' }] as Array<
+            Row & { regionType: string }
+          >,
+        })}
+        fields={displayFields}
+      />,
+    );
+
+    await screen.findByText('Region warehouse');
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(loader.mock.calls[1]?.[0]).toEqual(
+      expect.objectContaining({
+        type: 'resolve',
+        values: [{ region: 'west', regionType: 'warehouse' }],
+      }),
+    );
   });
 });
 
@@ -742,8 +1013,11 @@ describe('auto-crud table toolbar resolver', () => {
         rowIds: ['spu-1'],
         selectedRowIds: [],
         selectedCount: 0,
-        refresh: resource.handlers.refresh,
+        refresh: expect.any(Function),
+        exportData: expect.any(Function),
+        openCreate: resource.handlers.openCreate,
         isRefreshing: false,
+        isExporting: false,
       }),
     );
     expect(screen.getByText('Injected')).toBeTruthy();
@@ -860,6 +1134,221 @@ describe('auto-crud table toolbar resolver', () => {
     expect(toolbarResolver.mock.calls[0]?.[2].openCreate).toBe(
       resource.handlers.openCreate,
     );
+  });
+
+  it('uses openCreate in a replacement create component', () => {
+    const resource = createResource();
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={resource}
+        toolbar={[
+          {
+            type: 'create',
+            component: ({ openCreate }) => (
+              <button type="button" onClick={() => openCreate?.()}>
+                手动创建
+              </button>
+            ),
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '手动创建' }));
+
+    expect(resource.handlers.openCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes default toolbar commands to custom components', async () => {
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+    const originalAnchorClick = HTMLAnchorElement.prototype.click;
+    const createObjectURL = vi.fn<(blob: Blob) => string>(() => 'blob:export');
+    const revokeObjectURL = vi.fn<(url: string) => void>();
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      value: createObjectURL,
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      value: revokeObjectURL,
+    });
+    HTMLAnchorElement.prototype.click = vi.fn();
+
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    const importHandler = vi
+      .fn()
+      .mockResolvedValue({ success: 0, updated: 0, skipped: 0, failed: [] });
+    const exportHandler = vi.fn().mockResolvedValue([{ id: '1', region: 'west' }]);
+    const resource = createResource({ refresh, importHandler, exportHandler });
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={resource}
+        toolbar={[
+          {
+            type: 'custom',
+            component: (context) => (
+              <>
+                <button type="button" onClick={() => void context.refresh?.()}>
+                  Run refresh
+                </button>
+                <button type="button" onClick={() => context.openImport?.()}>
+                  Run import
+                </button>
+                <button type="button" onClick={() => void context.exportData?.()}>
+                  Run export
+                </button>
+                <button type="button" onClick={() => context.openCreate?.()}>
+                  Run create
+                </button>
+              </>
+            ),
+          },
+        ]}
+      />,
+    );
+
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Run refresh' }));
+      await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+
+      fireEvent.click(screen.getByRole('button', { name: 'Run export' }));
+      await waitFor(() => expect(exportHandler).toHaveBeenCalledTimes(1));
+      expect(createObjectURL).toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Run create' }));
+      expect(resource.handlers.openCreate).toHaveBeenCalledTimes(1);
+
+      fireEvent.click(screen.getByRole('button', { name: 'Run import' }));
+      expect(await screen.findByText('导入数据')).toBeTruthy();
+    } finally {
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        value: originalCreateObjectURL,
+      });
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        value: originalRevokeObjectURL,
+      });
+      HTMLAnchorElement.prototype.click = originalAnchorClick;
+    }
+  });
+
+  it('uses owner toolbar onClick before default commands', async () => {
+    const ownerRefresh = vi.fn();
+    const ownerImport = vi.fn();
+    const ownerExport = vi.fn();
+    const ownerCreate = vi.fn();
+    const resourceRefresh = vi.fn().mockResolvedValue(undefined);
+    const importHandler = vi
+      .fn()
+      .mockResolvedValue({ success: 0, updated: 0, skipped: 0, failed: [] });
+    const exportHandler = vi.fn().mockResolvedValue([{ id: '1', region: 'west' }]);
+    const resource = createResource({
+      refresh: resourceRefresh,
+      importHandler,
+      exportHandler,
+    });
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={resource}
+        toolbar={[
+          { type: 'refresh', onClick: ownerRefresh },
+          { type: 'import', onClick: ownerImport },
+          { type: 'export', onClick: ownerExport },
+          { type: 'create', onClick: ownerCreate },
+          {
+            type: 'custom',
+            component: (context) => (
+              <>
+                <button type="button" onClick={() => void context.refresh?.()}>
+                  Owner refresh command
+                </button>
+                <button type="button" onClick={() => context.openImport?.()}>
+                  Owner import command
+                </button>
+                <button type="button" onClick={() => void context.exportData?.()}>
+                  Owner export command
+                </button>
+                <button type="button" onClick={() => context.openCreate?.()}>
+                  Owner create command
+                </button>
+              </>
+            ),
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Owner refresh command' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Owner import command' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Owner export command' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Owner create command' }));
+
+    await waitFor(() => {
+      expect(ownerRefresh).toHaveBeenCalledTimes(1);
+      expect(ownerImport).toHaveBeenCalledTimes(1);
+      expect(ownerExport).toHaveBeenCalledTimes(1);
+      expect(ownerCreate).toHaveBeenCalledTimes(1);
+    });
+    expect(resourceRefresh).not.toHaveBeenCalled();
+    expect(importHandler).not.toHaveBeenCalled();
+    expect(exportHandler).not.toHaveBeenCalled();
+    expect(resource.handlers.openCreate).not.toHaveBeenCalled();
+    expect(screen.queryByText('导入数据')).toBeNull();
+  });
+
+  it('omits denied toolbar commands and hides create replacement components', () => {
+    let capturedContext: AutoCrudToolbarContext | undefined;
+    const resource = createResource({
+      importHandler: vi
+        .fn()
+        .mockResolvedValue({ success: 0, updated: 0, skipped: 0, failed: [] }),
+      exportHandler: vi.fn().mockResolvedValue([{ id: '1', region: 'west' }]),
+    });
+
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={resource}
+        permissions={{ can: { create: false, import: false, export: false } }}
+        toolbar={[
+          {
+            type: 'custom',
+            component: (context) => {
+              capturedContext = context;
+              return <button type="button">Command probe</button>;
+            },
+          },
+          {
+            type: 'create',
+            component: ({ openCreate }) => (
+              <button type="button" onClick={() => openCreate?.()}>
+                手动创建
+              </button>
+            ),
+          },
+          { type: 'import' },
+          { type: 'export' },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Command probe' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '手动创建' })).toBeNull();
+    expect(capturedContext?.openCreate).toBeUndefined();
+    expect(capturedContext?.openImport).toBeUndefined();
+    expect(capturedContext?.exportData).toBeUndefined();
   });
 });
 

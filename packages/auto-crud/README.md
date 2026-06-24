@@ -546,11 +546,11 @@ table={{
 
 `toolbar` 数组控制页面顶部右侧工具栏的按钮，设计思路完全对齐行操作 `actions`。旧 prop `toolbarActions` 仍兼容读取，但新代码请使用 `toolbar`。
 
-内置操作类型：`create`（新建）、`import`（导入）、`export`（导出）。
+内置操作类型：`refresh`（刷新）、`create`（新建）、`import`（导入）、`export`（导出）。
 
 ### 只添加自定义按钮（内置保持默认）
 
-只传 `type: "custom"` 项时，所有内置按钮（导入、导出、新建）保持原样，custom 项按 `position` 插入首部或尾部。
+只传 `type: "custom"` 项时，所有内置按钮（刷新、导入、导出、新建）保持原样，custom 项按 `position` 插入首部或尾部。
 
 ```tsx
 <AutoCrudTable
@@ -563,7 +563,7 @@ table={{
     { type: 'custom', component: <Button variant="outline">批量标签</Button> }, // 默认 position: "end"
   ]}
 />
-// 渲染顺序: 分类管理 · [导入] · [导出] · [新建] · 批量标签
+// 渲染顺序: 分类管理 · [刷新] · [导入] · [导出] · [新建] · 批量标签
 ```
 
 ### 调整内置按钮顺序
@@ -669,7 +669,7 @@ table={{
 
 ```tsx
 <AutoCrudTable
-  // defaults 即内置三个按钮的信息，在此数组里你可以随意 map、过滤或插值
+  // defaults 即内置按钮的信息，在此数组里你可以随意 map、过滤或插值
   toolbar={(defaults) =>
     defaults.map((btn) =>
       btn.type === 'create'
@@ -697,7 +697,7 @@ type ToolbarActionConfig =
   | ((defaults: ToolbarBuiltinActionItem[]) => ToolbarActionItem[]);
 
 type ToolbarBuiltinActionItem = ActionMeta & {
-  type: 'create' | 'import' | 'export';
+  type: 'refresh' | 'create' | 'import' | 'export';
   onClick?: () => void; // 覆盖默认行为
   label?: string; // 覆盖默认文案
   component?: React.ReactNode | ((context: AutoCrudToolbarContext) => React.ReactNode);
@@ -715,9 +715,33 @@ interface AutoCrudToolbarContext {
   rowIds: string[];
   selectedRowIds: string[];
   selectedCount: number;
+  refresh?: () => Promise<unknown>;
+  openImport?: () => void;
+  exportData?: () => Promise<void>;
   openCreate?: () => void;
+  isRefreshing: boolean;
+  isExporting: boolean;
 }
 ```
+
+`AutoCrudToolbarContext` 是工具栏自定义组件的正式 command contract。自定义按钮需要复用 AutoCrud 内置能力时，直接调用 context 中的命令，不要绕过内部状态重新实现。
+
+例如业务侧希望把默认“新建”按钮替换成“手动创建”，可以替换 `type: "create"` 的组件并调用 `openCreate`：
+
+```tsx
+<AutoCrudTable
+  toolbar={[
+    {
+      type: 'create',
+      component: ({ openCreate }) => (
+        <Button onClick={() => openCreate?.()}>手动创建</Button>
+      ),
+    },
+  ]}
+/>
+```
+
+这里“手动创建”只是业务按钮文案，不是新的 AutoCrud 流程；它仍然打开 AutoCrud 原生的新建弹窗。`openCreate`、`openImport`、`exportData` 会按对应权限和能力可选暴露，扩展方应使用 `?.()` 或自行控制 disabled 状态。
 
 ### 工具栏扩展 Resolver
 

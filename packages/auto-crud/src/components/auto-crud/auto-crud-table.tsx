@@ -46,6 +46,7 @@ import {
   normalizeDataSourceConfig,
   normalizeOptions,
   type AutoCrudDataSourceConfig,
+  type AutoCrudDataSourceEntry,
 } from '@/lib/registries';
 import { crudActions } from '@/lib/crud-actions';
 import { buildFormOverrides } from '@/lib/field-config';
@@ -308,8 +309,11 @@ export interface AutoCrudToolbarContext {
   selectedRowIds: string[];
   selectedCount: number;
   refresh?: () => Promise<unknown>;
-  isRefreshing: boolean;
+  openImport?: () => void;
+  exportData?: () => Promise<void>;
   openCreate?: () => void;
+  isRefreshing: boolean;
+  isExporting: boolean;
 }
 
 export type AutoCrudToolbarResolver = (
@@ -444,11 +448,12 @@ function haveSameRowSelection<T>(
   return left.every((row, index) => row === right[index]);
 }
 
-function readCreateAction(
+function readToolbarAction(
   actions: readonly ToolbarActionItem[],
+  type: ToolbarBuiltinActionType,
 ): ToolbarBuiltinActionItem | undefined {
   return actions.find(
-    (action): action is ToolbarBuiltinActionItem => action.type === 'create',
+    (action): action is ToolbarBuiltinActionItem => action.type === type,
   );
 }
 
@@ -679,6 +684,16 @@ type DynamicFilterState = {
   setSearchValue: (field: string, value: string) => void;
 };
 
+type ResolveDataSourceEntry = {
+  field: string;
+  values: string[];
+  source: NonNullable<ReturnType<typeof normalizeDataSourceConfig>>;
+};
+
+type DynamicResolveState = {
+  optionsByField: Record<string, FieldOption[]>;
+};
+
 function getFilterDataSource(config: Field): AutoCrudDataSourceConfig | undefined {
   if (config.filter && typeof config.filter === 'object') {
     return config.filter.dataSource ?? config.dataSource;
@@ -697,6 +712,98 @@ function shouldLoadDynamicFilterOptions(config: Field): boolean {
   }
 
   return normalizeDataSourceConfig(getFilterDataSource(config)) !== undefined;
+}
+
+function isResolveValuePresent(value: unknown): boolean {
+  return value !== null && value !== undefined && String(value).length > 0;
+}
+
+function getResolveValues(
+  rows: readonly Record<string, unknown>[],
+  field: string,
+): string[] {
+  const values = new Set<string>();
+
+  for (const row of rows) {
+    const value = row[field];
+    const items = Array.isArray(value) ? value : [value];
+
+    for (const item of items) {
+      if (isResolveValuePresent(item)) {
+        values.add(String(item));
+      }
+    }
+  }
+
+  return Array.from(values);
+}
+
+function normalizeResolveCacheValue(value: unknown): unknown {
+  if (value instanceof Date) return value.toISOString();
+  if (Array.isArray(value)) return value.map(normalizeResolveCacheValue);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value as Record<string, unknown>)
+        .sort()
+        .map((key) => [
+          key,
+          normalizeResolveCacheValue((value as Record<string, unknown>)[key]),
+        ]),
+    );
+  }
+  return value === undefined ? { __autoCrudUndefined: true } : value;
+}
+
+function resolveRecordSignature(record: Record<string, unknown>): string {
+  return JSON.stringify(
+    Object.keys(record)
+      .sort()
+      .map((key) => [key, normalizeResolveCacheValue(record[key])]),
+  );
+}
+
+function resolveRecordCacheKey(
+  sourceKey: string,
+  field: string,
+  record: Record<string, unknown>,
+): string {
+  return `${sourceKey}\u0000${field}\u0000${String(record[field])}\u0000${resolveRecordSignature(record)}`;
+}
+
+function mergeFieldOptions(
+  current: FieldOption[] | undefined,
+  incoming: FieldOption[] | undefined,
+): FieldOption[] | undefined {
+  if ((!current || current.length === 0) && (!incoming || incoming.length === 0)) {
+    return undefined;
+  }
+
+  return mergeFilterOptions(current, incoming ?? []);
+}
+
+function mergeOptionsByField(
+  left: Record<string, FieldOption[]> | undefined,
+  right: Record<string, FieldOption[]> | undefined,
+): Record<string, FieldOption[]> {
+  const keys = new Set([...Object.keys(left ?? {}), ...Object.keys(right ?? {})]);
+
+  return Object.fromEntries(
+    Array.from(keys).flatMap((key) => {
+      const options = mergeFieldOptions(left?.[key], right?.[key]);
+      return options ? [[key, options]] : [];
+    }),
+  );
+}
+
+function shouldResolveOptions(
+  field: string,
+  config: Field | undefined,
+  hiddenColumns: Set<string>,
+): config is Field {
+  if (!config) return false;
+  if (hiddenColumns.has(field)) return false;
+  if (normalizeFieldOptions(config.enum)) return false;
+  return normalizeDataSourceConfig(config.dataSource) !== undefined;
 }
 
 function useRegistryVersion(subscribe: (listener: () => void) => () => void) {
@@ -916,8 +1023,10 @@ function useDynamicFilterOptions(fields?: Fields): DynamicFilterState {
           void Promise.resolve(
             entry.load({
               field,
+              type: 'filter',
               page,
               pageSize: entry.loadMore ? entry.pageSize : undefined,
+              query: search,
               search,
               values: {},
               signal: controller?.signal,
@@ -1046,6 +1155,225 @@ function useDynamicFilterOptions(fields?: Fields): DynamicFilterState {
   };
 }
 
+function rowHasResolveValue(
+  row: Record<string, unknown>,
+  field: string,
+  value: string,
+): boolean {
+  const rowValue = row[field];
+  const values = Array.isArray(rowValue) ? rowValue : [rowValue];
+  return values.some(
+    (item) => item !== null && item !== undefined && String(item) === value,
+  );
+}
+
+function resolveExtraFields(
+  entry: { resolveFields?: AutoCrudDataSourceEntry['resolveFields'] },
+  field: string,
+): string[] {
+  const configured =
+    typeof entry.resolveFields === 'function'
+      ? entry.resolveFields({ field })
+      : entry.resolveFields;
+
+  return Array.from(
+    new Set(
+      (configured ?? []).filter(
+        (key): key is string => typeof key === 'string' && key.length > 0,
+      ),
+    ),
+  );
+}
+
+function buildResolveRecords(
+  rows: readonly Record<string, unknown>[],
+  field: string,
+  values: readonly string[],
+  extraFields: readonly string[],
+): Record<string, unknown>[] {
+  return values.map((value) => {
+    const row = rows.find((candidate) => rowHasResolveValue(candidate, field, value));
+    const record: Record<string, unknown> = { [field]: value };
+
+    for (const extraField of extraFields) {
+      if (row && Object.prototype.hasOwnProperty.call(row, extraField)) {
+        record[extraField] = row[extraField];
+      }
+    }
+
+    return record;
+  });
+}
+
+function useDynamicResolveOptions(
+  fields: Fields | undefined,
+  rows: readonly Record<string, unknown>[],
+  hiddenColumns: readonly string[],
+): DynamicResolveState {
+  const registryVersion = useRegistryVersion(dataSources.subscribe);
+  const [optionsByField, setOptionsByField] = React.useState<
+    Record<string, FieldOption[]>
+  >({});
+  const cacheRef = React.useRef(new Map<string, FieldOption>());
+  const requestVersionRef = React.useRef(0);
+
+  const sourceEntries = React.useMemo<ResolveDataSourceEntry[]>(() => {
+    if (!fields || rows.length === 0) return [];
+
+    const hiddenSet = new Set(hiddenColumns);
+
+    return Object.entries(fields).flatMap(([field, config]) => {
+      if (!shouldResolveOptions(field, config, hiddenSet)) return [];
+
+      const source = normalizeDataSourceConfig(config.dataSource);
+      const values = getResolveValues(rows, field);
+      return source && values.length > 0 ? [{ field, values, source }] : [];
+    });
+  }, [fields, hiddenColumns, rows]);
+
+  React.useEffect(() => {
+    const requestVersion = requestVersionRef.current + 1;
+    requestVersionRef.current = requestVersion;
+
+    if (sourceEntries.length === 0) {
+      setOptionsByField({});
+      return;
+    }
+
+    let cancelled = false;
+    const activeFields = new Set(sourceEntries.map(({ field }) => field));
+
+    const readCachedOptions = (
+      entry: ResolveDataSourceEntry,
+      records: readonly Record<string, unknown>[],
+    ): FieldOption[] =>
+      mergeFilterOptions(
+        undefined,
+        records.flatMap((record) => {
+          const option = cacheRef.current.get(
+            resolveRecordCacheKey(entry.source.key, entry.field, record),
+          );
+          return option ? [option] : [];
+        }),
+      );
+
+    const recordsByField = new Map(
+      sourceEntries.flatMap((sourceEntry) => {
+        const entry = dataSources.get(sourceEntry.source.key);
+        if (!entry) return [];
+
+        return [
+          [
+            sourceEntry.field,
+            buildResolveRecords(
+              rows,
+              sourceEntry.field,
+              sourceEntry.values,
+              resolveExtraFields(entry, sourceEntry.field),
+            ),
+          ],
+        ] as const;
+      }),
+    );
+
+    const readSourceEntryCachedOptions = (
+      entry: ResolveDataSourceEntry,
+    ): FieldOption[] => {
+      const records = recordsByField.get(entry.field) ?? [];
+      return readCachedOptions(entry, records);
+    };
+
+    const findOptionForRecord = (
+      options: readonly FieldOption[],
+      field: string,
+      record: Record<string, unknown>,
+    ): FieldOption | undefined => {
+      const value = String(record[field]);
+      return options.find((option) => option.value === value);
+    };
+
+    const missingRecordsFor = (
+      entry: ResolveDataSourceEntry,
+      records: readonly Record<string, unknown>[],
+    ): Record<string, unknown>[] =>
+      records.filter(
+        (record) =>
+          !cacheRef.current.has(
+            resolveRecordCacheKey(entry.source.key, entry.field, record),
+          ),
+      );
+
+    setOptionsByField((current) => {
+      const next: Record<string, FieldOption[]> = {};
+      for (const entry of sourceEntries) {
+        const cached = readSourceEntryCachedOptions(entry);
+        if (cached.length > 0) {
+          next[entry.field] = cached;
+        }
+      }
+
+      for (const [field, options] of Object.entries(current)) {
+        if (activeFields.has(field) && !next[field]) {
+          next[field] = options;
+        }
+      }
+
+      return next;
+    });
+
+    for (const sourceEntry of sourceEntries) {
+      const entry = dataSources.get(sourceEntry.source.key);
+      if (!entry) continue;
+
+      const records = recordsByField.get(sourceEntry.field) ?? [];
+      const missingRecords = missingRecordsFor(sourceEntry, records);
+      if (missingRecords.length === 0) continue;
+
+      void Promise.resolve(
+        entry.load({
+          field: sourceEntry.field,
+          type: 'resolve',
+          values: missingRecords,
+        }),
+      ).then(
+        (result) => {
+          if (cancelled || requestVersionRef.current !== requestVersion) return;
+
+          const options = normalizeOptions(result);
+          for (const record of missingRecords) {
+            const option = findOptionForRecord(options, sourceEntry.field, record);
+            if (!option) continue;
+
+            cacheRef.current.set(
+              resolveRecordCacheKey(sourceEntry.source.key, sourceEntry.field, record),
+              option,
+            );
+          }
+
+          const cached = readSourceEntryCachedOptions(sourceEntry);
+          setOptionsByField((current) => ({
+            ...current,
+            [sourceEntry.field]: cached,
+          }));
+        },
+        (error: unknown) => {
+          if (cancelled || requestVersionRef.current !== requestVersion) return;
+          console.warn(
+            `[AutoCrud] Failed to resolve data source "${sourceEntry.source.key}".`,
+            error,
+          );
+        },
+      );
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [registryVersion, rows, sourceEntries]);
+
+  return { optionsByField };
+}
+
 function getOptionLabel(value: unknown, options?: FieldOption[]) {
   const stringValue = String(value);
   return options?.find((option) => option.value === stringValue)?.label ?? stringValue;
@@ -1059,6 +1387,7 @@ function buildTableOverrides(
   fields?: Fields,
   legacyOverrides?: Record<string, any>,
   dynamicFilterState?: DynamicFilterState,
+  dynamicResolveState?: DynamicResolveState,
 ): Record<string, any> {
   const result: Record<string, any> = { ...legacyOverrides };
 
@@ -1072,13 +1401,22 @@ function buildTableOverrides(
         !fieldOptions && filterDataSourceRegistered
           ? toTableOptions(dynamicFilterState?.optionsByField[key] ?? [])
           : undefined;
-      const dynamicOptions =
+      const dynamicFilterLabelOptions =
         !fieldOptions && filterDataSourceRegistered
-          ? toTableOptions(
-              dynamicFilterState?.labelOptionsByField[key] ??
-                dynamicFilterState?.optionsByField[key] ??
-                [],
-            )
+          ? (dynamicFilterState?.labelOptionsByField[key] ??
+            dynamicFilterState?.optionsByField[key] ??
+            [])
+          : undefined;
+      const dynamicResolveOptions = !fieldOptions
+        ? dynamicResolveState?.optionsByField[key]
+        : undefined;
+      const mergedDynamicOptions = mergeFieldOptions(
+        dynamicFilterLabelOptions,
+        dynamicResolveOptions,
+      );
+      const dynamicOptions =
+        !fieldOptions && mergedDynamicOptions
+          ? toTableOptions(mergedDynamicOptions)
           : undefined;
 
       // 提取 table.meta（无论 filter 配置如何都需要保留）
@@ -1096,20 +1434,25 @@ function buildTableOverrides(
       const fieldDataSourceMeta = dynamicOptions
         ? {
             options: dynamicOptions,
-            autoCrudFilterOptions: currentDynamicOptions ?? dynamicOptions,
-            autoCrudFilterHasMore: dynamicFilterState?.hasMoreByField[key] ?? false,
-            autoCrudFilterLoading: dynamicFilterState?.loadingByField[key] ?? false,
-            autoCrudFilterOnPopupScroll: (event: React.UIEvent<HTMLElement>) => {
-              if (!isNearPopupScrollBottom(event.currentTarget)) return;
-              dynamicFilterState?.loadMore(key);
-            },
-            variant: 'multiSelect',
-            ...(filterDataSourceSearchable
+            ...(filterDataSourceRegistered
               ? {
-                  autoCrudFilterSearchValue: dynamicFilterState?.searchValues[key] ?? '',
-                  autoCrudFilterOnSearch: (value: string) =>
-                    dynamicFilterState?.setSearchValue(key, value),
-                  autoCrudFilterShouldFilter: false,
+                  autoCrudFilterOptions: currentDynamicOptions ?? dynamicOptions,
+                  autoCrudFilterHasMore: dynamicFilterState?.hasMoreByField[key] ?? false,
+                  autoCrudFilterLoading: dynamicFilterState?.loadingByField[key] ?? false,
+                  autoCrudFilterOnPopupScroll: (event: React.UIEvent<HTMLElement>) => {
+                    if (!isNearPopupScrollBottom(event.currentTarget)) return;
+                    dynamicFilterState?.loadMore(key);
+                  },
+                  variant: 'multiSelect',
+                  ...(filterDataSourceSearchable
+                    ? {
+                        autoCrudFilterSearchValue:
+                          dynamicFilterState?.searchValues[key] ?? '',
+                        autoCrudFilterOnSearch: (value: string) =>
+                          dynamicFilterState?.setSearchValue(key, value),
+                        autoCrudFilterShouldFilter: false,
+                      }
+                    : undefined),
                 }
               : undefined),
           }
@@ -1649,6 +1992,29 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const [exporting, setExporting] = React.useState(false);
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
   const dynamicFilterOptions = useDynamicFilterOptions(resolvedFields);
+  const hiddenColumns = React.useMemo(
+    () =>
+      buildHiddenColumns(
+        resolvedFields,
+        tableConfig?.hidden,
+        denyFields,
+        tableConfig?.overrides,
+      ),
+    [resolvedFields, tableConfig?.hidden, denyFields, tableConfig?.overrides],
+  );
+  const dynamicResolveOptions = useDynamicResolveOptions(
+    resolvedFields,
+    resource.tableData.data as readonly Record<string, unknown>[],
+    hiddenColumns,
+  );
+  const dynamicOptionsByField = React.useMemo(
+    () =>
+      mergeOptionsByField(
+        dynamicFilterOptions.labelOptionsByField,
+        dynamicResolveOptions.optionsByField,
+      ),
+    [dynamicFilterOptions.labelOptionsByField, dynamicResolveOptions.optionsByField],
+  );
   const resourceIdKey = resource.idKey ?? 'id';
   const actionRegistryVersion = useCrudActionsVersion();
   const unifiedActions = React.useMemo<AutoCrudActionsConfig<z.output<TSchema>>>(() => {
@@ -1708,39 +2074,21 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     },
     [resourceIdKey],
   );
-  const ownerCreateAction = React.useMemo(
-    () => readCreateAction(ownerToolbarActions),
+  const ownerRefreshAction = React.useMemo(
+    () => readToolbarAction(ownerToolbarActions, 'refresh'),
     [ownerToolbarActions],
   );
-  const toolbarOpenCreate = can.create
-    ? (ownerCreateAction?.onClick ?? onCreate ?? resource.handlers.openCreate)
-    : undefined;
-  const toolbarContext = React.useMemo<AutoCrudToolbarContext>(
-    () => ({
-      crudId: id ?? '',
-      idKey: resourceIdKey,
-      rowIds,
-      selectedRowIds,
-      selectedCount,
-      isRefreshing: resource.tableData.isFetching,
-      ...(resource.handlers.refresh ? { refresh: resource.handlers.refresh } : {}),
-      ...(toolbarOpenCreate ? { openCreate: toolbarOpenCreate } : {}),
-    }),
-    [
-      id,
-      resourceIdKey,
-      rowIds,
-      selectedRowIds,
-      selectedCount,
-      resource.handlers.refresh,
-      resource.tableData.isFetching,
-      toolbarOpenCreate,
-    ],
+  const ownerImportAction = React.useMemo(
+    () => readToolbarAction(ownerToolbarActions, 'import'),
+    [ownerToolbarActions],
   );
-  const resolvedToolbarActions = resolveToolbarActionsWithResolver(
-    id,
-    registryToolbarActions,
-    toolbarContext,
+  const ownerExportAction = React.useMemo(
+    () => readToolbarAction(ownerToolbarActions, 'export'),
+    [ownerToolbarActions],
+  );
+  const ownerCreateAction = React.useMemo(
+    () => readToolbarAction(ownerToolbarActions, 'create'),
+    [ownerToolbarActions],
   );
 
   // 从 schema 提取可导入的列名（排除 deny 字段）
@@ -1787,12 +2135,69 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       setExporting(false);
     }
   }, [selectedCount, handleExport]);
+  const toolbarRefresh = React.useMemo<AutoCrudToolbarContext['refresh']>(() => {
+    const refresh = ownerRefreshAction?.onClick ?? resource.handlers.refresh;
+    if (!refresh) return undefined;
+
+    return async () => refresh();
+  }, [ownerRefreshAction?.onClick, resource.handlers.refresh]);
+  const toolbarOpenImport = React.useMemo<AutoCrudToolbarContext['openImport']>(() => {
+    if (!canImport) return undefined;
+    return ownerImportAction?.onClick ?? (() => setImportOpen(true));
+  }, [canImport, ownerImportAction?.onClick]);
+  const toolbarExportData = React.useMemo<AutoCrudToolbarContext['exportData']>(() => {
+    if (!canExport) return undefined;
+    const exportData = ownerExportAction?.onClick ?? handleExportClick;
+    return async () => exportData();
+  }, [canExport, handleExportClick, ownerExportAction?.onClick]);
+  const toolbarOpenCreate = React.useMemo<AutoCrudToolbarContext['openCreate']>(() => {
+    if (!can.create) return undefined;
+    return ownerCreateAction?.onClick ?? onCreate ?? resource.handlers.openCreate;
+  }, [can.create, onCreate, ownerCreateAction?.onClick, resource.handlers.openCreate]);
+  const toolbarContext = React.useMemo<AutoCrudToolbarContext>(
+    () => ({
+      crudId: id ?? '',
+      idKey: resourceIdKey,
+      rowIds,
+      selectedRowIds,
+      selectedCount,
+      isRefreshing: resource.tableData.isFetching,
+      isExporting: exporting,
+      ...(toolbarRefresh ? { refresh: toolbarRefresh } : {}),
+      ...(toolbarOpenImport ? { openImport: toolbarOpenImport } : {}),
+      ...(toolbarExportData ? { exportData: toolbarExportData } : {}),
+      ...(toolbarOpenCreate ? { openCreate: toolbarOpenCreate } : {}),
+    }),
+    [
+      id,
+      resourceIdKey,
+      rowIds,
+      selectedRowIds,
+      selectedCount,
+      resource.tableData.isFetching,
+      exporting,
+      toolbarRefresh,
+      toolbarOpenImport,
+      toolbarExportData,
+      toolbarOpenCreate,
+    ],
+  );
+  const resolvedToolbarActions = resolveToolbarActionsWithResolver(
+    id,
+    registryToolbarActions,
+    toolbarContext,
+  );
 
   // 构建表格和表单的 overrides（memoized）
   const tableOverrides = React.useMemo(
     () =>
-      buildTableOverrides(resolvedFields, tableConfig?.overrides, dynamicFilterOptions),
-    [resolvedFields, tableConfig?.overrides, dynamicFilterOptions],
+      buildTableOverrides(
+        resolvedFields,
+        tableConfig?.overrides,
+        dynamicFilterOptions,
+        dynamicResolveOptions,
+      ),
+    [resolvedFields, tableConfig?.overrides, dynamicFilterOptions, dynamicResolveOptions],
   );
   const defaultSort = React.useMemo(
     () =>
@@ -1805,16 +2210,6 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const formOverrides = React.useMemo(
     () => buildFormOverrides(resolvedFields, formConfig?.overrides, denyFields),
     [resolvedFields, formConfig?.overrides, denyFields],
-  );
-  const hiddenColumns = React.useMemo(
-    () =>
-      buildHiddenColumns(
-        resolvedFields,
-        tableConfig?.hidden,
-        denyFields,
-        tableConfig?.overrides,
-      ),
-    [resolvedFields, tableConfig?.hidden, denyFields, tableConfig?.overrides],
   );
   const searchConfig = React.useMemo(() => {
     const tableSearch = tableConfig?.search;
@@ -1879,7 +2274,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             overrides?: { onClick?: () => void; label?: string },
           ): React.ReactNode => {
             if (type === 'refresh') {
-              const onRefresh = overrides?.onClick ?? resource.handlers.refresh;
+              const onRefresh = overrides?.onClick ?? toolbarRefresh;
               const label = overrides?.label ?? locale.toolbar.refresh;
               if (!onRefresh) return null;
               return (
@@ -1906,7 +2301,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
                   key="import"
                   variant="outline"
                   size="sm"
-                  onClick={overrides?.onClick ?? (() => setImportOpen(true))}
+                  onClick={overrides?.onClick ?? toolbarOpenImport}
                 >
                   <Download className="mr-2 h-4 w-4" />
                   {overrides?.label ?? locale.toolbar.import}
@@ -1919,7 +2314,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
                   key="export"
                   variant="outline"
                   size="sm"
-                  onClick={overrides?.onClick ?? handleExportClick}
+                  onClick={overrides?.onClick ?? toolbarExportData}
                   disabled={
                     exporting || (selectedCount === 0 && !resource.handlers.export)
                   }
@@ -1938,10 +2333,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             }
             if (type === 'create' && can.create) {
               return (
-                <Button
-                  key="create"
-                  onClick={overrides?.onClick ?? onCreate ?? resource.handlers.openCreate}
-                >
+                <Button key="create" onClick={overrides?.onClick ?? toolbarOpenCreate}>
                   {overrides?.label ?? locale.toolbar.create}
                 </Button>
               );
@@ -2090,7 +2482,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.modal.selected}
         schema={resolvedSchema}
         fields={resolvedFields}
-        dynamicOptions={dynamicFilterOptions.optionsByField}
+        dynamicOptions={dynamicOptionsByField}
         denyFields={denyFields}
         locale={locale}
       />

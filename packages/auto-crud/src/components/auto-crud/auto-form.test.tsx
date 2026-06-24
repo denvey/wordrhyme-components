@@ -239,6 +239,7 @@ describe('AutoForm dynamic dataSource', () => {
       expect(loader).toHaveBeenCalledWith(
         expect.objectContaining({
           field: 'region',
+          type: 'form',
           values: { customer: 'acme' },
         }),
       );
@@ -308,7 +309,9 @@ describe('AutoForm dynamic dataSource', () => {
   });
 
   it('passes search text to searchable MultiCombobox dataSource loaders', async () => {
-    const loader = vi.fn(({ search }) => {
+    const loader = vi.fn(({ query, search }) => {
+      expect(query).toBe(search);
+
       if (search === 'Sweden') {
         return {
           hasMore: false,
@@ -358,6 +361,8 @@ describe('AutoForm dynamic dataSource', () => {
       expect(loader).toHaveBeenCalledWith(
         expect.objectContaining({
           field: 'countries',
+          type: 'form',
+          query: '',
           search: '',
         }),
       );
@@ -379,6 +384,7 @@ describe('AutoForm dynamic dataSource', () => {
           field: 'countries',
           page: 1,
           pageSize: 2,
+          query: 'Sweden',
           search: 'Sweden',
         }),
       );
@@ -430,12 +436,16 @@ describe('AutoForm dynamic dataSource', () => {
   });
 
   it('passes combobox search text to searchable dataSource loaders', async () => {
-    const loader = vi.fn(({ search }) => [
-      {
-        value: `region-${search || 'initial'}`,
-        label: `Region ${search || 'initial'}`,
-      },
-    ]);
+    const loader = vi.fn(({ query, search }) => {
+      expect(query).toBe(search);
+
+      return [
+        {
+          value: `region-${search || 'initial'}`,
+          label: `Region ${search || 'initial'}`,
+        },
+      ];
+    });
 
     dataSources.register('test.dynamic-regions', {
       search: true,
@@ -467,6 +477,7 @@ describe('AutoForm dynamic dataSource', () => {
       expect(loader).toHaveBeenCalledWith(
         expect.objectContaining({
           field: 'region',
+          query: '',
           search: '',
         }),
       );
@@ -483,6 +494,7 @@ describe('AutoForm dynamic dataSource', () => {
       expect(loader).toHaveBeenCalledWith(
         expect.objectContaining({
           field: 'region',
+          query: 'beta',
           search: 'beta',
         }),
       );

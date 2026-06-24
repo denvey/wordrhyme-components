@@ -379,8 +379,10 @@ function loadAutoCrudDataSource({
   void Promise.resolve(
     entry.load({
       field: field.path.toString(),
+      type: 'form',
       page,
       pageSize: entry.loadMore ? entry.pageSize : undefined,
+      query: searchValue,
       search: searchValue,
       values,
       signal: controller?.signal,
