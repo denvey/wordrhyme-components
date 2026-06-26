@@ -1,7 +1,10 @@
 'use client';
 
 import type { z } from 'zod';
-import type { UseAutoCrudResourceReturn } from '@/hooks/use-auto-crud-resource';
+import type {
+  AutoCrudQueryCapabilities,
+  UseAutoCrudResourceReturn,
+} from '@/hooks/use-auto-crud-resource';
 import type { JsonSchemaFormScope } from '@wordrhyme/formily-shadcn';
 import type { ModalVariant } from './form-modal';
 import type { CrudPermissions } from '@/types/permissions';
@@ -1536,6 +1539,61 @@ function buildTableOverrides(
   return result;
 }
 
+function buildCapabilityTableOverrides(
+  schema: z.ZodObject<z.ZodRawShape>,
+  capabilities?: AutoCrudQueryCapabilities,
+): Record<string, any> {
+  if (!capabilities) return {};
+
+  const result: Record<string, any> = {};
+  const filterFields = capabilities.filters?.fields;
+  const sortFields = capabilities.sort?.fields;
+  const filterSet = Array.isArray(filterFields) ? new Set(filterFields) : null;
+  const sortSet = Array.isArray(sortFields) ? new Set(sortFields) : null;
+
+  for (const key of Object.keys(schema.shape)) {
+    const override: Record<string, unknown> = {};
+
+    if (capabilities.filters) {
+      if (!capabilities.filters.enabled) {
+        override.enableColumnFilter = false;
+      } else if (filterSet) {
+        override.enableColumnFilter = filterSet.has(key);
+      }
+    }
+
+    if (capabilities.sort) {
+      if (!capabilities.sort.enabled) {
+        override.enableSorting = false;
+      } else if (sortSet) {
+        override.enableSorting = sortSet.has(key);
+      }
+    }
+
+    if (Object.keys(override).length > 0) {
+      result[key] = override;
+    }
+  }
+
+  return result;
+}
+
+function mergeTableOverrides(
+  base: Record<string, any> | undefined,
+  enforced: Record<string, any>,
+): Record<string, any> {
+  const result: Record<string, any> = { ...(base ?? {}) };
+
+  for (const [key, override] of Object.entries(enforced)) {
+    result[key] = {
+      ...(result[key] ?? {}),
+      ...override,
+    };
+  }
+
+  return result;
+}
+
 /**
  * 从统一配置生成隐藏列列表
  */
@@ -2191,13 +2249,23 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   // 构建表格和表单的 overrides（memoized）
   const tableOverrides = React.useMemo(
     () =>
-      buildTableOverrides(
-        resolvedFields,
-        tableConfig?.overrides,
-        dynamicFilterOptions,
-        dynamicResolveOptions,
+      mergeTableOverrides(
+        buildTableOverrides(
+          resolvedFields,
+          tableConfig?.overrides,
+          dynamicFilterOptions,
+          dynamicResolveOptions,
+        ),
+        buildCapabilityTableOverrides(resolvedSchema, resource.capabilities),
       ),
-    [resolvedFields, tableConfig?.overrides, dynamicFilterOptions, dynamicResolveOptions],
+    [
+      resolvedFields,
+      tableConfig?.overrides,
+      dynamicFilterOptions,
+      dynamicResolveOptions,
+      resolvedSchema,
+      resource.capabilities,
+    ],
   );
   const defaultSort = React.useMemo(
     () =>
@@ -2213,12 +2281,20 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   );
   const searchConfig = React.useMemo(() => {
     const tableSearch = tableConfig?.search;
+    const searchCapability = resource.capabilities?.search;
+
     if (tableSearch === false) return false;
+    if (searchCapability) {
+      if (!searchCapability.enabled) return false;
+      if (tableSearch && typeof tableSearch === 'object') return tableSearch;
+      return true;
+    }
     if (tableSearch && typeof tableSearch === 'object') return tableSearch;
+    if (tableSearch === true) return true;
     return Object.values(resolvedFields).some((field) => field?.search === true)
       ? true
       : false;
-  }, [resolvedFields, tableConfig?.search]);
+  }, [resolvedFields, resource.capabilities?.search, tableConfig?.search]);
   const batchFields = React.useMemo(
     () =>
       buildBatchUpdateFields(resolvedSchema, tableConfig?.batchFields, resolvedFields),

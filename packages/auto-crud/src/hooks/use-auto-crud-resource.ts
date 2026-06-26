@@ -60,7 +60,14 @@ type AutoCrudMetadata = {
   schema?: unknown;
   fields?: Fields;
   errors?: string[];
+  capabilities?: AutoCrudQueryCapabilities;
 };
+
+export interface AutoCrudQueryCapabilities {
+  search?: { enabled: boolean; fields: string[] };
+  filters?: { enabled: boolean; fields: string[] | null };
+  sort?: { enabled: boolean; fields: string[] | null };
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -287,6 +294,8 @@ export interface UseAutoCrudResourceReturn<
   schema?: z.ZodObject<z.ZodRawShape>;
   /** Optional field config override from host metadata. */
   fields?: Fields;
+  /** Query capabilities reported by auto-crud-server metadata. */
+  capabilities?: AutoCrudQueryCapabilities;
   /** Default sorting used by this resource's list query. */
   defaultSort?: AutoCrudSorting;
   modal: ModalState<TListItem>;
@@ -486,6 +495,7 @@ export function useAutoCrudResource<
     () => readMetadataFields(metadata?.fields),
     [metadata?.fields],
   );
+  const capabilities = metadata?.capabilities;
 
   // ========== URL 状态管理（内部自动 or 外部传入） ==========
   // 从 schema 推导 columns（用于 useReadableFilters）
@@ -828,6 +838,7 @@ export function useAutoCrudResource<
     },
     schema: resolvedSchema,
     fields: metadataFields,
+    capabilities,
     defaultSort: defaultSorting,
     modal,
     mutations: {

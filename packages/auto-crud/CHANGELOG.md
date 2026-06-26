@@ -1,5 +1,16 @@
 # @wordrhyme/auto-crud
 
+## 1.4.0
+
+### Minor Changes
+
+- Add query capability metadata for auto-crud search, filters, and sorting, and merge provider capabilities with base router capabilities.
+
+### Patch Changes
+
+- 996881c: Treat audit actor fields as platform-managed defaults in generated CRUD schemas and UI.
+  Default list views to `createdAt` descending when that column is available.
+
 ## 1.3.5
 
 ### Patch Changes

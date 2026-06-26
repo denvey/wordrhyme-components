@@ -48,13 +48,18 @@ import type {
   ProcedureMap,
   ProcedureFactory,
   CrudColumnRef,
+  CrudColumnCapability,
+  CrudCapabilityMetadata,
   CrudExtensionFilter,
+  CrudExtensionMetadata,
   CrudExtensionsConfig,
   CrudExtensionsProvider,
 } from '../types/config';
 
 // Re-export types for backward compatibility
 export type {
+  CrudCapabilityMetadata,
+  CrudColumnCapability,
   CrudColumnConfig,
   CrudColumnExpression,
   CrudColumnRef,
@@ -437,19 +442,163 @@ function getColumnRefId<TTable extends PgTable>(
 
 function findColumnRef<TTable extends PgTable>(
   columnId: string,
-  allowedColumns: CrudColumnRef<TTable>[] | undefined,
+  allowedColumns: CrudColumnCapability<TTable> | undefined,
 ): CrudColumnRef<TTable> | undefined {
+  if (!Array.isArray(allowedColumns)) return undefined;
   return allowedColumns?.find((columnRef) => getColumnRefId(columnRef) === columnId);
 }
 
 function validateColumn<TTable extends PgTable>(
   columnId: string,
-  allowedColumns: CrudColumnRef<TTable>[] | undefined,
+  allowedColumns: CrudColumnCapability<TTable> | undefined,
 ): boolean {
-  if (!allowedColumns || allowedColumns.length === 0) {
+  if (allowedColumns === false) return false;
+  if (allowedColumns === undefined) {
     return true;
   }
   return findColumnRef(columnId, allowedColumns) !== undefined;
+}
+
+type ColumnCapabilityConfig<TTable extends PgTable> = Pick<
+  CrudRouterConfig<TTable>,
+  | 'search'
+  | 'filters'
+  | 'sort'
+  | 'searchColumns'
+  | 'filterableColumns'
+  | 'sortableColumns'
+>;
+
+function resolveColumnCapability<TTable extends PgTable>(
+  config: ColumnCapabilityConfig<TTable>,
+  nextKey: 'search' | 'filters' | 'sort',
+  legacyKey: 'searchColumns' | 'filterableColumns' | 'sortableColumns',
+): CrudColumnCapability<TTable> | undefined {
+  const nextValue = config[nextKey] as CrudColumnCapability<TTable> | undefined;
+  const legacyValue = config[legacyKey] as CrudColumnRef<TTable>[] | undefined;
+
+  if (nextValue !== undefined && legacyValue !== undefined) {
+    throw new Error(
+      `[createCrudRouter] "${nextKey}" and "${legacyKey}" cannot be used together.`,
+    );
+  }
+
+  const value = (nextValue !== undefined ? nextValue : legacyValue) as
+    | CrudColumnCapability<TTable>
+    | undefined;
+
+  if (value === undefined) return undefined;
+  if (value === false) return false;
+  if (Array.isArray(value)) return value;
+
+  throw new Error(
+    `[createCrudRouter] "${nextKey}" must be an array of column refs or false.`,
+  );
+}
+
+function readCapabilityFields<TTable extends PgTable>(
+  columns: CrudColumnCapability<TTable> | undefined,
+): string[] | null {
+  if (columns === false) return [];
+  if (Array.isArray(columns)) return columns.map(getColumnRefId);
+  return null;
+}
+
+function buildCrudCapabilities<TTable extends PgTable>(
+  searchColumns: CrudColumnCapability<TTable> | undefined,
+  filterableColumns: CrudColumnCapability<TTable> | undefined,
+  sortableColumns: CrudColumnCapability<TTable> | undefined,
+): CrudCapabilityMetadata {
+  const searchFields = readCapabilityFields(searchColumns) ?? [];
+
+  return {
+    search: {
+      enabled: searchFields.length > 0,
+      fields: searchFields,
+    },
+    filters: {
+      enabled: filterableColumns !== false,
+      fields: readCapabilityFields(filterableColumns),
+    },
+    sort: {
+      enabled: sortableColumns !== false,
+      fields: readCapabilityFields(sortableColumns),
+    },
+  };
+}
+
+function uniqueCapabilityFields(...fields: Array<string[] | undefined>): string[] {
+  return Array.from(new Set(fields.flatMap((fieldList) => fieldList ?? [])));
+}
+
+function mergeSearchCapability(
+  base: CrudCapabilityMetadata['search'],
+  extension: CrudCapabilityMetadata['search'] | undefined,
+  disabled: boolean,
+): CrudCapabilityMetadata['search'] {
+  if (disabled) {
+    return { enabled: false, fields: [] };
+  }
+
+  const fields = uniqueCapabilityFields(base.fields, extension?.fields);
+  return {
+    enabled: base.enabled || extension?.enabled === true || fields.length > 0,
+    fields,
+  };
+}
+
+function mergeFieldCapability(
+  base: CrudCapabilityMetadata['filters'],
+  extension: CrudCapabilityMetadata['filters'] | undefined,
+  disabled: boolean,
+): CrudCapabilityMetadata['filters'] {
+  if (disabled) {
+    return { enabled: false, fields: [] };
+  }
+
+  const enabled = base.enabled || extension?.enabled === true;
+  if (!enabled) {
+    return { enabled: false, fields: [] };
+  }
+
+  return {
+    enabled: true,
+    fields:
+      base.fields === null || extension?.fields === null
+        ? null
+        : uniqueCapabilityFields(base.fields, extension?.fields),
+  };
+}
+
+function mergeCrudCapabilities(
+  base: CrudCapabilityMetadata,
+  extension: CrudCapabilityMetadata | undefined,
+  disabled: {
+    filters: boolean;
+    search: boolean;
+    sort: boolean;
+  },
+): CrudCapabilityMetadata {
+  return {
+    search: mergeSearchCapability(base.search, extension?.search, disabled.search),
+    filters: mergeFieldCapability(base.filters, extension?.filters, disabled.filters),
+    sort: mergeFieldCapability(base.sort, extension?.sort, disabled.sort),
+  };
+}
+
+function withCrudCapabilities(
+  metadata: CrudExtensionMetadata | undefined,
+  capabilities: CrudCapabilityMetadata,
+  disabled: {
+    filters: boolean;
+    search: boolean;
+    sort: boolean;
+  },
+): CrudExtensionMetadata {
+  return {
+    ...(metadata ?? {}),
+    capabilities: mergeCrudCapabilities(capabilities, metadata?.capabilities, disabled),
+  };
 }
 
 function getTableColumn<TTable extends PgTable>(
@@ -491,11 +640,15 @@ function resolveColumnTarget<TTable extends PgTable>({
 }: {
   table: TTable;
   columnId: string;
-  allowedColumns: CrudColumnRef<TTable>[] | undefined;
+  allowedColumns: CrudColumnCapability<TTable> | undefined;
 }): ColumnTarget | undefined {
   const columnRef = findColumnRef(columnId, allowedColumns);
 
-  if ((allowedColumns?.length ?? 0) > 0 && columnRef === undefined) {
+  if (allowedColumns === false) {
+    return undefined;
+  }
+
+  if (Array.isArray(allowedColumns) && columnRef === undefined) {
     return undefined;
   }
 
@@ -883,9 +1036,10 @@ async function enrichCrudRows<TContext, TRow extends Record<string, unknown>>(
 function isAllowedBaseCrudColumn<TTable extends PgTable>(
   table: TTable,
   columnId: string,
-  allowedColumns: CrudColumnRef<TTable>[] | undefined,
+  allowedColumns: CrudColumnCapability<TTable> | undefined,
 ): boolean {
-  if (allowedColumns && allowedColumns.length > 0) {
+  if (allowedColumns === false) return false;
+  if (Array.isArray(allowedColumns)) {
     return (
       resolveColumnTarget({
         table,
@@ -900,7 +1054,7 @@ function isAllowedBaseCrudColumn<TTable extends PgTable>(
 function isKnownBaseCrudColumn<TTable extends PgTable>(
   table: TTable,
   columnId: string,
-  allowedColumns: CrudColumnRef<TTable>[] | undefined,
+  allowedColumns: CrudColumnCapability<TTable> | undefined,
 ): boolean {
   return (
     getTableColumn(table, columnId) !== undefined ||
@@ -913,8 +1067,8 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
   config: CrudExtensionConfigRef<TContext>,
   table: TTable,
   idField: string,
-  filterableColumns: CrudColumnRef<TTable>[] | undefined,
-  searchColumns: CrudColumnRef<TTable>[] | undefined,
+  filterableColumns: CrudColumnCapability<TTable> | undefined,
+  searchColumns: CrudColumnCapability<TTable> | undefined,
   input: ListInput | ExportInput,
 ): Promise<ListInput | ExportInput> {
   const target = readCrudTarget(config);
@@ -922,9 +1076,15 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
   const search = typeof input.search === 'string' ? input.search.trim() : '';
   if (!target || (filters.length === 0 && !search)) return input;
 
+  const filtersDisabled = filterableColumns === false;
+  const searchDisabled = searchColumns === false;
   const baseFilters: typeof filters = [];
   const extensionFilters: typeof filters = [];
   for (const filter of filters) {
+    if (filtersDisabled) {
+      continue;
+    }
+
     if (isAllowedBaseCrudColumn(table, filter.id, filterableColumns)) {
       baseFilters.push(filter);
     } else if (isKnownBaseCrudColumn(table, filter.id, filterableColumns)) {
@@ -958,14 +1118,18 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
     matchedSets.push(new Set(matchedIds));
   }
 
-  if (search && provider?.searchEntityIds) {
+  if (search && !searchDisabled && provider?.searchEntityIds) {
     const matchedIds = await provider.searchEntityIds({
       id: target.id,
       search,
       limit: 5000,
     });
     matchedSets.push(new Set(matchedIds));
-  } else if (search && !buildCrudSearchCondition({ table, search, searchColumns })) {
+  } else if (
+    search &&
+    !searchDisabled &&
+    !buildCrudSearchCondition({ table, search, searchColumns })
+  ) {
     throw new TRPCError({
       code: 'PRECONDITION_FAILED',
       message: 'CRUD search is not available',
@@ -1003,10 +1167,12 @@ function buildCrudSearchCondition<TTable extends PgTable>({
 }: {
   table: TTable;
   search: string | undefined;
-  searchColumns: CrudColumnRef<TTable>[] | undefined;
+  searchColumns: CrudColumnCapability<TTable> | undefined;
 }): SQL | undefined {
   const term = typeof search === 'string' ? search.trim() : '';
-  if (!term || !searchColumns || searchColumns.length === 0) return undefined;
+  if (!term || !Array.isArray(searchColumns) || searchColumns.length === 0) {
+    return undefined;
+  }
 
   const conditions = searchColumns
     .map((columnRef) =>
@@ -1073,14 +1239,28 @@ export function createCrudRouter<
   const {
     table,
     idField = 'id',
-    filterableColumns,
-    searchColumns,
-    sortableColumns,
     maxBatchSize = 100,
     maxExportSize = 5000,
     softDelete: softDeleteOption,
     middleware = {},
   } = config;
+  const searchColumns = resolveColumnCapability(config, 'search', 'searchColumns');
+  const filterableColumns = resolveColumnCapability(
+    config,
+    'filters',
+    'filterableColumns',
+  );
+  const sortableColumns = resolveColumnCapability(config, 'sort', 'sortableColumns');
+  const capabilities = buildCrudCapabilities(
+    searchColumns,
+    filterableColumns,
+    sortableColumns,
+  );
+  const disabledCapabilities = {
+    search: searchColumns === false,
+    filters: filterableColumns === false,
+    sort: sortableColumns === false,
+  };
 
   // 解析 Schema（自动派生或使用显式传入的）
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1103,6 +1283,20 @@ export function createCrudRouter<
     schema: z.unknown().optional(),
     fields: z.record(z.string(), z.unknown()).optional(),
     errors: z.array(z.string()).optional(),
+    capabilities: z.object({
+      search: z.object({
+        enabled: z.boolean(),
+        fields: z.array(z.string()),
+      }),
+      filters: z.object({
+        enabled: z.boolean(),
+        fields: z.array(z.string()).nullable(),
+      }),
+      sort: z.object({
+        enabled: z.boolean(),
+        fields: z.array(z.string()).nullable(),
+      }),
+    }),
   });
 
   const deleteManyOutputSchema = z.object({ deleted: z.number() });
@@ -1254,12 +1448,18 @@ export function createCrudRouter<
         await withGuard(ctx, 'list');
 
         const target = readCrudTarget(config);
-        if (!target) return {};
+        if (!target) return withCrudCapabilities({}, capabilities, disabledCapabilities);
 
         const provider = resolveCrudExtensions(ctx, config);
-        if (!provider?.getMetadata) return {};
+        if (!provider?.getMetadata) {
+          return withCrudCapabilities({}, capabilities, disabledCapabilities);
+        }
 
-        return provider.getMetadata({ id: target.id });
+        return withCrudCapabilities(
+          await provider.getMetadata({ id: target.id }),
+          capabilities,
+          disabledCapabilities,
+        );
       }),
 
     // 列表查询

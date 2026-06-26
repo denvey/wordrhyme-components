@@ -105,6 +105,7 @@ export type {
   UseAutoCrudResourceOptions,
   UseAutoCrudResourceReturn,
   UseAutoCrudResourceParams,
+  AutoCrudQueryCapabilities,
   AutoQueryParams,
   ImportResult,
 } from './hooks/use-auto-crud-resource';

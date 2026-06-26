@@ -832,6 +832,277 @@ describe('createCrudRouter', () => {
       expect(() => createCrudRouter(config)).not.toThrow();
     });
 
+    it('should expose default query capabilities through metadata', async () => {
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db: createMockDb(),
+      } as any) as MetadataCaller;
+      const result = await caller.meta();
+
+      expect(result.capabilities).toEqual({
+        search: { enabled: false, fields: [] },
+        filters: { enabled: true, fields: null },
+        sort: { enabled: true, fields: null },
+      });
+    });
+
+    it('should apply global search through search config and expose metadata', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        search: ['title'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller &
+        MetadataCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        search: 'Task',
+        joinOperator: 'and',
+      });
+      const meta = await caller.meta();
+
+      const whereArg = db.builders[0]?.where.mock.calls[0]?.[0];
+      const sqlText = collectSqlText(whereArg);
+
+      expect(db.builders[0]?.where).toHaveBeenCalledTimes(1);
+      expect(sqlText).toContain('ilike');
+      expect(sqlText).toContain('::text');
+      expect(meta.capabilities.search).toEqual({
+        enabled: true,
+        fields: ['title'],
+      });
+    });
+
+    it('should merge provider query capabilities into metadata', async () => {
+      const getMetadata = vi.fn().mockResolvedValue({
+        capabilities: {
+          search: { enabled: true, fields: ['owner'] },
+          filters: { enabled: true, fields: ['owner'] },
+          sort: { enabled: true, fields: ['owner'] },
+        },
+      });
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        search: ['title'],
+        filters: ['status'],
+        sort: ['createdAt'],
+      });
+
+      const caller = crudRouter.createCaller({
+        db: createMockDb(),
+        crudExtensions: {
+          getMetadata,
+        },
+      } as any) as MetadataCaller;
+      const meta = await caller.meta();
+
+      expect(meta.capabilities).toEqual({
+        search: { enabled: true, fields: ['title', 'owner'] },
+        filters: { enabled: true, fields: ['status', 'owner'] },
+        sort: { enabled: true, fields: ['createdAt', 'owner'] },
+      });
+    });
+
+    it('should restrict filters and sort through new capability config', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        filters: ['status'],
+        sort: ['title'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller &
+        MetadataCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        filters: [
+          {
+            id: 'title',
+            value: 'Task',
+            operator: 'iLike',
+            variant: 'text',
+            filterId: 'title',
+          },
+        ],
+        sort: [{ id: 'status', desc: false }],
+        joinOperator: 'and',
+      });
+      const meta = await caller.meta();
+
+      expect(db.builders[0]?.where).not.toHaveBeenCalled();
+      expect(db.builders[1]?.where).not.toHaveBeenCalled();
+      expect(db.builders[0]?.orderBy).not.toHaveBeenCalled();
+      expect(meta.capabilities.filters).toEqual({
+        enabled: true,
+        fields: ['status'],
+      });
+      expect(meta.capabilities.sort).toEqual({
+        enabled: true,
+        fields: ['title'],
+      });
+    });
+
+    it('should disable search filters and sort explicitly', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        search: false,
+        filters: false,
+        sort: false,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller &
+        MetadataCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        search: 'Task',
+        filters: [
+          {
+            id: 'status',
+            value: 'todo',
+            operator: 'eq',
+            variant: 'select',
+            filterId: 'status',
+          },
+        ],
+        sort: [{ id: 'title', desc: false }],
+        joinOperator: 'and',
+      });
+      const meta = await caller.meta();
+
+      expect(db.builders[0]?.where).not.toHaveBeenCalled();
+      expect(db.builders[1]?.where).not.toHaveBeenCalled();
+      expect(db.builders[0]?.orderBy).not.toHaveBeenCalled();
+      expect(meta.capabilities).toEqual({
+        search: { enabled: false, fields: [] },
+        filters: { enabled: false, fields: [] },
+        sort: { enabled: false, fields: [] },
+      });
+    });
+
+    it('should not let provider query handlers bypass explicit disable config', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const getMetadata = vi.fn().mockResolvedValue({
+        capabilities: {
+          search: { enabled: true, fields: ['owner'] },
+          filters: { enabled: true, fields: ['owner'] },
+          sort: { enabled: true, fields: ['owner'] },
+        },
+      });
+      const searchEntityIds = vi.fn().mockResolvedValue(['1']);
+      const matchEntityIds = vi.fn().mockResolvedValue(['1']);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        search: false,
+        filters: false,
+        sort: false,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          getMetadata,
+          matchEntityIds,
+          searchEntityIds,
+        },
+      } as any) as ListCaller & MetadataCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        search: 'Owner',
+        filters: [
+          {
+            id: 'owner',
+            value: 'user-1',
+            operator: 'eq',
+            variant: 'text',
+            filterId: 'owner',
+          },
+        ],
+        sort: [{ id: 'owner', desc: false }],
+        joinOperator: 'and',
+      });
+      const meta = await caller.meta();
+
+      expect(searchEntityIds).not.toHaveBeenCalled();
+      expect(matchEntityIds).not.toHaveBeenCalled();
+      expect(db.builders[0]?.where).not.toHaveBeenCalled();
+      expect(db.builders[1]?.where).not.toHaveBeenCalled();
+      expect(db.builders[0]?.orderBy).not.toHaveBeenCalled();
+      expect(meta.capabilities).toEqual({
+        search: { enabled: false, fields: [] },
+        filters: { enabled: false, fields: [] },
+        sort: { enabled: false, fields: [] },
+      });
+    });
+
+    it('should reject conflicting new and legacy query capability config', () => {
+      expect(() =>
+        createCrudRouter({
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          search: ['title'],
+          searchColumns: ['title'],
+        }),
+      ).toThrow('"search" and "searchColumns"');
+
+      expect(() =>
+        createCrudRouter({
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          filters: ['status'],
+          filterableColumns: ['status'],
+        }),
+      ).toThrow('"filters" and "filterableColumns"');
+
+      expect(() =>
+        createCrudRouter({
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          sort: ['title'],
+          sortableColumns: ['title'],
+        }),
+      ).toThrow('"sort" and "sortableColumns"');
+    });
+
     it('should apply ordinary text filters through the table column', async () => {
       const db = createListMockDb([
         { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
@@ -1185,6 +1456,11 @@ describe('createCrudRouter', () => {
         },
         fields: {
           owner: { label: 'Owner', search: true },
+        },
+        capabilities: {
+          search: { enabled: false, fields: [] },
+          filters: { enabled: true, fields: null },
+          sort: { enabled: true, fields: null },
         },
       });
     });

@@ -1,7 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
-import type { UseAutoCrudResourceReturn } from '@/hooks/use-auto-crud-resource';
+import type {
+  AutoCrudQueryCapabilities,
+  UseAutoCrudResourceReturn,
+} from '@/hooks/use-auto-crud-resource';
 import { crudActions } from '@/lib/crud-actions';
 import { dataSources } from '@/lib/registries';
 import type {
@@ -91,6 +94,7 @@ function createResource(
     exportHandler?: NonNullable<
       UseAutoCrudResourceReturn<typeof schema, Row>['handlers']['export']
     >;
+    capabilities?: AutoCrudQueryCapabilities;
   } = {},
 ): UseAutoCrudResourceReturn<typeof schema, Row> {
   const resource: UseAutoCrudResourceReturn<typeof schema, Row> = {
@@ -101,6 +105,7 @@ function createResource(
       isLoading: false,
       isFetching: options.isFetching ?? false,
     },
+    capabilities: options.capabilities,
     modal: {
       createOpen: false,
       editOpen: false,
@@ -775,6 +780,101 @@ describe('auto-crud table toolbar resolver', () => {
 
     expect((refreshButton as HTMLButtonElement).disabled).toBe(true);
     expect(refreshIcon?.classList.contains('animate-spin')).toBe(true);
+  });
+
+  it('shows global search when metadata capabilities enable it', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={createResource({
+          capabilities: {
+            search: { enabled: true, fields: ['region'] },
+          },
+        })}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText('搜索')).toBeTruthy();
+  });
+
+  it('does not use field search config when metadata disables search', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={createResource({
+          capabilities: {
+            search: { enabled: false, fields: [] },
+          },
+        })}
+        fields={{
+          region: {
+            search: true,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryByPlaceholderText('搜索')).toBeNull();
+  });
+
+  it('keeps legacy field search behavior without metadata capabilities', () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={createResource()}
+        fields={{
+          region: {
+            search: true,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText('搜索')).toBeTruthy();
+  });
+
+  it('restricts filter and sort controls from metadata capabilities', async () => {
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.products"
+        schema={schema}
+        resource={createResource({
+          capabilities: {
+            search: { enabled: false, fields: [] },
+            filters: { enabled: true, fields: ['region'] },
+            sort: { enabled: true, fields: ['region'] },
+          },
+        })}
+        fields={{
+          spuId: {
+            label: 'SPU',
+            filter: { variant: 'text' },
+          },
+          region: {
+            label: 'Region',
+            filter: { variant: 'text' },
+          },
+        }}
+        table={{ filterModes: ['simple'] }}
+      />,
+    );
+
+    expect(screen.getByPlaceholderText('Region')).toBeTruthy();
+    expect(screen.queryByPlaceholderText('SPU')).toBeNull();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Sort rows' }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Add sort' }));
+    });
+
+    const sortList = screen.getByRole('list');
+    expect(sortList.textContent).toContain('Region');
+    expect(sortList.textContent).not.toContain('SPU');
   });
 
   it('shows simple filter mode by default and orders table controls', () => {

@@ -66,6 +66,16 @@ export type CrudColumnRef<TTable extends PgTable = PgTable> =
   | string
   | CrudColumnConfig<TTable>;
 
+export type CrudColumnCapability<TTable extends PgTable = PgTable> =
+  | false
+  | CrudColumnRef<TTable>[];
+
+export interface CrudCapabilityMetadata {
+  search: { enabled: boolean; fields: string[] };
+  filters: { enabled: boolean; fields: string[] | null };
+  sort: { enabled: boolean; fields: string[] | null };
+}
+
 // ============================================================
 // 软删除配置
 // ============================================================
@@ -151,6 +161,8 @@ export interface CrudExtensionMetadata {
   schema?: unknown;
   fields?: Record<string, unknown>;
   errors?: string[];
+  /** 扩展提供的查询能力，会与 router 基础能力合并。 */
+  capabilities?: CrudCapabilityMetadata;
 }
 
 export interface CrudExtensionFilter {
@@ -708,8 +720,37 @@ export interface CrudRouterConfig<
 
   /** ID 字段名，默认 "id" */
   idField?: string;
+
+  /**
+   * 全局搜索列白名单。
+   *
+   * 不配置时不启用全局搜索；传数组时启用并只搜索指定字段；传 false 显式禁用。
+   *
+   * @example
+   * search: ['title', { id: 'name', jsonField: ['zh-CN', 'en-US'] }]
+   */
+  search?: CrudColumnCapability<TTable>;
+
+  /**
+   * 可过滤列白名单。
+   *
+   * 不配置时保持兼容行为：所有真实表字段可过滤；传数组时只允许指定字段；
+   * 传 false 显式禁用过滤。
+   */
+  filters?: CrudColumnCapability<TTable>;
+
+  /**
+   * 可排序列白名单。
+   *
+   * 不配置时保持兼容行为：所有真实表字段可排序；传数组时只允许指定字段；
+   * 传 false 显式禁用排序。
+   */
+  sort?: CrudColumnCapability<TTable>;
+
   /**
    * 可过滤的列白名单。
+   *
+   * @deprecated Use `filters` instead.
    *
    * 普通字段使用字符串；jsonb/i18n 字段可用对象配置 jsonField，
    * 由服务端显式生成 text expression，前端仍然传 id。
@@ -724,6 +765,8 @@ export interface CrudRouterConfig<
   /**
    * 全局搜索列白名单。
    *
+   * @deprecated Use `search` instead.
+   *
    * 当列表/导出输入包含 `search` 时，默认查询会对这些列做文本化 ILIKE
    * 搜索，并与其他筛选条件按 AND 组合。扩展字段搜索仍由
    * `CrudExtensionsProvider.searchEntityIds` 处理。
@@ -734,6 +777,8 @@ export interface CrudRouterConfig<
   searchColumns?: CrudColumnRef<TTable>[];
   /**
    * 可排序的列白名单。
+   *
+   * @deprecated Use `sort` instead.
    *
    * 与 filterableColumns 相同，普通字段使用字符串，jsonb/i18n 字段可配置 jsonField。
    */

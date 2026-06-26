@@ -1,5 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import type { AutoCrudDataSourceContext, UseAutoCrudResourceReturn } from '../src';
+import type {
+  AutoCrudDataSourceContext,
+  AutoCrudQueryCapabilities,
+  UseAutoCrudResourceReturn,
+} from '../src';
 import { expect, fn, userEvent, waitFor, within } from '@storybook/test';
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { z } from 'zod';
@@ -167,9 +171,22 @@ function getNextStoreId(rows: StoreRow[]) {
 interface AutoCrudTableStoryProps {
   onCreate: () => void;
   onResolveLoad: (context: AutoCrudDataSourceContext) => void;
+  capabilities?: AutoCrudQueryCapabilities;
+  fieldSearch?: boolean;
+  nameFilter?: boolean;
+  tableSearch?: false | { placeholder?: string };
 }
 
-function AutoCrudTableStory({ onCreate, onResolveLoad }: AutoCrudTableStoryProps) {
+function AutoCrudTableStory({
+  onCreate,
+  onResolveLoad,
+  capabilities,
+  fieldSearch = true,
+  nameFilter = false,
+  tableSearch = {
+    placeholder: 'Search stores...',
+  },
+}: AutoCrudTableStoryProps) {
   const search = useLocationSearch();
   const [allRows, setAllRows] = useState(tableRows);
   const [modal, setModal] = useState<StoreModalState>(initialModalState);
@@ -317,6 +334,7 @@ function AutoCrudTableStory({ onCreate, onResolveLoad }: AutoCrudTableStoryProps
         isLoading: false,
         isFetching: false,
       },
+      capabilities,
       modal,
       mutations: {
         isCreating: false,
@@ -343,6 +361,7 @@ function AutoCrudTableStory({ onCreate, onResolveLoad }: AutoCrudTableStoryProps
       },
     }),
     [
+      capabilities,
       closeModals,
       confirmDelete,
       copyRow,
@@ -372,7 +391,8 @@ function AutoCrudTableStory({ onCreate, onResolveLoad }: AutoCrudTableStoryProps
         },
         name: {
           label: 'Name',
-          search: true,
+          ...(fieldSearch ? { search: true } : {}),
+          ...(nameFilter ? { filter: { variant: 'text' as const } } : {}),
         },
         region: {
           label: 'Region',
@@ -392,10 +412,7 @@ function AutoCrudTableStory({ onCreate, onResolveLoad }: AutoCrudTableStoryProps
         },
       }}
       table={{
-        search: {
-          placeholder: 'Search stores...',
-        },
-        filterModes: ['simple'],
+        search: tableSearch,
       }}
       toolbar={[
         {
@@ -486,6 +503,62 @@ export const Basic: Story = {
       await expect(await page.findByRole('dialog')).toHaveTextContent('Edit');
       await expect(page.getByDisplayValue('North Store')).toBeInTheDocument();
       await userEvent.click(page.getByRole('button', { name: 'Cancel' }));
+    });
+  },
+};
+
+export const QueryCapabilities: Story = {
+  args: {
+    fieldSearch: false,
+    nameFilter: true,
+    tableSearch: {
+      placeholder: 'Server-enabled search',
+    },
+    capabilities: {
+      search: {
+        enabled: true,
+        fields: ['name'],
+      },
+      filters: {
+        enabled: true,
+        fields: ['status'],
+      },
+      sort: {
+        enabled: true,
+        fields: ['name'],
+      },
+    },
+  },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+
+    await step('shows search from metadata capabilities', async () => {
+      await expect(
+        await canvas.findByPlaceholderText('Server-enabled search'),
+      ).toBeInTheDocument();
+    });
+
+    await step('restricts simple filters to metadata fields', async () => {
+      const filterParent =
+        canvasElement.querySelector<HTMLElement>('[data-filter-parent]');
+      if (!filterParent) {
+        throw new Error('Expected simple filter container to be rendered.');
+      }
+      await expect(
+        within(filterParent).getByRole('button', { name: /^Status$/u }),
+      ).toBeInTheDocument();
+      await expect(canvas.queryByPlaceholderText('Name')).not.toBeInTheDocument();
+    });
+
+    await step('restricts sort choices to metadata fields', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: 'Sort rows' }));
+      await userEvent.click(await page.findByRole('button', { name: 'Add sort' }));
+
+      const sortList = page.getByRole('list');
+      await expect(sortList).toHaveTextContent('Name');
+      await expect(sortList).not.toHaveTextContent('Status');
+      await expect(sortList).not.toHaveTextContent('Region');
     });
   },
 };
