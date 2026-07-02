@@ -1,15 +1,15 @@
 {
-  "name": "@wordrhyme/design-engine",
+  "name": "@wordrhyme/designable-formily-shadcn",
   "type": "module",
   "version": "0.1.0",
   "packageManager": "pnpm@10.33.0",
-  "description": "Designable/Formily adapters and runtime helpers for WordRhyme surfaces.",
+  "description": "Designable Formily shadcn materials for WordRhyme.",
   "author": "wordrhyme",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/pixpilot/shadcn-components.git",
-    "directory": "packages/design-engine"
+    "directory": "packages/designable-formily-shadcn"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -19,16 +19,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    },
-    "./schema": {
-      "types": "./dist/schema.d.ts",
-      "import": "./dist/schema.js",
-      "require": "./dist/schema.cjs"
-    },
-    "./render": {
-      "types": "./dist/render.d.ts",
-      "import": "./dist/render.js",
-      "require": "./dist/render.cjs"
     }
   },
   "files": [
@@ -41,16 +31,6 @@
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
-      },
-      "./schema": {
-        "types": "./dist/schema.d.ts",
-        "import": "./dist/schema.js",
-        "require": "./dist/schema.cjs"
-      },
-      "./render": {
-        "types": "./dist/render.d.ts",
-        "import": "./dist/render.js",
-        "require": "./dist/render.cjs"
       }
     }
   },
@@ -73,33 +53,30 @@
     "react-dom": ">=18.0.0"
   },
   "dependencies": {
+    "@formily/core": "^2.3.7",
     "@formily/react": "^2.3.7",
+    "@formily/reactive": "^2.3.7",
+    "@formily/reactive-react": "^2.3.7",
+    "@formily/shared": "^2.3.7",
     "@wordrhyme/designable-core": "workspace:*",
-    "@wordrhyme/designable-formily-transformer": "workspace:*",
-    "@wordrhyme/formily-shadcn": "workspace:*"
+    "@wordrhyme/designable-formily-setters": "workspace:*",
+    "@wordrhyme/designable-react": "workspace:*",
+    "@wordrhyme/designable-shared": "workspace:*",
+    "@wordrhyme/formily-shadcn": "workspace:*",
+    "@wordrhyme/shadcn": "workspace:*",
+    "@wordrhyme/shadcn-ui": "workspace:*",
+    "classnames": "^2.5.1"
   },
   "devDependencies": {
-    "@ant-design/icons": "^4.8.3",
-    "@formily/core": "^2.3.7",
-    "@formily/reactive-react": "^2.3.7",
     "@internal/eslint-config": "workspace:*",
     "@internal/prettier-config": "workspace:*",
     "@internal/tsconfig": "workspace:*",
     "@internal/tsdown-config": "workspace:*",
     "@internal/vitest-config": "workspace:*",
-    "@storybook/react": "catalog:dev",
-    "@storybook/test": "catalog:dev",
-    "@testing-library/react": "catalog:dev",
     "@types/node": "catalog:dev",
     "@types/react": "catalog:dev",
     "@types/react-dom": "catalog:dev",
-    "@wordrhyme/designable-formily-antd": "workspace:*",
-    "@wordrhyme/designable-formily-shadcn": "workspace:*",
-    "@wordrhyme/designable-react": "workspace:*",
-    "@wordrhyme/designable-react-settings-form": "workspace:*",
-    "antd": "^4.24.16",
     "eslint": "catalog:dev",
-    "jsdom": "catalog:dev",
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
     "tsdown": "catalog:dev",

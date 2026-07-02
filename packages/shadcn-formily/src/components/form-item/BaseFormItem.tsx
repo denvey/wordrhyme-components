@@ -2,11 +2,14 @@
 
 import type {
   DescriptionPlacement,
+  FormItemAlign,
   FormItemLabelProps,
+  FormItemLayout,
   FormItemProps,
   FormItemSlots,
   LabelPlacement,
 } from './form-item-types';
+import type { SyncReactNode } from '../../types';
 import { useField } from '@formily/react';
 import { cn } from '@wordrhyme/shadcn';
 import { getId } from '@wordrhyme/shadcn-ui';
@@ -22,20 +25,78 @@ function resolveLegacyDescriptionPlacement(
   return labelPlacement === 'top' ? 'top' : 'bottom';
 }
 
+function resolveLayoutLabelPlacement(
+  layout: FormItemLayout | null | undefined,
+): LabelPlacement | undefined {
+  if (layout === 'vertical') return 'top';
+  if (layout === 'horizontal' || layout === 'inline') return 'start';
+  return undefined;
+}
+
+function resolveSpanWidth(span: number | undefined) {
+  if (typeof span !== 'number' || span <= 0) return undefined;
+  return `${(Math.min(span, 24) / 24) * 100}%`;
+}
+
+function resolveSize(value: number | string | undefined) {
+  if (value == null || value === '') return undefined;
+  if (typeof value === 'number') return value;
+  return /^\d+$/u.test(value) ? `${value}px` : value;
+}
+
+function resolveAlignClassName(align: FormItemAlign | null | undefined) {
+  if (align === 'right') return 'justify-end text-right';
+  if (align === 'left') return 'justify-start text-left';
+  return undefined;
+}
+
+function withColon(label: SyncReactNode, colon: boolean | undefined): SyncReactNode {
+  if (!colon) return label;
+
+  return (
+    <>
+      {label}
+      <span aria-hidden="true">:</span>
+    </>
+  );
+}
+
 /*
  * BaseFormItem component serves as a decorator for Formily fields.
  * It provides label, error messages, and description display.
  */
 export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
+  addonAfter,
+  addonBefore,
+  bordered,
   className,
   children,
+  colon,
   label,
   description,
   descriptionPlacement,
   asterisk,
+  feedbackLayout,
   feedbackStatus,
   feedbackText,
+  fullness,
+  gridSpan,
+  inset,
+  labelAlign,
+  labelCol,
+  labelWidth,
+  labelWrap,
+  layout: itemLayout,
+  shallow: _shallow,
+  size,
   slots,
+  style,
+  tooltip,
+  tooltipLayout,
+  wrapperAlign,
+  wrapperCol,
+  wrapperWidth,
+  wrapperWrap,
   ...props
 }) => {
   const field = useField();
@@ -54,6 +115,7 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
     (fieldComponentProps?.labelProps as FormItemLabelProps | undefined);
 
   const effectiveLabel = useLabel(label);
+  const effectiveDescription = description ?? tooltip;
 
   const { layout } = useFormContext();
   const itemComponentsProps = layout?.itemProps || {};
@@ -66,16 +128,27 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
     (fieldComponentProps?.labelPlacement as LabelPlacement | undefined);
 
   const propLabelPlacement: LabelPlacement | undefined = slots?.label?.placement;
+  const layoutLabelPlacement = resolveLayoutLabelPlacement(itemLayout);
 
   const effectiveLabelPlacement: LabelPlacement =
-    fieldLabelPlacement ?? propLabelPlacement ?? contextLabelPlacement ?? 'top';
+    fieldLabelPlacement ??
+    propLabelPlacement ??
+    layoutLabelPlacement ??
+    contextLabelPlacement ??
+    'top';
 
   const fieldDescriptionPlacement: DescriptionPlacement | undefined =
     (fieldComponentProps?.descriptionPlacement as DescriptionPlacement | undefined) ??
     (fieldDecoratorProps?.descriptionPlacement as DescriptionPlacement | undefined);
 
+  const tooltipDescriptionPlacement: DescriptionPlacement | undefined =
+    tooltip != null && tooltipLayout === 'icon' ? 'popover' : undefined;
+
   const effectiveDescriptionPlacement: DescriptionPlacement | undefined =
-    fieldDescriptionPlacement ?? descriptionPlacement ?? contextDescriptionPlacement;
+    fieldDescriptionPlacement ??
+    descriptionPlacement ??
+    tooltipDescriptionPlacement ??
+    contextDescriptionPlacement;
 
   const resolvedDescriptionPlacement: DescriptionPlacement =
     effectiveDescriptionPlacement ??
@@ -89,7 +162,7 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
   const feedbackId = getId(id, 'feedback');
 
   const descriptionRenderedInline =
-    description != null && resolvedDescriptionPlacement !== 'popover';
+    effectiveDescription != null && resolvedDescriptionPlacement !== 'popover';
 
   const spacingConfig = getSpacingConfig(
     resolvedDescriptionPlacement,
@@ -103,11 +176,44 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
     .filter(Boolean)
     .join(' ');
 
+  const labelStyle: React.CSSProperties = {
+    ...fieldLabelProps?.style,
+    ...itemComponentsProps.label?.style,
+    ...slots?.label?.style,
+  };
+  const resolvedLabelWidth = resolveSize(labelWidth) ?? resolveSpanWidth(labelCol);
+  if (resolvedLabelWidth != null) {
+    labelStyle.width = resolvedLabelWidth;
+    labelStyle.flexBasis = resolvedLabelWidth;
+  }
+
+  const inputWrapperStyle: React.CSSProperties = {
+    ...itemComponentsProps.inputWrapper?.style,
+    ...slots?.inputWrapper?.style,
+  };
+  const resolvedWrapperWidth = resolveSize(wrapperWidth) ?? resolveSpanWidth(wrapperCol);
+  if (resolvedWrapperWidth != null) {
+    inputWrapperStyle.width = resolvedWrapperWidth;
+    inputWrapperStyle.flexBasis = resolvedWrapperWidth;
+  }
+  if (fullness) {
+    inputWrapperStyle.width = '100%';
+  }
+
+  const containerStyle: React.CSSProperties = {
+    ...itemComponentsProps.container?.style,
+    ...slots?.container?.style,
+    ...style,
+  };
+  if (typeof gridSpan === 'number' && gridSpan > 0) {
+    containerStyle.gridColumn = `span ${gridSpan} / span ${gridSpan}`;
+  }
+
   const labelElement = effectiveLabel != null && (
     <FormItemLabel
       data-slot="form-item-label"
       id={id}
-      label={effectiveLabel}
+      label={withColon(effectiveLabel, colon)}
       asterisk={asterisk}
       error={feedbackStatus === 'error'}
       shrink={effectiveLabelPlacement === 'end' || effectiveLabelPlacement === 'start'}
@@ -115,38 +221,73 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
         ...fieldLabelProps,
         ...itemComponentsProps.label,
         ...slots?.label,
+        style: labelStyle,
         className: cn(
           effectiveLabelPlacement === 'top' ? spacingConfig.label : 'mb-0',
+          resolveAlignClassName(labelAlign),
+          labelWrap === false && 'whitespace-nowrap',
           fieldLabelProps?.className,
           itemComponentsProps.label?.className,
           slots?.label?.className,
         ),
       }}
-      description={description}
+      description={effectiveDescription}
       descriptionInPopover={
-        resolvedDescriptionPlacement === 'popover' && description != null
+        resolvedDescriptionPlacement === 'popover' && effectiveDescription != null
       }
     />
   );
+
+  const fieldControlElement = React.isValidElement<Record<string, unknown>>(children)
+    ? React.cloneElement(children, {
+        id,
+        'aria-describedby': ariaDescribedBy || undefined,
+        'aria-invalid': feedbackStatus === 'error' ? 'true' : undefined,
+        ...(size != null && children.props?.size == null ? { size } : {}),
+      } as Record<string, unknown>)
+    : children;
+
+  const inputWithAddons =
+    addonBefore != null || addonAfter != null ? (
+      <div data-slot="form-item-addon-group" className="flex w-full items-stretch">
+        {addonBefore != null ? (
+          <div
+            data-slot="form-item-addon-before"
+            className="border-input bg-muted text-muted-foreground inline-flex min-h-9 shrink-0 items-center rounded-l-md border border-r-0 px-3 text-sm"
+          >
+            {addonBefore}
+          </div>
+        ) : null}
+        <div className="min-w-0 flex-1">{fieldControlElement}</div>
+        {addonAfter != null ? (
+          <div
+            data-slot="form-item-addon-after"
+            className="border-input bg-muted text-muted-foreground inline-flex min-h-9 shrink-0 items-center rounded-r-md border border-l-0 px-3 text-sm"
+          >
+            {addonAfter}
+          </div>
+        ) : null}
+      </div>
+    ) : (
+      fieldControlElement
+    );
 
   const inputElement = (
     <div
       data-slot="form-item-input"
       {...itemComponentsProps.inputWrapper}
       {...slots?.inputWrapper}
+      style={inputWrapperStyle}
       className={cn(
-        'relative',
+        'relative min-w-0',
+        fullness && 'w-full',
+        wrapperWrap === false && 'whitespace-nowrap',
+        resolveAlignClassName(wrapperAlign),
         itemComponentsProps.inputWrapper?.className,
         slots?.inputWrapper?.className,
       )}
     >
-      {React.isValidElement(children)
-        ? React.cloneElement(children, {
-            id,
-            'aria-describedby': ariaDescribedBy || undefined,
-            'aria-invalid': feedbackStatus === 'error' ? 'true' : undefined,
-          } as React.HTMLAttributes<HTMLElement>)
-        : children}
+      {inputWithAddons}
     </div>
   );
 
@@ -163,7 +304,7 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
         slots?.description?.className,
       )}
     >
-      {description}
+      {effectiveDescription}
     </p>
   ) : null;
 
@@ -180,6 +321,8 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
             'flex items-center gap-2',
             effectiveLabelPlacement === 'start' && 'flex-row',
             // effectiveLabelPlacement === 'end' && 'flex-row-reverse',
+            itemLayout === 'inline' && 'inline-flex',
+            fullness && 'w-full',
           )}
         >
           {effectiveLabelPlacement === 'start' && labelElement}
@@ -200,8 +343,12 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
       {...itemComponentsProps.container}
       {...slots?.container}
       {...props}
+      style={containerStyle}
       className={cn(
-        'flex flex-col ',
+        'flex flex-col',
+        itemLayout === 'inline' && 'inline-flex align-middle',
+        inset && 'px-3',
+        bordered === true && 'rounded-md border border-border p-3',
         className,
         itemComponentsProps.container?.className,
         slots?.container?.className,
@@ -209,7 +356,7 @@ export const BaseFormItem: React.FC<React.PropsWithChildren<FormItemProps>> = ({
     >
       {contentElement}
 
-      {Boolean(feedbackText) && (
+      {feedbackLayout !== 'none' && Boolean(feedbackText) && (
         <p
           data-slot="form-item-feedback"
           {...itemComponentsProps.error}

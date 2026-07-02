@@ -1,15 +1,16 @@
 import 'antd/dist/antd.less';
 import type { Meta, StoryObj } from '@storybook/react';
-import { expect, userEvent, within } from '@storybook/test';
+import { expect, userEvent, waitFor, within } from '@storybook/test';
 import { observer } from '@formily/reactive-react';
 import { GithubOutlined } from '@ant-design/icons';
 import { Button, Radio as AntdRadioGroup, Space as AntdButtonSpace } from 'antd';
-import type { ITreeNode, TreeNode } from '@wordrhyme/designable-core';
 import {
   createBehavior,
   createDesigner,
   createResource,
   GlobalRegistry,
+  type ITreeNode,
+  TreeNode,
 } from '@wordrhyme/designable-core';
 import {
   ArrayCards,
@@ -41,10 +42,27 @@ import {
   Upload,
 } from '@wordrhyme/designable-formily-antd';
 import {
+  Card as ShadcnCard,
+  Checkbox as ShadcnCheckbox,
+  Column as ShadcnColumn,
+  Field as ShadcnField,
+  Form as ShadcnForm,
+  Input as ShadcnInput,
+  NumberInput as ShadcnNumberInput,
+  ObjectContainer as ShadcnObjectContainer,
+  Rating as ShadcnRating,
+  Row as ShadcnRow,
+  Select as ShadcnSelect,
+  Separator as ShadcnSeparator,
+  Switch as ShadcnSwitch,
+  Text as ShadcnText,
+} from '@wordrhyme/designable-formily-shadcn';
+import {
+  type ITransformerOptions,
   transformToSchema,
   transformToTreeNode,
 } from '@wordrhyme/designable-formily-transformer';
-import { SettingsForm } from '@wordrhyme/designable-react-settings-form';
+import { MonacoInput, SettingsForm } from '@wordrhyme/designable-react-settings-form';
 import {
   ComponentTreeWidget,
   CompositePanel,
@@ -69,7 +87,11 @@ import {
 } from '@wordrhyme/designable-react';
 import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, HTMLAttributes } from 'react';
-import { createForm } from '@wordrhyme/formily-shadcn';
+import {
+  createForm,
+  Input as RuntimeInput,
+  Textarea as RuntimeTextarea,
+} from '@wordrhyme/formily-shadcn';
 import {
   cloneJsonObject,
   createDesignRegistry,
@@ -85,9 +107,9 @@ import type {
   JsonObject,
   JsonValue,
 } from '../src';
-import type { ComponentType, ReactNode } from 'react';
+import type { ComponentProps, ComponentType, ReactNode } from 'react';
 
-const FORMILY_TRANSFORM_OPTIONS = {
+const FORMILY_TRANSFORM_OPTIONS: ITransformerOptions = {
   designableFieldName: 'Field',
   designableFormName: 'Form',
 };
@@ -263,6 +285,11 @@ function UnknownBlock({ component }: { component: string }) {
 const runtimeComponents = {
   ShopProductHero: ProductHeroBlock,
   ShopProductGrid: ProductGridBlock,
+};
+
+const runtimeFormilyComponents = {
+  ShopProductHero: { component: ProductHeroBlock },
+  ShopProductGrid: { component: ProductGridBlock },
 };
 
 const designableIconAliases: Record<string, string> = {
@@ -778,22 +805,306 @@ const officialInitialTree: ITreeNode = {
   ],
 };
 
+function OfficialPreviewWidget({ tree }: { tree: TreeNode }) {
+  const form = useMemo(() => createForm(), []);
+
+  return (
+    <FormilyDesignRenderer form={form} document={toFormilyDocument(tree.serialize())} />
+  );
+}
+
+const shadcnEditorComponents = {
+  Form: ShadcnForm,
+  Field: ShadcnField,
+  Input: ShadcnInput,
+  Select: ShadcnSelect,
+  NumberInput: ShadcnNumberInput,
+  Switch: ShadcnSwitch,
+  Checkbox: ShadcnCheckbox,
+  Rating: ShadcnRating,
+  Card: ShadcnCard,
+  Row: ShadcnRow,
+  Column: ShadcnColumn,
+  Separator: ShadcnSeparator,
+  ObjectContainer: ShadcnObjectContainer,
+  Text: ShadcnText,
+};
+
+const shadcnInitialTree: ITreeNode = {
+  componentName: 'Form',
+  props: {
+    layout: {
+      density: 'md',
+      labelPlacement: 'top',
+    },
+  },
+  children: [
+    {
+      componentName: 'Field',
+      props: {
+        type: 'string',
+        title: 'Product name',
+        name: 'productName',
+        default: 'Studio Lamp',
+        'x-decorator': 'FormItem',
+        'x-decorator-props': {
+          layout: 'horizontal',
+          labelWidth: '120px',
+          tooltip: 'Public product title shown in the storefront.',
+          wrapperWidth: '320px',
+        },
+        'x-component': 'Input',
+        'x-component-props': {
+          addonAfter: 'CN',
+          addonBefore: 'SKU',
+          allowClear: true,
+          bordered: false,
+          placeholder: 'Studio Lamp',
+          size: 'large',
+        },
+      },
+    },
+    {
+      componentName: 'Field',
+      props: {
+        type: 'string',
+        title: 'Description',
+        name: 'description',
+        default: 'A warm desk lamp with a brass arm and linen shade.',
+        'x-decorator': 'FormItem',
+        'x-component': 'Input.TextArea',
+        'x-component-props': {
+          autoSize: true,
+          bordered: false,
+          maxLength: 120,
+          placeholder: 'Product description',
+          showCount: true,
+        },
+      },
+    },
+    {
+      componentName: 'Field',
+      props: {
+        type: 'string',
+        title: 'Source',
+        name: 'source',
+        enum: [
+          { label: 'Local', value: 'local' },
+          { label: '1688', value: '1688' },
+        ],
+        default: 'local',
+        'x-decorator': 'FormItem',
+        'x-component': 'Select',
+        'x-component-props': {
+          allowClear: true,
+          bordered: false,
+          listHeight: 120,
+          notFoundContent: 'No source',
+          placeholder: 'Select source',
+          showSearch: true,
+        },
+      },
+    },
+    {
+      componentName: 'Field',
+      props: {
+        type: 'number',
+        title: 'Limit',
+        name: 'limit',
+        default: 4,
+        'x-decorator': 'FormItem',
+        'x-component': 'NumberInput',
+        'x-component-props': {
+          bordered: false,
+          min: 1,
+          max: 12,
+          placeholder: 'Limit',
+          precision: 0,
+          size: 'small',
+        },
+      },
+    },
+    {
+      componentName: 'Field',
+      props: {
+        type: 'boolean',
+        title: 'Featured',
+        name: 'featured',
+        default: true,
+        'x-decorator': 'FormItem',
+        'x-component': 'Checkbox',
+        'x-component-props': {
+          label: 'Show in featured collection',
+          size: 'small',
+        },
+      },
+    },
+    {
+      componentName: 'Field',
+      props: {
+        type: 'boolean',
+        title: 'Published',
+        name: 'published',
+        default: true,
+        'x-decorator': 'FormItem',
+        'x-component': 'Switch',
+        'x-component-props': {
+          size: 'large',
+        },
+      },
+    },
+    {
+      componentName: 'Field',
+      props: {
+        type: 'number',
+        title: 'Rating',
+        name: 'rating',
+        default: 2,
+        'x-decorator': 'FormItem',
+        'x-component': 'Rating',
+        'x-component-props': {
+          allowClear: true,
+          count: 3,
+          tooltips: ['Basic', 'Good', 'Best'],
+        },
+      },
+    },
+    {
+      componentName: 'Field',
+      props: {
+        type: 'void',
+        'x-component': 'Card',
+        'x-component-props': {
+          bordered: false,
+          title: 'Shadcn block',
+          description: 'This card is rendered by shadcn materials.',
+          extra: 'Manage',
+          type: 'inner',
+        },
+      },
+      children: [
+        {
+          componentName: 'Field',
+          props: {
+            type: 'void',
+            'x-component': 'Text',
+            'x-component-props': {
+              content: 'Drop more shadcn fields into this card.',
+              mode: 'p',
+              className: 'text-sm text-muted-foreground',
+            },
+          },
+        },
+      ],
+    },
+  ],
+};
+
+const RuntimeInputWithTextArea = Object.assign(
+  (props: ComponentProps<typeof RuntimeInput>) => <RuntimeInput {...props} />,
+  {
+    TextArea: RuntimeTextarea,
+  },
+);
+
+function RuntimeText({
+  content,
+  mode,
+  value,
+  ...props
+}: {
+  content?: string;
+  mode?: 'h1' | 'h2' | 'h3' | 'normal' | 'p';
+  value?: string;
+  [key: string]: unknown;
+}) {
+  const Tag = mode === 'normal' || !mode ? 'div' : mode;
+
+  return <Tag {...props}>{content || value || 'Text'}</Tag>;
+}
+
+function RuntimeCard({
+  bordered = true,
+  children,
+  description,
+  extra,
+  title,
+  type,
+}: {
+  bordered?: boolean;
+  children?: ReactNode;
+  description?: ReactNode;
+  extra?: ReactNode;
+  title?: ReactNode;
+  type?: 'inner' | '';
+}) {
+  return (
+    <section
+      data-slot="card"
+      className={`rounded-lg bg-white p-4 text-slate-950 ${
+        bordered === false ? '' : 'border border-slate-200 shadow-sm'
+      } ${type === 'inner' ? 'bg-slate-50' : ''}`}
+    >
+      {(title || description || extra) && (
+        <header className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            {title && <h3 className="text-base font-semibold">{title}</h3>}
+            {description && <p className="mt-1 text-sm text-slate-500">{description}</p>}
+          </div>
+          {extra && <div className="text-sm text-slate-500">{extra}</div>}
+        </header>
+      )}
+      {children}
+    </section>
+  );
+}
+
+function ShadcnTreePreview({ tree }: { tree: ITreeNode | undefined }) {
+  const form = useMemo(() => createForm(), []);
+  const document = useMemo(() => toFormilyDocument(tree), [tree]);
+  const components = useMemo(
+    () => ({
+      fields: {
+        Input: { component: RuntimeInputWithTextArea, decorator: 'FormItem' },
+        Card: { component: RuntimeCard },
+        Text: { component: RuntimeText },
+      },
+    }),
+    [],
+  );
+
+  return (
+    <FormilyDesignRenderer form={form} document={document} components={components} />
+  );
+}
+
 const OfficialSelectedNodeSync = observer(() => {
   const designer = useDesigner();
 
   useEffect(() => {
     GlobalRegistry.setDesignerLanguage('zh-cn');
 
-    const timeoutId = window.setTimeout(() => {
+    const selectInitialField = () => {
       const tree = designer?.getCurrentTree();
       const inputNode = tree?.children?.[0];
 
-      if (tree && inputNode) {
-        tree.operation.selection.select(inputNode);
-      }
-    }, 0);
+      if (!tree || !inputNode) return;
 
-    return () => window.clearTimeout(timeoutId);
+      const selection = tree.operation.selection;
+      const selectedNode = selection.selectedNodes.find(Boolean);
+      const shouldSelectInitialField =
+        selection.length === 0 || selectedNode?.id === tree.id;
+
+      if (shouldSelectInitialField) {
+        selection.select(inputNode);
+      }
+    };
+
+    const timeoutIds = [0, 80, 240, 500].map((delay) =>
+      window.setTimeout(selectInitialField, delay),
+    );
+
+    return () => timeoutIds.forEach((timeoutId) => window.clearTimeout(timeoutId));
   }, [designer]);
 
   return null;
@@ -1343,6 +1654,205 @@ function SchemaPreview({ document }: { document: FormilyDesignDocument }) {
   );
 }
 
+function toFormilySchema(
+  tree: TreeNode | ITreeNode,
+  options = FORMILY_TRANSFORM_OPTIONS,
+) {
+  const sourceTree = tree instanceof TreeNode ? tree.serialize() : tree;
+
+  return transformToSchema(sourceTree, options);
+}
+
+function SchemaEditorWidget({
+  onChange,
+  options = FORMILY_TRANSFORM_OPTIONS,
+  tree,
+}: {
+  onChange?: (tree: ITreeNode) => void;
+  options?: ITransformerOptions;
+  tree: TreeNode;
+}) {
+  return (
+    <MonacoInput
+      value={JSON.stringify(toFormilySchema(tree, options), null, 2)}
+      language="json"
+      onChange={(value) => {
+        try {
+          onChange?.(transformToTreeNode(JSON.parse(value), options));
+        } catch {
+          // Keep the editor usable while the JSON document is temporarily invalid.
+        }
+      }}
+    />
+  );
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return (
+    value != null &&
+    typeof value === 'object' &&
+    Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+function isEmptyRecord(value: unknown) {
+  return isPlainRecord(value) && Object.keys(value).length === 0;
+}
+
+function toMarkupAttributeValue(value: unknown) {
+  if (typeof value === 'string') return `"${value}"`;
+  return `{${JSON.stringify(value)}}`;
+}
+
+function takeSchemaFieldTag(node: ITreeNode) {
+  if (node.props?.type === 'string') return 'SchemaField.String';
+  if (node.props?.type === 'number') return 'SchemaField.Number';
+  if (node.props?.type === 'boolean') return 'SchemaField.Boolean';
+  if (node.props?.type === 'date') return 'SchemaField.Date';
+  if (node.props?.type === 'datetime') return 'SchemaField.DateTime';
+  if (node.props?.type === 'array') return 'SchemaField.Array';
+  if (node.props?.type === 'object') return 'SchemaField.Object';
+  if (node.props?.type === 'void') return 'SchemaField.Void';
+  return 'SchemaField.Markup';
+}
+
+function printMarkupAttributes(node: ITreeNode) {
+  const props = { ...(node.props ?? {}) };
+
+  if (node.componentName !== 'Form') {
+    props.name = props.name || node.id;
+  }
+
+  return Object.keys(props)
+    .map((key) => {
+      if (
+        key === 'x-designable-id' ||
+        key === 'x-designable-source-name' ||
+        key === '_isJSONSchemaObject' ||
+        key === 'version' ||
+        key === 'type'
+      ) {
+        return '';
+      }
+
+      const value = props[key];
+      if (value === undefined || value === null || value === '') return '';
+      if (isEmptyRecord(value)) return '';
+
+      return `${key}=${toMarkupAttributeValue(value)}`;
+    })
+    .filter(Boolean)
+    .join(' ');
+}
+
+function printMarkupNode(node: ITreeNode): string {
+  const children = node.children ?? [];
+  const tag = takeSchemaFieldTag(node);
+  const attributes = printMarkupAttributes(node);
+  const openTag = attributes ? `<${tag} ${attributes}` : `<${tag}`;
+
+  if (children.length === 0) return `${openTag} />`;
+
+  return `${openTag}>
+${children.map((child) => printMarkupNode(child)).join('\n')}
+</${tag}>`;
+}
+
+function transformToMarkupSchemaCode(
+  tree: TreeNode,
+  {
+    componentPackage,
+    extraImports = [],
+    setupCode = '',
+  }: {
+    componentPackage: string;
+    extraImports?: string[];
+    setupCode?: string;
+  },
+) {
+  const serialized = tree.serialize();
+  const root =
+    serialized.componentName === 'Form'
+      ? serialized
+      : serialized.children?.find((child) => child.componentName === 'Form');
+  const formAttributes = root ? printMarkupAttributes(root) : '';
+  const children =
+    root?.children?.map((child) => printMarkupNode(child)).join('\n') ?? '';
+  const imports = [
+    'Form',
+    'FormItem',
+    'Input',
+    'Select',
+    'NumberInput',
+    'Switch',
+    'Checkbox',
+    'Rating',
+    'Row',
+    'Column',
+    'Separator',
+    'ObjectContainer',
+    ...extraImports,
+  ];
+
+  return `import React, { useMemo } from 'react'
+import { createForm } from '@formily/core'
+import { createSchemaField } from '@formily/react'
+import { ${Array.from(new Set(imports)).join(', ')} } from '${componentPackage}'
+
+${setupCode}
+const SchemaField = createSchemaField({
+  components: {
+    FormItem,
+    Input,
+    Select,
+    NumberInput,
+    Switch,
+    Checkbox,
+    Rating,
+    Row,
+    Column,
+    Separator,
+    ObjectContainer,
+    ${extraImports.join(',\n    ')}
+  },
+})
+
+export default () => {
+  const form = useMemo(() => createForm(), [])
+
+  return <Form form={form} ${formAttributes}>
+    <SchemaField>
+${children}
+    </SchemaField>
+  </Form>
+}
+`;
+}
+
+function MarkupSchemaWidget({
+  componentPackage,
+  extraImports,
+  setupCode,
+  tree,
+}: {
+  componentPackage: string;
+  extraImports?: string[];
+  setupCode?: string;
+  tree: TreeNode;
+}) {
+  return (
+    <MonacoInput
+      options={{ readOnly: true }}
+      value={transformToMarkupSchemaCode(tree, {
+        componentPackage,
+        extraImports,
+        setupCode,
+      })}
+      language="typescript"
+    />
+  );
+}
+
 const EditorActions = observer(
   ({
     onPersist,
@@ -1514,7 +2024,7 @@ function EditorPreview({ tree }: { tree: ITreeNode | undefined }) {
         form={form}
         document={toFormilyDocument(tree)}
         components={{
-          fields: runtimeComponents as never,
+          fields: runtimeFormilyComponents,
         }}
       />
     </div>
@@ -1587,24 +2097,120 @@ function OfficialEditorShellDemo() {
                 <ViewPanel type="DESIGNABLE">
                   {() => <ComponentTreeWidget components={officialEditorComponents} />}
                 </ViewPanel>
-                <ViewPanel type="JSONTREE">
-                  {(tree: TreeNode) => (
-                    <div className="h-full overflow-auto bg-white p-4 text-slate-950">
-                      <SchemaPreview document={toFormilyDocument(tree?.serialize())} />
-                    </div>
+                <ViewPanel type="JSONTREE" scrollable={false}>
+                  {(tree: TreeNode, onChange: (tree: ITreeNode) => void) => (
+                    <SchemaEditorWidget tree={tree} onChange={onChange} />
                   )}
                 </ViewPanel>
-                <ViewPanel type="MARKUP">
+                <ViewPanel type="MARKUP" scrollable={false}>
                   {(tree: TreeNode) => (
-                    <div className="h-full overflow-auto bg-white p-4 text-slate-950">
-                      <SchemaPreview document={toFormilyDocument(tree?.serialize())} />
-                    </div>
+                    <MarkupSchemaWidget
+                      tree={tree}
+                      componentPackage="@wordrhyme/designable-formily-antd"
+                    />
                   )}
                 </ViewPanel>
                 <ViewPanel type="PREVIEW">
                   {(tree: TreeNode) => (
                     <div className="h-full overflow-auto bg-white p-4 text-slate-950">
-                      <SchemaPreview document={toFormilyDocument(tree?.serialize())} />
+                      <OfficialPreviewWidget tree={tree} />
+                    </div>
+                  )}
+                </ViewPanel>
+              </ViewportPanelHost>
+            </WorkspacePanelHost>
+          </WorkspaceHost>
+          <SettingsPanelHost title="属性配置">
+            <SettingsForm uploadAction="https://www.mocky.io/v2/5cc8019d300000980a055e76" />
+          </SettingsPanelHost>
+        </StudioPanelHost>
+      </DesignerHost>
+    </div>
+  );
+}
+
+function ShadcnEditorShellDemo() {
+  const engine = useMemo(
+    () =>
+      createDesigner({
+        rootComponentName: 'Form',
+        defaultComponentTree: shadcnInitialTree,
+      }),
+    [],
+  );
+
+  return (
+    <div
+      data-testid="shadcn-editor-shell"
+      className="wr-designable-story wr-official-editor"
+    >
+      <EditorShellStyles />
+      <DesignerHost engine={engine} position="absolute">
+        <OfficialSelectedNodeSync />
+        <StudioPanelHost
+          logo={<div className="px-3 text-sm font-semibold">WordRhyme shadcn editor</div>}
+          actions={<OfficialActions />}
+        >
+          <CompositePanelHost>
+            <CompositePanelItemHost title="组件" icon="Component">
+              <ResourceWidget
+                title="基础控件"
+                sources={[
+                  ShadcnInput,
+                  ShadcnSelect,
+                  ShadcnNumberInput,
+                  ShadcnSwitch,
+                  ShadcnCheckbox,
+                  ShadcnRating,
+                ]}
+              />
+              <ResourceWidget
+                title="布局组件"
+                sources={[
+                  ShadcnCard,
+                  ShadcnRow,
+                  ShadcnColumn,
+                  ShadcnObjectContainer,
+                  ShadcnSeparator,
+                ]}
+              />
+              <ResourceWidget title="展示组件" sources={[ShadcnText]} />
+            </CompositePanelItemHost>
+            <CompositePanelItemHost title="大纲树" icon="Outline">
+              <OutlineTreeWidget />
+            </CompositePanelItemHost>
+            <CompositePanelItemHost title="历史记录" icon="History">
+              <HistoryWidget />
+            </CompositePanelItemHost>
+          </CompositePanelHost>
+          <WorkspaceHost id="form">
+            <WorkspacePanelHost>
+              <ToolbarPanelHost>
+                <DesignerToolsWidget />
+                <ViewToolsWidget use={['DESIGNABLE', 'JSONTREE', 'MARKUP', 'PREVIEW']} />
+              </ToolbarPanelHost>
+              <ViewportPanelHost>
+                <ViewPanel type="DESIGNABLE">
+                  {() => <ComponentTreeWidget components={shadcnEditorComponents} />}
+                </ViewPanel>
+                <ViewPanel type="JSONTREE" scrollable={false}>
+                  {(tree: TreeNode, onChange: (tree: ITreeNode) => void) => (
+                    <SchemaEditorWidget tree={tree} onChange={onChange} />
+                  )}
+                </ViewPanel>
+                <ViewPanel type="MARKUP" scrollable={false}>
+                  {(tree: TreeNode) => (
+                    <MarkupSchemaWidget
+                      tree={tree}
+                      componentPackage="@wordrhyme/designable-formily-shadcn"
+                      extraImports={['Card', 'Text']}
+                    />
+                  )}
+                </ViewPanel>
+                <ViewPanel type="PREVIEW">
+                  {(tree: TreeNode) => (
+                    <div className="h-full overflow-auto bg-white p-4 text-slate-950">
+                      <ShadcnTreePreview tree={tree?.serialize()} />
                     </div>
                   )}
                 </ViewPanel>
@@ -1668,17 +2274,31 @@ function ShopPageEditorShellDemo() {
                 <div className="text-xs text-slate-500" role="status">
                   {status}
                 </div>
-                <ViewToolsWidget />
+                <ViewToolsWidget use={['DESIGNABLE', 'JSONTREE', 'MARKUP', 'PREVIEW']} />
               </ToolbarPanelHost>
               <ViewportPanelHost>
                 <ViewPanel type="DESIGNABLE">
                   {() => <ComponentTreeWidget components={editorComponents} />}
                 </ViewPanel>
-                <ViewPanel type="JSONTREE">
+                <ViewPanel type="JSONTREE" scrollable={false}>
+                  {(tree: TreeNode, onChange: (tree: ITreeNode) => void) => (
+                    <SchemaEditorWidget
+                      tree={tree}
+                      onChange={(nextTree) => {
+                        onChange(nextTree);
+                        setPersistedDocument(toFormilyDocument(nextTree));
+                        setStatus('Schema updated from JSON editor');
+                      }}
+                    />
+                  )}
+                </ViewPanel>
+                <ViewPanel type="MARKUP" scrollable={false}>
                   {(tree: TreeNode) => (
-                    <div className="h-full overflow-auto bg-white p-4 text-slate-950">
-                      <SchemaPreview document={toFormilyDocument(tree?.serialize())} />
-                    </div>
+                    <MarkupSchemaWidget
+                      tree={tree}
+                      componentPackage="@wordrhyme/design-engine"
+                      extraImports={['ShopProductHero', 'ShopProductGrid']}
+                    />
                   )}
                 </ViewPanel>
                 <ViewPanel type="PREVIEW">
@@ -1715,6 +2335,95 @@ type Story = StoryObj<typeof meta>;
 
 export const VisualEditorShell: Story = {
   render: () => <OfficialEditorShellDemo />,
+};
+
+export const ShadcnEditorShell: Story = {
+  render: () => <ShadcnEditorShellDemo />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const settingsPanel = canvasElement.querySelector('.dn-settings-panel');
+    const viewport = canvasElement.querySelector('.dn-viewport');
+
+    if (!settingsPanel) {
+      throw new Error('Expected the Designable settings panel to render.');
+    }
+    if (!viewport) {
+      throw new Error('Expected the Designable viewport to render.');
+    }
+
+    const settings = within(settingsPanel as HTMLElement);
+    const hasFieldValue = (value: string) =>
+      Array.from(canvasElement.querySelectorAll('input, textarea')).some((element) =>
+        element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement
+          ? element.value === value
+          : false,
+      );
+
+    const clickViewportControl = async (selector: string, panelPattern: RegExp) => {
+      const control = viewport.querySelector(selector);
+      if (!control) {
+        throw new Error(`Expected viewport control "${selector}" to render.`);
+      }
+
+      await userEvent.click(control as HTMLElement);
+      await waitFor(
+        async () => {
+          await expect(settingsPanel).toHaveTextContent(panelPattern);
+        },
+        { timeout: 5000 },
+      );
+    };
+
+    await expect(canvas.getByText('WordRhyme shadcn editor')).toBeInTheDocument();
+    await waitFor(
+      () => {
+        expect(settingsPanel).toHaveTextContent('字段属性');
+        expect(settingsPanel).toHaveTextContent('组件属性');
+        expect(settingsPanel).toHaveTextContent('占位提示');
+        expect(hasFieldValue('productName')).toBe(true);
+        expect(hasFieldValue('Studio Lamp')).toBe(true);
+      },
+      { timeout: 5000 },
+    );
+    await expect(settingsPanel).toHaveTextContent(/表单\s*\/\s*输入框/);
+    await expect(settingsPanel).toHaveTextContent('显示');
+    await expect(settingsPanel).toHaveTextContent('可编辑');
+    await expect(settingsPanel).toHaveTextContent('前缀标签');
+    await expect(settingsPanel).toHaveTextContent('后缀标签');
+    await expect(settingsPanel).toHaveTextContent('允许清除内容');
+    await expect(settingsPanel).toHaveTextContent('是否有边框');
+    await expect(settingsPanel).toHaveTextContent('尺寸');
+
+    await userEvent.click(settings.getByText('容器属性'));
+    await expect(settingsPanel).toHaveTextContent('标签网格宽度');
+    await expect(settingsPanel).toHaveTextContent('组件网格宽度');
+    await expect(settingsPanel).toHaveTextContent('标签宽度');
+    await expect(settingsPanel).toHaveTextContent('组件宽度');
+
+    await userEvent.click(settings.getByText('组件样式'));
+    await expect(settingsPanel).toHaveTextContent('展示');
+    await expect(settingsPanel).toHaveTextContent('背景');
+    await expect(settingsPanel).toHaveTextContent('阴影');
+    await expect(settingsPanel).toHaveTextContent('字体');
+    await expect(settingsPanel).toHaveTextContent('外边距');
+
+    await clickViewportControl('input[placeholder="Studio Lamp"]', /表单\s*\/\s*输入框/);
+    await clickViewportControl(
+      'textarea[placeholder="Product description"]',
+      /表单\s*\/\s*多行输入/,
+    );
+    await clickViewportControl('[role="combobox"]', /表单\s*\/\s*选择框/);
+    await expect(settingsPanel).toHaveTextContent('配置可选项');
+    await expect(settingsPanel).toHaveTextContent('配置响应器');
+    await expect(settingsPanel).toHaveTextContent('校验规则');
+    await expect(settingsPanel).toHaveTextContent('容器样式');
+    await userEvent.keyboard('{Escape}');
+    await clickViewportControl('input[type="number"]', /表单\s*\/\s*数字输入/);
+    await clickViewportControl('[role="checkbox"]', /表单\s*\/\s*复选框/);
+    await clickViewportControl('[role="switch"]', /表单\s*\/\s*开关/);
+    await clickViewportControl('[role="radio"]', /表单\s*\/\s*评分器/);
+    await clickViewportControl('[data-slot="card"]', /表单\s*\/\s*卡片/);
+  },
 };
 
 export const ShopPageEditorShell: Story = {

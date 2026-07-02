@@ -514,6 +514,9 @@ importers:
       '@wordrhyme/designable-formily-antd':
         specifier: workspace:*
         version: link:../designable-formily-antd
+      '@wordrhyme/designable-formily-shadcn':
+        specifier: workspace:*
+        version: link:../designable-formily-shadcn
       '@wordrhyme/designable-react':
         specifier: workspace:*
         version: link:../designable-react
@@ -820,6 +823,91 @@ importers:
       antd:
         specifier: ^4.24.16
         version: 4.24.16(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      classnames:
+        specifier: ^2.5.1
+        version: 2.5.1
+    devDependencies:
+      '@internal/eslint-config':
+        specifier: workspace:*
+        version: link:../../tooling/eslint
+      '@internal/prettier-config':
+        specifier: workspace:*
+        version: link:../../tooling/prettier
+      '@internal/tsconfig':
+        specifier: workspace:*
+        version: link:../../tooling/typescript
+      '@internal/tsdown-config':
+        specifier: workspace:*
+        version: link:../../tooling/tsdown
+      '@internal/vitest-config':
+        specifier: workspace:*
+        version: link:../../tooling/vitest
+      '@types/node':
+        specifier: catalog:dev
+        version: 22.19.19
+      '@types/react':
+        specifier: catalog:dev
+        version: 19.2.15
+      '@types/react-dom':
+        specifier: catalog:dev
+        version: 19.2.3(@types/react@19.2.15)
+      eslint:
+        specifier: catalog:dev
+        version: 9.39.4(jiti@2.6.1)
+      react:
+        specifier: catalog:prod
+        version: 19.2.4
+      react-dom:
+        specifier: catalog:prod
+        version: 19.2.4(react@19.2.4)
+      tsdown:
+        specifier: catalog:dev
+        version: 0.15.12(typescript@5.9.3)(unrun@0.2.16(synckit@0.11.11))
+      typescript:
+        specifier: catalog:dev
+        version: 5.9.3
+      vitest:
+        specifier: catalog:dev
+        version: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.19)(@vitest/ui@3.2.4)(happy-dom@20.0.11)(jiti@2.6.1)(jsdom@27.4.0(postcss@8.5.15))(less@4.6.7)(lightningcss@1.32.0)(msw@2.14.6(@types/node@22.19.19)(typescript@5.9.3))(terser@5.43.1)(tsx@4.21.0)(yaml@2.9.0)
+
+  packages/designable-formily-shadcn:
+    dependencies:
+      '@formily/core':
+        specifier: ^2.3.7
+        version: 2.3.7
+      '@formily/react':
+        specifier: ^2.3.7
+        version: 2.3.7(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.6)(react@19.2.4)(typescript@5.9.3)
+      '@formily/reactive':
+        specifier: ^2.3.7
+        version: 2.3.7
+      '@formily/reactive-react':
+        specifier: ^2.3.7
+        version: 2.3.7(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.4(react@19.2.4))(react-is@19.2.6)(react@19.2.4)
+      '@formily/shared':
+        specifier: ^2.3.7
+        version: 2.3.7
+      '@wordrhyme/designable-core':
+        specifier: workspace:*
+        version: link:../designable-core
+      '@wordrhyme/designable-formily-setters':
+        specifier: workspace:*
+        version: link:../designable-formily-setters
+      '@wordrhyme/designable-react':
+        specifier: workspace:*
+        version: link:../designable-react
+      '@wordrhyme/designable-shared':
+        specifier: workspace:*
+        version: link:../designable-shared
+      '@wordrhyme/formily-shadcn':
+        specifier: workspace:*
+        version: link:../shadcn-formily
+      '@wordrhyme/shadcn':
+        specifier: workspace:*
+        version: link:../shadcn
+      '@wordrhyme/shadcn-ui':
+        specifier: workspace:*
+        version: link:../shadcn-ui
       classnames:
         specifier: ^2.5.1
         version: 2.5.1
@@ -1741,6 +1829,9 @@ importers:
       '@wordrhyme/designable-formily-antd':
         specifier: workspace:*
         version: link:../../packages/designable-formily-antd
+      '@wordrhyme/designable-formily-shadcn':
+        specifier: workspace:*
+        version: link:../../packages/designable-formily-shadcn
       '@wordrhyme/designable-react-settings-form':
         specifier: workspace:*
         version: link:../../packages/designable-react-settings-form

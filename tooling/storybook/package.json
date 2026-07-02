@@ -28,6 +28,7 @@
     "@iconify/react": "catalog:prod",
     "@pixpilot/string": "catalog:prod",
     "@wordrhyme/designable-formily-antd": "workspace:*",
+    "@wordrhyme/designable-formily-shadcn": "workspace:*",
     "@wordrhyme/designable-react-settings-form": "workspace:*",
     "@wordrhyme/formily-shadcn": "workspace:*",
     "@wordrhyme/shadcn": "workspace:*",
