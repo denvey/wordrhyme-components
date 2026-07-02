@@ -70,12 +70,28 @@ function packageScopedAtAlias(): Plugin {
 export default defineConfig({
   plugins: [packageScopedAtAlias()],
   resolve: {
-    alias: workspaceAliases,
+    alias: [
+      {
+        find: /^~(.+)$/u,
+        replacement: '$1',
+      },
+      ...Object.entries(workspaceAliases).map(([find, replacement]) => ({
+        find,
+        replacement,
+      })),
+    ],
   },
   optimizeDeps: {
     // Keep workspace packages out of prebundling so HMR reflects local source edits.
     exclude: workspaceAliasPackages,
     include: ['react', 'react-dom'],
+  },
+  css: {
+    preprocessorOptions: {
+      less: {
+        javascriptEnabled: true,
+      },
+    },
   },
   server: {
     fs: {

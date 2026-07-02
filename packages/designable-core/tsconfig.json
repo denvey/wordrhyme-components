@@ -1,0 +1,16 @@
+{
+  "extends": "@internal/tsconfig/base.json",
+  "compilerOptions": {
+    "checkJs": false,
+    "lib": ["ES2022", "dom", "dom.iterable"],
+    "noUncheckedIndexedAccess": false,
+    "strict": false,
+    "baseUrl": ".",
+    "paths": {
+      "@wordrhyme/designable-shared": ["../designable-shared/src/index.ts"],
+      "@wordrhyme/designable-shared/*": ["../designable-shared/src/*"]
+    }
+  },
+  "include": ["src/**/*", "test/**/*", "*.config.ts", "*.config.js"],
+  "exclude": ["node_modules", "dist"]
+}

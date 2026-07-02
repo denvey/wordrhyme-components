@@ -1,0 +1,40 @@
+{
+  "extends": "@internal/tsconfig/base.json",
+  "compilerOptions": {
+    "checkJs": false,
+    "jsx": "react-jsx",
+    "lib": ["ES2022", "dom", "dom.iterable"],
+    "noUncheckedIndexedAccess": false,
+    "strict": false,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@wordrhyme/designable-core": ["../designable-core/src/index.ts"],
+      "@wordrhyme/designable-core/*": ["../designable-core/src/*"],
+      "@wordrhyme/designable-formily-transformer": [
+        "../designable-formily-transformer/src/index.ts"
+      ],
+      "@wordrhyme/designable-formily-transformer/*": [
+        "../designable-formily-transformer/src/*"
+      ],
+      "@wordrhyme/designable-react": ["../designable-react/src/index.ts"],
+      "@wordrhyme/designable-react/*": ["../designable-react/src/*"],
+      "@wordrhyme/designable-react-settings-form": [
+        "../designable-react-settings-form/src/index.ts"
+      ],
+      "@wordrhyme/designable-react-settings-form/*": [
+        "../designable-react-settings-form/src/*"
+      ],
+      "@wordrhyme/designable-shared": ["../designable-shared/src/index.ts"],
+      "@wordrhyme/designable-shared/*": ["../designable-shared/src/*"]
+    }
+  },
+  "include": [
+    "src/**/*",
+    "../../types/designable-react-compat.d.ts",
+    "test/**/*",
+    "*.config.ts",
+    "*.config.js"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

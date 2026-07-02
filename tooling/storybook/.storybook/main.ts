@@ -10,7 +10,7 @@ const config: StorybookConfig = {
   addons: [
     // '@storybook/addon-links',
     '@storybook/addon-essentials/controls',
-    // '@storybook/addon-interactions',
+    '@storybook/addon-interactions',
     '@storybook/addon-themes',
     'storybook-addon-playwright/register',
   ],
