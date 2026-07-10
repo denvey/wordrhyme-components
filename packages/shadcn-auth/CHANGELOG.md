@@ -1,5 +1,61 @@
 # @pixpilot/shadcn-auth
 
+## 1.1.0
+
+### Minor Changes
+
+- update dependencies and add antd scope PostCSS plugin
+- add query capability metadata for auto-crud search, filters, and sorting
+- add support for custom Playwright WebSocket endpoint in middleware
+- derive CRUD lifecycle hook ids from plugin context and update version to 1.1.6
+- update AutoCrudTable refresh action to icon-only button with accessible label
+- replace MultiCombobox with Select component for improved selection handling
+- add bulk delete confirmation dialog and localization support
+- refactor toolbar actions and add toolbar resolver for AutoCrudTable
+- update onClick handlers in Batch action items to include event parameter
+- 修复清除最后一个活动过滤器时可读过滤器 URL 同步问题
+- support functional configuration for AutoCrudTable actions and toolbarActions
+- add className support to form modals and improve scrollable layout styling
+- add i18n support and refine table/import UX
+- support filter/table/form false shorthand and modes config
+- add auto-crud packages with optimized API
+
+### Patch Changes
+
+- update package version to 1.1.2
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [bc30e35]
+  - @wordrhyme/shadcn@1.4.0
+  - @wordrhyme/shadcn-ui@1.33.0
+
 ## 1.0.60
 
 ### Patch Changes

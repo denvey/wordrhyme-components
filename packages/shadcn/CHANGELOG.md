@@ -1,5 +1,30 @@
 # @pixpilot/shadcn
 
+## 1.4.0
+
+### Minor Changes
+
+- update dependencies and add antd scope PostCSS plugin
+- add designable editor packages
+- treat audit actor fields as platform-managed defaults in CRUD schemas
+- derive CRUD lifecycle hook ids from plugin context and update version to 1.1.6
+- update version to 1.3.5 and enhance changelog for dependency updates and filter fixes
+- update version to 1.3.2 and add refresh action to AutoCrudTable
+- add field config support
+- add bulk delete confirmation dialog and localization support
+- refactor toolbar actions and add toolbar resolver for AutoCrudTable
+- 增加可过滤和可排序字段的配置支持，允许使用 jsonb 字段和自定义 SQL 表达式
+- support functional configuration for AutoCrudTable actions and toolbarActions
+- add className support to form modals and improve scrollable layout styling
+- add i18n support and refine table/import UX
+- support filter/table/form false shorthand and modes config
+- add schema-utils with tests
+
+### Patch Changes
+
+- update package version to 1.1.2
+- update package version to 1.1.1 and remove baseUrl from tsconfig
+
 ## 1.3.2
 
 ### Patch Changes

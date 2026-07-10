@@ -1,5 +1,57 @@
 # @pixpilot/formily-shadcn
 
+## 1.13.0
+
+### Minor Changes
+
+- add designable editor packages
+- treat audit actor fields as platform-managed defaults in CRUD schemas
+- derive CRUD lifecycle hook ids from plugin context and update version to 1.1.6
+- update AutoCrudTable refresh action to icon-only button with accessible label
+- replace MultiCombobox with Select component for improved selection handling
+- rename setAutoCrudToolbarResolver to setToolbarResolver for consistency
+- enhance AutoForm and AutoCrudTable with dynamic data source capabilities and improve data handling
+- 增加可过滤和可排序字段的配置支持，允许使用 jsonb 字段和自定义 SQL 表达式
+- add className support to form modals and improve scrollable layout styling
+- support filter/table/form false shorthand and modes config
+- add auto-crud packages with optimized API
+
+### Patch Changes
+
+- update package version to 1.1.1 and remove baseUrl from tsconfig
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies
+- Updated dependencies [bc30e35]
+  - @wordrhyme/shadcn@1.4.0
+  - @wordrhyme/shadcn-ui@1.33.0
+
 ## 1.13.0-beta.0
 
 ### Minor Changes

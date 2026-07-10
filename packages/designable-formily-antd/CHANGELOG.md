@@ -1,23 +1,26 @@
-# @wordrhyme/designable-formily-shadcn
+# @wordrhyme/designable-formily-antd
 
-## 0.2.0
+## 0.1.0
 
 ### Minor Changes
 
 - enhance form components with compatibility and styling improvements
-- add query capability metadata for auto-crud search, filters, and sorting
-- iconize table controls
+- treat audit actor fields as platform-managed defaults in CRUD schemas
+- derive CRUD lifecycle hook ids from plugin context and update version to 1.1.6
 - update AutoCrudTable refresh action to icon-only button with accessible label
-- add field config support
+- replace MultiCombobox with Select component for improved selection handling
+- add bulk delete confirmation dialog and localization support
 - refactor toolbar actions and add toolbar resolver for AutoCrudTable
-- update onClick handlers in Batch action items to include event parameter
-- 增加可过滤和可排序字段的配置支持，允许使用 jsonb 字段和自定义 SQL 表达式
+- enhance AutoTable and AutoTableActionBar with batch action capabilities
+- support functional configuration for AutoCrudTable actions and toolbarActions
 - add className support to form modals and improve scrollable layout styling
-- add filter config API, auto-collapse filters, and fix state sync issues
+- add i18n support and refine table/import UX
+- support filter/table/form false shorthand and modes config
+- add auto-crud packages with optimized API
 
 ### Patch Changes
 
-- resolve TypeScript errors, add a11y keyboard support, and fix cache safety
+- update package version to 1.1.2
 - Updated dependencies
 - Updated dependencies
 - Updated dependencies
@@ -86,60 +89,8 @@
 - Updated dependencies
 - Updated dependencies
 - Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies [bc30e35]
   - @wordrhyme/designable-core@0.1.0
   - @wordrhyme/designable-formily-setters@0.1.0
+  - @wordrhyme/designable-formily-transformer@0.1.0
   - @wordrhyme/designable-react@0.1.0
   - @wordrhyme/designable-shared@0.1.0
-  - @wordrhyme/shadcn@1.4.0
-  - @wordrhyme/formily-shadcn@1.13.0
-  - @wordrhyme/shadcn-ui@1.33.0
-
-## 0.2.0-beta.1
-
-### Patch Changes
-
-- Add scoped Ant Design style entry support through @wordrhyme/designable-react.
-
-- Updated dependencies
-  - @wordrhyme/designable-formily-setters@0.1.0-beta.1
-  - @wordrhyme/designable-react@0.1.0-beta.1
-
-## 0.2.0-beta.0
-
-### Minor Changes
-
-- 67fe420: Add shadcn Designable Formily materials, support designable-compatible Formily props, add the Input.TextArea runtime alias, and tighten shadcn UI input prefix typings.
-
-### Patch Changes
-
-- Updated dependencies [67fe420]
-  - @wordrhyme/formily-shadcn@1.13.0-beta.0
-  - @wordrhyme/shadcn-ui@1.32.5-beta.0
