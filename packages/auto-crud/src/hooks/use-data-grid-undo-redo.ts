@@ -1,15 +1,15 @@
-import * as React from "react";
-import { toast } from "sonner";
+import * as React from 'react';
+import { toast } from 'sonner';
 
-import { useAsRef } from "@/hooks/use-as-ref";
-import { useLazyRef } from "@/hooks/use-lazy-ref";
-import { getIsInPopover } from "@/lib/data-grid";
+import { useAsRef } from '@/hooks/use-as-ref';
+import { useLazyRef } from '@/hooks/use-lazy-ref';
+import { getIsInPopover } from '@/lib/data-grid';
 
 const DEFAULT_MAX_HISTORY = 100;
 const BATCH_TIMEOUT = 300;
 
 interface HistoryEntry<TData> {
-  variant: "cells_update" | "rows_add" | "rows_delete";
+  variant: 'cells_update' | 'rows_add' | 'rows_delete';
   count: number;
   timestamp: number;
   undo: (currentData: TData[]) => TData[];
@@ -226,7 +226,7 @@ function useDataGridUndoRedo<TData>({
     const { getRowId } = propsRef.current;
 
     const entry: HistoryEntry<TData> = {
-      variant: "cells_update",
+      variant: 'cells_update',
       count: updates.length,
       timestamp: Date.now(),
       undo: (currentData) => {
@@ -274,16 +274,14 @@ function useDataGridUndoRedo<TData>({
 
     const entry = store.undo();
     if (!entry) {
-      toast.info("No actions to undo");
+      toast.info('No actions to undo');
       return;
     }
 
     const newData = entry.undo(propsRef.current.data);
     propsRef.current.onDataChange(newData);
 
-    toast.success(
-      `${entry.count} action${entry.count !== 1 ? "s" : ""} undone`,
-    );
+    toast.success(`${entry.count} action${entry.count !== 1 ? 's' : ''} undone`);
   }, [store, propsRef, onCommit]);
 
   const onRedo = React.useCallback(() => {
@@ -293,16 +291,14 @@ function useDataGridUndoRedo<TData>({
 
     const entry = store.redo();
     if (!entry) {
-      toast.info("No actions to redo");
+      toast.info('No actions to redo');
       return;
     }
 
     const newData = entry.redo(propsRef.current.data);
     propsRef.current.onDataChange(newData);
 
-    toast.success(
-      `${entry.count} action${entry.count !== 1 ? "s" : ""} redone`,
-    );
+    toast.success(`${entry.count} action${entry.count !== 1 ? 's' : ''} redone`);
   }, [store, propsRef, onCommit]);
 
   const onClear = React.useCallback(() => {
@@ -360,7 +356,7 @@ function useDataGridUndoRedo<TData>({
       const rowsCopy = rows.map((row) => ({ ...row }));
 
       const entry: HistoryEntry<TData> = {
-        variant: "rows_add",
+        variant: 'rows_add',
         count: rows.length,
         timestamp: Date.now(),
         undo: (currentData) => {
@@ -403,7 +399,7 @@ function useDataGridUndoRedo<TData>({
       const rowIds = new Set(rows.map((row) => getRowId(row)));
 
       const entry: HistoryEntry<TData> = {
-        variant: "rows_delete",
+        variant: 'rows_delete',
         count: rows.length,
         timestamp: Date.now(),
         undo: (currentData) => {
@@ -440,34 +436,33 @@ function useDataGridUndoRedo<TData>({
       const isCtrlOrCmd = event.ctrlKey || event.metaKey;
       const key = event.key.toLowerCase();
 
-      if (!isCtrlOrCmd || (key !== "z" && key !== "y")) return;
+      if (!isCtrlOrCmd || (key !== 'z' && key !== 'y')) return;
 
       const activeElement = document.activeElement;
       if (activeElement) {
         const isInput =
-          activeElement.tagName === "INPUT" ||
-          activeElement.tagName === "TEXTAREA";
+          activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA';
         const isContentEditable =
-          activeElement.getAttribute("contenteditable") === "true";
+          activeElement.getAttribute('contenteditable') === 'true';
         const isInPopover = getIsInPopover(activeElement);
 
         if (isInput || isContentEditable || isInPopover) return;
       }
 
-      if (key === "z" && !event.shiftKey) {
+      if (key === 'z' && !event.shiftKey) {
         event.preventDefault();
         onUndo();
         return;
       }
 
-      if ((key === "z" && event.shiftKey) || key === "y") {
+      if ((key === 'z' && event.shiftKey) || key === 'y') {
         event.preventDefault();
         onRedo();
       }
     }
 
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
   }, [enabled, onUndo, onRedo]);
 
   return React.useMemo(

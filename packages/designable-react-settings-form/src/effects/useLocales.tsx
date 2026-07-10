@@ -1,8 +1,8 @@
-import React from 'react';
-import { isVoidField, onFieldReact } from '@formily/core';
-import { TreeNode, GlobalRegistry } from '@wordrhyme/designable-core';
-import { isStr } from '@wordrhyme/designable-shared';
-import { IconWidget } from '@wordrhyme/designable-react';
+import React from "react";
+import { isVoidField, onFieldReact } from "@formily/core";
+import { TreeNode, GlobalRegistry } from "@wordrhyme/designable-core";
+import { isStr } from "@wordrhyme/designable-shared";
+import { IconWidget } from "@wordrhyme/designable-react";
 
 const takeIcon = (message: string) => {
   if (!isStr(message)) return;
@@ -20,23 +20,23 @@ const mapEnum = (dataSource: any[]) => (item: any, index: number) => {
     label: icon ? (
       <IconWidget infer={icon[0]} tooltip={icon[1]} />
     ) : (
-      (label?.label ?? label ?? 'Unknow')
+      label?.label ?? label ?? "Unknow"
     ),
   };
 };
 
 export const useLocales = (node: TreeNode) => {
-  onFieldReact('*', (field) => {
-    const path = field.path.toString().replace(/\.[\d+]/g, '');
+  onFieldReact("*", (field) => {
+    const path = field.path.toString().replace(/\.[\d+]/g, "");
     const takeMessage = (prop?: string) => {
-      const token = `settings.${path}${prop ? `.${prop}` : ''}`;
+      const token = `settings.${path}${prop ? `.${prop}` : ""}`;
       return node.getMessage(token) || GlobalRegistry.getDesignerMessage(token);
     };
-    const title = takeMessage('title') || takeMessage();
-    const description = takeMessage('description');
-    const tooltip = takeMessage('tooltip');
-    const dataSource = takeMessage('dataSource');
-    const placeholder = takeMessage('placeholder');
+    const title = takeMessage("title") || takeMessage();
+    const description = takeMessage("description");
+    const tooltip = takeMessage("tooltip");
+    const dataSource = takeMessage("dataSource");
+    const placeholder = takeMessage("placeholder");
     if (title) {
       field.title = title;
     }

@@ -1,22 +1,19 @@
-import * as React from "react";
-import type { Column, ColumnDef } from "@tanstack/react-table";
+import * as React from 'react';
+import type { Column, ColumnDef } from '@tanstack/react-table';
 
-import {
-  applyReadableFilters,
-  parseReadableFilters,
-} from "@/lib/readable-filters";
+import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
 import {
   getUrlParams,
   setSearchParams,
   type UrlStateOptions,
-} from "@/hooks/use-url-state";
-import type { ExtendedColumnFilter, FilterVariant } from "@/types/data-table";
+} from '@/hooks/use-url-state';
+import type { ExtendedColumnFilter, FilterVariant } from '@/types/data-table';
 
-const URL_CHANGE_EVENT = "urlchange";
+const URL_CHANGE_EVENT = 'urlchange';
 
 function toSearchString(params: URLSearchParams): string {
-  const queryString = params.toString().replace(/%2C/g, ",");
-  return queryString ? `?${queryString}` : "";
+  const queryString = params.toString().replace(/%2C/g, ',');
+  return queryString ? `?${queryString}` : '';
 }
 
 type ColumnLike<TData> =
@@ -36,12 +33,10 @@ export function useReadableFilters<TData>(
   (
     value:
       | ExtendedColumnFilter<TData>[]
-      | ((
-          prev: ExtendedColumnFilter<TData>[],
-        ) => ExtendedColumnFilter<TData>[]),
+      | ((prev: ExtendedColumnFilter<TData>[]) => ExtendedColumnFilter<TData>[]),
   ) => void,
 ] {
-  const { history = "replace", scroll = false } = options;
+  const { history = 'replace', scroll = false } = options;
 
   const columnSnapshot = React.useMemo(() => columns, [columns]);
 
@@ -58,7 +53,10 @@ export function useReadableFilters<TData>(
   React.useEffect(() => {
     const handleUrlChange = () => {
       // Skip if current URL matches what we last wrote (self-triggered event)
-      if (lastWrittenUrlRef.current !== null && window.location.search === lastWrittenUrlRef.current) {
+      if (
+        lastWrittenUrlRef.current !== null &&
+        window.location.search === lastWrittenUrlRef.current
+      ) {
         lastWrittenUrlRef.current = null;
         return;
       }
@@ -67,10 +65,10 @@ export function useReadableFilters<TData>(
       setFilters(next);
     };
 
-    window.addEventListener("popstate", handleUrlChange);
+    window.addEventListener('popstate', handleUrlChange);
     window.addEventListener(URL_CHANGE_EVENT, handleUrlChange);
     return () => {
-      window.removeEventListener("popstate", handleUrlChange);
+      window.removeEventListener('popstate', handleUrlChange);
       window.removeEventListener(URL_CHANGE_EVENT, handleUrlChange);
     };
   }, [columnSnapshot]);
@@ -90,11 +88,9 @@ export function useReadableFilters<TData>(
     (
       updater:
         | ExtendedColumnFilter<TData>[]
-        | ((
-          prev: ExtendedColumnFilter<TData>[],
-        ) => ExtendedColumnFilter<TData>[]),
+        | ((prev: ExtendedColumnFilter<TData>[]) => ExtendedColumnFilter<TData>[]),
     ) => {
-      const next = typeof updater === "function" ? updater(filtersRef.current) : updater;
+      const next = typeof updater === 'function' ? updater(filtersRef.current) : updater;
       filtersRef.current = next;
       setFilters(next);
       writeToUrl(next);

@@ -1,8 +1,8 @@
-import React, { useMemo } from 'react';
-import { createForm } from '@formily/core';
-import { Form } from '@formily/antd';
-import { observer } from '@formily/react';
-import { requestIdle, cancelIdle } from '@wordrhyme/designable-shared';
+import React, { useMemo } from "react";
+import { createForm } from "@formily/core";
+import { Form } from "@formily/antd";
+import { observer } from "@formily/react";
+import { requestIdle, cancelIdle } from "@wordrhyme/designable-shared";
 import {
   usePrefix,
   useSelected,
@@ -11,14 +11,14 @@ import {
   useWorkbench,
   IconWidget,
   NodePathWidget,
-} from '@wordrhyme/designable-react';
-import { SchemaField } from './SchemaField';
-import { ISettingFormProps } from './types';
-import { SettingsFormContext } from './shared/context';
-import { useLocales, useSnapshot } from './effects';
-import { Empty } from 'antd';
-import cls from 'classnames';
-import './styles.less';
+} from "@wordrhyme/designable-react";
+import { SchemaField } from "./SchemaField";
+import { ISettingFormProps } from "./types";
+import { SettingsFormContext } from "./shared/context";
+import { useLocales, useSnapshot } from "./effects";
+import { Empty } from "antd";
+import cls from "classnames";
+import "./styles.less";
 
 const GlobalState = {
   idleRequest: null,
@@ -27,14 +27,19 @@ const GlobalState = {
 export const SettingsForm: React.FC<ISettingFormProps> = observer(
   (props) => {
     const workbench = useWorkbench();
-    const currentWorkspace = workbench?.activeWorkspace || workbench?.currentWorkspace;
+    const currentWorkspace =
+      workbench?.activeWorkspace || workbench?.currentWorkspace;
     const currentWorkspaceId = currentWorkspace?.id;
     const operation = useOperation(currentWorkspaceId);
     const node = useSelectedNode(currentWorkspaceId);
     const selected = useSelected(currentWorkspaceId);
-    const prefix = usePrefix('settings-form');
+    const prefix = usePrefix("settings-form");
     const schema = node?.designerProps?.propsSchema;
-    const isEmpty = !(node && node.designerProps?.propsSchema && selected.length === 1);
+    const isEmpty = !(
+      node &&
+      node.designerProps?.propsSchema &&
+      selected.length === 1
+    );
     const form = useMemo(() => {
       return createForm({
         initialValues: node?.designerProps?.defaultProps,
@@ -50,7 +55,11 @@ export const SettingsForm: React.FC<ISettingFormProps> = observer(
     const render = () => {
       if (!isEmpty) {
         return (
-          <div className={cls(prefix, props.className)} style={props.style} key={node.id}>
+          <div
+            className={cls(prefix, props.className)}
+            style={props.style}
+            key={node.id}
+          >
             <SettingsFormContext.Provider value={props}>
               <Form
                 form={form}
@@ -72,7 +81,7 @@ export const SettingsForm: React.FC<ISettingFormProps> = observer(
         );
       }
       return (
-        <div className={prefix + '-empty'}>
+        <div className={prefix + "-empty"}>
           <Empty />
         </div>
       );
@@ -80,9 +89,9 @@ export const SettingsForm: React.FC<ISettingFormProps> = observer(
 
     return (
       <IconWidget.Provider tooltip>
-        <div className={prefix + '-wrapper'}>
+        <div className={prefix + "-wrapper"}>
           {!isEmpty && <NodePathWidget workspaceId={currentWorkspaceId} />}
-          <div className={prefix + '-content'}>{render()}</div>
+          <div className={prefix + "-content"}>{render()}</div>
         </div>
       </IconWidget.Provider>
     );
@@ -94,5 +103,5 @@ export const SettingsForm: React.FC<ISettingFormProps> = observer(
         timeout: 500,
       });
     },
-  },
+  }
 );

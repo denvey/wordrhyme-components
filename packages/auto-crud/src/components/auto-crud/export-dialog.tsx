@@ -1,17 +1,17 @@
-"use client";
+'use client';
 
-import * as React from "react";
+import * as React from 'react';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@wordrhyme/shadcn";
-import { Button } from "@wordrhyme/shadcn";
-import { CheckCircle2, FileDown, Loader2 } from "lucide-react";
+} from '@wordrhyme/shadcn';
+import { Button } from '@wordrhyme/shadcn';
+import { CheckCircle2, FileDown, Loader2 } from 'lucide-react';
 
-export type ExportMode = "selected" | "filtered";
+export type ExportMode = 'selected' | 'filtered';
 
 export interface ExportDialogProps {
   open: boolean;
@@ -44,7 +44,7 @@ export function ExportDialog({
       if (!value) reset();
       onOpenChange(value);
     },
-    [onOpenChange, reset]
+    [onOpenChange, reset],
   );
 
   const handleExport = React.useCallback(
@@ -58,7 +58,7 @@ export function ExportDialog({
         setExporting(null);
       }
     },
-    [onExport, handleOpenChange]
+    [onExport, handleOpenChange],
   );
 
   const hasSelected = selectedCount > 0;
@@ -71,9 +71,7 @@ export function ExportDialog({
       <DialogContent className="sm:max-w-[400px]">
         <DialogHeader>
           <DialogTitle>导出数据</DialogTitle>
-          <DialogDescription>
-            选择导出范围
-          </DialogDescription>
+          <DialogDescription>选择导出范围</DialogDescription>
         </DialogHeader>
 
         {done ? (
@@ -88,21 +86,19 @@ export function ExportDialog({
               variant="outline"
               className="h-auto justify-start gap-3 px-4 py-3"
               disabled={!hasSelected || exporting !== null}
-              onClick={() => handleExport("selected")}
+              onClick={() => handleExport('selected')}
             >
-              {exporting === "selected" ? (
+              {exporting === 'selected' ? (
                 <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
               ) : (
                 <FileDown className="h-5 w-5 shrink-0" />
               )}
               <div className="flex flex-col items-start">
                 <span className="font-medium">
-                  导出选中{hasSelected ? ` (${selectedCount} 条)` : ""}
+                  导出选中{hasSelected ? ` (${selectedCount} 条)` : ''}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  {hasSelected
-                    ? "导出当前勾选的数据行"
-                    : "请先在表格中勾选数据行"}
+                  {hasSelected ? '导出当前勾选的数据行' : '请先在表格中勾选数据行'}
                 </span>
               </div>
             </Button>
@@ -113,9 +109,9 @@ export function ExportDialog({
                 variant="outline"
                 className="h-auto justify-start gap-3 px-4 py-3"
                 disabled={exporting !== null}
-                onClick={() => handleExport("filtered")}
+                onClick={() => handleExport('filtered')}
               >
-                {exporting === "filtered" ? (
+                {exporting === 'filtered' ? (
                   <Loader2 className="h-5 w-5 shrink-0 animate-spin" />
                 ) : (
                   <FileDown className="h-5 w-5 shrink-0" />

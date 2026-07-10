@@ -1,19 +1,15 @@
-"use client";
+'use client';
 
-import type { Column } from "@tanstack/react-table";
-import { PlusCircle, XCircle } from "lucide-react";
-import * as React from "react";
-import { Button } from "@wordrhyme/shadcn";
-import { Input } from "@wordrhyme/shadcn";
-import { Label } from "@wordrhyme/shadcn";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@wordrhyme/shadcn";
-import { Separator } from "@wordrhyme/shadcn";
-import { Slider } from "@wordrhyme/shadcn";
-import { cn } from "@/lib/utils";
+import type { Column } from '@tanstack/react-table';
+import { PlusCircle, XCircle } from 'lucide-react';
+import * as React from 'react';
+import { Button } from '@wordrhyme/shadcn';
+import { Input } from '@wordrhyme/shadcn';
+import { Label } from '@wordrhyme/shadcn';
+import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
+import { Separator } from '@wordrhyme/shadcn';
+import { Slider } from '@wordrhyme/shadcn';
+import { cn } from '@/lib/utils';
 
 interface Range {
   min: number;
@@ -26,8 +22,8 @@ function getIsValidRange(value: unknown): value is RangeValue {
   return (
     Array.isArray(value) &&
     value.length === 2 &&
-    typeof value[0] === "number" &&
-    typeof value[1] === "number"
+    typeof value[0] === 'number' &&
+    typeof value[1] === 'number'
   );
 }
 
@@ -36,8 +32,7 @@ function parseValuesAsNumbers(value: unknown): RangeValue | undefined {
     Array.isArray(value) &&
     value.length === 2 &&
     value.every(
-      (v) =>
-        (typeof v === "string" || typeof v === "number") && !Number.isNaN(v),
+      (v) => (typeof v === 'string' || typeof v === 'number') && !Number.isNaN(v),
     )
   ) {
     return [Number(value[0]), Number(value[1])];
@@ -72,10 +67,7 @@ export function DataTableSliderFilter<TData>({
       const values = column.getFacetedMinMaxValues();
       if (values && Array.isArray(values) && values.length === 2) {
         const [facetMinValue, facetMaxValue] = values;
-        if (
-          typeof facetMinValue === "number" &&
-          typeof facetMaxValue === "number"
-        ) {
+        if (typeof facetMinValue === 'number' && typeof facetMaxValue === 'number') {
           minValue = facetMinValue;
           maxValue = facetMaxValue;
         }
@@ -94,7 +86,9 @@ export function DataTableSliderFilter<TData>({
   }, [column, defaultRange]);
 
   // 本地状态用于即时 UI 反馈（拖动时）
-  const [localRange, setLocalRange] = React.useState<RangeValue>(() => columnFilterValue ?? [min, max]);
+  const [localRange, setLocalRange] = React.useState<RangeValue>(
+    () => columnFilterValue ?? [min, max],
+  );
 
   // 同步外部 filter value 变化
   React.useEffect(() => {
@@ -162,11 +156,7 @@ export function DataTableSliderFilter<TData>({
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="border-dashed font-normal"
-        >
+        <Button variant="outline" size="sm" className="border-dashed font-normal">
           {columnFilterValue ? (
             <div
               role="button"
@@ -187,9 +177,8 @@ export function DataTableSliderFilter<TData>({
                 orientation="vertical"
                 className="mx-0.5 data-[orientation=vertical]:h-4"
               />
-              {formatValue(columnFilterValue[0])} -{" "}
-              {formatValue(columnFilterValue[1])}
-              {unit ? ` ${unit}` : ""}
+              {formatValue(columnFilterValue[0])} - {formatValue(columnFilterValue[1])}
+              {unit ? ` ${unit}` : ''}
             </>
           ) : null}
         </Button>
@@ -216,7 +205,7 @@ export function DataTableSliderFilter<TData>({
                 max={max}
                 value={localRange[0]?.toString()}
                 onChange={onFromInputChange}
-                className={cn("h-8 w-24", unit && "pr-8")}
+                className={cn('h-8 w-24', unit && 'pr-8')}
               />
               {unit && (
                 <span className="absolute top-0 right-0 bottom-0 flex items-center rounded-r-md bg-accent px-2 text-muted-foreground text-sm">
@@ -240,7 +229,7 @@ export function DataTableSliderFilter<TData>({
                 max={max}
                 value={localRange[1]?.toString()}
                 onChange={onToInputChange}
-                className={cn("h-8 w-24", unit && "pr-8")}
+                className={cn('h-8 w-24', unit && 'pr-8')}
               />
               {unit && (
                 <span className="absolute top-0 right-0 bottom-0 flex items-center rounded-r-md bg-accent px-2 text-muted-foreground text-sm">

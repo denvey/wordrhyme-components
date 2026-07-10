@@ -1,12 +1,9 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-import { dataTableConfig } from "@/config/data-table";
-import type { Parser } from "@/hooks/use-url-state";
+import { dataTableConfig } from '@/config/data-table';
+import type { Parser } from '@/hooks/use-url-state';
 
-import type {
-  ExtendedColumnFilter,
-  ExtendedColumnSort,
-} from "@/types/data-table";
+import type { ExtendedColumnFilter, ExtendedColumnSort } from '@/types/data-table';
 
 /**
  * 创建自定义 Parser（替代 nuqs 的 createParser）
@@ -19,7 +16,7 @@ function createParser<T>(config: {
 } {
   return {
     parse: config.parse,
-    serialize: (value: T | null) => (value === null ? "" : config.serialize(value)),
+    serialize: (value: T | null) => (value === null ? '' : config.serialize(value)),
     withDefault: (defaultValue: T) => ({
       parse: (value: string) => {
         const parsed = config.parse(value);
@@ -31,9 +28,7 @@ function createParser<T>(config: {
   };
 }
 
-export const getSortingStateParser = <TData>(
-  columnIds?: string[] | Set<string>,
-) => {
+export const getSortingStateParser = <TData>(columnIds?: string[] | Set<string>) => {
   const validKeys = columnIds
     ? columnIds instanceof Set
       ? columnIds
@@ -43,16 +38,16 @@ export const getSortingStateParser = <TData>(
   return createParser({
     parse: (value) => {
       try {
-        if (!value || value.trim() === "") return [];
+        if (!value || value.trim() === '') return [];
 
         // Format: "id.desc,id2.asc" e.g. "createdAt.desc,name.asc"
-        const items = value.split(",").map((item) => {
-          const lastDot = item.lastIndexOf(".");
+        const items = value.split(',').map((item) => {
+          const lastDot = item.lastIndexOf('.');
           if (lastDot === -1) return null;
           const id = item.slice(0, lastDot);
           const dir = item.slice(lastDot + 1);
-          if (!id || (dir !== "asc" && dir !== "desc")) return null;
-          return { id, desc: dir === "desc" };
+          if (!id || (dir !== 'asc' && dir !== 'desc')) return null;
+          return { id, desc: dir === 'desc' };
         });
 
         if (items.some((item) => item === null)) return null;
@@ -69,7 +64,7 @@ export const getSortingStateParser = <TData>(
       }
     },
     serialize: (value) =>
-      value.map((item) => `${item.id}.${item.desc ? "desc" : "asc"}`).join(","),
+      value.map((item) => `${item.id}.${item.desc ? 'desc' : 'asc'}`).join(','),
   });
 };
 
@@ -83,9 +78,7 @@ const filterItemSchema = z.object({
 
 export type FilterItemSchema = z.infer<typeof filterItemSchema>;
 
-export const getFiltersStateParser = <TData>(
-  columnIds?: string[] | Set<string>,
-) => {
+export const getFiltersStateParser = <TData>(columnIds?: string[] | Set<string>) => {
   const validKeys = columnIds
     ? columnIds instanceof Set
       ? columnIds

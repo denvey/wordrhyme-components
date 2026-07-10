@@ -1,4 +1,4 @@
-import { createSchemaField } from '@formily/react';
+import { createSchemaField } from "@formily/react";
 import {
   FormItem,
   Input,
@@ -15,8 +15,8 @@ import {
   FormGrid,
   FormLayout,
   FormTab,
-} from '@formily/antd';
-import { Slider } from 'antd';
+} from "@formily/antd";
+import { Slider } from "antd";
 import {
   SizeInput,
   ColorInput,
@@ -36,7 +36,7 @@ import {
   FlexStyleSetter,
   DrawerSetter,
   CollapseItem,
-} from './components';
+} from "./components";
 
 export const SchemaField: any = createSchemaField({
   components: {

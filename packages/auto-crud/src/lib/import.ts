@@ -2,13 +2,13 @@
  * CSV/JSON 导入解析工具（零依赖实现）
  */
 
-import { z } from "zod";
-import { parseZodField } from "@/lib/schema-bridge/zod-to-columns";
+import { z } from 'zod';
+import { parseZodField } from '@/lib/schema-bridge/zod-to-columns';
 
 export interface ParsedImportData {
   headers: string[];
   rows: Record<string, unknown>[];
-  format: "csv" | "json";
+  format: 'csv' | 'json';
 }
 
 /**
@@ -30,12 +30,12 @@ export function parseCSV(content: string): {
   for (let i = 1; i < lines.length; i++) {
     const line = lines[i]!;
     // 跳过空行
-    if (line.length === 1 && line[0] === "") continue;
+    if (line.length === 1 && line[0] === '') continue;
 
     const row: Record<string, string> = {};
     for (let j = 0; j < headers.length; j++) {
       const header = headers[j]!;
-      row[header] = line[j] ?? "";
+      row[header] = line[j] ?? '';
     }
     rows.push(row);
   }
@@ -48,7 +48,7 @@ export function parseCSV(content: string): {
  */
 function parseCSVLines(text: string): string[][] {
   const result: string[][] = [];
-  let current = "";
+  let current = '';
   let inQuotes = false;
   let row: string[] = [];
 
@@ -68,18 +68,18 @@ function parseCSVLines(text: string): string[][] {
     } else {
       if (char === '"') {
         inQuotes = true;
-      } else if (char === ",") {
+      } else if (char === ',') {
         row.push(current);
-        current = "";
-      } else if (char === "\r" && next === "\n") {
+        current = '';
+      } else if (char === '\r' && next === '\n') {
         row.push(current);
-        current = "";
+        current = '';
         result.push(row);
         row = [];
         i++; // 跳过 \n
-      } else if (char === "\n") {
+      } else if (char === '\n') {
         row.push(current);
-        current = "";
+        current = '';
         result.push(row);
         row = [];
       } else {
@@ -89,7 +89,7 @@ function parseCSVLines(text: string): string[][] {
   }
 
   // 最后一行
-  if (current !== "" || row.length > 0) {
+  if (current !== '' || row.length > 0) {
     row.push(current);
     result.push(row);
   }
@@ -109,41 +109,36 @@ export function parseJSON(content: string): Record<string, unknown>[] {
   }
 
   // 支持 { data: [...] } 格式
-  if (parsed && typeof parsed === "object" && Array.isArray(parsed.data)) {
+  if (parsed && typeof parsed === 'object' && Array.isArray(parsed.data)) {
     return parsed.data;
   }
 
-  throw new Error(
-    "Invalid JSON format: expected an array or { data: [...] } object"
-  );
+  throw new Error('Invalid JSON format: expected an array or { data: [...] } object');
 }
 
 /**
  * 统一解析入口：根据文件扩展名自动选择解析器
  */
-export async function parseImportFile(
-  file: File
-): Promise<ParsedImportData> {
+export async function parseImportFile(file: File): Promise<ParsedImportData> {
   const content = await file.text();
-  const ext = file.name.split(".").pop()?.toLowerCase();
+  const ext = file.name.split('.').pop()?.toLowerCase();
 
-  if (ext === "json") {
+  if (ext === 'json') {
     const rows = parseJSON(content);
-    const headers =
-      rows.length > 0 ? Object.keys(rows[0] as object) : [];
-    return { headers, rows, format: "json" };
+    const headers = rows.length > 0 ? Object.keys(rows[0] as object) : [];
+    return { headers, rows, format: 'json' };
   }
 
   // 默认当作 CSV
   const { headers, rows } = parseCSV(content);
-  return { headers, rows, format: "csv" };
+  return { headers, rows, format: 'csv' };
 }
 
 /**
  * 生成 CSV 模板（仅包含表头，用于下载空模板）
  */
 export function generateCSVTemplate(headers: string[]): string {
-  return headers.map((h) => escapeCSVField(h)).join(",") + "\n";
+  return headers.map((h) => escapeCSVField(h)).join(',') + '\n';
 }
 
 /**
@@ -154,29 +149,29 @@ export function dataToCSV<T extends Record<string, unknown>>(
   opts: {
     headers?: string[];
     excludeColumns?: string[];
-  } = {}
+  } = {},
 ): string {
-  if (data.length === 0) return "";
+  if (data.length === 0) return '';
 
   const allHeaders = Object.keys(data[0] as object);
   const headers = (opts.headers ?? allHeaders).filter(
-    (h) => !opts.excludeColumns?.includes(h)
+    (h) => !opts.excludeColumns?.includes(h),
   );
 
-  const headerLine = headers.map((h) => escapeCSVField(h)).join(",");
+  const headerLine = headers.map((h) => escapeCSVField(h)).join(',');
   const rows = data.map((row) =>
-    headers.map((h) => escapeCSVField(String(row[h] ?? ""))).join(",")
+    headers.map((h) => escapeCSVField(String(row[h] ?? ''))).join(','),
   );
 
-  return [headerLine, ...rows].join("\n");
+  return [headerLine, ...rows].join('\n');
 }
 
 function escapeCSVField(field: string): string {
   if (
-    field.includes(",") ||
+    field.includes(',') ||
     field.includes('"') ||
-    field.includes("\n") ||
-    field.includes("\r")
+    field.includes('\n') ||
+    field.includes('\r')
   ) {
     return `"${field.replace(/"/g, '""')}"`;
   }
@@ -216,29 +211,29 @@ export function coerceRowValues<T extends z.ZodObject<z.ZodRawShape>>(
       }
 
       // 空字符串 → undefined（让 schema 默认值生效，或被 optional 处理）
-      if (value === "" || value === null || value === undefined) {
+      if (value === '' || value === null || value === undefined) {
         coerced[key] = undefined;
         continue;
       }
 
       // 已经是正确类型则跳过转换
-      if (typeof value !== "string") {
+      if (typeof value !== 'string') {
         coerced[key] = value;
         continue;
       }
 
       switch (type) {
-        case "number": {
+        case 'number': {
           const num = parseFloat(value);
           coerced[key] = isNaN(num) ? undefined : num;
           break;
         }
-        case "boolean": {
+        case 'boolean': {
           const lower = value.toLowerCase().trim();
-          coerced[key] = lower === "true" || lower === "1" || lower === "yes";
+          coerced[key] = lower === 'true' || lower === '1' || lower === 'yes';
           break;
         }
-        case "date": {
+        case 'date': {
           const date = new Date(value);
           coerced[key] = isNaN(date.getTime()) ? undefined : date;
           break;

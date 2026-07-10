@@ -1,10 +1,10 @@
-import type { Column } from "@tanstack/react-table";
-import { dataTableConfig } from "@/config/data-table";
+import type { Column } from '@tanstack/react-table';
+import { dataTableConfig } from '@/config/data-table';
 import type {
   ExtendedColumnFilter,
   FilterOperator,
   FilterVariant,
-} from "@/types/data-table";
+} from '@/types/data-table';
 
 export function getColumnPinningStyle<TData>({
   column,
@@ -14,34 +14,30 @@ export function getColumnPinningStyle<TData>({
   withBorder?: boolean;
 }): React.CSSProperties {
   const isPinned = column.getIsPinned();
-  const isLastLeftPinnedColumn =
-    isPinned === "left" && column.getIsLastColumn("left");
+  const isLastLeftPinnedColumn = isPinned === 'left' && column.getIsLastColumn('left');
   const isFirstRightPinnedColumn =
-    isPinned === "right" && column.getIsFirstColumn("right");
+    isPinned === 'right' && column.getIsFirstColumn('right');
 
   return {
     boxShadow: withBorder
       ? isLastLeftPinnedColumn
-        ? "-4px 0 4px -4px var(--border) inset"
+        ? '-4px 0 4px -4px var(--border) inset'
         : isFirstRightPinnedColumn
-          ? "4px 0 4px -4px var(--border) inset"
+          ? '4px 0 4px -4px var(--border) inset'
           : undefined
       : undefined,
-    left: isPinned === "left" ? `${column.getStart("left")}px` : undefined,
-    right: isPinned === "right" ? `${column.getAfter("right")}px` : undefined,
+    left: isPinned === 'left' ? `${column.getStart('left')}px` : undefined,
+    right: isPinned === 'right' ? `${column.getAfter('right')}px` : undefined,
     opacity: isPinned ? 0.97 : 1,
-    position: isPinned ? "sticky" : "relative",
-    background: isPinned ? "var(--background)" : "var(--background)",
+    position: isPinned ? 'sticky' : 'relative',
+    background: isPinned ? 'var(--background)' : 'var(--background)',
     width: column.getSize(),
     zIndex: isPinned ? 1 : undefined,
   };
 }
 
 export function getFilterOperators(filterVariant: FilterVariant) {
-  const operatorMap: Record<
-    FilterVariant,
-    { label: string; value: FilterOperator }[]
-  > = {
+  const operatorMap: Record<FilterVariant, { label: string; value: FilterOperator }[]> = {
     text: dataTableConfig.textOperators,
     number: dataTableConfig.numericOperators,
     range: dataTableConfig.numericOperators,
@@ -57,13 +53,13 @@ export function getFilterOperators(filterVariant: FilterVariant) {
 
 export function getDefaultFilterOperator(filterVariant: FilterVariant) {
   // dateRange should default to isBetween, not eq
-  if (filterVariant === "dateRange") {
-    return "isBetween" as const;
+  if (filterVariant === 'dateRange') {
+    return 'isBetween' as const;
   }
 
   const operators = getFilterOperators(filterVariant);
 
-  return operators[0]?.value ?? (filterVariant === "text" ? "iLike" : "eq");
+  return operators[0]?.value ?? (filterVariant === 'text' ? 'iLike' : 'eq');
 }
 
 export function getValidFilters<TData>(
@@ -71,12 +67,10 @@ export function getValidFilters<TData>(
 ): ExtendedColumnFilter<TData>[] {
   return filters.filter(
     (filter) =>
-      filter.operator === "isEmpty" ||
-      filter.operator === "isNotEmpty" ||
+      filter.operator === 'isEmpty' ||
+      filter.operator === 'isNotEmpty' ||
       (Array.isArray(filter.value)
         ? filter.value.length > 0
-        : filter.value !== "" &&
-          filter.value !== null &&
-          filter.value !== undefined),
+        : filter.value !== '' && filter.value !== null && filter.value !== undefined),
   );
 }

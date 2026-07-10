@@ -17,6 +17,7 @@
 ## 入口与启动
 
 ### 入口文件
+
 - **主入口**: `src/index.ts`
 
 ### 开发命令
@@ -63,13 +64,15 @@ function LoginPage() {
 ## 关键依赖与配置
 
 ### 核心依赖
-| 包名 | 用途 |
-|------|------|
-| @wordrhyme/shadcn | 基础 UI 组件 |
+
+| 包名                 | 用途         |
+| -------------------- | ------------ |
+| @wordrhyme/shadcn    | 基础 UI 组件 |
 | @wordrhyme/shadcn-ui | 扩展 UI 组件 |
-| lucide-react | 图标 |
+| lucide-react         | 图标         |
 
 ### Peer Dependencies
+
 - react >= 18.0.0
 - react-dom >= 18.0.0
 
@@ -88,6 +91,7 @@ src/
 ## Storybook
 
 查看组件演示：
+
 ```bash
 cd ../../../  # 返回 monorepo 根目录
 pnpm storybook
@@ -97,16 +101,17 @@ Stories 文件位于 `stories/SignInForm.stories.tsx`。
 
 ## 相关文件清单
 
-| 类别 | 关键文件 |
-|------|---------|
-| 入口 | `src/index.ts` |
-| 组件 | `src/*.tsx` |
-| Stories | `stories/*.stories.tsx` |
-| 配置 | `package.json`, `tsconfig.json` |
+| 类别    | 关键文件                        |
+| ------- | ------------------------------- |
+| 入口    | `src/index.ts`                  |
+| 组件    | `src/*.tsx`                     |
+| Stories | `stories/*.stories.tsx`         |
+| 配置    | `package.json`, `tsconfig.json` |
 
 ## 变更记录 (Changelog)
 
 ### 2026-01-14
+
 - 初始化模块文档
 
 详细变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)

@@ -1,7 +1,7 @@
-import loader from '@monaco-editor/loader';
+import loader from "@monaco-editor/loader";
 
 const Registry = {
-  cdn: '//cdn.jsdelivr.net/npm',
+  cdn: "//cdn.jsdelivr.net/npm",
 };
 
 export const setNpmCDNRegistry = (registry: string) => {
@@ -13,4 +13,4 @@ export const setNpmCDNRegistry = (registry: string) => {
   });
 };
 
-export const getNpmCDNRegistry = () => String(Registry.cdn).replace(/\/$/, '');
+export const getNpmCDNRegistry = () => String(Registry.cdn).replace(/\/$/, "");

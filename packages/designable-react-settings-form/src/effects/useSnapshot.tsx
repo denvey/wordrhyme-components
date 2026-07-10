@@ -1,13 +1,13 @@
-import { Operation } from '@wordrhyme/designable-core';
-import { onFieldInputValueChange } from '@formily/core';
+import { Operation } from "@wordrhyme/designable-core";
+import { onFieldInputValueChange } from "@formily/core";
 
 let timeRequest = null;
 
 export const useSnapshot = (operation: Operation) => {
-  onFieldInputValueChange('*', () => {
+  onFieldInputValueChange("*", () => {
     clearTimeout(timeRequest);
     timeRequest = setTimeout(() => {
-      operation.snapshot('update:node:props');
+      operation.snapshot("update:node:props");
     }, 1000);
   });
 };

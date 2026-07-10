@@ -21,6 +21,7 @@
 ## 入口与启动
 
 ### 入口文件
+
 - **主入口**: `src/index.ts`
 - **构建输出**: `dist/index.js` (ESM), `dist/index.cjs` (CJS)
 
@@ -47,60 +48,81 @@ pnpm typecheck
 ### Auto-CRUD 组件
 
 ```typescript
-export { AutoCrudTable } from "./components/auto-crud/auto-crud-table";
-export type { Field, Fields, AutoCrudTableProps } from "./components/auto-crud/auto-crud-table";
-export type { CrudPermissions, CrudOperationPermissions } from "./types/permissions";
-export { AutoForm } from "./components/auto-crud/auto-form";
-export { AutoTable } from "./components/auto-crud/auto-table";
-export { AutoTableActionBar } from "./components/auto-crud/auto-table-action-bar";
-export { AutoTableSimpleFilters } from "./components/auto-crud/auto-table-simple-filters";
-export { CrudFormModal } from "./components/auto-crud/crud-form-modal";
+export { AutoCrudTable } from './components/auto-crud/auto-crud-table';
+export type {
+  Field,
+  Fields,
+  AutoCrudTableProps,
+} from './components/auto-crud/auto-crud-table';
+export type { CrudPermissions, CrudOperationPermissions } from './types/permissions';
+export { AutoForm } from './components/auto-crud/auto-form';
+export { AutoTable } from './components/auto-crud/auto-table';
+export { AutoTableActionBar } from './components/auto-crud/auto-table-action-bar';
+export { AutoTableSimpleFilters } from './components/auto-crud/auto-table-simple-filters';
+export { CrudFormModal } from './components/auto-crud/crud-form-modal';
 ```
 
 ### 数据表格组件
 
 ```typescript
-export { DataTable } from "./components/data-table/data-table";
-export { DataTableAdvancedToolbar } from "./components/data-table/data-table-advanced-toolbar";
-export { DataTableColumnHeader } from "./components/data-table/data-table-column-header";
-export { DataTableFacetedFilter } from "./components/data-table/data-table-faceted-filter";
-export { DataTablePagination } from "./components/data-table/data-table-pagination";
+export { DataTable } from './components/data-table/data-table';
+export { DataTableAdvancedToolbar } from './components/data-table/data-table-advanced-toolbar';
+export { DataTableColumnHeader } from './components/data-table/data-table-column-header';
+export { DataTableFacetedFilter } from './components/data-table/data-table-faceted-filter';
+export { DataTablePagination } from './components/data-table/data-table-pagination';
 ```
 
 ### Hooks
 
 ```typescript
-export { useAutoCrudResource, noopToastAdapter } from "./hooks/use-auto-crud-resource";
-export type { ToastAdapter, CrudHooks, UseAutoCrudResourceOptions } from "./hooks/use-auto-crud-resource";
-export { useDataTable } from "./hooks/use-data-table";
-export { useReadableFilters } from "./hooks/use-readable-filters";
+export { useAutoCrudResource, noopToastAdapter } from './hooks/use-auto-crud-resource';
+export type {
+  ToastAdapter,
+  CrudHooks,
+  UseAutoCrudResourceOptions,
+} from './hooks/use-auto-crud-resource';
+export { useDataTable } from './hooks/use-data-table';
+export { useReadableFilters } from './hooks/use-readable-filters';
 ```
 
 ### Schema Bridge - 核心工具
 
 ```typescript
 // 转换函数
-export { parseZodField, createTableSchema, createSelectColumn, createActionsColumn } from "./lib/schema-bridge/zod-to-columns";
-export { createFormSchema, createEditFormSchema } from "./lib/schema-bridge/zod-to-formily";
+export {
+  parseZodField,
+  createTableSchema,
+  createSelectColumn,
+  createActionsColumn,
+} from './lib/schema-bridge/zod-to-columns';
+export {
+  createFormSchema,
+  createEditFormSchema,
+} from './lib/schema-bridge/zod-to-formily';
 
 // Schema 适配器（支持 3 种 Schema 类型）
-export { SchemaAdapter } from "./lib/schema-bridge/schema-adapter";
+export { SchemaAdapter } from './lib/schema-bridge/schema-adapter';
 export type {
-  UnifiedSchema,       // Zod | JSON Schema | Simple Config
-  JSONSchema,          // JSON Schema 格式
-  SimpleFieldsConfig,  // 简化配置格式
-  UnifiedField,        // 统一字段定义
-} from "./lib/schema-bridge/schema-adapter";
+  UnifiedSchema, // Zod | JSON Schema | Simple Config
+  JSONSchema, // JSON Schema 格式
+  SimpleFieldsConfig, // 简化配置格式
+  UnifiedField, // 统一字段定义
+} from './lib/schema-bridge/schema-adapter';
 
 // 类型定义
-export type { ColumnOverrides, FormSchemaOverrides, CreateTableSchemaOptions, CreateFormSchemaOptions } from "./lib/schema-bridge/types";
+export type {
+  ColumnOverrides,
+  FormSchemaOverrides,
+  CreateTableSchemaOptions,
+  CreateFormSchemaOptions,
+} from './lib/schema-bridge/types';
 ```
 
 ### 数据源
 
 ```typescript
-export { createTRPCDataSource, createMemoryDataSource } from "./lib/data-source";
-export type { DataSource, ListParams, ListResult } from "./lib/data-source";
+export { createTRPCDataSource, createMemoryDataSource } from './lib/data-source';
+export type { DataSource, ListParams, ListResult } from './lib/data-source';
 ```
 
 ---
@@ -226,26 +248,34 @@ interface Field {
   hidden?: boolean;
   /** 筛选器独立配置（不影响表格列显示/隐藏） */
   filter?: {
-    enabled?: boolean;    // 是否启用筛选（默认 true）
-    variant?: "text" | "number" | "range" | "date" | "dateRange" | "boolean" | "select" | "multiSelect";
-    options?: Option[];   // select/multiSelect 的选项
+    enabled?: boolean; // 是否启用筛选（默认 true）
+    variant?:
+      | 'text'
+      | 'number'
+      | 'range'
+      | 'date'
+      | 'dateRange'
+      | 'boolean'
+      | 'select'
+      | 'multiSelect';
+    options?: Option[]; // select/multiSelect 的选项
     range?: [number, number]; // range 的范围
-    unit?: string;        // number 的单位
+    unit?: string; // number 的单位
     placeholder?: string; // 占位符
-    hidden?: boolean;     // 筛选栏中隐藏（不影响表格列）
+    hidden?: boolean; // 筛选栏中隐藏（不影响表格列）
   };
   /** 表格特定配置 */
   table?: {
-    hidden?: boolean;  // 仅表格隐藏
-    meta?: Record<string, unknown>;  // 筛选器配置
+    hidden?: boolean; // 仅表格隐藏
+    meta?: Record<string, unknown>; // 筛选器配置
     [key: string]: unknown;
   };
   /** 表单特定配置 */
   form?: {
-    "x-hidden"?: boolean;  // 仅表单隐藏
-    "x-component"?: string;  // 组件类型
-    "x-component-props"?: Record<string, unknown>;  // 组件属性
-    "x-reactions"?: object;  // 字段联动
+    'x-hidden'?: boolean; // 仅表单隐藏
+    'x-component'?: string; // 组件类型
+    'x-component-props'?: Record<string, unknown>; // 组件属性
+    'x-reactions'?: object; // 字段联动
     [key: string]: unknown;
   };
 }
@@ -265,7 +295,7 @@ interface AutoCrudTableProps<TSchema> {
   table?: {
     hidden?: string[];
     overrides?: Record<string, any>;
-    filterModes?: FilterMode | FilterMode[];  // "simple" | "advanced" | "command"
+    filterModes?: FilterMode | FilterMode[]; // "simple" | "advanced" | "command"
     batchFields?: (string | BatchUpdateField)[];
     defaultSort?: any[];
   };
@@ -319,12 +349,12 @@ interface CrudPermissions {
 
 ### 核心依赖
 
-| 包名 | 版本 | 用途 |
-|------|------|------|
-| @wordrhyme/shadcn | workspace:* | 基础 UI 组件 |
-| @wordrhyme/formily-shadcn | workspace:* | Formily 表单集成 |
-| @wordrhyme/shadcn-ui | workspace:* | 扩展 UI 组件 |
-| @tanstack/react-table | ^8.21.3 | 数据表格核心 |
+| 包名                      | 版本         | 用途             |
+| ------------------------- | ------------ | ---------------- |
+| @wordrhyme/shadcn         | workspace:\* | 基础 UI 组件     |
+| @wordrhyme/formily-shadcn | workspace:\* | Formily 表单集成 |
+| @wordrhyme/shadcn-ui      | workspace:\* | 扩展 UI 组件     |
+| @tanstack/react-table     | ^8.21.3      | 数据表格核心     |
 
 ### Peer Dependencies
 
@@ -423,24 +453,24 @@ const columns = createTableSchema(taskSchema, {
 支持 3 种 Schema 格式，通过 `SchemaAdapter` 自动检测和转换：
 
 ```typescript
-import { SchemaAdapter } from "@wordrhyme/auto-crud";
+import { SchemaAdapter } from '@wordrhyme/auto-crud';
 
 // 1. Zod Schema（推荐）
 const zodSchema = z.object({ title: z.string() });
 
 // 2. JSON Schema
 const jsonSchema = {
-  type: "object",
-  properties: { title: { type: "string" } },
+  type: 'object',
+  properties: { title: { type: 'string' } },
 };
 
 // 3. 简化配置
 const simpleConfig = {
-  title: { type: "string", label: "标题" },
+  title: { type: 'string', label: '标题' },
 };
 
 // 自动检测类型
-const type = SchemaAdapter.detectType(schema);  // "zod" | "json" | "simple"
+const type = SchemaAdapter.detectType(schema); // "zod" | "json" | "simple"
 
 // 统一转换
 const fields = SchemaAdapter.toUnified(schema);
@@ -482,11 +512,11 @@ function CustomCrud() {
 ```typescript
 const fields: Fields = {
   endDate: {
-    label: "结束日期",
+    label: '结束日期',
     form: {
-      "x-reactions": {
-        dependencies: ["startDate"],
-        when: "{{$deps[0] !== undefined}}",
+      'x-reactions': {
+        dependencies: ['startDate'],
+        when: '{{$deps[0] !== undefined}}',
         fulfill: {
           state: {
             visible: true,
@@ -507,30 +537,30 @@ const fields: Fields = {
 const fields: Fields = {
   // 方式 1: 使用 filter 独立配置（推荐）
   status: {
-    label: "状态",
+    label: '状态',
     filter: {
-      variant: "select",
+      variant: 'select',
       options: [
-        { label: "待办", value: "todo" },
-        { label: "完成", value: "done" },
+        { label: '待办', value: 'todo' },
+        { label: '完成', value: 'done' },
       ],
     },
   },
   // 方式 2: 使用 table.meta 配置（传统方式，仍然支持）
   amount: {
-    label: "金额",
+    label: '金额',
     table: {
       meta: {
-        variant: "range",
+        variant: 'range',
         range: [0, 10000],
-        unit: "¥",
+        unit: '¥',
       },
     },
   },
   // 筛选器隐藏但表格列保留
   internalCode: {
-    label: "内部编码",
-    filter: { hidden: true },  // 筛选栏中不显示，但表格列正常显示
+    label: '内部编码',
+    filter: { hidden: true }, // 筛选栏中不显示，但表格列正常显示
   },
 };
 ```
@@ -541,7 +571,7 @@ const fields: Fields = {
 ### Q: 如何集成服务端（tRPC）？
 
 ```typescript
-import { createCrudRouter } from "@wordrhyme/auto-crud-server";
+import { createCrudRouter } from '@wordrhyme/auto-crud-server';
 
 const taskRouter = createCrudRouter({
   table: tasks,
@@ -586,6 +616,7 @@ function EmployeesPage() {
 ```
 
 **权限效果：**
+
 - `can.create = false` → 隐藏「新建」按钮和「复制」行操作
 - `can.update = false` → 隐藏「编辑」按钮和批量更新功能
 - `can.delete = false` → 隐藏「删除」按钮和批量删除功能
@@ -596,30 +627,33 @@ function EmployeesPage() {
 
 ## 相关文件清单
 
-| 类别 | 关键文件 |
-|------|---------|
-| 入口 | `src/index.ts` |
-| 核心组件 | `src/components/auto-crud/` |
-| 数据表格 | `src/components/data-table/` |
-| Schema 转换 | `src/lib/schema-bridge/` |
-| 数据源 | `src/lib/data-source.ts` |
-| 配置 | `package.json`, `tsdown.config.ts`, `tsconfig.json` |
+| 类别        | 关键文件                                            |
+| ----------- | --------------------------------------------------- |
+| 入口        | `src/index.ts`                                      |
+| 核心组件    | `src/components/auto-crud/`                         |
+| 数据表格    | `src/components/data-table/`                        |
+| Schema 转换 | `src/lib/schema-bridge/`                            |
+| 数据源      | `src/lib/data-source.ts`                            |
+| 配置        | `package.json`, `tsdown.config.ts`, `tsconfig.json` |
 
 ---
 
 ## 变更记录 (Changelog)
 
 ### 2026-02-03
+
 - 新增 `permissions` prop 支持权限控制
 - 新增 `CrudPermissions` 和 `CrudOperationPermissions` 类型导出
 - 支持通过 `can.create/update/delete/export` 控制按钮显示
 - 支持通过 `deny` 字段列表隐藏敏感字段
 
 ### 2026-01-30
+
 - 默认过滤模式改为 "simple"
 - 文档更新：统一使用 `fields` API（替代旧的 `fieldOverrides`）
 
 ### 2026-01-26
+
 - 迁移到 shadcn-components monorepo
 - 采用 workspace 依赖策略
 - 优化 peerDependencies
