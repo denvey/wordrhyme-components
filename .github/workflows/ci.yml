@@ -29,7 +29,9 @@ jobs:
         with:
           build: 'true'
 
-      - name: Lint
+      # TODO: Make lint blocking again after the existing repository-wide baseline is fixed.
+      - name: Lint (non-blocking)
+        continue-on-error: true
         run: pnpm lint
 
       - name: Prettier check

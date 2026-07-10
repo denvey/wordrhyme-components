@@ -1,5 +1,11 @@
 # @pixpilot/shadcn-ui
 
+## 1.32.5-beta.0
+
+### Patch Changes
+
+- 67fe420: Add shadcn Designable Formily materials, support designable-compatible Formily props, add the Input.TextArea runtime alias, and tighten shadcn UI input prefix typings.
+
 ## 1.32.4
 
 ### Patch Changes

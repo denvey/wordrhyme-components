@@ -1,7 +1,7 @@
 {
   "name": "@internal/storybook",
   "type": "module",
-  "version": "0.0.222",
+  "version": "0.0.223-beta.0",
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "author": "m.doaie <m.doaie@hotmail.com>",
@@ -21,15 +21,20 @@
     "clean:all": "git clean -xdf .cache storybook-static node_modules"
   },
   "dependencies": {
+    "@ant-design/icons": "^4.8.3",
     "@iconify-json/fa": "catalog:prod",
     "@iconify-json/mdi": "catalog:prod",
     "@iconify-json/tabler": "catalog:prod",
     "@iconify/react": "catalog:prod",
     "@pixpilot/string": "catalog:prod",
+    "@wordrhyme/designable-formily-antd": "workspace:*",
+    "@wordrhyme/designable-formily-shadcn": "workspace:*",
+    "@wordrhyme/designable-react-settings-form": "workspace:*",
     "@wordrhyme/formily-shadcn": "workspace:*",
     "@wordrhyme/shadcn": "workspace:*",
     "@wordrhyme/shadcn-auth": "workspace:*",
     "@wordrhyme/shadcn-ui": "workspace:*",
+    "antd": "^4.24.16",
     "next-themes": "catalog:prod"
   },
   "devDependencies": {
@@ -50,8 +55,10 @@
     "ai": "catalog:",
     "autoprefixer": "catalog:dev",
     "internal-ip": "9.0.0",
+    "less": "^4.4.2",
     "msw": "^2.14.6",
     "playwright": "~1.59.1",
+    "postcss-selector-parser": "catalog:dev",
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
     "storybook": "catalog:dev",

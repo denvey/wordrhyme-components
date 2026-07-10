@@ -1,0 +1,120 @@
+{
+  "name": "@wordrhyme/design-engine",
+  "type": "module",
+  "version": "0.1.1-beta.0",
+  "packageManager": "pnpm@10.33.0",
+  "description": "Designable/Formily adapters and runtime helpers for WordRhyme surfaces.",
+  "author": "wordrhyme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pixpilot/shadcn-components.git",
+    "directory": "packages/design-engine"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./schema": {
+      "types": "./dist/schema/index.d.ts",
+      "import": "./dist/schema/index.js",
+      "require": "./dist/schema/index.cjs"
+    },
+    "./render": {
+      "types": "./dist/render/index.d.ts",
+      "import": "./dist/render/index.js",
+      "require": "./dist/render/index.cjs"
+    },
+    "./editor": {
+      "types": "./dist/editor.d.ts",
+      "import": "./dist/editor.js",
+      "require": "./dist/editor.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "./schema": {
+        "types": "./dist/schema/index.d.ts",
+        "import": "./dist/schema/index.js",
+        "require": "./dist/schema/index.cjs"
+      },
+      "./render": {
+        "types": "./dist/render/index.d.ts",
+        "import": "./dist/render/index.js",
+        "require": "./dist/render/index.cjs"
+      },
+      "./editor": {
+        "types": "./dist/editor.d.ts",
+        "import": "./dist/editor.js",
+        "require": "./dist/editor.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "prepublishOnly": "pnpm run clean && pnpm run build",
+    "clean": "git clean -xdf .cache .turbo dist",
+    "clean:all": "git clean -xdf .cache .turbo dist node_modules",
+    "build": "rm -rf dist-editor && tsdown src/index.ts src/schema/index.ts src/render/index.ts --config false --dts --format esm,cjs --clean true --out-dir dist --external react --external react-dom --external react/jsx-runtime --external @formily/core --external @formily/react --external @wordrhyme/designable-core --external @wordrhyme/designable-formily-shadcn --external @wordrhyme/designable-formily-transformer --external @wordrhyme/designable-react --external @wordrhyme/designable-react-settings-form --external @wordrhyme/formily-shadcn && tsdown src/editor.tsx --config false --dts --format esm,cjs --clean true --out-dir dist-editor --external react --external react-dom --external react/jsx-runtime --external @formily/core --external @formily/react --external @wordrhyme/designable-core --external @wordrhyme/designable-formily-shadcn --external @wordrhyme/designable-formily-transformer --external @wordrhyme/designable-react --external @wordrhyme/designable-react-settings-form --external @wordrhyme/formily-shadcn && cp dist-editor/editor.* dist/ && rm -rf dist-editor",
+    "build:watch": "tsdown --watch",
+    "test": "vitest --run --passWithNoTests",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "dependencies": {
+    "@formily/react": "^2.3.7",
+    "@wordrhyme/designable-core": "workspace:*",
+    "@wordrhyme/designable-formily-shadcn": "workspace:*",
+    "@wordrhyme/designable-formily-transformer": "workspace:*",
+    "@wordrhyme/designable-react": "workspace:*",
+    "@wordrhyme/designable-react-settings-form": "workspace:*",
+    "@wordrhyme/formily-shadcn": "workspace:*"
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^4.8.3",
+    "@formily/core": "^2.3.7",
+    "@formily/reactive-react": "^2.3.7",
+    "@internal/eslint-config": "workspace:*",
+    "@internal/prettier-config": "workspace:*",
+    "@internal/tsconfig": "workspace:*",
+    "@internal/tsdown-config": "workspace:*",
+    "@internal/vitest-config": "workspace:*",
+    "@storybook/react": "catalog:dev",
+    "@storybook/test": "catalog:dev",
+    "@testing-library/react": "catalog:dev",
+    "@types/node": "catalog:dev",
+    "@types/react": "catalog:dev",
+    "@types/react-dom": "catalog:dev",
+    "@wordrhyme/designable-formily-antd": "workspace:*",
+    "antd": "^4.24.16",
+    "eslint": "catalog:dev",
+    "jsdom": "catalog:dev",
+    "react": "catalog:prod",
+    "react-dom": "catalog:prod",
+    "tsdown": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev"
+  },
+  "prettier": "@internal/prettier-config"
+}

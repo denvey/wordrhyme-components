@@ -8,7 +8,7 @@ import {
 } from '@wordrhyme/shadcn';
 import * as React from 'react';
 
-export type InputProps = ShadcnInputProps & {
+export type InputProps = Omit<ShadcnInputProps, 'prefix'> & {
   prefix?: React.ReactNode;
   suffix?: React.ReactNode;
   groupClassName?: string;

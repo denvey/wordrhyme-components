@@ -1,0 +1,93 @@
+{
+  "name": "@wordrhyme/designable-react-settings-form",
+  "type": "module",
+  "version": "0.1.0-beta.1",
+  "packageManager": "pnpm@10.33.0",
+  "description": "Forked Designable React settings form for WordRhyme.",
+  "author": "wordrhyme",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pixpilot/shadcn-components.git",
+    "directory": "packages/designable-react-settings-form"
+  },
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      }
+    }
+  },
+  "scripts": {
+    "prepublishOnly": "pnpm run clean && pnpm run build",
+    "clean": "git clean -xdf .cache .turbo dist",
+    "clean:all": "git clean -xdf .cache .turbo dist node_modules",
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
+    "test": "vitest --run --passWithNoTests",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint",
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.14.7",
+    "@formily/antd": "^2.3.7",
+    "@formily/core": "^2.3.7",
+    "@formily/react": "^2.3.7",
+    "@formily/reactive": "^2.3.7",
+    "@formily/reactive-react": "^2.3.7",
+    "@formily/shared": "^2.3.7",
+    "@monaco-editor/loader": "^1.7.0",
+    "@monaco-editor/react": "^4.2.1",
+    "@wordrhyme/designable-core": "workspace:*",
+    "@wordrhyme/designable-react": "workspace:*",
+    "@wordrhyme/designable-shared": "workspace:*",
+    "antd": "^4.24.16",
+    "classnames": "^2.5.1",
+    "monaco-editor": "^0.25.2",
+    "prettier": "^2.3.2",
+    "react-color": "^2.19.3",
+    "react-tiny-popover": "^6.0.5"
+  },
+  "devDependencies": {
+    "@internal/eslint-config": "workspace:*",
+    "@internal/prettier-config": "workspace:*",
+    "@internal/tsconfig": "workspace:*",
+    "@internal/tsdown-config": "workspace:*",
+    "@internal/vitest-config": "workspace:*",
+    "@types/node": "catalog:dev",
+    "@types/react": "catalog:dev",
+    "@types/react-color": "^3.0.13",
+    "@types/react-dom": "catalog:dev",
+    "eslint": "catalog:dev",
+    "react": "catalog:prod",
+    "react-dom": "catalog:prod",
+    "tsdown": "catalog:dev",
+    "typescript": "catalog:dev",
+    "vitest": "catalog:dev"
+  },
+  "prettier": "@internal/prettier-config"
+}

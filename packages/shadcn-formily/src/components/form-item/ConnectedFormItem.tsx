@@ -15,6 +15,7 @@ export const FormItem = connect(
 
     if (isVoidField(field)) {
       return {
+        ...props,
         label: (field.title ?? props.label) as SyncReactNode,
         description: (props.description ?? field.description) as SyncReactNode,
         asterisk: props.asterisk,
@@ -58,6 +59,7 @@ export const FormItem = connect(
     };
 
     return {
+      ...props,
       label: (props.label ?? field.title) as SyncReactNode,
       description: (props.description ?? field.description) as SyncReactNode,
       feedbackStatus: takeFeedbackStatus(),
