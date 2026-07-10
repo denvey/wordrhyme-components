@@ -1,14 +1,14 @@
-import React from 'react';
-import { IconWidget } from '@wordrhyme/designable-react';
-import { BoxStyleSetter } from '../BoxStyleSetter';
+import React from "react";
+import { IconWidget } from "@wordrhyme/designable-react";
+import { BoxStyleSetter } from "../BoxStyleSetter";
 export interface IBorderRadiusStyleSetterProps {
   value?: string;
   onChange?: (value: string) => void;
 }
 
-export const BorderRadiusStyleSetter: React.FC<IBorderRadiusStyleSetterProps> = (
-  props,
-) => {
+export const BorderRadiusStyleSetter: React.FC<
+  IBorderRadiusStyleSetterProps
+> = (props) => {
   return (
     <BoxStyleSetter
       {...props}

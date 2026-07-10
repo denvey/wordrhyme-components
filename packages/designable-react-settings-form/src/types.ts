@@ -1,5 +1,5 @@
-import React from 'react';
-import { Form } from '@formily/core';
+import React from "react";
+import { Form } from "@formily/core";
 export interface ISettingFormProps {
   className?: string;
   style?: React.CSSProperties;

@@ -13,6 +13,7 @@
 ## 入口与启动
 
 ### 入口文件
+
 - **主入口**: `src/index.ts`
 
 **注意**: 这是一个内部包（private: true），不发布到 npm。
@@ -68,13 +69,14 @@ src/
 
 ## 相关文件清单
 
-| 类别 | 关键文件 |
-|------|---------|
-| 入口 | `src/index.ts` |
-| Hooks | `src/use-controlled.ts` |
-| 配置 | `package.json`, `tsconfig.json` |
+| 类别  | 关键文件                        |
+| ----- | ------------------------------- |
+| 入口  | `src/index.ts`                  |
+| Hooks | `src/use-controlled.ts`         |
+| 配置  | `package.json`, `tsconfig.json` |
 
 ## 变更记录 (Changelog)
 
 ### 2026-01-14
+
 - 初始化模块文档

@@ -1,11 +1,11 @@
 export default {
-  'ko-KR': {
+  "ko-KR": {
     SettingComponents: {
       ValueInput: {
-        expression: '표현식',
+        expression: "표현식",
       },
       MonacoInput: {
-        helpDocument: '도움말 문서',
+        helpDocument: "도움말 문서",
       },
     },
   },

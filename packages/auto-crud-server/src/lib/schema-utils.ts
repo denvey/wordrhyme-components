@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 /**
  * 检查是否为 ZodObject 类型
@@ -12,9 +12,9 @@ export function isZodObject(schema: z.ZodTypeAny): schema is z.ZodObject<z.ZodRa
   // ZodEffects (refine/transform 结果) 没有 shape 属性
   return (
     schema !== null &&
-    typeof schema === "object" &&
-    "shape" in schema &&
-    typeof schema.shape === "object" &&
+    typeof schema === 'object' &&
+    'shape' in schema &&
+    typeof schema.shape === 'object' &&
     schema.shape !== null
   );
 }

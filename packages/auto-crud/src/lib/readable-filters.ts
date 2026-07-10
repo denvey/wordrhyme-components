@@ -1,15 +1,15 @@
-import type { Column, ColumnDef } from "@tanstack/react-table";
-import { getDefaultFilterOperator } from "@/lib/data-table";
-import { generateId } from "@/lib/id";
+import type { Column, ColumnDef } from '@tanstack/react-table';
+import { getDefaultFilterOperator } from '@/lib/data-table';
+import { generateId } from '@/lib/id';
 import type {
   ExtendedColumnFilter,
   FilterOperator,
   FilterVariant,
-} from "@/types/data-table";
+} from '@/types/data-table';
 
-const OP_SUFFIX = "__op";
-const INDEX_SEPARATOR = "__";
-const RANGE_VARIANTS = new Set<FilterVariant>(["range", "dateRange"]);
+const OP_SUFFIX = '__op';
+const INDEX_SEPARATOR = '__';
+const RANGE_VARIANTS = new Set<FilterVariant>(['range', 'dateRange']);
 
 type ColumnLike<TData> =
   | Column<TData>
@@ -17,17 +17,15 @@ type ColumnLike<TData> =
   | { id?: string; accessorKey?: string; meta?: { variant?: FilterVariant } };
 
 function getColumnId<TData>(column: ColumnLike<TData>): string | null {
-  if ("id" in column && column.id) return String(column.id);
-  if ("accessorKey" in column && column.accessorKey) {
+  if ('id' in column && column.id) return String(column.id);
+  if ('accessorKey' in column && column.accessorKey) {
     return String(column.accessorKey);
   }
   return null;
 }
 
-function getColumnVariant<TData>(
-  column: ColumnLike<TData>,
-): FilterVariant | undefined {
-  if ("columnDef" in column) {
+function getColumnVariant<TData>(column: ColumnLike<TData>): FilterVariant | undefined {
+  if ('columnDef' in column) {
     return column.columnDef.meta?.variant as FilterVariant | undefined;
   }
   return (column as { meta?: { variant?: FilterVariant } }).meta?.variant;
@@ -46,36 +44,30 @@ function isFilterKey(key: string, columnIds: Set<string>): boolean {
   return columnIds.has(base);
 }
 
-function parseValueByVariant(
-  value: string,
-  variant: FilterVariant,
-): string | string[] {
-  if (variant === "multiSelect") {
-    return value ? value.split(",").filter(Boolean) : [];
+function parseValueByVariant(value: string, variant: FilterVariant): string | string[] {
+  if (variant === 'multiSelect') {
+    return value ? value.split(',').filter(Boolean) : [];
   }
 
   if (RANGE_VARIANTS.has(variant)) {
-    const parts = value.split(",");
-    return [parts[0] ?? "", parts[1] ?? ""];
+    const parts = value.split(',');
+    return [parts[0] ?? '', parts[1] ?? ''];
   }
 
-  if (variant === "select") {
-    const parts = value.split(",").filter(Boolean);
-    return parts[0] ?? "";
+  if (variant === 'select') {
+    const parts = value.split(',').filter(Boolean);
+    return parts[0] ?? '';
   }
 
   return value;
 }
 
-function serializeValue(
-  value: string | string[],
-  variant: FilterVariant,
-): string {
+function serializeValue(value: string | string[], variant: FilterVariant): string {
   if (Array.isArray(value)) {
     if (RANGE_VARIANTS.has(variant)) {
-      return [value[0] ?? "", value[1] ?? ""].join(",");
+      return [value[0] ?? '', value[1] ?? ''].join(',');
     }
-    return value.join(",");
+    return value.join(',');
   }
   return value;
 }
@@ -98,15 +90,14 @@ export function parseReadableFilters<TData>(
     const column = columnsById.get(base);
     if (!column) continue;
 
-    const variant = (getColumnVariant(column) ?? "text") as FilterVariant;
+    const variant = (getColumnVariant(column) ?? 'text') as FilterVariant;
     const opKey = `${key}${OP_SUFFIX}`;
     const operator =
-      (params.get(opKey) as FilterOperator | null) ??
-      getDefaultFilterOperator(variant);
+      (params.get(opKey) as FilterOperator | null) ?? getDefaultFilterOperator(variant);
 
     const parsedValue =
-      operator === "isEmpty" || operator === "isNotEmpty"
-        ? ""
+      operator === 'isEmpty' || operator === 'isNotEmpty'
+        ? ''
         : parseValueByVariant(rawValue, variant);
 
     filters.push({
@@ -143,14 +134,12 @@ export function applyReadableFilters<TData>(
     counters.set(columnId, count);
 
     const key = count === 1 ? columnId : `${columnId}${INDEX_SEPARATOR}${count}`;
-    const variant = filter.variant ?? "text";
+    const variant = filter.variant ?? 'text';
     const value = serializeValue(filter.value, variant);
 
     params.set(
       key,
-      filter.operator === "isEmpty" || filter.operator === "isNotEmpty"
-        ? ""
-        : value,
+      filter.operator === 'isEmpty' || filter.operator === 'isNotEmpty' ? '' : value,
     );
 
     const defaultOperator = getDefaultFilterOperator(variant);

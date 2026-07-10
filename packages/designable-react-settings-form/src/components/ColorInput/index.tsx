@@ -1,8 +1,8 @@
-import React, { useRef } from 'react';
-import { Input, Popover } from 'antd';
-import { usePrefix } from '@wordrhyme/designable-react';
-import { SketchPicker } from 'react-color';
-import './styles.less';
+import React, { useRef } from "react";
+import { Input, Popover } from "antd";
+import { usePrefix } from "@wordrhyme/designable-react";
+import { SketchPicker } from "react-color";
+import "./styles.less";
 
 export interface IColorInputProps {
   value?: string;
@@ -11,7 +11,7 @@ export interface IColorInputProps {
 
 export const ColorInput: React.FC<IColorInputProps> = (props) => {
   const container = useRef<HTMLDivElement>();
-  const prefix = usePrefix('color-input');
+  const prefix = usePrefix("color-input");
   const color = props.value as string;
   return (
     <div ref={container} className={prefix}>
@@ -37,7 +37,7 @@ export const ColorInput: React.FC<IColorInputProps> = (props) => {
             }
           >
             <div
-              className={prefix + '-color-tips'}
+              className={prefix + "-color-tips"}
               style={{
                 backgroundColor: color,
               }}

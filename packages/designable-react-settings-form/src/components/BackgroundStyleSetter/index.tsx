@@ -1,23 +1,23 @@
-import React from 'react';
-import { useField, Field, observer } from '@formily/react';
-import { usePrefix } from '@wordrhyme/designable-react';
-import { Select, Input } from '@formily/antd';
-import { FoldItem } from '../FoldItem';
-import { ColorInput } from '../ColorInput';
-import { BackgroundSizeInput } from '../SizeInput';
-import { BackgroundImageInput } from '../ImageInput';
-import { InputItems } from '../InputItems';
-import cls from 'classnames';
+import React from "react";
+import { useField, Field, observer } from "@formily/react";
+import { usePrefix } from "@wordrhyme/designable-react";
+import { Select, Input } from "@formily/antd";
+import { FoldItem } from "../FoldItem";
+import { ColorInput } from "../ColorInput";
+import { BackgroundSizeInput } from "../SizeInput";
+import { BackgroundImageInput } from "../ImageInput";
+import { InputItems } from "../InputItems";
+import cls from "classnames";
 
 export interface IBackgroundStyleSetterProps {
   className?: string;
   style?: React.CSSProperties;
 }
 
-export const BackgroundStyleSetter: React.FC<IBackgroundStyleSetterProps> = observer(
-  (props) => {
+export const BackgroundStyleSetter: React.FC<IBackgroundStyleSetterProps> =
+  observer((props) => {
     const field = useField();
-    const prefix = usePrefix('background-style-setter');
+    const prefix = usePrefix("background-style-setter");
     return (
       <FoldItem className={cls(prefix, props.className)} label={field.title}>
         <FoldItem.Base>
@@ -47,31 +47,34 @@ export const BackgroundStyleSetter: React.FC<IBackgroundStyleSetterProps> = obse
               <Field
                 name="backgroundRepeat"
                 basePath={field.address.parent()}
-                component={[Select, { style: { width: '100%' }, placeholder: 'Repeat' }]}
+                component={[
+                  Select,
+                  { style: { width: "100%" }, placeholder: "Repeat" },
+                ]}
                 dataSource={[
                   {
-                    label: 'No Repeat',
-                    value: 'no-repeat',
+                    label: "No Repeat",
+                    value: "no-repeat",
                   },
                   {
-                    label: 'Repeat',
-                    value: 'repeat',
+                    label: "Repeat",
+                    value: "repeat",
                   },
                   {
-                    label: 'Repeat X',
-                    value: 'repeat-x',
+                    label: "Repeat X",
+                    value: "repeat-x",
                   },
                   {
-                    label: 'Repeat Y',
-                    value: 'repeat-y',
+                    label: "Repeat Y",
+                    value: "repeat-y",
                   },
                   {
-                    label: 'Space',
-                    value: 'space',
+                    label: "Space",
+                    value: "space",
                   },
                   {
-                    label: 'Round',
-                    value: 'round',
+                    label: "Round",
+                    value: "round",
                   },
                 ]}
               />
@@ -80,12 +83,11 @@ export const BackgroundStyleSetter: React.FC<IBackgroundStyleSetterProps> = obse
               <Field
                 name="backgroundPosition"
                 basePath={field.address.parent()}
-                component={[Input, { placeholder: 'center center' }]}
+                component={[Input, { placeholder: "center center" }]}
               />
             </InputItems.Item>
           </InputItems>
         </FoldItem.Extra>
       </FoldItem>
     );
-  },
-);
+  });

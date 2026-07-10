@@ -8,8 +8,8 @@
  */
 export function humanize(str: string): string {
   return str
-    .replace(/([A-Z])/g, " $1")
-    .replace(/[_-]/g, " ")
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/[_-]/g, ' ')
     .replace(/^./, (s) => s.toUpperCase())
     .trim();
 }

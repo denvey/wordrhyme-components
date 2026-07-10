@@ -17,6 +17,7 @@
 ## 入口与启动
 
 ### 入口文件
+
 - **主入口**: `src/index.ts`
 - **构建输出**: `dist/index.js` (ESM), `dist/index.cjs` (CJS)
 
@@ -43,7 +44,14 @@ pnpm typecheck
 ```typescript
 // 表单核心
 export { Form, FormItem, FormGrid } from './components';
-export { createForm, FormProvider, FormConsumer, Field, ObjectField, VoidField } from '@formily/react';
+export {
+  createForm,
+  FormProvider,
+  FormConsumer,
+  Field,
+  ObjectField,
+  VoidField,
+} from '@formily/react';
 export type { ISchema, IForm } from '@formily/react';
 
 // Schema 渲染
@@ -113,15 +121,17 @@ const schema = {
 ## 关键依赖与配置
 
 ### 核心依赖
-| 包名 | 版本 | 用途 |
-|------|------|------|
-| @formily/core | ^2.3.7 | 表单状态管理 |
-| @formily/react | ^2.3.7 | React 绑定 |
-| @formily/reactive | ^2.3.7 | 响应式状态 |
-| @wordrhyme/shadcn | workspace:* | 基础 UI 组件 |
-| @wordrhyme/shadcn-ui | workspace:* | 扩展 UI 组件 |
+
+| 包名                 | 版本         | 用途         |
+| -------------------- | ------------ | ------------ |
+| @formily/core        | ^2.3.7       | 表单状态管理 |
+| @formily/react       | ^2.3.7       | React 绑定   |
+| @formily/reactive    | ^2.3.7       | 响应式状态   |
+| @wordrhyme/shadcn    | workspace:\* | 基础 UI 组件 |
+| @wordrhyme/shadcn-ui | workspace:\* | 扩展 UI 组件 |
 
 ### Peer Dependencies
+
 - react >= 18.0.0
 - react-dom >= 18.0.0
 
@@ -174,12 +184,15 @@ pnpm lint           # 代码检查
 ## 常见问题 (FAQ)
 
 ### Q: 如何自定义 SchemaField 的组件映射？
+
 在 `SchemaField` 中传入 `components` prop 覆盖默认映射。
 
 ### Q: 如何处理表单验证？
+
 使用 Formily 的验证规则，在 schema 中通过 `x-validator` 或在 Field 上使用 `required`, `pattern` 等属性。
 
 ### Q: 如何获取表单值？
+
 ```typescript
 const values = form.values;
 // 或
@@ -188,17 +201,18 @@ form.submit((values) => console.log(values));
 
 ## 相关文件清单
 
-| 类别 | 关键文件 |
-|------|---------|
-| 入口 | `src/index.ts` |
-| 表单核心 | `src/components/form/`, `src/components/form-item/` |
-| Schema 渲染 | `src/components/schema-field/`, `src/components/json-schema-form-renderer/` |
-| 配置 | `package.json`, `tsconfig.json`, `tsdown.config.ts` |
-| 文档 | `docs/form-layout-options.md`, `docs/json-schema-form-headless-vs-default.md` |
+| 类别        | 关键文件                                                                      |
+| ----------- | ----------------------------------------------------------------------------- |
+| 入口        | `src/index.ts`                                                                |
+| 表单核心    | `src/components/form/`, `src/components/form-item/`                           |
+| Schema 渲染 | `src/components/schema-field/`, `src/components/json-schema-form-renderer/`   |
+| 配置        | `package.json`, `tsconfig.json`, `tsdown.config.ts`                           |
+| 文档        | `docs/form-layout-options.md`, `docs/json-schema-form-headless-vs-default.md` |
 
 ## 变更记录 (Changelog)
 
 ### 2026-01-14
+
 - 初始化模块文档
 
 详细变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)

@@ -1,27 +1,27 @@
-"use client";
+'use client';
 
-import { useDirection } from "@radix-ui/react-direction";
-import { Slot } from "@radix-ui/react-slot";
-import * as React from "react";
-import * as ReactDOM from "react-dom";
-import { Button, cn } from "@wordrhyme/shadcn";
-import { useAsRef } from "../hooks/use-as-ref";
-import { useIsomorphicLayoutEffect } from "../hooks/use-isomorphic-layout-effect";
-import { useComposedRefs } from "../utils/compose-refs";
+import { useDirection } from '@radix-ui/react-direction';
+import { Slot } from '@radix-ui/react-slot';
+import * as React from 'react';
+import * as ReactDOM from 'react-dom';
+import { Button, cn } from '@wordrhyme/shadcn';
+import { useAsRef } from '../hooks/use-as-ref';
+import { useIsomorphicLayoutEffect } from '../hooks/use-isomorphic-layout-effect';
+import { useComposedRefs } from '../utils/compose-refs';
 
-const ROOT_NAME = "ActionBar";
-const GROUP_NAME = "ActionBarGroup";
-const ITEM_NAME = "ActionBarItem";
-const CLOSE_NAME = "ActionBarClose";
-const SEPARATOR_NAME = "ActionBarSeparator";
-const ITEM_SELECT = "actionbar.itemSelect";
-const ENTRY_FOCUS = "actionbarFocusGroup.onEntryFocus";
+const ROOT_NAME = 'ActionBar';
+const GROUP_NAME = 'ActionBarGroup';
+const ITEM_NAME = 'ActionBarItem';
+const CLOSE_NAME = 'ActionBarClose';
+const SEPARATOR_NAME = 'ActionBarSeparator';
+const ITEM_SELECT = 'actionbar.itemSelect';
+const ENTRY_FOCUS = 'actionbarFocusGroup.onEntryFocus';
 const EVENT_OPTIONS = { bubbles: false, cancelable: true };
 
-type Direction = "ltr" | "rtl";
-type Orientation = "horizontal" | "vertical";
+type Direction = 'ltr' | 'rtl';
+type Orientation = 'horizontal' | 'vertical';
 
-interface DivProps extends React.ComponentProps<"div"> {
+interface DivProps extends React.ComponentProps<'div'> {
   asChild?: boolean;
 }
 
@@ -44,18 +44,12 @@ function focusFirst(
 }
 
 function wrapArray<T>(array: T[], startIndex: number) {
-  return array.map<T>(
-    (_, index) => array[(startIndex + index) % array.length] as T,
-  );
+  return array.map<T>((_, index) => array[(startIndex + index) % array.length] as T);
 }
 
 function getDirectionAwareKey(key: string, dir?: Direction) {
-  if (dir !== "rtl") return key;
-  return key === "ArrowLeft"
-    ? "ArrowRight"
-    : key === "ArrowRight"
-      ? "ArrowLeft"
-      : key;
+  if (dir !== 'rtl') return key;
+  return key === 'ArrowLeft' ? 'ArrowRight' : key === 'ArrowRight' ? 'ArrowLeft' : key;
 }
 
 interface ItemData {
@@ -71,9 +65,7 @@ interface ActionBarContextValue {
   loop: boolean;
 }
 
-const ActionBarContext = React.createContext<ActionBarContextValue | null>(
-  null,
-);
+const ActionBarContext = React.createContext<ActionBarContextValue | null>(null);
 
 function useActionBarContext(consumerName: string) {
   const context = React.useContext(ActionBarContext);
@@ -99,9 +91,7 @@ const FocusContext = React.createContext<FocusContextValue | null>(null);
 function useFocusContext(consumerName: string) {
   const context = React.useContext(FocusContext);
   if (!context) {
-    throw new Error(
-      `\`${consumerName}\` must be used within \`FocusProvider\``,
-    );
+    throw new Error(`\`${consumerName}\` must be used within \`FocusProvider\``);
   }
   return context;
 }
@@ -110,9 +100,9 @@ interface ActionBarProps extends DivProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   onEscapeKeyDown?: (event: KeyboardEvent) => void;
-  align?: "start" | "center" | "end";
+  align?: 'start' | 'center' | 'end';
   alignOffset?: number;
-  side?: "top" | "bottom";
+  side?: 'top' | 'bottom';
   sideOffset?: number;
   portalContainer?: Element | DocumentFragment | null;
   dir?: Direction;
@@ -125,13 +115,13 @@ function ActionBar(props: ActionBarProps) {
     open = false,
     onOpenChange,
     onEscapeKeyDown,
-    side = "bottom",
+    side = 'bottom',
     alignOffset = 0,
-    align = "center",
+    align = 'center',
     sideOffset = 16,
     portalContainer: portalContainerProp,
     dir: dirProp,
-    orientation = "horizontal",
+    orientation = 'horizontal',
     loop = true,
     className,
     style,
@@ -162,7 +152,7 @@ function ActionBar(props: ActionBarProps) {
     const ownerDocument = rootRef.current?.ownerDocument ?? document;
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         propsRef.current.onEscapeKeyDown?.(event);
         if (!event.defaultPrevented) {
           propsRef.current.onOpenChange?.(false);
@@ -170,8 +160,8 @@ function ActionBar(props: ActionBarProps) {
       }
     }
 
-    ownerDocument.addEventListener("keydown", onKeyDown);
-    return () => ownerDocument.removeEventListener("keydown", onKeyDown);
+    ownerDocument.addEventListener('keydown', onKeyDown);
+    return () => ownerDocument.removeEventListener('keydown', onKeyDown);
   }, [open, propsRef]);
 
   const contextValue = React.useMemo<ActionBarContextValue>(
@@ -189,7 +179,7 @@ function ActionBar(props: ActionBarProps) {
 
   if (!portalContainer || !open) return null;
 
-  const RootPrimitive = asChild ? Slot : "div";
+  const RootPrimitive = asChild ? Slot : 'div';
 
   return (
     <ActionBarContext.Provider value={contextValue}>
@@ -205,23 +195,23 @@ function ActionBar(props: ActionBarProps) {
           {...rootProps}
           ref={composedRef}
           className={cn(
-            "fixed z-50 rounded-lg border bg-card shadow-lg outline-none",
-            "fade-in-0 zoom-in-95 animate-in duration-250 [animation-timing-function:cubic-bezier(0.16,1,0.3,1)]",
-            "data-[side=bottom]:slide-in-from-bottom-4 data-[side=top]:slide-in-from-top-4",
-            "motion-reduce:animate-none motion-reduce:transition-none",
-            orientation === "horizontal"
-              ? "flex flex-row items-center gap-2 px-2 py-1.5"
-              : "flex flex-col items-start gap-2 px-1.5 py-2",
+            'fixed z-50 rounded-lg border bg-card shadow-lg outline-none',
+            'fade-in-0 zoom-in-95 animate-in duration-250 [animation-timing-function:cubic-bezier(0.16,1,0.3,1)]',
+            'data-[side=bottom]:slide-in-from-bottom-4 data-[side=top]:slide-in-from-top-4',
+            'motion-reduce:animate-none motion-reduce:transition-none',
+            orientation === 'horizontal'
+              ? 'flex flex-row items-center gap-2 px-2 py-1.5'
+              : 'flex flex-col items-start gap-2 px-1.5 py-2',
             className,
           )}
           style={{
             [side]: `${sideOffset}px`,
-            ...(align === "center" && {
-              left: "50%",
-              translate: "-50% 0",
+            ...(align === 'center' && {
+              left: '50%',
+              translate: '-50% 0',
             }),
-            ...(align === "start" && { left: `${alignOffset}px` }),
-            ...(align === "end" && { right: `${alignOffset}px` }),
+            ...(align === 'start' && { left: `${alignOffset}px` }),
+            ...(align === 'end' && { right: `${alignOffset}px` }),
             ...style,
           }}
         />,
@@ -234,14 +224,14 @@ function ActionBar(props: ActionBarProps) {
 function ActionBarSelection(props: DivProps) {
   const { className, asChild, ...selectionProps } = props;
 
-  const SelectionPrimitive = asChild ? Slot : "div";
+  const SelectionPrimitive = asChild ? Slot : 'div';
 
   return (
     <SelectionPrimitive
       data-slot="action-bar-selection"
       {...selectionProps}
       className={cn(
-        "flex items-center gap-1 rounded-sm border px-2 py-1 font-medium text-sm tabular-nums",
+        'flex items-center gap-1 rounded-sm border px-2 py-1 font-medium text-sm tabular-nums',
         className,
       )}
     />
@@ -328,11 +318,7 @@ function ActionBarGroup(props: DivProps) {
       if (event.defaultPrevented) return;
 
       const isKeyboardFocus = !isClickFocusRef.current;
-      if (
-        event.target === event.currentTarget &&
-        isKeyboardFocus &&
-        !isTabbingBackOut
-      ) {
+      if (event.target === event.currentTarget && isKeyboardFocus && !isTabbingBackOut) {
         const entryFocusEvent = new CustomEvent(ENTRY_FOCUS, EVENT_OPTIONS);
         event.currentTarget.dispatchEvent(entryFocusEvent);
 
@@ -342,9 +328,7 @@ function ActionBarGroup(props: DivProps) {
           );
           const currentItem = items.find((item) => item.id === tabStopId);
 
-          const candidateItems = [currentItem, ...items].filter(
-            Boolean,
-          ) as ItemData[];
+          const candidateItems = [currentItem, ...items].filter(Boolean) as ItemData[];
           const candidateRefs = candidateItems.map((item) => item.ref);
           focusFirst(candidateRefs, false);
         }
@@ -387,7 +371,7 @@ function ActionBarGroup(props: DivProps) {
     ],
   );
 
-  const GroupPrimitive = asChild ? Slot : "div";
+  const GroupPrimitive = asChild ? Slot : 'div';
 
   return (
     <FocusContext.Provider value={focusContextValue}>
@@ -400,10 +384,8 @@ function ActionBarGroup(props: DivProps) {
         {...groupProps}
         ref={composedRef}
         className={cn(
-          "flex gap-2 outline-none",
-          orientation === "horizontal"
-            ? "items-center"
-            : "w-full flex-col items-start",
+          'flex gap-2 outline-none',
+          orientation === 'horizontal' ? 'items-center' : 'w-full flex-col items-start',
           className,
         )}
         onBlur={onBlur}
@@ -414,8 +396,10 @@ function ActionBarGroup(props: DivProps) {
   );
 }
 
-interface ActionBarItemProps
-  extends Omit<React.ComponentProps<typeof Button>, "onSelect"> {
+interface ActionBarItemProps extends Omit<
+  React.ComponentProps<typeof Button>,
+  'onSelect'
+> {
   onSelect?: (event: Event) => void;
 }
 
@@ -436,8 +420,7 @@ function ActionBarItem(props: ActionBarItemProps) {
   const composedRef = useComposedRefs(ref, itemRef);
   const isMouseClickRef = React.useRef(false);
 
-  const { onOpenChange, dir, orientation, loop } =
-    useActionBarContext(ITEM_NAME);
+  const { onOpenChange, dir, orientation, loop } = useActionBarContext(ITEM_NAME);
   const focusContext = useFocusContext(ITEM_NAME);
 
   const itemId = React.useId();
@@ -504,7 +487,7 @@ function ActionBarItem(props: ActionBarItemProps) {
       onKeyDownProp?.(event);
       if (event.defaultPrevented) return;
 
-      if (event.key === "Tab" && event.shiftKey) {
+      if (event.key === 'Tab' && event.shiftKey) {
         focusContext.onItemShiftTab();
         return;
       }
@@ -512,32 +495,31 @@ function ActionBarItem(props: ActionBarItemProps) {
       if (event.target !== event.currentTarget) return;
 
       const key = getDirectionAwareKey(event.key, dir);
-      let focusIntent: "first" | "last" | "prev" | "next" | undefined;
+      let focusIntent: 'first' | 'last' | 'prev' | 'next' | undefined;
 
-      if (orientation === "horizontal") {
-        if (key === "ArrowLeft") focusIntent = "prev";
-        else if (key === "ArrowRight") focusIntent = "next";
-        else if (key === "Home") focusIntent = "first";
-        else if (key === "End") focusIntent = "last";
+      if (orientation === 'horizontal') {
+        if (key === 'ArrowLeft') focusIntent = 'prev';
+        else if (key === 'ArrowRight') focusIntent = 'next';
+        else if (key === 'Home') focusIntent = 'first';
+        else if (key === 'End') focusIntent = 'last';
       } else {
-        if (key === "ArrowUp") focusIntent = "prev";
-        else if (key === "ArrowDown") focusIntent = "next";
-        else if (key === "Home") focusIntent = "first";
-        else if (key === "End") focusIntent = "last";
+        if (key === 'ArrowUp') focusIntent = 'prev';
+        else if (key === 'ArrowDown') focusIntent = 'next';
+        else if (key === 'Home') focusIntent = 'first';
+        else if (key === 'End') focusIntent = 'last';
       }
 
       if (focusIntent !== undefined) {
-        if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey)
-          return;
+        if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
         event.preventDefault();
 
         const items = focusContext.getItems().filter((item) => !item.disabled);
         let candidateRefs = items.map((item) => item.ref);
 
-        if (focusIntent === "last") {
+        if (focusIntent === 'last') {
           candidateRefs.reverse();
-        } else if (focusIntent === "prev" || focusIntent === "next") {
-          if (focusIntent === "prev") candidateRefs.reverse();
+        } else if (focusIntent === 'prev' || focusIntent === 'next') {
+          if (focusIntent === 'prev') candidateRefs.reverse();
           const currentIndex = candidateRefs.findIndex(
             (ref) => ref.current === event.currentTarget,
           );
@@ -577,7 +559,7 @@ function ActionBarItem(props: ActionBarItemProps) {
       disabled={disabled}
       tabIndex={isTabStop ? 0 : -1}
       {...itemProps}
-      className={cn(orientation === "vertical" && "w-full", className)}
+      className={cn(orientation === 'vertical' && 'w-full', className)}
       ref={composedRef}
       onClick={onClick}
       onFocus={onFocus}
@@ -587,7 +569,7 @@ function ActionBarItem(props: ActionBarItemProps) {
   );
 }
 
-interface ActionBarCloseProps extends React.ComponentProps<"button"> {
+interface ActionBarCloseProps extends React.ComponentProps<'button'> {
   asChild?: boolean;
 }
 
@@ -606,7 +588,7 @@ function ActionBarClose(props: ActionBarCloseProps) {
     [onOpenChange, onClick],
   );
 
-  const ClosePrimitive = asChild ? Slot : "button";
+  const ClosePrimitive = asChild ? Slot : 'button';
 
   return (
     <ClosePrimitive
@@ -627,17 +609,12 @@ interface ActionBarSeparatorProps extends DivProps {
 }
 
 function ActionBarSeparator(props: ActionBarSeparatorProps) {
-  const {
-    orientation: orientationProp,
-    asChild,
-    className,
-    ...separatorProps
-  } = props;
+  const { orientation: orientationProp, asChild, className, ...separatorProps } = props;
 
   const context = useActionBarContext(SEPARATOR_NAME);
   const orientation = orientationProp ?? context.orientation;
 
-  const SeparatorPrimitive = asChild ? Slot : "div";
+  const SeparatorPrimitive = asChild ? Slot : 'div';
 
   return (
     <SeparatorPrimitive
@@ -647,8 +624,8 @@ function ActionBarSeparator(props: ActionBarSeparatorProps) {
       data-slot="action-bar-separator"
       {...separatorProps}
       className={cn(
-        "in-data-[slot=action-bar-selection]:ml-0.5 in-data-[slot=action-bar-selection]:h-4 in-data-[slot=action-bar-selection]:w-px bg-border",
-        orientation === "horizontal" ? "h-6 w-px" : "h-px w-full",
+        'in-data-[slot=action-bar-selection]:ml-0.5 in-data-[slot=action-bar-selection]:h-4 in-data-[slot=action-bar-selection]:w-px bg-border',
+        orientation === 'horizontal' ? 'h-6 w-px' : 'h-px w-full',
         className,
       )}
     />

@@ -1,11 +1,11 @@
 export default {
-  'en-US': {
+  "en-US": {
     SettingComponents: {
       ValueInput: {
-        expression: 'Expression',
+        expression: "Expression",
       },
       MonacoInput: {
-        helpDocument: 'Help Documents',
+        helpDocument: "Help Documents",
       },
     },
   },

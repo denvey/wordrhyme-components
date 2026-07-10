@@ -1,4 +1,4 @@
-import * as React from "react";
+import * as React from 'react';
 
 interface WindowSize {
   width: number;
@@ -19,7 +19,7 @@ export function useWindowSize(props: UseWindowSizeProps = {}): WindowSize {
   });
 
   React.useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === 'undefined') return;
 
     // Set initial size after mount to avoid hydration mismatch
     setWindowSize({
@@ -42,9 +42,9 @@ export function useWindowSize(props: UseWindowSizeProps = {}): WindowSize {
       }, 150);
     }
 
-    window.addEventListener("resize", onResize);
+    window.addEventListener('resize', onResize);
     return () => {
-      window.removeEventListener("resize", onResize);
+      window.removeEventListener('resize', onResize);
       if (timeoutId) {
         clearTimeout(timeoutId);
       }

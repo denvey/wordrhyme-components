@@ -21,6 +21,7 @@
 ## 入口与启动
 
 ### 入口文件
+
 - **主入口**: `src/index.ts`
 
 ### 开发命令
@@ -95,19 +96,21 @@ export { cn } from '@wordrhyme/shadcn';
 ## 关键依赖与配置
 
 ### 核心依赖
-| 包名 | 用途 |
-|------|------|
-| @wordrhyme/shadcn | 基础 UI 组件 |
-| @tiptap/core | 富文本编辑器核心 |
-| @tiptap/react | TipTap React 绑定 |
-| @tiptap/starter-kit | TipTap 基础扩展 |
-| @tanstack/react-virtual | 虚拟列表 |
-| @ebay/nice-modal-react | 模态框管理 |
-| next-themes | 主题管理 |
-| sonner | Toast 通知 |
-| react-responsive | 响应式 Hooks |
+
+| 包名                    | 用途              |
+| ----------------------- | ----------------- |
+| @wordrhyme/shadcn       | 基础 UI 组件      |
+| @tiptap/core            | 富文本编辑器核心  |
+| @tiptap/react           | TipTap React 绑定 |
+| @tiptap/starter-kit     | TipTap 基础扩展   |
+| @tanstack/react-virtual | 虚拟列表          |
+| @ebay/nice-modal-react  | 模态框管理        |
+| next-themes             | 主题管理          |
+| sonner                  | Toast 通知        |
+| react-responsive        | 响应式 Hooks      |
 
 ### Peer Dependencies
+
 - react >= 18.0.0
 - react-dom >= 18.0.0
 
@@ -160,17 +163,18 @@ pnpm lint           # 代码检查
 
 ## 相关文件清单
 
-| 类别 | 关键文件 |
-|------|---------|
-| 入口 | `src/index.ts` |
-| 文件上传 | `src/file-upload/`, `src/avatar-upload/` |
-| 编辑器 | `src/rich-text-editor/` |
-| 主题 | `src/theme-provider/`, `src/ThemeToggle/` |
-| 配置 | `package.json`, `tsconfig.json` |
+| 类别     | 关键文件                                  |
+| -------- | ----------------------------------------- |
+| 入口     | `src/index.ts`                            |
+| 文件上传 | `src/file-upload/`, `src/avatar-upload/`  |
+| 编辑器   | `src/rich-text-editor/`                   |
+| 主题     | `src/theme-provider/`, `src/ThemeToggle/` |
+| 配置     | `package.json`, `tsconfig.json`           |
 
 ## 变更记录 (Changelog)
 
 ### 2026-01-14
+
 - 初始化模块文档
 
 详细变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)

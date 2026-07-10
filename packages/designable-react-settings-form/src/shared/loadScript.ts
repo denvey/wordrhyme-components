@@ -1,5 +1,5 @@
-import { getNpmCDNRegistry } from '../registry';
-import { globalThisPolyfill } from '@wordrhyme/designable-shared';
+import { getNpmCDNRegistry } from "../registry";
+import { globalThisPolyfill } from "@wordrhyme/designable-shared";
 export interface ILoadScriptProps {
   package: string;
   entry: string;
@@ -15,21 +15,21 @@ export const loadScript = async (props: ILoadScriptProps) => {
   if (globalThisPolyfill[props.root]) return globalThisPolyfill[options.root];
   const path = `${options.base}/${options.package}/${options.entry}`;
   return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.type = 'text/javascript';
+    const script = document.createElement("script");
+    script.type = "text/javascript";
     script.async = false;
     script.src = path;
     script.onload = () => {
       const module = globalThisPolyfill[options.root];
-      globalThisPolyfill['define'] = define;
+      globalThisPolyfill["define"] = define;
       resolve(module);
       script.remove();
     };
     script.onerror = (err) => {
       reject(err);
     };
-    const define = globalThisPolyfill['define'];
-    globalThisPolyfill['define'] = undefined;
+    const define = globalThisPolyfill["define"];
+    globalThisPolyfill["define"] = undefined;
     document.body.appendChild(script);
   });
 };

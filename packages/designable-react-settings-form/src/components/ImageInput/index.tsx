@@ -1,24 +1,28 @@
-import React, { useContext } from 'react';
-import { InputProps } from 'antd/lib/input';
-import { Input, Upload } from 'antd';
-import { usePrefix, IconWidget } from '@wordrhyme/designable-react';
-import { SettingsFormContext } from '../../shared/context';
-import cls from 'classnames';
-import './styles.less';
-export interface ImageInputProps extends Omit<InputProps, 'onChange'> {
+import React, { useContext } from "react";
+import { InputProps } from "antd/lib/input";
+import { Input, Upload } from "antd";
+import { usePrefix, IconWidget } from "@wordrhyme/designable-react";
+import { SettingsFormContext } from "../../shared/context";
+import cls from "classnames";
+import "./styles.less";
+export interface ImageInputProps extends Omit<InputProps, "onChange"> {
   value?: string;
   onChange?: (value: string) => void;
 }
 
-export const ImageInput: React.FC<ImageInputProps> = ({ className, style, ...props }) => {
-  const prefix = usePrefix('image-input');
+export const ImageInput: React.FC<ImageInputProps> = ({
+  className,
+  style,
+  ...props
+}) => {
+  const prefix = usePrefix("image-input");
   const context = useContext(SettingsFormContext);
   return (
     <div className={cls(prefix, className)} style={style}>
       <Input
         {...props}
         onChange={(e) => {
-          props.onChange?.(e?.target?.['value']);
+          props.onChange?.(e?.target?.["value"]);
         }}
         prefix={
           <Upload
@@ -36,7 +40,7 @@ export const ImageInput: React.FC<ImageInputProps> = ({ className, style, ...pro
               props.onChange?.(url);
             }}
           >
-            <IconWidget infer="CloudUpload" style={{ cursor: 'pointer' }} />
+            <IconWidget infer="CloudUpload" style={{ cursor: "pointer" }} />
           </Upload>
         }
       />

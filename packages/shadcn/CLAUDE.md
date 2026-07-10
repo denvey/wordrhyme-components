@@ -16,6 +16,7 @@
 ## 入口与启动
 
 ### 入口文件
+
 - **主入口**: `src/index.ts`
 - **组件入口**: `src/components/index.ts`
 - **工具入口**: `src/lib/index.ts`
@@ -80,20 +81,22 @@ export { cn } from './lib/utils';
 ## 关键依赖与配置
 
 ### 核心依赖
-| 包名 | 用途 |
-|------|------|
-| @radix-ui/react-* | 无障碍 UI 原语 |
-| class-variance-authority | 组件变体管理 |
-| tailwind-merge | Tailwind 类名合并 |
-| clsx | 条件类名 |
-| lucide-react | 图标 |
-| react-hook-form | 表单处理 |
-| zod | 验证 |
-| date-fns | 日期处理 |
-| react-day-picker | 日历组件 |
-| cmdk | 命令面板 |
+
+| 包名                     | 用途              |
+| ------------------------ | ----------------- |
+| @radix-ui/react-\*       | 无障碍 UI 原语    |
+| class-variance-authority | 组件变体管理      |
+| tailwind-merge           | Tailwind 类名合并 |
+| clsx                     | 条件类名          |
+| lucide-react             | 图标              |
+| react-hook-form          | 表单处理          |
+| zod                      | 验证              |
+| date-fns                 | 日期处理          |
+| react-day-picker         | 日历组件          |
+| cmdk                     | 命令面板          |
 
 ### Peer Dependencies
+
 - react ^18.0.0 || ^19.0.0
 - react-dom ^18.0.0 || ^19.0.0
 
@@ -147,25 +150,28 @@ pnpm lint           # 代码检查
 ## 常见问题 (FAQ)
 
 ### Q: 如何添加新的 shadcn 组件？
+
 ```bash
 pnpm shadcn:add [component-name]
 ```
 
 ### Q: 如何自定义组件样式？
+
 使用 `className` prop 或通过 CVA variants 扩展。
 
 ## 相关文件清单
 
-| 类别 | 关键文件 |
-|------|---------|
-| 入口 | `src/index.ts` |
-| 组件 | `src/components/ui/*.tsx` |
-| 工具 | `src/lib/utils.ts` |
+| 类别 | 关键文件                        |
+| ---- | ------------------------------- |
+| 入口 | `src/index.ts`                  |
+| 组件 | `src/components/ui/*.tsx`       |
+| 工具 | `src/lib/utils.ts`              |
 | 配置 | `package.json`, `tsconfig.json` |
 
 ## 变更记录 (Changelog)
 
 ### 2026-01-14
+
 - 初始化模块文档
 
 详细变更历史请查看 [CHANGELOG.md](./CHANGELOG.md)

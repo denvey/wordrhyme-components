@@ -20,6 +20,7 @@
 ## 入口与启动
 
 ### 入口文件
+
 - **主入口**: `src/index.ts`
 - **构建输出**: `dist/index.js` (ESM), `dist/index.cjs` (CJS)
 
@@ -42,15 +43,15 @@ pnpm typecheck
 
 ```typescript
 // 主要导出
-export { createCrudRouter } from "./routers/_factory";
-export type { CrudRouterConfig } from "./routers/_factory";
+export { createCrudRouter } from './routers/_factory';
+export type { CrudRouterConfig } from './routers/_factory';
 
 // tRPC 工具
-export { router, publicProcedure } from "./trpc";
+export { router, publicProcedure } from './trpc';
 
 // 示例路由（可选）
-export { appRouter } from "./routers";
-export type { AppRouter } from "./routers";
+export { appRouter } from './routers';
+export type { AppRouter } from './routers';
 ```
 
 ---
@@ -60,15 +61,15 @@ export type { AppRouter } from "./routers";
 ### 基础用法
 
 ```typescript
-import { createCrudRouter } from "@wordrhyme/auto-crud-server";
-import { tasks } from "./db/schema";  // Drizzle table
-import { insertTaskSchema, updateTaskSchema } from "./db/validations";
+import { createCrudRouter } from '@wordrhyme/auto-crud-server';
+import { tasks } from './db/schema'; // Drizzle table
+import { insertTaskSchema, updateTaskSchema } from './db/validations';
 
 const tasksRouter = createCrudRouter({
   table: tasks,
   insertSchema: insertTaskSchema,
   updateSchema: updateTaskSchema,
-  idField: "id",  // 默认为 "id"
+  idField: 'id', // 默认为 "id"
 });
 
 // 使用路由
@@ -83,22 +84,22 @@ const appRouter = router({
 tasksRouter.list({
   page: 1,
   perPage: 10,
-  sort: [{ id: "createdAt", desc: true }],
+  sort: [{ id: 'createdAt', desc: true }],
   filters: [
     {
-      id: "status",
-      value: "done",
-      operator: "eq",
-      variant: "select"
-    }
+      id: 'status',
+      value: 'done',
+      operator: 'eq',
+      variant: 'select',
+    },
   ],
 });
 
-tasksRouter.get({ id: "123" });
-tasksRouter.create({ title: "New task", status: "todo" });
-tasksRouter.update({ id: "123", data: { status: "done" } });
-tasksRouter.delete({ id: "123" });
-tasksRouter.deleteMany({ ids: ["1", "2", "3"] });
+tasksRouter.get({ id: '123' });
+tasksRouter.create({ title: 'New task', status: 'todo' });
+tasksRouter.update({ id: '123', data: { status: 'done' } });
+tasksRouter.delete({ id: '123' });
+tasksRouter.deleteMany({ ids: ['1', '2', '3'] });
 ```
 
 ### 高级过滤示例
@@ -152,11 +153,11 @@ joinOperator: "and"  // 或 "or"
 
 ```typescript
 interface CrudRouterConfig {
-  table: PgTable;           // Drizzle 表定义
-  selectSchema: z.ZodType;  // 查询返回 Schema（可选）
-  insertSchema: z.ZodType;  // 创建输入 Schema
-  updateSchema: z.ZodType;  // 更新输入 Schema
-  idField?: string;         // ID 字段名，默认 "id"
+  table: PgTable; // Drizzle 表定义
+  selectSchema: z.ZodType; // 查询返回 Schema（可选）
+  insertSchema: z.ZodType; // 创建输入 Schema
+  updateSchema: z.ZodType; // 更新输入 Schema
+  idField?: string; // ID 字段名，默认 "id"
 }
 ```
 
@@ -227,11 +228,11 @@ const protectedProcedure = publicProcedure.use(authMiddleware);
 
 ## 相关文件清单
 
-| 类别 | 关键文件 |
-|------|---------|
-| 入口 | `src/index.ts` |
-| 核心 | `src/routers/_factory.ts` |
-| 配置 | `src/config/data-table.ts` |
+| 类别 | 关键文件                    |
+| ---- | --------------------------- |
+| 入口 | `src/index.ts`              |
+| 核心 | `src/routers/_factory.ts`   |
+| 配置 | `src/config/data-table.ts`  |
 | 工具 | `src/lib/filter-columns.ts` |
 
 ---
@@ -239,6 +240,7 @@ const protectedProcedure = publicProcedure.use(authMiddleware);
 ## 变更记录 (Changelog)
 
 ### 2026-01-26
+
 - 从 tablecn 项目提取并独立为包
 - 采用 peer dependencies 策略（零运行时依赖）
 - 支持高级过滤、排序、分页

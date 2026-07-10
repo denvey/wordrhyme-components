@@ -1,4 +1,4 @@
-import type { SQL } from "drizzle-orm";
+import type { SQL } from 'drizzle-orm';
 
 export type Prettify<T> = {
   [K in keyof T]: T[K];

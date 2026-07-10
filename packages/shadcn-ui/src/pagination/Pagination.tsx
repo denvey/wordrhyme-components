@@ -212,8 +212,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   };
 
   const pages = getPageNumbers();
-  const linkSize =
-    size === 'small' ? 'icon-sm' : size === 'large' ? 'icon-lg' : 'icon';
+  const linkSize = size === 'small' ? 'icon-sm' : size === 'large' ? 'icon-lg' : 'icon';
   const navSize = size === 'small' ? 'sm' : size === 'large' ? 'lg' : 'default';
 
   // Compact variant: << < 2/10 > >>

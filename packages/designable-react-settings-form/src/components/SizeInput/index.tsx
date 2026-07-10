@@ -1,11 +1,11 @@
-import { InputNumber } from 'antd';
-import { createPolyInput } from '../PolyInput';
+import { InputNumber } from "antd";
+import { createPolyInput } from "../PolyInput";
 
 const takeNumber = (value: any) => {
   const num = String(value)
     .trim()
-    .replace(/[^\d\.]+/, '');
-  if (num === '') return;
+    .replace(/[^\d\.]+/, "");
+  if (num === "") return;
   return Number(num);
 };
 
@@ -37,21 +37,21 @@ const createSpecialSizeOption = (type: string) => ({
 });
 
 const NormalSizeOptions = [
-  createSpecialSizeOption('inherit'),
-  createSpecialSizeOption('auto'),
-  createUnitType('px'),
-  createUnitType('%'),
-  createUnitType('vh'),
-  createUnitType('em'),
+  createSpecialSizeOption("inherit"),
+  createSpecialSizeOption("auto"),
+  createUnitType("px"),
+  createUnitType("%"),
+  createUnitType("vh"),
+  createUnitType("em"),
 ];
 
 export const SizeInput = createPolyInput(NormalSizeOptions);
 
 export const BackgroundSizeInput = createPolyInput([
-  createSpecialSizeOption('cover'),
-  createSpecialSizeOption('contain'),
-  createUnitType('px'),
-  createUnitType('%'),
-  createUnitType('vh'),
-  createUnitType('em'),
+  createSpecialSizeOption("cover"),
+  createSpecialSizeOption("contain"),
+  createUnitType("px"),
+  createUnitType("%"),
+  createUnitType("vh"),
+  createUnitType("em"),
 ]);

@@ -20,10 +20,14 @@
  * }
  */
 export function afterMiddleware<TContext, TResult>(
-  fn: (ctx: TContext, result: TResult) => void | Promise<void>
+  fn: (ctx: TContext, result: TResult) => void | Promise<void>,
 ) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return async (params: { ctx: TContext; next: () => Promise<TResult>; [key: string]: any }): Promise<TResult> => {
+  return async (params: {
+    ctx: TContext;
+    next: () => Promise<TResult>;
+    [key: string]: any;
+  }): Promise<TResult> => {
     const result = await params.next();
     await fn(params.ctx, result);
     return result;
@@ -46,7 +50,7 @@ export function afterMiddleware<TContext, TResult>(
  * }
  */
 export function beforeMiddleware<TContext, TInput>(
-  fn: (ctx: TContext, input: TInput) => TInput | Promise<TInput>
+  fn: (ctx: TContext, input: TInput) => TInput | Promise<TInput>,
 ) {
   return async <TResult>(params: {
     ctx: TContext;
