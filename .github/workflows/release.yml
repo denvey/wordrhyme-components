@@ -45,3 +45,5 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # Release only the explicit .changeset entries committed with a change.
+          AUTO_CHANGESET: false

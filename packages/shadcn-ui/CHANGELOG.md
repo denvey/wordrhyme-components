@@ -1,44 +1,5 @@
 # @pixpilot/shadcn-ui
 
-## 1.33.0
-
-### Minor Changes
-
-- enhance form components with compatibility and styling improvements
-- add support for custom Playwright WebSocket endpoint in middleware
-- update version to 1.3.5 and enhance changelog for dependency updates and filter fixes
-- add field config support
-- rename setAutoCrudToolbarResolver to setToolbarResolver for consistency
-- enhance data table filtering and add multi-combobox component
-- enhance AutoTable and AutoTableActionBar with batch action capabilities
-- add createButton slot and onCreate callback to AutoCrudTable for custom creation behavior
-- support filter/table/form false shorthand and modes config
-- add schema-utils with tests
-- add auto-crud packages with optimized API
-
-### Patch Changes
-
-- change auto-crud default grid to single column
-- bc30e35: Fix MultiCombobox popover rendering inside Sheet content.
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-- Updated dependencies
-  - @wordrhyme/shadcn@1.4.0
-
 ## 1.32.5-beta.0
 
 ### Patch Changes
