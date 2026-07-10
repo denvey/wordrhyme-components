@@ -1,7 +1,7 @@
 {
   "name": "@wordrhyme/design-engine",
   "type": "module",
-  "version": "0.1.1-beta.0",
+  "version": "0.2.0",
   "packageManager": "pnpm@10.33.0",
   "description": "Designable/Formily adapters and runtime helpers for WordRhyme surfaces.",
   "author": "wordrhyme",
