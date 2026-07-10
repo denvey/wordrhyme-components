@@ -3,6 +3,7 @@ import fs from 'fs-extra';
 import { GlobSync } from 'glob';
 import MiniCssExtractPlugin from 'mini-css-extract-plugin';
 import autoprefixer from 'autoprefixer';
+import { antdScopePostcssPlugin } from '../../../tooling/storybook/antd-scope-postcss.mjs';
 //import { getThemeVariables } from 'antd/dist/theme'
 
 const getWorkspaceAlias = () => {
@@ -72,7 +73,7 @@ export default {
           {
             loader: 'postcss-loader',
             options: {
-              plugins: () => autoprefixer(),
+              plugins: () => [antdScopePostcssPlugin(), autoprefixer()],
             },
           },
           {

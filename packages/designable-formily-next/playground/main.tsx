@@ -1,4 +1,4 @@
-import 'antd/dist/antd.less';
+import '@wordrhyme/designable-react/scoped-antd.less';
 import '@alifd/next/dist/next.css';
 import React, { useMemo } from 'react';
 import ReactDOM from 'react-dom';

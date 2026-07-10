@@ -1,7 +1,7 @@
 {
   "name": "@internal/storybook",
   "type": "module",
-  "version": "0.0.222",
+  "version": "0.0.223-beta.0",
   "private": true,
   "packageManager": "pnpm@10.33.0",
   "author": "m.doaie <m.doaie@hotmail.com>",
@@ -58,6 +58,7 @@
     "less": "^4.4.2",
     "msw": "^2.14.6",
     "playwright": "~1.59.1",
+    "postcss-selector-parser": "catalog:dev",
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
     "storybook": "catalog:dev",

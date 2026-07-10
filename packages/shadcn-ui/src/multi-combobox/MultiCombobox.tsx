@@ -289,7 +289,11 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
 
   React.useEffect(() => {
     setUseLocalPopoverContainer(
-      Boolean(rootRef.current?.closest('[data-slot="dialog-content"]')),
+      Boolean(
+        rootRef.current?.closest(
+          '[data-slot="dialog-content"], [data-slot="sheet-content"]',
+        ),
+      ),
     );
   }, []);
 

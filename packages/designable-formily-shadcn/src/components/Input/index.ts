@@ -1,12 +1,12 @@
 import React from 'react';
 import { Input as FormilyInput, Textarea } from '@wordrhyme/formily-shadcn';
 import { createBehavior, createResource } from '@wordrhyme/designable-core';
-import type { DnFC } from '@wordrhyme/designable-react';
+import type { DnComponent } from '@wordrhyme/designable-react';
 import { createFieldSchema } from '../Field';
 import { AllLocales } from '../../locales';
 import { AllSchemas } from '../../schemas';
 
-type InputComponent = DnFC<React.ComponentProps<typeof FormilyInput>> & {
+type InputComponent = DnComponent<React.ComponentProps<typeof FormilyInput>> & {
   TextArea?: typeof Textarea;
 };
 

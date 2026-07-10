@@ -2,6 +2,13 @@ packages:
   - packages/**
   - tooling/**
 
+allowBuilds:
+  core-js: set this to true or false
+  esbuild: set this to true or false
+  msw: set this to true or false
+  sharp: set this to true or false
+  swiper: set this to true or false
+
 catalog:
   ai: 6.0.182
   '@openrouter/ai-sdk-provider': ^2.9.0
@@ -60,4 +67,5 @@ catalogs:
     jsdom: ^27.4.0
     ip: ^1.1.5
     postcss: ^8.5.14
+    postcss-selector-parser: ^6.0.10
     tsx: ^4.21.0

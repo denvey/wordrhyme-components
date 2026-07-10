@@ -1,4 +1,4 @@
-import 'antd/dist/antd.less';
+import '@wordrhyme/designable-react/scoped-antd.less';
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, userEvent, waitFor, within } from '@storybook/test';
 import { observer } from '@formily/reactive-react';

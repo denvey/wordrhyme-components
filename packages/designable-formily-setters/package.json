@@ -1,7 +1,7 @@
 {
   "name": "@wordrhyme/designable-formily-setters",
   "type": "module",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "packageManager": "pnpm@10.33.0",
   "description": "Forked Designable Formily setters for WordRhyme.",
   "author": "wordrhyme",

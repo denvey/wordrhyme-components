@@ -9,6 +9,7 @@ export default defineConfig({
   dts: true,
   minify: false,
   clean: true,
+  exports: false,
   format: ['esm', 'cjs'],
   external: [
     'react',
@@ -17,7 +18,10 @@ export default defineConfig({
     '@formily/core',
     '@formily/react',
     '@wordrhyme/designable-core',
+    '@wordrhyme/designable-formily-shadcn',
     '@wordrhyme/designable-formily-transformer',
+    '@wordrhyme/designable-react',
+    '@wordrhyme/designable-react-settings-form',
     '@wordrhyme/formily-shadcn',
   ],
 });
