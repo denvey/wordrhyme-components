@@ -41,7 +41,10 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
 
       - name: Upgrade npm for trusted publishing
-        run: npm install --global npm@11.6.2
+        run: |
+          npm install --global --prefix "$RUNNER_TEMP/npm-global" npm@11.6.2
+          echo "$RUNNER_TEMP/npm-global/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/npm-global/bin/npm" --version
 
       - name: Release
         uses: pixpilot/changesets-autopilot@v1
