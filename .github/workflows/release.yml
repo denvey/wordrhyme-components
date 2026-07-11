@@ -47,6 +47,10 @@ jobs:
           "$RUNNER_TEMP/npm-global/bin/npm" --version
 
       - name: Release
+        # Some packages are not configured as npm Trusted Publishers yet. Let the
+        # token-authenticated, idempotent recovery publishers below finish those
+        # releases when the Changesets OIDC publish attempt fails.
+        continue-on-error: true
         uses: pixpilot/changesets-autopilot@v1
         with:
           GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
