@@ -4,6 +4,8 @@
 
 ### Patch Changes
 
+- Keep searchable multi-select option lists scrollable in dialog forms by emitting the
+  AutoCrud viewport height and overflow constraints.
 - Updated dependencies [18e82db]
   - @wordrhyme/shadcn-ui@1.32.6
   - @wordrhyme/formily-shadcn@1.13.1
