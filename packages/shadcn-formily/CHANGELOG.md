@@ -1,5 +1,12 @@
 # @pixpilot/formily-shadcn
 
+## 1.13.0
+
+### Patch Changes
+
+- Updated dependencies [a88920b]
+  - @wordrhyme/shadcn-ui@1.32.5
+
 ## 1.13.0-beta.0
 
 ### Minor Changes

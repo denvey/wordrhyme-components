@@ -1,5 +1,12 @@
 # @pixpilot/shadcn-auth
 
+## 1.0.61
+
+### Patch Changes
+
+- Updated dependencies [a88920b]
+  - @wordrhyme/shadcn-ui@1.32.5
+
 ## 1.0.60
 
 ### Patch Changes

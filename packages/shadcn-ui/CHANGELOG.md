@@ -1,5 +1,11 @@
 # @pixpilot/shadcn-ui
 
+## 1.32.5
+
+### Patch Changes
+
+- a88920b: Fix MultiCombobox popover rendering inside Sheet content.
+
 ## 1.32.5-beta.0
 
 ### Patch Changes
