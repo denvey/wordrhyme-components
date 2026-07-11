@@ -148,8 +148,20 @@ function AutoCrudCombobox({
   );
 }
 
-function AutoCrudMultiCombobox({ options = [], ...props }: AutoCrudMultiComboboxProps) {
-  return <Select {...props} mode="searchable" multiple options={options} />;
+function AutoCrudMultiCombobox({
+  options = [],
+  className,
+  ...props
+}: AutoCrudMultiComboboxProps) {
+  return (
+    <Select
+      {...props}
+      mode="searchable"
+      multiple
+      options={options}
+      className={cn(COMBOBOX_LIST_CLASS, className)}
+    />
+  );
 }
 
 const defaultFieldComponents = {

@@ -185,13 +185,17 @@ describe('AutoForm MultiCombobox', () => {
       screen.getByText('Select countries').closest('button') as HTMLButtonElement,
     );
 
-    const list = document.querySelector('[cmdk-list]') as HTMLElement | null;
+    const command = document.querySelector('[data-slot="command"]');
     const viewport = document.querySelector(
       '[data-multi-combobox-viewport]',
     ) as HTMLElement | null;
 
-    expect(list?.className).toContain('max-h-none');
-    expect(list?.className).toContain('overflow-visible');
+    expect(command?.className).toContain(
+      '[&_[data-multi-combobox-viewport]]:max-h-[360px]',
+    );
+    expect(command?.className).toContain(
+      '[&_[data-multi-combobox-viewport]]:overflow-y-auto',
+    );
     expect(viewport?.className).toContain('max-h-[300px]');
     expect(viewport?.className).toContain('overflow-y-auto');
   });
