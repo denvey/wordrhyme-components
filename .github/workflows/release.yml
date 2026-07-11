@@ -54,3 +54,21 @@ jobs:
           provenance: true
           # Release only the explicit .changeset entries committed with a change.
           AUTO_CHANGESET: false
+
+      - name: Ensure shadcn-ui release is published
+        env:
+          NODE_AUTH_TOKEN: ''
+          NPM_TOKEN: ''
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./packages/shadcn-ui/package.json').version")
+
+          if npm view "@wordrhyme/shadcn-ui@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+            echo "@wordrhyme/shadcn-ui@$PACKAGE_VERSION is already published"
+            exit 0
+          fi
+
+          pnpm --filter @wordrhyme/shadcn-ui... build
+          pnpm --dir packages/shadcn-ui pack --pack-destination "$RUNNER_TEMP"
+          npm publish "$RUNNER_TEMP/wordrhyme-shadcn-ui-$PACKAGE_VERSION.tgz" \
+            --access public \
+            --provenance
