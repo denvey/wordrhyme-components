@@ -44,6 +44,7 @@ jobs:
         uses: pixpilot/changesets-autopilot@v1
         with:
           GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # No NPM_TOKEN: npm Trusted Publishing authenticates this job via OIDC.
+          provenance: true
           # Release only the explicit .changeset entries committed with a change.
           AUTO_CHANGESET: false

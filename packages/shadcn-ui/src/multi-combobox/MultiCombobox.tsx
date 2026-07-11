@@ -231,11 +231,9 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
   const [internalValue, setInternalValue] = React.useState(defaultValue ?? []);
   const [internalSearchValue, setInternalSearchValue] =
     React.useState(defaultSearchValue);
-  const [popoverContainer, setPopoverContainer] = React.useState<HTMLDivElement | null>(
+  const [popoverContainer, setPopoverContainer] = React.useState<HTMLElement | null>(
     null,
   );
-  const [useLocalPopoverContainer, setUseLocalPopoverContainer] = React.useState(false);
-  const rootRef = React.useRef<HTMLDivElement | null>(null);
   const selectedValues = value ?? internalValue;
   const currentSearchValue = searchValue ?? internalSearchValue;
   const selectedValueSet = React.useMemo(() => new Set(selectedValues), [selectedValues]);
@@ -287,13 +285,11 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
     [onPopupScroll],
   );
 
-  React.useEffect(() => {
-    setUseLocalPopoverContainer(
-      Boolean(
-        rootRef.current?.closest(
-          '[data-slot="dialog-content"], [data-slot="sheet-content"]',
-        ),
-      ),
+  const handleRootRef = React.useCallback((node: HTMLDivElement | null) => {
+    setPopoverContainer(
+      node?.closest<HTMLElement>(
+        '[data-slot="dialog-content"], [data-slot="sheet-content"]',
+      ) ?? null,
     );
   }, []);
 
@@ -344,12 +340,11 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
   );
 
   return (
-    <div ref={rootRef} className="contents">
+    <div ref={handleRootRef} className="contents">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-        <div ref={setPopoverContainer} className="contents" />
         <PopoverContent
-          container={useLocalPopoverContainer ? popoverContainer : undefined}
+          container={popoverContainer}
           className={cn('w-full p-0', contentClassName)}
           style={
             matchTriggerWidth

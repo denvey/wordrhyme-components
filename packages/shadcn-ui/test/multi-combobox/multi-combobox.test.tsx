@@ -6,18 +6,22 @@ import { MultiCombobox } from '../../src/multi-combobox';
 
 Element.prototype.scrollIntoView ??= () => {};
 
-describe('MultiCombobox', () => {
-  it('renders its popover inside a sheet so modal scroll locking does not block options', async () => {
-    const { container } = render(
-      <div data-slot="sheet-content">
-        <MultiCombobox options={[{ value: 'option-1', label: 'Option 1' }]} />
-      </div>,
-    );
+describe('multi-combobox', () => {
+  it.each(['sheet-content', 'dialog-content'])(
+    'portals its popover directly into the nearest %s',
+    async (contentSlot) => {
+      const { container } = render(
+        <div data-slot={contentSlot}>
+          <MultiCombobox options={[{ value: 'option-1', label: 'Option 1' }]} />
+        </div>,
+      );
 
-    fireEvent.click(screen.getByRole('combobox'));
+      fireEvent.click(screen.getByRole('combobox'));
 
-    const popover = await screen.findByRole('dialog');
+      const popover = await screen.findByRole('dialog');
+      const popperWrapper = popover.closest('[data-radix-popper-content-wrapper]');
 
-    expect(popover.closest('[data-slot="sheet-content"]')).toBe(container.firstChild);
-  });
+      expect(popperWrapper?.parentElement).toBe(container.firstElementChild);
+    },
+  );
 });
