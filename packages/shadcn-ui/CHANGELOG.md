@@ -1,5 +1,11 @@
 # @pixpilot/shadcn-ui
 
+## 1.32.6
+
+### Patch Changes
+
+- 18e82db: Portal MultiCombobox popovers directly into the nearest Sheet or Dialog content so table stacking contexts and overflow containers cannot cover or clip the options.
+
 ## 1.32.5
 
 ### Patch Changes
