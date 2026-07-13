@@ -1,5 +1,11 @@
 # @pixpilot/shadcn-ui
 
+## 1.32.7
+
+### Patch Changes
+
+- f68b210: Fix MultiCombobox popovers inside independently scrollable Sheet and Dialog content so they follow the trigger and become non-interactive after the trigger leaves the scroll viewport.
+
 ## 1.32.6
 
 ### Patch Changes
