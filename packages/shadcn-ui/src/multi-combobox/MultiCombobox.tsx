@@ -114,6 +114,34 @@ function getOptionText(option: MultiComboboxOption) {
   return option.value;
 }
 
+function findNearestVerticalScrollContainer(
+  node: HTMLElement,
+  stopAt: HTMLElement | null,
+) {
+  const view = node.ownerDocument.defaultView;
+  let current = node.parentElement;
+
+  while (current) {
+    const overflowY = view?.getComputedStyle(current).overflowY;
+    const canScrollVertically =
+      overflowY !== undefined &&
+      /^(?:auto|overlay|scroll)$/u.test(overflowY) &&
+      current.scrollHeight > current.clientHeight;
+
+    if (canScrollVertically) {
+      return current;
+    }
+
+    if (current === stopAt) {
+      break;
+    }
+
+    current = current.parentElement;
+  }
+
+  return null;
+}
+
 function createNextValue(
   currentValue: string[],
   optionValue: string,
@@ -234,6 +262,8 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
   const [popoverContainer, setPopoverContainer] = React.useState<HTMLElement | null>(
     null,
   );
+  const [popoverBoundary, setPopoverBoundary] = React.useState<HTMLElement | null>(null);
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
   const selectedValues = value ?? internalValue;
   const currentSearchValue = searchValue ?? internalSearchValue;
   const selectedValueSet = React.useMemo(() => new Set(selectedValues), [selectedValues]);
@@ -286,12 +316,29 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
   );
 
   const handleRootRef = React.useCallback((node: HTMLDivElement | null) => {
-    setPopoverContainer(
+    rootRef.current = node;
+
+    const container =
       node?.closest<HTMLElement>(
         '[data-slot="dialog-content"], [data-slot="sheet-content"]',
-      ) ?? null,
-    );
+      ) ?? null;
+
+    setPopoverContainer(container);
+    setPopoverBoundary(node ? findNearestVerticalScrollContainer(node, container) : null);
   }, []);
+
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      if (nextOpen && rootRef.current) {
+        setPopoverBoundary(
+          findNearestVerticalScrollContainer(rootRef.current, popoverContainer),
+        );
+      }
+
+      setOpen(nextOpen);
+    },
+    [popoverContainer],
+  );
 
   const onItemSelect = React.useCallback(
     (option: MultiComboboxOption) => {
@@ -341,10 +388,12 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
 
   return (
     <div ref={handleRootRef} className="contents">
-      <Popover open={open} onOpenChange={setOpen}>
+      <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverTrigger asChild>{trigger}</PopoverTrigger>
         <PopoverContent
+          collisionBoundary={popoverBoundary ?? undefined}
           container={popoverContainer}
+          hideWhenDetached
           className={cn('w-full p-0', contentClassName)}
           style={
             matchTriggerWidth
