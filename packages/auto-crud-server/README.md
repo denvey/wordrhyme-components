@@ -939,6 +939,40 @@ export const db = drizzle(client, { schema });
 export const createContext = () => ({ db });
 ```
 
+### 使用业务时区解析日期过滤
+
+AutoCrud 默认保留历史行为：使用服务器本地时区解析日期过滤。如果宿主已经有用户或租户的业务时区，可在 tRPC context 中提供 `resolveDateRange`，将日历日期转换为 UTC 半开区间：
+
+```typescript
+import type { DateRangeResolver } from '@wordrhyme/auto-crud-server';
+
+const resolveDateRange: DateRangeResolver = (filter) => {
+  // 由宿主根据 filter.value、filter.operator 和当前业务时区进行转换。
+  // resolveCalendarFilterToUtc 应返回 UTC Date 对象。
+  return resolveCalendarFilterToUtc(filter, getBusinessTimeZone());
+};
+
+export const createContext = () => ({
+  db,
+  resolveDateRange,
+});
+```
+
+Resolver 返回值遵循以下契约：
+
+```typescript
+interface DateFilterRange {
+  start?: Date; // 日历范围的 UTC 起点，包含
+  endExclusive?: Date; // UTC 终点，不包含
+}
+```
+
+- 返回 `undefined`：使用原有服务器本地时区逻辑。
+- 返回非空范围：该结果是权威结果，不再回退到本地时区。
+- `lt` / `gte` 需要 `start`；`lte` / `gt` 需要 `endExclusive`。
+- `eq`、`ne`、`isBetween`、`isRelativeToToday` 可使用单边或双边范围。
+- 无效日期、空范围、反向范围或缺少操作符所需边界会抛出 `RangeError`，避免过滤条件意外扩大。
+
 ### 与 Next.js 集成
 
 ```typescript

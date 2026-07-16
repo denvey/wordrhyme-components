@@ -164,9 +164,10 @@ export { createTRPCDataSource, createMemoryDataSource } from './lib/data-source'
 export type { DataSource, ListParams, ListResult } from './lib/data-source';
 
 // Utils
-export { cn } from './lib/utils';
-export { formatDate } from './lib/format';
+export { formatDate, setDateFormatter } from './lib/format';
+export type { DateFormatter } from './lib/format';
 export { humanize } from './lib/humanize';
+export { cn } from './lib/utils';
 
 // Import/Export Utils
 export {
