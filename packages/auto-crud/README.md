@@ -1021,6 +1021,29 @@ export default function TasksPage() {
 
 ## 🧰 工具函数
 
+### 配置日期展示策略
+
+通过 `setDateFormatter` 可以让 AutoCrud 内部日期跟随宿主的语言和时区策略：
+
+```typescript
+import { setDateFormatter } from '@wordrhyme/auto-crud';
+
+const disposeDateFormatter = setDateFormatter((date, options) =>
+  new Intl.DateTimeFormat(getCurrentLocale(), {
+    ...options,
+    timeZone: getCurrentTimeZone(),
+  }).format(date),
+);
+
+// 应用卸载时移除当前注册
+disposeDateFormatter();
+
+// 传入 undefined 可清空全部注册
+setDateFormatter(undefined);
+```
+
+`setDateFormatter` 是进程/运行时级配置，建议在应用启动时注册一个稳定的 formatter。多个注册可以重叠，清理函数只移除对应注册，允许乱序清理。SSR 场景不要在每个请求中重复调用 setter；如需按请求选择语言或时区，应由稳定 formatter 通过宿主提供的并发安全上下文读取当前请求策略。
+
 ### Schema Bridge - 核心转换函数
 
 ```typescript
@@ -1396,7 +1419,8 @@ export type { DataSource, ListParams, ListResult } from './lib/data-source';
 
 // 工具函数
 export { cn } from './lib/utils';
-export { formatDate } from './lib/format';
+export { formatDate, setDateFormatter } from './lib/format';
+export type { DateFormatter } from './lib/format';
 export { humanize } from './lib/humanize';
 ```
 

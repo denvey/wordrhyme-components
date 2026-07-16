@@ -50,6 +50,11 @@ export type FilterOperator =
   | 'isEmpty'
   | 'isNotEmpty';
 
+type DateRangeOperator = Extract<
+  FilterOperator,
+  'eq' | 'ne' | 'lt' | 'lte' | 'gt' | 'gte' | 'isBetween' | 'isRelativeToToday'
+>;
+
 /** 连接操作符 */
 export type JoinOperator = 'and' | 'or';
 
@@ -60,6 +65,24 @@ export interface ExtendedColumnFilter<T extends Table = Table> {
   variant: FilterVariant;
   operator: FilterOperator;
 }
+
+/** Host-resolved UTC boundaries for a calendar-date filter. */
+export interface DateFilterRange {
+  start?: Date;
+  endExclusive?: Date;
+}
+
+/**
+ * Optional host adapter for date filters.
+ *
+ * AutoCrud intentionally does not choose a time zone. A host that has business
+ * time-zone context can resolve the filter to UTC boundaries. Returning
+ * undefined preserves the legacy server-local parsing behavior. A non-empty
+ * result is authoritative and must contain valid boundaries for the operator.
+ */
+export type DateRangeResolver<T extends Table = Table> = (
+  filter: ExtendedColumnFilter<T>,
+) => DateFilterRange | undefined;
 
 /**
  * 检查列是否为空
@@ -116,16 +139,108 @@ function safeParseNumber(value: string | undefined | null): number | null {
   return Number.isNaN(num) ? null : num;
 }
 
+function isValidDate(value: Date | undefined): value is Date {
+  return value instanceof Date && !Number.isNaN(value.getTime());
+}
+
+function isDateRangeOperator(operator: FilterOperator): operator is DateRangeOperator {
+  switch (operator) {
+    case 'eq':
+    case 'ne':
+    case 'lt':
+    case 'lte':
+    case 'gt':
+    case 'gte':
+    case 'isBetween':
+    case 'isRelativeToToday':
+      return true;
+    case 'iLike':
+    case 'notILike':
+    case 'inArray':
+    case 'notInArray':
+    case 'isEmpty':
+    case 'isNotEmpty':
+      return false;
+  }
+
+  return false;
+}
+
+function normalizeDateRange(range: DateFilterRange): DateFilterRange {
+  if (range.start !== undefined && !isValidDate(range.start)) {
+    throw new RangeError('resolveDateRange returned an invalid start boundary');
+  }
+  if (range.endExclusive !== undefined && !isValidDate(range.endExclusive)) {
+    throw new RangeError('resolveDateRange returned an invalid endExclusive boundary');
+  }
+
+  const { start, endExclusive } = range;
+  if (!start && !endExclusive) {
+    throw new RangeError('resolveDateRange must return at least one date boundary');
+  }
+  if (start && endExclusive && start >= endExclusive) {
+    throw new RangeError('resolveDateRange requires start to be before endExclusive');
+  }
+
+  return { start, endExclusive };
+}
+
+function requireDateBoundary(
+  boundary: Date | undefined,
+  name: keyof DateFilterRange,
+  operator: DateRangeOperator,
+): Date {
+  if (!boundary) {
+    throw new RangeError(`resolveDateRange must return ${name} for operator ${operator}`);
+  }
+  return boundary;
+}
+
+function resolvedDateCondition(
+  expr: SQL,
+  operator: DateRangeOperator,
+  range: DateFilterRange,
+): SQL {
+  const { start, endExclusive } = range;
+
+  switch (operator) {
+    case 'eq':
+    case 'isBetween':
+    case 'isRelativeToToday':
+      if (start && endExclusive)
+        return and(gte(expr, start), lt(expr, endExclusive)) as SQL;
+      if (start) return gte(expr, start);
+      return lt(expr, requireDateBoundary(endExclusive, 'endExclusive', operator));
+    case 'ne':
+      if (start && endExclusive)
+        return or(lt(expr, start), gte(expr, endExclusive)) as SQL;
+      if (start) return lt(expr, start);
+      return gte(expr, requireDateBoundary(endExclusive, 'endExclusive', operator));
+    case 'lt':
+      return lt(expr, requireDateBoundary(start, 'start', operator));
+    case 'lte':
+      return lt(expr, requireDateBoundary(endExclusive, 'endExclusive', operator));
+    case 'gt':
+      return gte(expr, requireDateBoundary(endExclusive, 'endExclusive', operator));
+    case 'gte':
+      return gte(expr, requireDateBoundary(start, 'start', operator));
+  }
+
+  throw new Error('Unsupported resolved date operator');
+}
+
 export function filterColumns<T extends Table>({
   table,
   filters,
   joinOperator,
   resolveColumn,
+  resolveDateRange,
 }: {
   table: T;
   filters: ExtendedColumnFilter<T>[];
   joinOperator: JoinOperator;
   resolveColumn?: (columnId: keyof T | string) => ColumnTarget | undefined;
+  resolveDateRange?: DateRangeResolver<T>;
 }): SQL | undefined {
   const joinFn = joinOperator === 'and' ? and : or;
 
@@ -133,6 +248,19 @@ export function filterColumns<T extends Table>({
     const column = resolveColumn ? resolveColumn(filter.id) : getColumn(table, filter.id);
     if (!column) return undefined;
     const expr = toSqlTarget(column);
+    if (
+      (filter.variant === 'date' || filter.variant === 'dateRange') &&
+      isDateRangeOperator(filter.operator)
+    ) {
+      const resolvedRange = resolveDateRange?.(filter);
+      if (resolvedRange !== undefined) {
+        return resolvedDateCondition(
+          expr,
+          filter.operator,
+          normalizeDateRange(resolvedRange),
+        );
+      }
+    }
 
     switch (filter.operator) {
       case 'iLike':

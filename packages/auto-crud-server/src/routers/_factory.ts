@@ -25,6 +25,7 @@ import type { PgTable } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { TRPCError } from '@trpc/server';
 import { router, publicProcedure } from '../trpc';
+import type { DateRangeResolver } from '../lib/filter-columns';
 import { filterColumns } from '../lib/filter-columns';
 import { dataTableConfig } from '../config/data-table';
 import { isZodObject, nonEmpty } from '../lib/schema-utils';
@@ -1506,6 +1507,8 @@ export function createCrudRouter<
                       allowedColumns: filterableColumns,
                     });
                   },
+                  resolveDateRange: (ctx as { resolveDateRange?: DateRangeResolver })
+                    .resolveDateRange,
                 })
               : undefined;
 
@@ -2130,6 +2133,8 @@ export function createCrudRouter<
                       allowedColumns: filterableColumns,
                     });
                   },
+                  resolveDateRange: (ctx as { resolveDateRange?: DateRangeResolver })
+                    .resolveDateRange,
                 })
               : undefined;
 

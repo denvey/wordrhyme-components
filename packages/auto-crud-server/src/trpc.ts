@@ -1,6 +1,7 @@
 import { initTRPC } from '@trpc/server';
 import superjson from 'superjson';
 import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import type { DateRangeResolver } from './lib/filter-columns';
 
 /**
  * tRPC Context 类型
@@ -8,6 +9,7 @@ import type { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
  */
 export interface Context {
   db: PostgresJsDatabase<Record<string, never>>;
+  resolveDateRange?: DateRangeResolver;
 }
 
 const t = initTRPC.context<Context>().create({

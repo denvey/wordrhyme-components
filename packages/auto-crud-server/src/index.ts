@@ -2,6 +2,14 @@
 // Main exports
 // ============================================================
 
+export type {
+  DateFilterRange,
+  DateRangeResolver,
+  ExtendedColumnFilter,
+  FilterOperator,
+  FilterVariant,
+} from './lib/filter-columns';
+
 // Factory
 export {
   baseExportInputSchema,
