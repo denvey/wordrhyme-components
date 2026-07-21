@@ -32,6 +32,7 @@ export type {
   CrudColumnRef,
   CrudExtensionFilter,
   CrudExtensionMetadata,
+  CrudExtensionValueWrite,
   CrudExtensionsConfig,
   CrudExtensionsProvider,
   CrudProcedures,

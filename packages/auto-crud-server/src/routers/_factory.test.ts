@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
-import { pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
 import {
   baseExportInputSchema,
   baseGetInputSchema,
@@ -126,6 +126,74 @@ function createListMockDb(rows: Task[]) {
   };
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+
+  return { promise, reject, resolve };
+}
+
+function createDeferredListMockDb(rows: Task[]) {
+  const data = createDeferred<Task[]>();
+  const count = createDeferred<Array<{ count: number }>>();
+  const started: string[] = [];
+
+  const createSelectBuilder = (
+    kind: 'data' | 'count',
+    result: Promise<Task[] | Array<{ count: number }>>,
+  ) => {
+    const builder = {
+      from: vi.fn(() => builder),
+      where: vi.fn(() => builder),
+      $dynamic: vi.fn(() => builder),
+      orderBy: vi.fn(() => builder),
+      limit: vi.fn(() => builder),
+      offset: vi.fn(() => builder),
+      then: (
+        onFulfilled: (value: Task[] | Array<{ count: number }>) => unknown,
+        onRejected: (reason: unknown) => unknown,
+      ) => {
+        started.push(kind);
+        return result.then(onFulfilled, onRejected);
+      },
+    };
+
+    return builder;
+  };
+
+  return {
+    count,
+    data,
+    started,
+    select: vi.fn((selection?: Record<string, unknown>) =>
+      selection && 'count' in selection
+        ? createSelectBuilder('count', count.promise)
+        : createSelectBuilder('data', data.promise),
+    ),
+    rows,
+  };
+}
+
+function createBatchWriteMockDb(rows: Task[]) {
+  const tx = {
+    insert: vi.fn(() => tx),
+    values: vi.fn(() => tx),
+    onConflictDoNothing: vi.fn(() => tx),
+    returning: vi.fn(() => rows),
+  };
+  const db = {
+    transaction: vi.fn(async (callback: (transaction: typeof tx) => Promise<unknown>) =>
+      callback(tx),
+    ),
+  };
+
+  return { db, tx };
+}
+
 function collectSqlText(value: unknown): string {
   if (value === null || value === undefined) return '';
   if (typeof value === 'string') return value;
@@ -147,10 +215,10 @@ function collectSqlText(value: unknown): string {
 
 // Mock table
 const mockTable = {
-  id: { name: 'id' },
-  title: { name: 'title' },
-  status: { name: 'status' },
-  deletedAt: { name: 'deletedAt' },
+  id: { dataType: 'string', name: 'id' },
+  title: { dataType: 'string', name: 'title' },
+  status: { dataType: 'string', name: 'status' },
+  deletedAt: { dataType: 'date', name: 'deletedAt' },
 } as any;
 
 // Mock procedure
@@ -503,6 +571,34 @@ describe('createCrudRouter', () => {
       expect(result.data[0]?.id).toBe('1');
     });
 
+    it('should start list data and count queries concurrently', async () => {
+      const rows: Task[] = [
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ];
+      const db = createDeferredListMockDb(rows);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      const resultPromise = caller.list({ page: 1, perPage: 10 });
+
+      await vi.waitFor(() => {
+        expect(db.started).toEqual(expect.arrayContaining(['data', 'count']));
+      });
+      db.count.resolve([{ count: 1 }]);
+      db.data.resolve(rows);
+
+      await expect(resultPromise).resolves.toMatchObject({
+        data: rows,
+        total: 1,
+        pageCount: 1,
+      });
+    });
+
     it('should pass extended list input into list middleware', async () => {
       const db = createListMockDb([
         { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
@@ -711,6 +807,34 @@ describe('createCrudRouter', () => {
       expect(result.data).toHaveLength(1);
     });
 
+    it('should start export data and count queries concurrently', async () => {
+      const rows: Task[] = [
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ];
+      const db = createDeferredListMockDb(rows);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as CrudCaller;
+      const resultPromise = caller.export({ limit: 1 });
+
+      await vi.waitFor(() => {
+        expect(db.started).toEqual(expect.arrayContaining(['data', 'count']));
+      });
+      db.data.resolve(rows);
+      db.count.resolve([{ count: 2 }]);
+
+      await expect(resultPromise).resolves.toMatchObject({
+        data: rows,
+        total: 2,
+        hasMore: true,
+      });
+    });
+
     it('should pass extended export input into export middleware', async () => {
       const db = createListMockDb([
         { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
@@ -879,7 +1003,7 @@ describe('createCrudRouter', () => {
 
       expect(db.builders[0]?.where).toHaveBeenCalledTimes(1);
       expect(sqlText).toContain('ilike');
-      expect(sqlText).toContain('::text');
+      expect(sqlText).not.toContain('::text');
       expect(meta.capabilities.search).toEqual({
         enabled: true,
         fields: ['title'],
@@ -1228,6 +1352,58 @@ describe('createCrudRouter', () => {
       expect(collectSqlText(db.builders[0]?.orderBy.mock.calls[0]?.[0])).toContain(
         ' desc',
       );
+      expect(db.builders[0]?.orderBy.mock.calls[0]).toHaveLength(2);
+    });
+
+    it('should apply every requested sort and append a stable id tie-breaker', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        sortableColumns: ['title', 'status'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        sort: [
+          { id: 'title', desc: false },
+          { id: 'status', desc: true },
+        ],
+      });
+
+      const orderByArgs = db.builders[0]?.orderBy.mock.calls[0] ?? [];
+      expect(orderByArgs).toHaveLength(3);
+      expect(collectSqlText(orderByArgs[0])).toContain(' asc');
+      expect(collectSqlText(orderByArgs[1])).toContain(' desc');
+      expect(collectSqlText(orderByArgs[2])).toContain(' asc');
+    });
+
+    it('should not append the id tie-breaker twice', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const crudRouter = createCrudRouter({
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        sortableColumns: ['id'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        sort: [{ id: 'id', desc: true }],
+      });
+
+      expect(db.builders[0]?.orderBy.mock.calls[0]).toHaveLength(1);
     });
 
     it('should not apply default createdAt ordering when sortableColumns excludes it', async () => {
@@ -1412,7 +1588,58 @@ describe('createCrudRouter', () => {
 
       expect(db.builders[0]?.where).toHaveBeenCalledTimes(1);
       expect(sqlText).toContain('ilike');
-      expect(sqlText).toContain('::text');
+      expect(sqlText).not.toContain('::text');
+    });
+
+    it('should retain text casts for non-text search columns', async () => {
+      const searchTable = pgTable('search_items', {
+        id: text('id').primaryKey(),
+        rank: integer('rank').notNull(),
+      });
+      const db = createListMockDb([{ id: '1', rank: 10 }] as any);
+      const crudRouter = createCrudRouter({
+        table: searchTable,
+        search: ['rank'],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        search: '10',
+        joinOperator: 'and',
+      });
+
+      const whereArg = db.builders[0]?.where.mock.calls[0]?.[0];
+      expect(collectSqlText(whereArg)).toContain('::text');
+    });
+
+    it('should retain text casts for arbitrary SQL search expressions', async () => {
+      const searchTable = pgTable('search_expression_items', {
+        id: text('id').primaryKey(),
+        rank: integer('rank').notNull(),
+      });
+      const db = createListMockDb([{ id: '1', rank: 10 }] as any);
+      const crudRouter = createCrudRouter({
+        table: searchTable,
+        search: [
+          {
+            id: 'rank',
+            expression: ({ table }) => sql<number>`${table.rank} + 1`,
+          },
+        ],
+      });
+
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        search: '10',
+        joinOperator: 'and',
+      });
+
+      const whereArg = db.builders[0]?.where.mock.calls[0]?.[0];
+      expect(collectSqlText(whereArg)).toContain('::text');
     });
   });
 
@@ -1562,6 +1789,56 @@ describe('createCrudRouter', () => {
       expect(db.builders[1]?.where).toHaveBeenCalled();
     });
 
+    it('should resolve extension filters and search concurrently', async () => {
+      const db = createListMockDb([
+        { id: '2', title: 'Task 2', status: 'todo', createdAt: new Date() },
+      ]);
+      const filterMatches = createDeferred<string[]>();
+      const searchMatches = createDeferred<string[]>();
+      const matchEntityIds = vi.fn(() => filterMatches.promise);
+      const searchEntityIds = vi.fn(() => searchMatches.promise);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+        filterableColumns: ['status'],
+        searchColumns: ['title'],
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: { matchEntityIds, searchEntityIds },
+      } as any) as ListCaller;
+      const resultPromise = caller.list({
+        page: 1,
+        perPage: 10,
+        search: 'Task',
+        filters: [
+          {
+            id: 'owner',
+            value: 'user-1',
+            operator: 'inArray',
+            variant: 'multiSelect',
+            filterId: 'owner',
+          },
+        ],
+        joinOperator: 'and',
+      });
+
+      await vi.waitFor(() => {
+        expect(matchEntityIds).toHaveBeenCalledTimes(1);
+        expect(searchEntityIds).toHaveBeenCalledTimes(1);
+      });
+      searchMatches.resolve(['2', '3']);
+      filterMatches.resolve(['1', '2']);
+
+      await expect(resultPromise).resolves.toMatchObject({ total: 1 });
+      expect(db.builders[0]?.where).toHaveBeenCalledTimes(1);
+      expect(db.builders[1]?.where).toHaveBeenCalledTimes(1);
+    });
+
     it('should strip direct extra fields from upsert table writes and persist them separately', async () => {
       const db = createMockDb();
       const saveExtraValues = vi.fn().mockResolvedValue(undefined);
@@ -1657,6 +1934,124 @@ describe('createCrudRouter', () => {
           },
         }),
       );
+    });
+
+    it('should persist createMany extension values through one bulk provider call', async () => {
+      const rows: Task[] = [
+        { id: '2', title: 'Task 2', status: 'done' },
+        { id: '1', title: 'Task 1', status: 'todo' },
+      ];
+      const { db, tx } = createBatchWriteMockDb(rows);
+      const saveExtraValues = vi.fn().mockResolvedValue(undefined);
+      const saveExtraValuesMany = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: { saveExtraValues, saveExtraValuesMany },
+      } as any) as MutationCaller;
+      const result = await caller.createMany([
+        { id: '1', title: 'Task 1', status: 'todo', owner: 'user-1' },
+        { id: '2', title: 'Task 2', status: 'done', owner: 'user-2' },
+      ]);
+
+      expect(result.count).toBe(2);
+      expect(saveExtraValues).not.toHaveBeenCalled();
+      expect(saveExtraValuesMany).toHaveBeenCalledTimes(1);
+      expect(saveExtraValuesMany).toHaveBeenCalledWith({
+        id: 'com.example.tasks',
+        rows: [
+          {
+            entityId: '2',
+            rawValues: {
+              id: '2',
+              title: 'Task 2',
+              status: 'done',
+              owner: 'user-2',
+            },
+            baseValues: { id: '2', title: 'Task 2', status: 'done' },
+            extraValues: { owner: 'user-2' },
+          },
+          {
+            entityId: '1',
+            rawValues: {
+              id: '1',
+              title: 'Task 1',
+              status: 'todo',
+              owner: 'user-1',
+            },
+            baseValues: { id: '1', title: 'Task 1', status: 'todo' },
+            extraValues: { owner: 'user-1' },
+          },
+        ],
+        tx,
+      });
+    });
+
+    it('should support bulk-only providers for single-row writes', async () => {
+      const db = createMockDb();
+      const saveExtraValuesMany = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: { saveExtraValuesMany },
+      } as any) as MutationCaller;
+      await caller.create({
+        title: 'New Task',
+        status: 'todo',
+        owner: 'user-1',
+      });
+
+      expect(saveExtraValuesMany).toHaveBeenCalledWith({
+        id: 'com.example.tasks',
+        rows: [
+          expect.objectContaining({
+            entityId: 'new-id',
+            extraValues: { owner: 'user-1' },
+          }),
+        ],
+        tx: undefined,
+      });
+    });
+
+    it('should retain per-row createMany persistence for legacy providers', async () => {
+      const rows: Task[] = [
+        { id: '1', title: 'Task 1', status: 'todo' },
+        { id: '2', title: 'Task 2', status: 'done' },
+      ];
+      const { db } = createBatchWriteMockDb(rows);
+      const saveExtraValues = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: { saveExtraValues },
+      } as any) as MutationCaller;
+      await caller.createMany([
+        { id: '1', title: 'Task 1', status: 'todo', owner: 'user-1' },
+        { id: '2', title: 'Task 2', status: 'done', owner: 'user-2' },
+      ]);
+
+      expect(saveExtraValues).toHaveBeenCalledTimes(2);
     });
 
     it('should save create extra values inside a shared transaction', async () => {
@@ -1980,7 +2375,46 @@ describe('createCrudRouter', () => {
       );
     });
 
-    it('should roll back createMany when extra values cannot be matched to returned rows', async () => {
+    it('should persist updateMany extension values through one bulk provider call', async () => {
+      const selectBuilder = {
+        from: vi.fn(() => selectBuilder),
+        where: vi.fn(() => [{ id: '1' }, { id: '2' }]),
+      };
+      const db = {
+        select: vi.fn(() => selectBuilder),
+        update: vi.fn(),
+      };
+      const saveExtraValuesMany = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: { saveExtraValuesMany },
+      } as any) as MutationCaller;
+      const result = await caller.updateMany({
+        ids: ['1', '2'],
+        data: { owner: 'user-1' },
+      });
+
+      expect(result).toEqual({ updated: 2 });
+      expect(saveExtraValuesMany).toHaveBeenCalledTimes(1);
+      expect(saveExtraValuesMany).toHaveBeenCalledWith({
+        id: 'com.example.tasks',
+        rows: [
+          expect.objectContaining({ entityId: '1', extraValues: { owner: 'user-1' } }),
+          expect.objectContaining({ entityId: '2', extraValues: { owner: 'user-1' } }),
+        ],
+        tx: undefined,
+      });
+    });
+
+    it('should reject unmappable createMany extension values before writing', async () => {
       const committedRows: unknown[] = [];
       const pendingRows: unknown[] = [];
       const tx = {
@@ -2034,15 +2468,41 @@ describe('createCrudRouter', () => {
             owner: 'created-owner',
           },
         ]),
-      ).rejects.toThrow('Cannot persist CRUD extension values');
+      ).rejects.toThrow('provide a stable id');
 
-      expect(tx.values).toHaveBeenCalledWith([
-        { title: 'Skipped Task', status: 'todo' },
-        { title: 'Created Task', status: 'todo' },
-      ]);
+      expect(db.transaction).not.toHaveBeenCalled();
+      expect(tx.values).not.toHaveBeenCalled();
       expect(saveExtraValues).not.toHaveBeenCalled();
       expect(committedRows).toEqual([]);
       expect(pendingRows).toEqual([]);
+    });
+
+    it('should reject duplicate createMany ids when extension values are present', async () => {
+      const { db, tx } = createBatchWriteMockDb([]);
+      const saveExtraValuesMany = vi.fn().mockResolvedValue(undefined);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: { saveExtraValuesMany },
+      } as any) as MutationCaller;
+
+      await expect(
+        caller.createMany([
+          { id: 'duplicate', title: 'Task 1', status: 'todo', owner: 'user-1' },
+          { id: 'duplicate', title: 'Task 2', status: 'done' },
+        ]),
+      ).rejects.toThrow('require unique ids');
+
+      expect(db.transaction).not.toHaveBeenCalled();
+      expect(tx.values).not.toHaveBeenCalled();
+      expect(saveExtraValuesMany).not.toHaveBeenCalled();
     });
 
     it('should reject extra fields before writing when no provider is available', async () => {

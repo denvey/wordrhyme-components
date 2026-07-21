@@ -173,14 +173,29 @@ export interface CrudExtensionFilter {
   filterId?: string | undefined;
 }
 
+export interface CrudExtensionValueWrite {
+  entityId: string;
+  rawValues: Record<string, unknown>;
+  baseValues: Record<string, unknown>;
+  extraValues: Record<string, unknown>;
+}
+
 export interface CrudExtensionsProvider {
   getMetadata?: (input: { id: string }) => Promise<CrudExtensionMetadata>;
-  saveExtraValues?: (input: {
+  saveExtraValues?: (
+    input: { id: string; tx?: unknown } & CrudExtensionValueWrite,
+  ) => Promise<void>;
+  /**
+   * Optional bulk persistence path used by createMany, updateMany, and import.
+   *
+   * Providers should implement this when extension values are stored in a
+   * database. The router falls back to saveExtraValues for backward
+   * compatibility when this method is absent. Batch create/import rows with
+   * extension values must provide stable, unique entity ids.
+   */
+  saveExtraValuesMany?: (input: {
     id: string;
-    entityId: string;
-    rawValues: Record<string, unknown>;
-    baseValues: Record<string, unknown>;
-    extraValues: Record<string, unknown>;
+    rows: CrudExtensionValueWrite[];
     tx?: unknown;
   }) => Promise<void>;
   readProjection?: (input: {

@@ -3,6 +3,8 @@ import { z } from 'zod';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import type {
   CrudRouterConfig,
+  CrudExtensionsProvider,
+  CrudExtensionValueWrite,
   CrudMiddleware,
   CrudProcedures,
   ListMiddlewareParams,
@@ -168,6 +170,23 @@ describe('Type Definitions', () => {
   });
 
   describe('CrudRouterConfig (v2.0 统一 API)', () => {
+    it('should support bulk-only CRUD extension persistence providers', () => {
+      const write: CrudExtensionValueWrite = {
+        entityId: 'task-1',
+        rawValues: { owner: 'user-1' },
+        baseValues: {},
+        extraValues: { owner: 'user-1' },
+      };
+      const provider: CrudExtensionsProvider = {
+        saveExtraValuesMany: async ({ rows }) => {
+          expectTypeOf(rows).toEqualTypeOf<CrudExtensionValueWrite[]>();
+        },
+      };
+
+      expectTypeOf(write.entityId).toBeString();
+      expectTypeOf(provider).toMatchTypeOf<CrudExtensionsProvider>();
+    });
+
     it('should allow procedure with guard combination', () => {
       // v2.0 核心：procedure 可与 guard/scope/authorize 组合
       // 泛型参数顺序: <TTable, TContext, TSelect, TInsert, TUpdate>

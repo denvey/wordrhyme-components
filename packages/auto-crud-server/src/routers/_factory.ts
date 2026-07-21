@@ -8,22 +8,23 @@
  * - 所有配置项可自由组合，无互斥模式
  */
 
-import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import {
-  eq,
-  sql,
-  inArray,
+  and,
   asc,
   desc,
-  and,
-  or,
-  isNull,
+  eq,
   getTableColumns,
+  ilike,
+  inArray,
+  isNull,
+  or,
+  sql,
 } from 'drizzle-orm';
 import type { AnyColumn, SQL } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
-import { TRPCError } from '@trpc/server';
+import { z } from 'zod';
 import { router, publicProcedure } from '../trpc';
 import type { DateRangeResolver } from '../lib/filter-columns';
 import { filterColumns } from '../lib/filter-columns';
@@ -53,6 +54,7 @@ import type {
   CrudCapabilityMetadata,
   CrudExtensionFilter,
   CrudExtensionMetadata,
+  CrudExtensionValueWrite,
   CrudExtensionsConfig,
   CrudExtensionsProvider,
 } from '../types/config';
@@ -66,6 +68,7 @@ export type {
   CrudColumnRef,
   CrudExtensionFilter,
   CrudExtensionMetadata,
+  CrudExtensionValueWrite,
   CrudExtensionsConfig,
   CrudExtensionsProvider,
   CrudRouterConfig,
@@ -820,35 +823,61 @@ function splitCrudExtensionWriteInput<TInput>(
   };
 }
 
-async function saveCrudExtraValues<TContext>(
-  ctx: TContext,
-  config: CrudExtensionConfigRef<TContext>,
+function createCrudExtensionValueWrite(
   entityId: unknown,
   input: SplitCrudExtensionInput<unknown>,
-) {
-  const target = readCrudTarget(config);
-  const extraValues = input.extraValues;
-  if (!target || !extraValues) return;
+): CrudExtensionValueWrite | null {
+  const { extraValues } = input;
+  if (!extraValues) return null;
   if (entityId === null || entityId === undefined || String(entityId).length === 0) {
-    return;
+    return null;
   }
 
+  return {
+    entityId: String(entityId),
+    rawValues: input.rawValues,
+    baseValues: input.baseValues,
+    extraValues,
+  };
+}
+
+async function persistCrudExtensionValueWrites<TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  rows: CrudExtensionValueWrite[],
+  preferBulk: boolean,
+): Promise<void> {
+  const target = readCrudTarget(config);
+  if (!target || rows.length === 0) return;
+
   const provider = resolveCrudExtensions(ctx, config);
-  if (!provider?.saveExtraValues) {
+  if (!provider?.saveExtraValues && !provider?.saveExtraValuesMany) {
     throw new TRPCError({
       code: 'PRECONDITION_FAILED',
       message: 'CRUD extension persistence is not available',
     });
   }
 
-  await provider.saveExtraValues({
-    id: target.id,
-    entityId: String(entityId),
-    rawValues: input.rawValues,
-    baseValues: input.baseValues,
-    extraValues,
-    tx: (ctx as { tx?: unknown })?.tx,
-  });
+  const tx = (ctx as { tx?: unknown })?.tx;
+  if ((preferBulk || !provider.saveExtraValues) && provider.saveExtraValuesMany) {
+    await provider.saveExtraValuesMany({ id: target.id, rows, tx });
+    return;
+  }
+
+  await Promise.all(
+    rows.map(async (row) => provider.saveExtraValues!({ id: target.id, ...row, tx })),
+  );
+}
+
+async function saveCrudExtraValues<TContext>(
+  ctx: TContext,
+  config: CrudExtensionConfigRef<TContext>,
+  entityId: unknown,
+  input: SplitCrudExtensionInput<unknown>,
+) {
+  const row = createCrudExtensionValueWrite(entityId, input);
+  if (!row) return;
+  await persistCrudExtensionValueWrites(ctx, config, [row], false);
 }
 
 async function runCrudExtensionWriteTransaction<TContext extends { db: any }, TResult>(
@@ -883,7 +912,7 @@ function assertCrudExtraValuesWritable<TContext>(
   if (!target || !input.extraValues) return;
 
   const provider = resolveCrudExtensions(ctx, config);
-  if (!provider?.saveExtraValues) {
+  if (!provider?.saveExtraValues && !provider?.saveExtraValuesMany) {
     throw new TRPCError({
       code: 'PRECONDITION_FAILED',
       message: 'CRUD extension persistence is not available',
@@ -905,6 +934,42 @@ function assertCrudExtraValuesWritableForRows<TContext>(
   }
 }
 
+function assertCrudExtraValuesMappableForRows(
+  inputs: Array<SplitCrudExtensionInput<unknown>>,
+  idField: string,
+): void {
+  const idCounts = new Map<string, number>();
+
+  for (const input of inputs) {
+    const inputId = isObjectRecord(input.data) ? input.data[idField] : undefined;
+    if (inputId !== null && inputId !== undefined && String(inputId).length > 0) {
+      const normalizedId = String(inputId);
+      idCounts.set(normalizedId, (idCounts.get(normalizedId) ?? 0) + 1);
+    }
+  }
+
+  for (const input of inputs) {
+    if (input.extraValues) {
+      const inputId = isObjectRecord(input.data) ? input.data[idField] : undefined;
+      if (inputId === null || inputId === undefined || String(inputId).length === 0) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message:
+            'Batch CRUD extension writes require every row with extra values to provide a stable id.',
+        });
+      }
+
+      const normalizedId = String(inputId);
+      if (idCounts.get(normalizedId) !== 1) {
+        throw new TRPCError({
+          code: 'PRECONDITION_FAILED',
+          message: `Batch CRUD extension writes require unique ids; duplicate id "${normalizedId}" was provided.`,
+        });
+      }
+    }
+  }
+}
+
 async function saveCrudExtraValuesForRows<TContext>(
   ctx: TContext,
   config: CrudExtensionConfigRef<TContext>,
@@ -914,60 +979,32 @@ async function saveCrudExtraValuesForRows<TContext>(
 ) {
   const inputsWithExtra = inputs.filter((input) => input.extraValues);
   if (inputsWithExtra.length === 0) return;
+  assertCrudExtraValuesMappableForRows(inputs, idField);
 
-  const extraByInputId = new Map<string, SplitCrudExtensionInput<unknown>>();
+  const inputById = new Map<string, SplitCrudExtensionInput<unknown>>();
   for (const input of inputs) {
-    if (!input.extraValues || !isObjectRecord(input.data)) continue;
+    if (!isObjectRecord(input.data)) continue;
 
     const inputId = input.data[idField];
-    if (inputId !== null && inputId !== undefined) {
-      extraByInputId.set(String(inputId), input);
+    if (inputId !== null && inputId !== undefined && String(inputId).length > 0) {
+      inputById.set(String(inputId), input);
     }
   }
 
-  const canUseIndexFallback = results.length === inputs.length;
-  const hasUnidentifiedExtraInput = inputsWithExtra.some((input) => {
-    if (!isObjectRecord(input.data)) return true;
-    const inputId = input.data[idField];
-    return inputId === null || inputId === undefined || String(inputId).length === 0;
+  const rows = results.flatMap((result) => {
+    const resultId = result[idField];
+    const input =
+      resultId !== null && resultId !== undefined
+        ? inputById.get(String(resultId))
+        : undefined;
+
+    if (!input?.extraValues) return [];
+
+    const row = createCrudExtensionValueWrite(resultId, input);
+    return row ? [row] : [];
   });
 
-  if (!canUseIndexFallback && hasUnidentifiedExtraInput) {
-    throw new TRPCError({
-      code: 'PRECONDITION_FAILED',
-      message:
-        'Cannot persist CRUD extension values because inserted rows cannot be matched to input rows. Provide stable ids or avoid partial-conflict batch writes.',
-    });
-  }
-
-  await Promise.all(
-    results.map((result, index) => {
-      const resultId = result[idField];
-      const fallbackInput = canUseIndexFallback ? inputs[index] : undefined;
-      const fallbackInputId =
-        fallbackInput && isObjectRecord(fallbackInput.data)
-          ? fallbackInput.data[idField]
-          : undefined;
-      const entityId =
-        resultId !== null && resultId !== undefined ? resultId : fallbackInputId;
-      const input =
-        entityId !== null && entityId !== undefined
-          ? (extraByInputId.get(String(entityId)) ?? fallbackInput)
-          : fallbackInput;
-
-      if (!input?.extraValues) return Promise.resolve();
-
-      if (entityId === null || entityId === undefined || String(entityId).length === 0) {
-        throw new TRPCError({
-          code: 'PRECONDITION_FAILED',
-          message:
-            'Cannot persist CRUD extension values because the created entity id is unavailable.',
-        });
-      }
-
-      return saveCrudExtraValues(ctx, config, entityId, input);
-    }),
-  );
+  await persistCrudExtensionValueWrites(ctx, config, rows, true);
 }
 
 function createCrudBatchTransactionInput(
@@ -1101,7 +1138,7 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
 
   const provider = resolveCrudExtensions(ctx, config);
 
-  const matchedSets: Array<Set<string>> = [];
+  const matchRequests: Array<Promise<string[]>> = [];
   if (extensionFilters.length > 0) {
     if (!provider?.matchEntityIds) {
       throw new TRPCError({
@@ -1110,22 +1147,24 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
       });
     }
 
-    const matchedIds = await provider.matchEntityIds({
-      id: target.id,
-      filters: extensionFilters as CrudExtensionFilter[],
-      joinOperator: input.joinOperator,
-      limit: 5000,
-    });
-    matchedSets.push(new Set(matchedIds));
+    matchRequests.push(
+      provider.matchEntityIds({
+        id: target.id,
+        filters: extensionFilters as CrudExtensionFilter[],
+        joinOperator: input.joinOperator,
+        limit: 5000,
+      }),
+    );
   }
 
   if (search && !searchDisabled && provider?.searchEntityIds) {
-    const matchedIds = await provider.searchEntityIds({
-      id: target.id,
-      search,
-      limit: 5000,
-    });
-    matchedSets.push(new Set(matchedIds));
+    matchRequests.push(
+      provider.searchEntityIds({
+        id: target.id,
+        search,
+        limit: 5000,
+      }),
+    );
   } else if (
     search &&
     !searchDisabled &&
@@ -1136,6 +1175,10 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
       message: 'CRUD search is not available',
     });
   }
+
+  const matchedSets = (await Promise.all(matchRequests)).map(
+    (matchedIds) => new Set(matchedIds),
+  );
 
   if (matchedSets.length === 0) {
     return { ...input, filters: baseFilters };
@@ -1175,16 +1218,30 @@ function buildCrudSearchCondition<TTable extends PgTable>({
     return undefined;
   }
 
-  const conditions = searchColumns
-    .map((columnRef) =>
-      resolveColumnTarget({
-        table,
-        columnId: getColumnRefId(columnRef),
-        allowedColumns: searchColumns,
-      }),
-    )
-    .filter((column): column is ColumnTarget => column !== undefined)
-    .map((column) => sql`${column}::text ilike ${`%${term}%`}`);
+  const conditions = searchColumns.flatMap((columnRef) => {
+    const column = resolveColumnTarget({
+      table,
+      columnId: getColumnRefId(columnRef),
+      allowedColumns: searchColumns,
+    });
+    if (!column) return [];
+
+    const pattern = `%${term}%`;
+    const isJsonTextExpression =
+      typeof columnRef !== 'string' &&
+      columnRef.expression === undefined &&
+      columnRef.jsonField !== undefined;
+    const isTextColumn = 'dataType' in column && column.dataType === 'string';
+
+    // Only known text columns and the library's own JSON text expression stay
+    // unwrapped. Arbitrary SQL expressions may return non-text values, so they
+    // retain the compatibility cast unless they resolve to a text AnyColumn.
+    return [
+      isTextColumn || isJsonTextExpression
+        ? ilike(column, pattern)
+        : ilike(sql`${column}::text`, pattern),
+    ];
+  });
 
   if (conditions.length === 0) return undefined;
   if (conditions.length === 1) return conditions[0];
@@ -1369,6 +1426,52 @@ export function createCrudRouter<
   const getSoftDeleteColumn = () =>
     softDelete ? (table as any)[softDelete.column] : null;
 
+  const buildOrderByExpressions = (
+    requestedSort: Array<{ id: string; desc: boolean }> | undefined,
+    useCreatedAtDefault: boolean,
+  ): SQL[] => {
+    let sortFields: Array<{ id: string; desc: boolean }> = [];
+    if (requestedSort && requestedSort.length > 0) {
+      sortFields = requestedSort;
+    } else if (useCreatedAtDefault && getTableColumn(table, 'createdAt')) {
+      sortFields = [{ id: 'createdAt', desc: true }];
+    }
+    const expressions: SQL[] = [];
+    const appliedIds = new Set<string>();
+    let tieBreakerDesc = false;
+
+    for (const sortField of sortFields) {
+      if (
+        !appliedIds.has(sortField.id) &&
+        validateColumn(sortField.id, sortableColumns)
+      ) {
+        const column = resolveColumnTarget({
+          table,
+          columnId: sortField.id,
+          allowedColumns: sortableColumns,
+        });
+        if (column) {
+          if (expressions.length === 0) {
+            tieBreakerDesc = sortField.desc;
+          }
+          expressions.push(sortField.desc ? desc(column) : asc(column));
+          appliedIds.add(sortField.id);
+        }
+      }
+    }
+
+    // OFFSET pagination needs a deterministic order. Append the primary key
+    // whenever another sort is active so equal values cannot drift between pages.
+    if (expressions.length > 0 && !appliedIds.has(idField)) {
+      const idColumn = getTableColumn(table, idField);
+      if (idColumn) {
+        expressions.push(tieBreakerDesc ? desc(idColumn) : asc(idColumn));
+      }
+    }
+
+    return expressions;
+  };
+
   const buildWhere = (
     ctx: TContext,
     operation: CrudOperation,
@@ -1528,31 +1631,10 @@ export function createCrudRouter<
               query = query.where(where);
             }
 
-            const sortField =
-              effectiveInput.sort?.[0] ??
-              (getTableColumn(table, 'createdAt')
-                ? { id: 'createdAt', desc: true }
-                : undefined);
-            if (sortField) {
-              if (validateColumn(sortField.id, sortableColumns)) {
-                const column = resolveColumnTarget({
-                  table,
-                  columnId: sortField.id,
-                  allowedColumns: sortableColumns,
-                });
-                if (column) {
-                  query = query.orderBy(sortField.desc ? desc(column) : asc(column));
-                }
-              }
+            const orderByExpressions = buildOrderByExpressions(effectiveInput.sort, true);
+            if (orderByExpressions.length > 0) {
+              query = query.orderBy(...orderByExpressions);
             }
-
-            const data = await query.limit(effectiveInput.perPage).offset(offset);
-            const enrichedData = await enrichCrudRows(
-              ctx,
-              config,
-              idField,
-              data as Array<Record<string, unknown>>,
-            );
 
             let countQuery = ctx.db
               .select({ count: sql<number>`count(*)::int` })
@@ -1561,7 +1643,23 @@ export function createCrudRouter<
             if (where) {
               countQuery = countQuery.where(where);
             }
-            const countResult = await countQuery;
+
+            const dataPromise = Promise.resolve(
+              query.limit(effectiveInput.perPage).offset(offset),
+            );
+            const countPromise = Promise.resolve(countQuery);
+            const enrichedDataPromise = dataPromise.then(async (data) =>
+              enrichCrudRows(
+                ctx,
+                config,
+                idField,
+                data as Array<Record<string, unknown>>,
+              ),
+            );
+            const [enrichedData, countResult] = await Promise.all([
+              enrichedDataPromise,
+              countPromise,
+            ]);
             const count = countResult[0]?.count ?? 0;
 
             return {
@@ -1950,10 +2048,18 @@ export function createCrudRouter<
                     .from(table)
                     .where(where!);
                 }
-                await Promise.all(
-                  updated.map((row) =>
-                    saveCrudExtraValues(writeCtx, config, row[idField], splitUpdate),
-                  ),
+                const extensionRows = updated.flatMap((row) => {
+                  const extensionRow = createCrudExtensionValueWrite(
+                    row[idField],
+                    splitUpdate,
+                  );
+                  return extensionRow ? [extensionRow] : [];
+                });
+                await persistCrudExtensionValueWrites(
+                  writeCtx,
+                  config,
+                  extensionRows,
+                  true,
                 );
                 return { updated: updated.length };
               },
@@ -2154,27 +2260,13 @@ export function createCrudRouter<
               query = query.where(where);
             }
 
-            if (effectiveInput.sort?.length) {
-              const sortField = effectiveInput.sort[0];
-              if (sortField && validateColumn(sortField.id, sortableColumns)) {
-                const column = resolveColumnTarget({
-                  table,
-                  columnId: sortField.id,
-                  allowedColumns: sortableColumns,
-                });
-                if (column) {
-                  query = query.orderBy(sortField.desc ? desc(column) : asc(column));
-                }
-              }
-            }
-
-            const data = await query.limit(effectiveLimit);
-            const enrichedData = await enrichCrudRows(
-              ctx,
-              config,
-              idField,
-              data as Array<Record<string, unknown>>,
+            const orderByExpressions = buildOrderByExpressions(
+              effectiveInput.sort,
+              false,
             );
+            if (orderByExpressions.length > 0) {
+              query = query.orderBy(...orderByExpressions);
+            }
 
             // 查询总数以计算 hasMore
             let countQuery = ctx.db
@@ -2184,7 +2276,21 @@ export function createCrudRouter<
             if (where) {
               countQuery = countQuery.where(where);
             }
-            const countResult = await countQuery;
+
+            const dataPromise = Promise.resolve(query.limit(effectiveLimit));
+            const countPromise = Promise.resolve(countQuery);
+            const enrichedDataPromise = dataPromise.then(async (data) =>
+              enrichCrudRows(
+                ctx,
+                config,
+                idField,
+                data as Array<Record<string, unknown>>,
+              ),
+            );
+            const [enrichedData, countResult] = await Promise.all([
+              enrichedDataPromise,
+              countPromise,
+            ]);
             const total = countResult[0]?.count ?? 0;
 
             return {
@@ -2226,6 +2332,7 @@ export function createCrudRouter<
               splitCrudExtensionWriteInput(item, tableColumnNames),
             );
             assertCrudExtraValuesWritableForRows(ctx, config, splitItems);
+            assertCrudExtraValuesMappableForRows(splitItems, idField);
             return runCrudExtensionWriteTransaction(
               ctx,
               config,
@@ -2319,6 +2426,7 @@ export function createCrudRouter<
               return { success: 0, updated: 0, skipped: 0, failed };
             }
             assertCrudExtraValuesWritableForRows(ctx, config, validRows);
+            assertCrudExtraValuesMappableForRows(validRows, idField);
 
             const { insertedCount, updatedCount } =
               await runCrudExtensionWriteTransaction(

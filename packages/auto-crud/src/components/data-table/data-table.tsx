@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@wordrhyme/shadcn';
 import { getColumnPinningStyle } from '@/lib/data-table';
+import { useDateFormatterVersion } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface DataTableProps<TData> extends React.ComponentProps<'div'> {
@@ -25,6 +26,8 @@ export function DataTable<TData>({
   className,
   ...props
 }: DataTableProps<TData>) {
+  useDateFormatterVersion();
+
   return (
     <div
       className={cn('flex w-full flex-col gap-2.5 overflow-auto', className)}
