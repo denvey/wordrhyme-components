@@ -170,7 +170,8 @@ export { handler as GET, handler as POST };
 ```
 
 未传 `sort` 或传空数组时，如果表存在 `createdAt` 且未被 `sortableColumns`
-白名单排除，列表默认按 `createdAt` 降序返回。
+白名单排除，列表默认按 `createdAt` 降序返回。存在有效排序时，服务端会自动追加
+主键作为同方向的稳定排序条件，避免 OFFSET 分页在相同排序值之间漂移。
 
 **输出**:
 
@@ -1120,6 +1121,50 @@ createCrudRouter({
 
 ---
 
+## ⚡ 性能与索引
+
+- `list` 和 `export` 会并发执行数据查询与精确计数，降低一次数据库往返延迟。
+- 多字段 `sort` 会全部应用，并自动追加 `idField` 作为稳定 tie-breaker。
+- `perPage`、批量写入和导出都有上限，但深分页仍建议由业务 middleware 改为
+  cursor/keyset pagination。
+- 不要开放所有字段过滤和排序；请通过 `filters`、`sort`、`search` 白名单只暴露
+  已有索引支持的字段。
+
+常见列表至少应覆盖默认排序；有租户和软删除时可使用部分复合索引：
+
+```sql
+create index tasks_created_at_id_idx
+  on tasks (created_at desc, id desc);
+
+create index tasks_tenant_created_at_id_idx
+  on tasks (tenant_id, created_at desc, id desc)
+  where deleted_at is null;
+```
+
+`search` 的 contains 查询使用 `ILIKE '%term%'`。PostgreSQL 普通 B-tree 无法高效处理，
+应为真实文本列配置 `pg_trgm` GIN 索引；JSON/custom expression 需要与生成 SQL 一致的
+表达式索引。
+
+扩展字段 provider 可以实现批量写接口，避免 `createMany`、`updateMany` 和 `import`
+逐行访问数据库。未实现时仍兼容旧的 `saveExtraValues`：
+
+```typescript
+const extensions: CrudExtensionsProvider = {
+  saveExtraValuesMany: async ({ id, rows, tx }) => {
+    await saveExtensionRowsInOneStatement(tx, id, rows);
+  },
+};
+```
+
+`createMany` 和 `import` 中携带扩展字段的每一行都必须提供唯一、稳定的 `idField`。
+服务端只按显式 ID 关联 `RETURNING` 结果，不依赖数据库未承诺的返回顺序；无法可靠映射时
+会在写入前返回 `PRECONDITION_FAILED`。
+
+任意组合筛选的列表缓存失效成本较高。优先优化索引和查询计划；metadata 或低频变更的
+无筛选计数才适合按 TTL 缓存。
+
+---
+
 ## 📦 导出的类型
 
 ```typescript
@@ -1134,6 +1179,8 @@ export type {
   CrudColumnConfig,
   CrudColumnExpression,
   CrudColumnRef,
+  CrudExtensionValueWrite,
+  CrudExtensionsProvider,
   CrudRouterConfig,
   CrudMiddleware,
   GetInput,

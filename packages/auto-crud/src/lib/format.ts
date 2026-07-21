@@ -1,3 +1,5 @@
+import { useSyncExternalStore } from 'react';
+
 export type DateFormatter = (date: Date, options: Intl.DateTimeFormatOptions) => string;
 
 interface DateFormatterRegistration {
@@ -6,6 +8,32 @@ interface DateFormatterRegistration {
 }
 
 let hostDateFormatters: DateFormatterRegistration[] = [];
+let dateFormatterVersion = 0;
+const dateFormatterListeners = new Set<() => void>();
+
+function notifyDateFormatterChange(): void {
+  dateFormatterVersion += 1;
+  dateFormatterListeners.forEach((listener) => listener());
+}
+
+function subscribeDateFormatter(listener: () => void): () => void {
+  dateFormatterListeners.add(listener);
+  return () => {
+    dateFormatterListeners.delete(listener);
+  };
+}
+
+function getDateFormatterVersion(): number {
+  return dateFormatterVersion;
+}
+
+export function useDateFormatterVersion(): number {
+  return useSyncExternalStore(
+    subscribeDateFormatter,
+    getDateFormatterVersion,
+    getDateFormatterVersion,
+  );
+}
 
 function getHostDateFormatter(): DateFormatter | undefined {
   return hostDateFormatters[hostDateFormatters.length - 1]?.formatter;
@@ -19,17 +47,28 @@ function getHostDateFormatter(): DateFormatter | undefined {
  */
 export function setDateFormatter(formatter?: DateFormatter): () => void {
   if (formatter === undefined) {
+    const hadFormatter = hostDateFormatters.length > 0;
     hostDateFormatters = [];
+    if (hadFormatter) notifyDateFormatterChange();
     return () => undefined;
   }
 
   const registration = { formatter, token: Symbol('date-formatter') };
   hostDateFormatters.push(registration);
+  notifyDateFormatterChange();
 
   return () => {
+    const currentFormatter = getHostDateFormatter();
+    const previousLength = hostDateFormatters.length;
     hostDateFormatters = hostDateFormatters.filter(
       ({ token }) => token !== registration.token,
     );
+    if (
+      hostDateFormatters.length !== previousLength &&
+      getHostDateFormatter() !== currentFormatter
+    ) {
+      notifyDateFormatterChange();
+    }
   };
 }
 
