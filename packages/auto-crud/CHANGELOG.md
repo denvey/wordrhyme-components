@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.5.1
+
+### Patch Changes
+
+- 0360609: Refresh mounted DataTable cells when the host date formatter changes while preserving safe out-of-order formatter cleanup.
+
 ## 1.5.0
 
 ### Minor Changes

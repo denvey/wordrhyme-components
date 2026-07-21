@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 1.4.0
+
+### Minor Changes
+
+- 0360609: Run list and export count queries concurrently, apply stable multi-column sorting, preserve indexable text and JSON search targets, and add bulk CRUD extension persistence with a backward-compatible per-row fallback. Batch extension writes now require stable unique ids so returned rows are never associated by position.
+
 ## 1.3.1
 
 ### Patch Changes
