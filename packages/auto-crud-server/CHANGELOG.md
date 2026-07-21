@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 1.3.1
+
+### Patch Changes
+
+- 36052f0: Import date helpers from their dedicated date-fns entry points to avoid loading the full package graph in Node.js processes.
+
 ## 1.3.0
 
 ### Minor Changes
