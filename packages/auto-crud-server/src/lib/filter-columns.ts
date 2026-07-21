@@ -1,4 +1,6 @@
-import { addDays, endOfDay, startOfDay } from 'date-fns';
+import { addDays } from 'date-fns/addDays';
+import { endOfDay } from 'date-fns/endOfDay';
+import { startOfDay } from 'date-fns/startOfDay';
 import {
   type AnyColumn,
   and,
