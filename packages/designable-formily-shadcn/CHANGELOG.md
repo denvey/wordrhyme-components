@@ -1,5 +1,14 @@
 # @wordrhyme/designable-formily-shadcn
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [f6ad223]
+  - @wordrhyme/shadcn@1.3.3
+  - @wordrhyme/formily-shadcn@1.13.3
+  - @wordrhyme/shadcn-ui@1.32.8
+
 ## 0.2.2
 
 ### Patch Changes

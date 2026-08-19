@@ -1,5 +1,12 @@
 # @wordrhyme/design-engine
 
+## 0.2.3
+
+### Patch Changes
+
+- @wordrhyme/designable-formily-shadcn@0.2.3
+- @wordrhyme/formily-shadcn@1.13.3
+
 ## 0.2.2
 
 ### Patch Changes

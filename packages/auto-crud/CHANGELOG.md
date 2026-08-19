@@ -1,5 +1,14 @@
 # @wordrhyme/auto-crud
 
+## 1.5.2
+
+### Patch Changes
+
+- Updated dependencies [f6ad223]
+  - @wordrhyme/shadcn@1.3.3
+  - @wordrhyme/formily-shadcn@1.13.3
+  - @wordrhyme/shadcn-ui@1.32.8
+
 ## 1.5.1
 
 ### Patch Changes

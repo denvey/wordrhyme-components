@@ -1,5 +1,12 @@
 # @pixpilot/shadcn-ui
 
+## 1.32.8
+
+### Patch Changes
+
+- Updated dependencies [f6ad223]
+  - @wordrhyme/shadcn@1.3.3
+
 ## 1.32.7
 
 ### Patch Changes
