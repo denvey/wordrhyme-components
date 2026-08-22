@@ -1,5 +1,11 @@
 # @pixpilot/shadcn
 
+## 1.3.4
+
+### Patch Changes
+
+- d227d42: Match select trigger typography to inputs on narrow screens.
+
 ## 1.3.3
 
 ### Patch Changes
