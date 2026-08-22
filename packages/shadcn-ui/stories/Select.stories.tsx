@@ -113,6 +113,10 @@ export const SearchableMultiple: Story = {
       { value: 'design', label: 'Design' },
       { value: 'frontend', label: 'Frontend' },
       { value: 'backend', label: 'Backend' },
+      {
+        value: 'backend-platform',
+        label: 'Backend platform and infrastructure operations',
+      },
       { value: 'ops', label: 'Operations' },
     ],
     placeholder: 'Choose teams',
