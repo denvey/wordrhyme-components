@@ -181,28 +181,37 @@ function DefaultMultiComboboxTrigger({
       role="combobox"
       aria-expanded={open}
       disabled={disabled}
-      className={cn('w-full justify-between', className)}
+      className={cn('w-full justify-start gap-2 px-1.5 py-2', className)}
     >
-      <span className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
+      <span className="flex min-w-0 items-center gap-1 overflow-hidden">
         {selectedValues.length === 0 ? (
           <span className="truncate text-muted-foreground">{placeholder}</span>
         ) : selectedOptions.length <= 2 ? (
-          selectedOptions.map((option) => (
-            <Badge
-              key={option.value}
-              variant="secondary"
-              className="max-w-[8rem] rounded-sm px-1 font-normal"
-            >
-              <span className="truncate">{option.label}</span>
-            </Badge>
-          ))
+          selectedOptions.map((option, index) => {
+            const label = getOptionText(option);
+            const isLastSelectedOption = index === selectedOptions.length - 1;
+
+            return (
+              <Badge
+                key={option.value}
+                variant="secondary"
+                title={label}
+                className={cn(
+                  'min-w-0 max-w-[8rem] rounded-sm px-1 text-sm font-normal',
+                  isLastSelectedOption ? 'shrink' : 'shrink-0',
+                )}
+              >
+                <span className="min-w-0 truncate">{option.label}</span>
+              </Badge>
+            );
+          })
         ) : (
-          <Badge variant="secondary" className="rounded-sm px-1 font-normal">
+          <Badge variant="secondary" className="rounded-sm px-1 text-sm font-normal">
             {selectedValues.length} {selectedText}
           </Badge>
         )}
       </span>
-      <span className="ml-2 flex shrink-0 items-center gap-1">
+      <span className="ml-auto flex shrink-0 items-center gap-1">
         {selectedValues.length > 0 && !readOnly && (
           <span
             role="button"
@@ -401,7 +410,14 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
               : undefined
           }
         >
-          <Command className={className} filter={filter} {...commandProps}>
+          <Command
+            className={className}
+            filter={filter}
+            {...commandProps}
+            defaultValue={
+              selectionMode === 'single' ? selectedOptions[0]?.value : undefined
+            }
+          >
             <CommandInput
               placeholder={searchPlaceholder}
               value={currentSearchValue}
@@ -424,13 +440,9 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
                       <CommandItem
                         key={option.value}
                         value={option.value}
+                        title={getOptionText(option)}
                         keywords={getOptionKeywords(option)}
                         disabled={option.disabled}
-                        className={cn(
-                          selectionMode === 'single' &&
-                            isSelected &&
-                            'bg-accent text-accent-foreground',
-                        )}
                         onSelect={() => onItemSelect(option)}
                       >
                         {isMultiple && (
@@ -451,7 +463,7 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
                           </div>
                         )}
                         {Icon && <Icon className="size-4" />}
-                        <span className="truncate">{getOptionText(option)}</span>
+                        <span className="min-w-0 truncate">{getOptionText(option)}</span>
                         {option.count !== undefined && (
                           <span className="ml-auto font-mono text-xs">
                             {option.count}
