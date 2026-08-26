@@ -675,7 +675,11 @@ function resolveColumnTarget<TTable extends PgTable>({
 }
 
 const CRUD_EXTENSION_FILTER_ID = 'auto-crud-extension-filter';
-const NO_CRUD_EXTENSION_MATCH = '__auto_crud_no_crud_extension_match__';
+const CRUD_EXTENSION_SEARCH_IDS = Symbol('auto-crud-extension-search-ids');
+
+type CrudExtensionInput = (ListInput | ExportInput) & {
+  [CRUD_EXTENSION_SEARCH_IDS]?: string[];
+};
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -1108,7 +1112,7 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
   filterableColumns: CrudColumnCapability<TTable> | undefined,
   searchColumns: CrudColumnCapability<TTable> | undefined,
   input: ListInput | ExportInput,
-): Promise<ListInput | ExportInput> {
+): Promise<CrudExtensionInput> {
   const target = readCrudTarget(config);
   const filters = input.filters ?? [];
   const search = typeof input.search === 'string' ? input.search.trim() : '';
@@ -1157,14 +1161,13 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
     );
   }
 
+  let extensionSearchIds: string[] | undefined;
   if (search && !searchDisabled && provider?.searchEntityIds) {
-    matchRequests.push(
-      provider.searchEntityIds({
-        id: target.id,
-        search,
-        limit: 5000,
-      }),
-    );
+    extensionSearchIds = await provider.searchEntityIds({
+      id: target.id,
+      search,
+      limit: 5000,
+    });
   } else if (
     search &&
     !searchDisabled &&
@@ -1180,8 +1183,13 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
     (matchedIds) => new Set(matchedIds),
   );
 
+  const effectiveInput: CrudExtensionInput =
+    extensionSearchIds === undefined
+      ? input
+      : { ...input, [CRUD_EXTENSION_SEARCH_IDS]: extensionSearchIds };
+
   if (matchedSets.length === 0) {
-    return { ...input, filters: baseFilters };
+    return { ...effectiveInput, filters: baseFilters };
   }
 
   let matchedIds = matchedSets[0] ? [...matchedSets[0]] : [];
@@ -1190,18 +1198,36 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
   }
 
   return {
-    ...input,
+    ...effectiveInput,
     filters: [
       ...baseFilters,
       {
         id: idField,
-        value: matchedIds.length > 0 ? matchedIds : [NO_CRUD_EXTENSION_MATCH],
+        value: matchedIds,
         variant: 'multiSelect',
         operator: 'inArray',
         filterId: CRUD_EXTENSION_FILTER_ID,
       },
     ],
   };
+}
+
+function buildCrudSearchWithExtensions<TTable extends PgTable>(
+  table: TTable,
+  idField: string,
+  input: CrudExtensionInput,
+  searchColumns: CrudColumnCapability<TTable> | undefined,
+): SQL | undefined {
+  const baseCondition = buildCrudSearchCondition({
+    table,
+    search: input.search,
+    searchColumns,
+  });
+  const extensionIds = input[CRUD_EXTENSION_SEARCH_IDS];
+  if (extensionIds === undefined) return baseCondition;
+
+  const extensionCondition = inArray(getTableColumn(table, idField)!, extensionIds);
+  return baseCondition ? or(baseCondition, extensionCondition) : extensionCondition;
 }
 
 function buildCrudSearchCondition<TTable extends PgTable>({
@@ -1615,11 +1641,12 @@ export function createCrudRouter<
                 })
               : undefined;
 
-            const searchCondition = buildCrudSearchCondition({
+            const searchCondition = buildCrudSearchWithExtensions(
               table,
-              search: effectiveInput.search,
+              idField,
+              effectiveInput,
               searchColumns,
-            });
+            );
             const where = buildWhere(
               ctx,
               'list',
@@ -2244,11 +2271,12 @@ export function createCrudRouter<
                 })
               : undefined;
 
-            const searchCondition = buildCrudSearchCondition({
+            const searchCondition = buildCrudSearchWithExtensions(
               table,
-              search: effectiveInput.search,
+              idField,
+              effectiveInput,
               searchColumns,
-            });
+            );
             const where = buildWhere(
               ctx,
               'export',
