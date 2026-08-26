@@ -1,7 +1,14 @@
 import { describe, it, expect, vi } from 'vitest';
 import { z } from 'zod';
 import { sql } from 'drizzle-orm';
-import { integer, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import {
+  PgDialect,
+  bigint,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+} from 'drizzle-orm/pg-core';
 import {
   baseExportInputSchema,
   baseGetInputSchema,
@@ -220,6 +227,23 @@ const mockTable = {
   status: { dataType: 'string', name: 'status' },
   deletedAt: { dataType: 'date', name: 'deletedAt' },
 } as any;
+
+const bigintTasks = pgTable('bigint_tasks', {
+  id: bigint('id', { mode: 'string' }).primaryKey(),
+  title: text('title').notNull(),
+});
+
+const bigintTaskSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+});
+
+function listWhereQueries(db: ReturnType<typeof createListMockDb>) {
+  const dialect = new PgDialect();
+  return db.builders.map((builder) =>
+    dialect.sqlToQuery(builder.where.mock.calls[0]?.[0] as never),
+  );
+}
 
 // Mock procedure
 const mockProcedure = {
@@ -1787,6 +1811,88 @@ describe('createCrudRouter', () => {
       });
       expect(db.builders[0]?.where).toHaveBeenCalled();
       expect(db.builders[1]?.where).toHaveBeenCalled();
+    });
+
+    it('should keep bigint base search matches when extension search is empty', async () => {
+      const db = createListMockDb([
+        { id: '1', title: 'needle', status: 'todo', createdAt: new Date() },
+      ]);
+      const searchEntityIds = vi.fn().mockResolvedValue([]);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.bigint-tasks',
+        table: bigintTasks,
+        schema: bigintTaskSchema.omit({ id: true }),
+        updateSchema: bigintTaskSchema.omit({ id: true }).partial(),
+        selectSchema: bigintTaskSchema,
+        searchColumns: ['title'],
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: { searchEntityIds },
+      } as any) as CrudCaller;
+
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        search: 'needle',
+        joinOperator: 'and',
+      });
+      await caller.export({
+        limit: 10,
+        search: 'needle',
+        joinOperator: 'and',
+      });
+
+      expect(searchEntityIds).toHaveBeenCalledTimes(2);
+      const queries = listWhereQueries(db);
+      expect(queries).toHaveLength(4);
+      for (const query of queries) {
+        expect(query.sql).toContain(' or false');
+        expect(query.params).toContain('%needle%');
+        expect(query.params).not.toContain('__auto_crud_no_crud_extension_match__');
+      }
+    });
+
+    it('should use a type-safe false condition for empty bigint extension filters', async () => {
+      const db = createListMockDb([]);
+      const matchEntityIds = vi.fn().mockResolvedValue([]);
+      const crudRouter = createCrudRouter({
+        id: 'com.example.bigint-tasks',
+        table: bigintTasks,
+        schema: bigintTaskSchema.omit({ id: true }),
+        updateSchema: bigintTaskSchema.omit({ id: true }).partial(),
+        selectSchema: bigintTaskSchema,
+        filterableColumns: ['id'],
+      });
+
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: { matchEntityIds },
+      } as any) as ListCaller;
+
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        filters: [
+          {
+            id: 'owner',
+            value: 'missing',
+            operator: 'eq',
+            variant: 'select',
+            filterId: 'owner',
+          },
+        ],
+        joinOperator: 'and',
+      });
+
+      expect(matchEntityIds).toHaveBeenCalledOnce();
+      const queries = listWhereQueries(db);
+      expect(queries).toHaveLength(2);
+      for (const query of queries) {
+        expect(query.sql).toBe('false');
+        expect(query.params).toEqual([]);
+      }
     });
 
     it('should resolve extension filters and search concurrently', async () => {
