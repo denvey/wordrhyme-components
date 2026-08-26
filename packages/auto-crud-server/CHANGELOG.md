@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 1.4.1
+
+### Patch Changes
+
+- fd5a82d: Combine base and extension search results with OR semantics and use a type-safe false condition for empty extension ID matches.
+
 ## 1.4.0
 
 ### Minor Changes
