@@ -41,6 +41,7 @@ function makeTable() {
     getAllColumns: () => [column],
     getFilteredSelectedRowModel: () => ({ rows: [] }),
     getFilteredRowModel: () => ({ rows: [row] }),
+    getRowCount: () => 394,
     getState: () => ({ pagination: { pageSize: 10, pageIndex: 0 } }),
     getPageCount: () => 1,
     getCanPreviousPage: () => false,
@@ -78,6 +79,12 @@ describe('data table date formatter', () => {
       disposeFirst();
     });
     expect(screen.getByText(defaultValue)).toBeTruthy();
+  });
+
+  it('shows the total number of rows matching the current query', () => {
+    render(<DataTable table={makeTable() as never} />);
+
+    expect(screen.getByText('Total: 394')).toBeTruthy();
   });
 
   it('keeps the latest formatter when an older registration is released first', () => {

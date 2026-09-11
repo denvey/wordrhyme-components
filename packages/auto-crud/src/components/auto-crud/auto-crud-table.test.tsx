@@ -84,6 +84,7 @@ function queryDynamicFilterTrigger() {
 function createResource(
   options: {
     data?: Row[];
+    total?: number;
     idKey?: UseAutoCrudResourceReturn<typeof schema, Row>['idKey'];
     isFetching?: boolean;
     modal?: Partial<UseAutoCrudResourceReturn<typeof schema, Row>['modal']>;
@@ -102,6 +103,7 @@ function createResource(
     tableData: {
       data: options.data ?? [{ id: '1', region: 'west' }],
       pageCount: 1,
+      ...(options.total !== undefined ? { total: options.total } : {}),
       isLoading: false,
       isFetching: options.isFetching ?? false,
     },
@@ -261,6 +263,12 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
     await waitFor(() =>
       expect(loader).toHaveBeenCalledWith(expect.objectContaining({ type: 'filter' })),
     );
+  });
+
+  it('shows the total returned for the current query', () => {
+    render(<AutoCrudTable schema={schema} resource={createResource({ total: 394 })} />);
+
+    expect(screen.getByText('Total: 394')).toBeTruthy();
   });
 
   it('passes simple filter search text to searchable dataSource loaders', async () => {
