@@ -98,6 +98,8 @@ export interface FieldOption {
   disabled?: boolean;
 }
 
+export type FieldTableDisplay = 'auto' | 'text' | 'badge' | 'date' | 'datetime';
+
 /**
  * 统一字段配置
  * 支持共用配置 + 表格/表单特定配置
@@ -129,8 +131,16 @@ export interface Field {
     | {
         /** 是否在表格中隐藏 */
         hidden?: boolean;
+        /** 表格列标签 */
+        label?: string;
         /** 排序权重，数值越小越靠前 */
         index?: number;
+        /** 仅用于表格展示的静态值标签 */
+        options?: FieldOption[];
+        /** 仅用于表格展示的动态值标签源 */
+        dataSource?: AutoCrudDataSourceConfig;
+        /** 声明式单元格展示模式；非 auto 模式会覆盖拥有方自定义 cell */
+        display?: FieldTableDisplay;
         /** 筛选器配置 */
         meta?: Record<string, unknown>;
         /** 其他列配置 */
@@ -631,6 +641,28 @@ function mergeFields(
   );
 }
 
+function applyResourceTablePresentation(
+  fields: Fields | undefined,
+  resourceFields: Fields | undefined,
+): Fields | undefined {
+  if (!fields || !resourceFields) return fields;
+
+  return Object.fromEntries(
+    Object.entries(fields).map(([key, config]) => {
+      const table = resourceFields[key]?.table;
+      return [
+        key,
+        table === undefined
+          ? config
+          : {
+              ...config,
+              table: mergeFieldPart(config.table, table),
+            },
+      ];
+    }),
+  );
+}
+
 function normalizeFieldOptions(options?: FieldOption[]): FieldOption[] | undefined {
   if (!options || options.length === 0) return undefined;
 
@@ -638,6 +670,21 @@ function normalizeFieldOptions(options?: FieldOption[]): FieldOption[] | undefin
     ...option,
     value: String(option.value),
   }));
+}
+
+function getTableConfig(config: Field) {
+  return config.table && typeof config.table === 'object' ? config.table : undefined;
+}
+
+function getTableOptions(config: Field): FieldOption[] | undefined {
+  const table = getTableConfig(config);
+  if (table?.options) return normalizeFieldOptions(table.options);
+  if (table?.dataSource) return undefined;
+  return normalizeFieldOptions(config.enum);
+}
+
+function getTableDataSource(config: Field): AutoCrudDataSourceConfig | undefined {
+  return getTableConfig(config)?.dataSource ?? config.dataSource;
 }
 
 function toTableOptions(options?: FieldOption[]) {
@@ -805,8 +852,8 @@ function shouldResolveOptions(
 ): config is Field {
   if (!config) return false;
   if (hiddenColumns.has(field)) return false;
-  if (normalizeFieldOptions(config.enum)) return false;
-  return normalizeDataSourceConfig(config.dataSource) !== undefined;
+  if (getTableOptions(config)) return false;
+  return normalizeDataSourceConfig(getTableDataSource(config)) !== undefined;
 }
 
 function useRegistryVersion(subscribe: (listener: () => void) => () => void) {
@@ -1228,7 +1275,7 @@ function useDynamicResolveOptions(
     return Object.entries(fields).flatMap(([field, config]) => {
       if (!shouldResolveOptions(field, config, hiddenSet)) return [];
 
-      const source = normalizeDataSourceConfig(config.dataSource);
+      const source = normalizeDataSourceConfig(getTableDataSource(config));
       const values = getResolveValues(rows, field);
       return source && values.length > 0 ? [{ field, values, source }] : [];
     });
@@ -1397,6 +1444,8 @@ function buildTableOverrides(
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
       const fieldOptions = normalizeFieldOptions(config.enum);
+      const tableConfig = getTableConfig(config);
+      const presentationOptions = getTableOptions(config);
       const tableOptions = toTableOptions(fieldOptions);
       const filterDataSourceRegistered = dynamicFilterState?.registeredByField[key];
       const filterDataSourceSearchable = dynamicFilterState?.searchableByField[key];
@@ -1410,16 +1459,19 @@ function buildTableOverrides(
             dynamicFilterState?.optionsByField[key] ??
             [])
           : undefined;
-      const dynamicResolveOptions = !fieldOptions
+      const dynamicResolveOptions = !presentationOptions
         ? dynamicResolveState?.optionsByField[key]
         : undefined;
-      const mergedDynamicOptions = mergeFieldOptions(
+      const sharedDynamicResolveOptions = tableConfig?.dataSource
+        ? undefined
+        : dynamicResolveOptions;
+      const mergedSharedDynamicOptions = mergeFieldOptions(
         dynamicFilterLabelOptions,
-        dynamicResolveOptions,
+        sharedDynamicResolveOptions,
       );
       const dynamicOptions =
-        !fieldOptions && mergedDynamicOptions
-          ? toTableOptions(mergedDynamicOptions)
+        !fieldOptions && mergedSharedDynamicOptions
+          ? toTableOptions(mergedSharedDynamicOptions)
           : undefined;
 
       // 提取 table.meta（无论 filter 配置如何都需要保留）
@@ -1527,11 +1579,31 @@ function buildTableOverrides(
       }
       // 处理 table 对象配置
       else if (config.table && typeof config.table === 'object') {
-        const { meta, ...tableProps } = config.table;
+        const { meta, display, ...tableProps } = config.table;
+        delete tableProps.options;
+        delete tableProps.dataSource;
         result[key] = {
           ...result[key],
           ...tableProps,
         };
+
+        const hasTableLabels =
+          config.table.options !== undefined || config.table.dataSource !== undefined;
+        if ((display && display !== 'auto') || hasTableLabels) {
+          const options =
+            presentationOptions ?? dynamicResolveOptions ?? mergedSharedDynamicOptions;
+          result[key] = {
+            ...result[key],
+            cell: ({ row }: { row: { getValue: (field: string) => unknown } }) =>
+              renderFieldValue(
+                row.getValue(key),
+                'string',
+                { true: 'true', false: 'false' },
+                options,
+                display ?? 'auto',
+              ),
+          };
+        }
       }
     }
   }
@@ -1632,16 +1704,22 @@ function buildHiddenColumns(
         hidden.delete(key);
       }
 
-      // 检查全局隐藏
-      if (config.hidden) {
+      // table.hidden 是表格专属显隐声明，优先于共用 hidden。
+      if (
+        config.table &&
+        typeof config.table === 'object' &&
+        config.table.hidden === false
+      ) {
+        if (!legacyHiddenSet.has(key) && !denySet.has(key)) hidden.delete(key);
+      } else if (config.hidden) {
         hidden.add(key);
-      }
-      // 检查 table: false 简写
-      else if (config.table === false) {
+      } else if (config.table === false) {
         hidden.add(key);
-      }
-      // 检查 table.hidden 配置
-      else if (config.table && typeof config.table === 'object' && config.table.hidden) {
+      } else if (
+        config.table &&
+        typeof config.table === 'object' &&
+        config.table.hidden
+      ) {
         hidden.add(key);
       }
     }
@@ -1718,12 +1796,44 @@ function renderFieldValue(
   type: string,
   booleanLocale: { true: string; false: string },
   options?: FieldOption[],
+  display: FieldTableDisplay = 'auto',
 ): React.ReactNode {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground">-</span>;
   }
 
-  if (options && options.length > 0) {
+  const renderText = (item: unknown) => getOptionLabel(item, options);
+
+  if (display === 'text') {
+    return Array.isArray(value) ? value.map(renderText).join(', ') : renderText(value);
+  }
+
+  if (display === 'date' || display === 'datetime') {
+    return formatDate(value as Date, {}, display);
+  }
+
+  if (display === 'badge' && (!options || options.length === 0)) {
+    if (Array.isArray(value)) {
+      return (
+        <div className="flex gap-1 flex-wrap">
+          {value.slice(0, 5).map((item, index) => (
+            <Badge key={index} variant="secondary">
+              {String(item)}
+            </Badge>
+          ))}
+          {value.length > 5 && <Badge variant="outline">+{value.length - 5}</Badge>}
+        </div>
+      );
+    }
+
+    return (
+      <Badge variant="outline" className="capitalize">
+        {String(value)}
+      </Badge>
+    );
+  }
+
+  if ((display === 'badge' || display === 'auto') && options && options.length > 0) {
     if (Array.isArray(value)) {
       return (
         <div className="flex gap-1 flex-wrap">
@@ -2025,7 +2135,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const locale = resolveLocale(localeProp);
   const resolvedSchema = resource.schema ?? schema;
   const resolvedFields = React.useMemo<Fields>(
-    () => mergeFields(resource.fields, fields) ?? {},
+    () =>
+      applyResourceTablePresentation(
+        mergeFields(resource.fields, fields),
+        resource.fields,
+      ) ?? {},
     [fields, resource.fields],
   );
 
@@ -2065,13 +2179,21 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     resource.tableData.data as readonly Record<string, unknown>[],
     hiddenColumns,
   );
-  const dynamicOptionsByField = React.useMemo(
+  const viewDynamicOptionsByField = React.useMemo(
     () =>
       mergeOptionsByField(
         dynamicFilterOptions.labelOptionsByField,
-        dynamicResolveOptions.optionsByField,
+        Object.fromEntries(
+          Object.entries(dynamicResolveOptions.optionsByField).filter(
+            ([field]) => !getTableConfig(resolvedFields[field] ?? {})?.dataSource,
+          ),
+        ),
       ),
-    [dynamicFilterOptions.labelOptionsByField, dynamicResolveOptions.optionsByField],
+    [
+      dynamicFilterOptions.labelOptionsByField,
+      dynamicResolveOptions.optionsByField,
+      resolvedFields,
+    ],
   );
   const resourceIdKey = resource.idKey ?? 'id';
   const actionRegistryVersion = useCrudActionsVersion();
@@ -2558,7 +2680,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.modal.selected}
         schema={resolvedSchema}
         fields={resolvedFields}
-        dynamicOptions={dynamicOptionsByField}
+        dynamicOptions={viewDynamicOptionsByField}
         denyFields={denyFields}
         locale={locale}
       />
