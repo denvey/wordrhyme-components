@@ -22,6 +22,10 @@ export function DataTablePagination<TData>({
   className,
   ...props
 }: DataTablePaginationProps<TData>) {
+  const total =
+    table.options.rowCount ??
+    (table.options.manualPagination ? undefined : table.getRowCount());
+
   return (
     <div
       className={cn(
@@ -35,7 +39,7 @@ export function DataTablePagination<TData>({
           {table.getFilteredSelectedRowModel().rows.length} of{' '}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </span>
-        <span>Total: {table.getRowCount()}</span>
+        {total !== undefined && <span>Total: {total}</span>}
       </div>
       <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
         <div className="flex items-center space-x-2">
