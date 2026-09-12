@@ -46,18 +46,32 @@ function getHostDateFormatter(): DateFormatter | undefined {
 }
 
 const canonicalDatePattern = /^(\d{4})-(\d{2})-(\d{2})$/;
+const canonicalDateTimePrefixPattern = /^(\d{4})-(\d{2})-(\d{2})(?=[T ])/;
+
+function isValidCalendarDate(
+  year: string | undefined,
+  month: string | undefined,
+  day: string | undefined,
+): boolean {
+  if (!year || !month || !day) return false;
+
+  const date = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+  return (
+    !Number.isNaN(date.getTime()) &&
+    date.getUTCFullYear() === Number(year) &&
+    date.getUTCMonth() + 1 === Number(month) &&
+    date.getUTCDate() === Number(day)
+  );
+}
 
 function isValidCanonicalDate(value: string): boolean {
   const match = canonicalDatePattern.exec(value);
-  if (!match) return false;
+  return !!match && isValidCalendarDate(match[1], match[2], match[3]);
+}
 
-  const date = new Date(`${value}T00:00:00.000Z`);
-  return (
-    !Number.isNaN(date.getTime()) &&
-    date.getUTCFullYear() === Number(match[1]) &&
-    date.getUTCMonth() + 1 === Number(match[2]) &&
-    date.getUTCDate() === Number(match[3])
-  );
+function hasValidCanonicalDateTimePrefix(value: string): boolean {
+  const match = canonicalDateTimePrefixPattern.exec(value);
+  return !match || isValidCalendarDate(match[1], match[2], match[3]);
 }
 
 /**
@@ -102,14 +116,29 @@ export function formatDate(
   if (preset === 'date' && typeof date === 'string' && canonicalDatePattern.test(date)) {
     return isValidCanonicalDate(date) ? date : '';
   }
+  if (
+    preset === 'datetime' &&
+    typeof date === 'string' &&
+    !hasValidCanonicalDateTimePrefix(date)
+  ) {
+    return '';
+  }
 
   try {
     const value = new Date(date);
     if (Number.isNaN(value.getTime())) return '';
     const options = {
-      month: opts.month ?? 'long',
-      day: opts.day ?? 'numeric',
+      month: opts.month ?? (preset ? '2-digit' : 'long'),
+      day: opts.day ?? (preset ? '2-digit' : 'numeric'),
       year: opts.year ?? 'numeric',
+      ...(preset === 'datetime'
+        ? {
+            hour: opts.hour ?? ('2-digit' as const),
+            minute: opts.minute ?? ('2-digit' as const),
+            second: opts.second ?? ('2-digit' as const),
+            hourCycle: opts.hourCycle ?? ('h23' as const),
+          }
+        : {}),
       ...opts,
     } satisfies Intl.DateTimeFormatOptions;
     const hostDateFormatter = getHostDateFormatter();

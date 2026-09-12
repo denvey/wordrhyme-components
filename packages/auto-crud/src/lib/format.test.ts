@@ -31,6 +31,17 @@ describe('formatDate host adapter', () => {
     );
   });
 
+  it('provides time options to existing two-argument host formatters', () => {
+    const formatter = vi.fn((_date: Date, options: Intl.DateTimeFormatOptions) =>
+      [options.hour, options.minute, options.second, options.hourCycle].join(','),
+    );
+    setDateFormatter(formatter);
+
+    expect(formatDate('2026-07-15T08:09:10.000Z', {}, 'datetime')).toBe(
+      '2-digit,2-digit,2-digit,h23',
+    );
+  });
+
   it('formats canonical date-time values without a host adapter', () => {
     const result = formatDate('2026-07-15T08:09:10', {}, 'datetime');
 
@@ -53,6 +64,18 @@ describe('formatDate host adapter', () => {
     expect(formatDate('2026-02-29', {}, 'date')).toBe('');
     expect(formatDate('2028-02-29', {}, 'date')).toBe('2028-02-29');
     expect(formatter).not.toHaveBeenCalled();
+  });
+
+  it('rejects impossible calendar dates in canonical date-time values', () => {
+    const formatter = vi.fn(() => 'host-formatted');
+    setDateFormatter(formatter);
+
+    expect(formatDate('2026-02-29T08:09:10', {}, 'datetime')).toBe('');
+    expect(formatDate('2026-02-30T08:09:10.000Z', {}, 'datetime')).toBe('');
+    expect(formatDate('2028-02-29T08:09:10+08:00', {}, 'datetime')).toBe(
+      'host-formatted',
+    );
+    expect(formatter).toHaveBeenCalledTimes(1);
   });
 
   it('restores the previous formatter through the cleanup callback', () => {
