@@ -6,6 +6,7 @@ import type {
   UseAutoCrudResourceReturn,
 } from '@/hooks/use-auto-crud-resource';
 import { crudActions } from '@/lib/crud-actions';
+import { setDateFormatter } from '@/lib/format';
 import { dataSources } from '@/lib/registries';
 import type {
   AutoCrudToolbarContext,
@@ -96,6 +97,7 @@ function createResource(
       UseAutoCrudResourceReturn<typeof schema, Row>['handlers']['export']
     >;
     capabilities?: AutoCrudQueryCapabilities;
+    fields?: Fields;
   } = {},
 ): UseAutoCrudResourceReturn<typeof schema, Row> {
   const resource: UseAutoCrudResourceReturn<typeof schema, Row> = {
@@ -108,6 +110,7 @@ function createResource(
       isFetching: options.isFetching ?? false,
     },
     capabilities: options.capabilities,
+    fields: options.fields,
     modal: {
       createOpen: false,
       editOpen: false,
@@ -157,6 +160,7 @@ function createAuditResource(
       UseAutoCrudResourceReturn<typeof auditSchema, AuditRow>['handlers']['import']
     >;
     defaultSort?: UseAutoCrudResourceReturn<typeof auditSchema, AuditRow>['defaultSort'];
+    fields?: Fields;
   } = {},
 ): UseAutoCrudResourceReturn<typeof auditSchema, AuditRow> {
   return {
@@ -179,6 +183,7 @@ function createAuditResource(
       isFetching: false,
     },
     defaultSort: options.defaultSort,
+    fields: options.fields,
     modal: {
       createOpen: false,
       editOpen: false,
@@ -754,6 +759,7 @@ describe('auto-crud table toolbar resolver', () => {
   afterEach(() => {
     setToolbarResolver(null);
     crudActions.clear();
+    dataSources.unregister('test.dynamic-regions');
     cleanup();
     vi.clearAllMocks();
   });
@@ -1010,6 +1016,144 @@ describe('auto-crud table toolbar resolver', () => {
 
     expect(screen.queryAllByText('Creator Type').length).toBeGreaterThan(0);
     expect(screen.queryAllByText('Updated By Type')).toHaveLength(0);
+  });
+
+  it('lets resource metadata override owner field visibility and cell presentation', () => {
+    const dispose = setDateFormatter((_date, _options, preset) =>
+      preset === 'datetime' ? '2026-01-02 08:09:10' : 'unexpected',
+    );
+
+    try {
+      render(
+        <AutoCrudTable
+          id="com.example.records"
+          schema={auditSchema}
+          resource={createAuditResource({
+            fields: {
+              updatedAt: {
+                table: {
+                  hidden: false,
+                  display: 'datetime',
+                  label: 'Modified At',
+                },
+              },
+            },
+          })}
+          fields={{ updatedAt: { hidden: true } }}
+          table={{
+            overrides: {
+              updatedAt: { cell: () => 'owner cell' },
+            },
+          }}
+        />,
+      );
+
+      expect(screen.queryAllByText('Modified At').length).toBeGreaterThan(0);
+      expect(screen.getByText('2026-01-02 08:09:10')).toBeTruthy();
+      expect(screen.queryByText('owner cell')).toBeNull();
+    } finally {
+      act(() => dispose());
+    }
+  });
+
+  it('renders resolved option labels as plain text when requested by metadata', () => {
+    render(
+      <AutoCrudTable
+        id="com.example.records"
+        schema={schema}
+        resource={createResource({
+          fields: {
+            region: {
+              table: {
+                display: 'text',
+                options: [{ label: 'West Region', value: 'west' }],
+              },
+            },
+          },
+        })}
+        table={{ overrides: { region: { cell: () => 'owner cell' } } }}
+      />,
+    );
+
+    expect(screen.getByText('West Region')).toBeTruthy();
+    expect(screen.queryByText('owner cell')).toBeNull();
+  });
+
+  it('uses table-scoped labels with the automatic display mode', () => {
+    render(
+      <AutoCrudTable
+        id="com.example.records"
+        schema={schema}
+        resource={createResource({
+          fields: {
+            region: {
+              table: {
+                options: [{ label: 'West Region', value: 'west' }],
+              },
+            },
+          },
+        })}
+        table={{ overrides: { region: { cell: () => 'owner cell' } } }}
+      />,
+    );
+
+    expect(screen.getByText('West Region')).toBeTruthy();
+    expect(screen.queryByText('owner cell')).toBeNull();
+  });
+
+  it('keeps table-scoped data sources out of filters and the view modal', async () => {
+    const loader = vi.fn(() => [{ label: 'West Table Label', value: 'west' }]);
+    dataSources.register('test.dynamic-regions', loader);
+
+    render(
+      <AutoCrudTable
+        id="com.example.records"
+        schema={schema}
+        resource={createResource({
+          fields: {
+            region: {
+              table: {
+                display: 'text',
+                dataSource: 'test.dynamic-regions',
+              },
+            },
+          },
+          modal: {
+            viewOpen: true,
+            selected: { id: '1', region: 'west' },
+          },
+        })}
+        table={{ filterModes: ['simple'] }}
+      />,
+    );
+
+    await screen.findByText('West Table Label');
+    expect(screen.getByText('west')).toBeTruthy();
+    expect(loader).toHaveBeenCalledWith(
+      expect.objectContaining({ field: 'region', type: 'resolve' }),
+    );
+    expect(loader).not.toHaveBeenCalledWith(
+      expect.objectContaining({ field: 'region', type: 'filter' }),
+    );
+  });
+
+  it('keeps field permissions ahead of resource visibility metadata', () => {
+    render(
+      <AutoCrudTable
+        id="com.example.records"
+        schema={auditSchema}
+        resource={createAuditResource({
+          fields: {
+            updatedAt: {
+              table: { hidden: false, label: 'Modified At' },
+            },
+          },
+        })}
+        permissions={{ deny: ['updatedAt'] }}
+      />,
+    );
+
+    expect(screen.queryByText('Modified At')).toBeNull();
   });
 
   it('allows actor audit columns when legacy table overrides explicitly show them', () => {
@@ -1680,4 +1824,42 @@ describe('auto-crud table unified actions', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
     expect(screen.getByRole('button', { name: 'Legacy Batch 1' })).toBeTruthy();
   });
+});
+
+describe('table-only labels preserve shared detail labels', () => {
+  afterEach(() => {
+    cleanup();
+    dataSources.unregister('test.dynamic-regions');
+    dataSources.unregister('test.table-regions');
+  });
+  it.each(['static', 'dynamic'] as const)(
+    'preserves shared detail labels with %s table labels',
+    async (mode) => {
+      const loader = vi.fn(() => [{ label: 'Shared West Label', value: 'west' }]);
+      dataSources.register('test.dynamic-regions', loader);
+      dataSources.register('test.table-regions', () => [
+        { label: 'Table West Label', value: 'west' },
+      ]);
+      render(
+        <AutoCrudTable
+          schema={schema}
+          fields={displayFields}
+          resource={createResource({
+            fields: {
+              region: {
+                table:
+                  mode === 'static'
+                    ? { options: [{ label: 'Table West Label', value: 'west' }] }
+                    : { dataSource: 'test.table-regions' },
+              },
+            },
+            modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+          })}
+        />,
+      );
+      expect(await screen.findByText('Table West Label')).toBeTruthy();
+      await waitFor(() => expect(loader).toHaveBeenCalled());
+      expect(await screen.findByText('Shared West Label')).toBeTruthy();
+    },
+  );
 });

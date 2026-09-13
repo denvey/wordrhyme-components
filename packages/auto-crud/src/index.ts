@@ -3,6 +3,7 @@ export { AutoCrudTable } from './components/auto-crud/auto-crud-table';
 export type {
   Field,
   FieldOption,
+  FieldTableDisplay,
   Fields,
   FilterConfig,
   AutoCrudTableProps,
@@ -165,7 +166,7 @@ export type { DataSource, ListParams, ListResult } from './lib/data-source';
 
 // Utils
 export { formatDate, setDateFormatter } from './lib/format';
-export type { DateFormatter } from './lib/format';
+export type { DateFormatter, DateFormatPreset } from './lib/format';
 export { humanize } from './lib/humanize';
 export { cn } from './lib/utils';
 
