@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.5.4
+
+### Patch Changes
+
+- 20c85a3: Show the total number of rows matching the current search and filters in the table footer.
+
 ## 1.5.3
 
 ### Patch Changes
