@@ -2509,6 +2509,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.tableData.data}
         schema={resolvedSchema as TSchema}
         pageCount={resource.tableData.pageCount}
+        {...(resource.tableData.total !== undefined
+          ? { total: resource.tableData.total }
+          : {})}
         overrides={tableOverrides as any}
         exclude={hiddenColumns as any}
         filterMode={tableConfig?.filterModes}

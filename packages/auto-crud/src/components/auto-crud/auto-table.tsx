@@ -70,6 +70,8 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
   schema: T;
   data: z.infer<T>[];
   pageCount?: number;
+  /** Total rows matching the current search and filters. */
+  total?: number;
   overrides?: ColumnOverrides<z.infer<T>>;
   enableRowSelection?: boolean;
   exclude?: (keyof z.infer<T>)[];
@@ -122,6 +124,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   schema,
   data,
   pageCount = 1,
+  total,
   overrides,
   enableRowSelection = true,
   exclude,
@@ -199,6 +202,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     data,
     columns,
     pageCount,
+    ...(total !== undefined ? { rowCount: total } : {}),
     enableAdvancedFilter,
     initialState: stableInitialState,
     shallow: false,

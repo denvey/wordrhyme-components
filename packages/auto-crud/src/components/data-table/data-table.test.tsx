@@ -12,7 +12,7 @@ afterEach(() => {
   cleanup();
 });
 
-function makeTable() {
+function makeTable(total: number | null = 394) {
   const column = {
     columnDef: {
       cell: () => formatDate(DATE),
@@ -36,11 +36,16 @@ function makeTable() {
   };
 
   return {
+    options: {
+      manualPagination: true,
+      ...(total !== null ? { rowCount: total } : {}),
+    },
     getHeaderGroups: () => [],
     getRowModel: () => ({ rows: [row] }),
     getAllColumns: () => [column],
     getFilteredSelectedRowModel: () => ({ rows: [] }),
     getFilteredRowModel: () => ({ rows: [row] }),
+    getRowCount: () => total ?? 1,
     getState: () => ({ pagination: { pageSize: 10, pageIndex: 0 } }),
     getPageCount: () => 1,
     getCanPreviousPage: () => false,
@@ -78,6 +83,18 @@ describe('data table date formatter', () => {
       disposeFirst();
     });
     expect(screen.getByText(defaultValue)).toBeTruthy();
+  });
+
+  it('shows the total number of rows matching the current query', () => {
+    render(<DataTable table={makeTable() as never} />);
+
+    expect(screen.getByText('Total: 394')).toBeTruthy();
+  });
+
+  it('does not label the current page size as the total for manual pagination', () => {
+    render(<DataTable table={makeTable(null) as never} />);
+
+    expect(screen.queryByText(/^Total:/)).toBeNull();
   });
 
   it('keeps the latest formatter when an older registration is released first', () => {

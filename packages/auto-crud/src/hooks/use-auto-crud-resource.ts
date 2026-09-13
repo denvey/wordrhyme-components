@@ -286,6 +286,8 @@ export interface UseAutoCrudResourceReturn<
   tableData: {
     data: TListItem[];
     pageCount: number;
+    /** Total rows matching the current search and filters. */
+    total?: number;
     isLoading: boolean;
     /** 是否正在获取数据（用于显示微妙的加载指示器） */
     isFetching: boolean;
@@ -833,6 +835,9 @@ export function useAutoCrudResource<
     tableData: {
       data: tableRows as TListItem[],
       pageCount: listQuery.data?.pageCount ?? 0,
+      ...(typeof listQuery.data?.total === 'number'
+        ? { total: listQuery.data.total }
+        : {}),
       isLoading: listQuery.isLoading,
       isFetching: listQuery.isFetching,
     },
