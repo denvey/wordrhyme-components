@@ -151,6 +151,7 @@ export function formatDate(
 
     if (preset) {
       const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: opts.timeZone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',

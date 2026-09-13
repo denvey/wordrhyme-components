@@ -1817,3 +1817,41 @@ describe('auto-crud table unified actions', () => {
     expect(screen.getByRole('button', { name: 'Legacy Batch 1' })).toBeTruthy();
   });
 });
+
+describe('table-only labels preserve shared detail labels', () => {
+  afterEach(() => {
+    cleanup();
+    dataSources.unregister('test.dynamic-regions');
+    dataSources.unregister('test.table-regions');
+  });
+  it.each(['static', 'dynamic'] as const)(
+    'preserves shared detail labels with %s table labels',
+    async (mode) => {
+      const loader = vi.fn(() => [{ label: 'Shared West Label', value: 'west' }]);
+      dataSources.register('test.dynamic-regions', loader);
+      dataSources.register('test.table-regions', () => [
+        { label: 'Table West Label', value: 'west' },
+      ]);
+      render(
+        <AutoCrudTable
+          schema={schema}
+          fields={displayFields}
+          resource={createResource({
+            fields: {
+              region: {
+                table:
+                  mode === 'static'
+                    ? { options: [{ label: 'Table West Label', value: 'west' }] }
+                    : { dataSource: 'test.table-regions' },
+              },
+            },
+            modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+          })}
+        />,
+      );
+      expect(await screen.findByText('Table West Label')).toBeTruthy();
+      await waitFor(() => expect(loader).toHaveBeenCalled());
+      expect(await screen.findByText('Shared West Label')).toBeTruthy();
+    },
+  );
+});

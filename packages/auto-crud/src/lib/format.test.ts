@@ -103,3 +103,11 @@ describe('formatDate host adapter', () => {
     expect(formatDate(0)).not.toBe('');
   });
 });
+
+it('respects explicit timezone with date presentation presets', () => {
+  setDateFormatter();
+  const date = '2026-07-15T08:09:10Z';
+  const options = { timeZone: 'Pacific/Honolulu' };
+  expect(formatDate(date, options, 'datetime')).toBe('2026-07-14 22:09:10');
+  expect(formatDate(date, options, 'date')).toBe('2026-07-14');
+});

@@ -2179,10 +2179,32 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     resource.tableData.data as readonly Record<string, unknown>[],
     hiddenColumns,
   );
+  // Table-only labels must not replace the shared resolver used by details.
+  // Fields without table overrides reuse the existing resolution above.
+  const sharedResolveFields = React.useMemo<Fields>(
+    () =>
+      Object.fromEntries(
+        Object.entries(resolvedFields).flatMap(([field, config]) => {
+          const table = getTableConfig(config);
+          if (table?.options === undefined && table?.dataSource === undefined) return [];
+          const { table: _table, ...sharedConfig } = config;
+          return [[field, sharedConfig]];
+        }),
+      ),
+    [resolvedFields],
+  );
+  const sharedResolveOptions = useDynamicResolveOptions(
+    sharedResolveFields,
+    resource.tableData.data as readonly Record<string, unknown>[],
+    hiddenColumns,
+  );
   const viewDynamicOptionsByField = React.useMemo(
     () =>
       mergeOptionsByField(
-        dynamicFilterOptions.labelOptionsByField,
+        mergeOptionsByField(
+          dynamicFilterOptions.labelOptionsByField,
+          sharedResolveOptions.optionsByField,
+        ),
         Object.fromEntries(
           Object.entries(dynamicResolveOptions.optionsByField).filter(
             ([field]) => !getTableConfig(resolvedFields[field] ?? {})?.dataSource,
@@ -2192,6 +2214,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     [
       dynamicFilterOptions.labelOptionsByField,
       dynamicResolveOptions.optionsByField,
+      sharedResolveOptions.optionsByField,
       resolvedFields,
     ],
   );
