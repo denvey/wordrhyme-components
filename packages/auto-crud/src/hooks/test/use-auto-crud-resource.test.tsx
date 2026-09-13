@@ -35,7 +35,7 @@ function createRouter() {
   return {
     list: {
       useQuery: vi.fn(() => ({
-        data: { data: [], pageCount: 0 },
+        data: { data: [], pageCount: 0, total: 0 },
         isLoading: false,
         isFetching: false,
         refetch: vi.fn(),
@@ -135,6 +135,23 @@ describe('useAutoCrudResource', () => {
         staleTime: 0,
       },
     );
+  });
+
+  it('exposes the total returned for the current query', () => {
+    const router = createRouter();
+    let resource: UseAutoCrudResourceReturn<typeof schema, Row> | undefined;
+    router.list.useQuery.mockReturnValue({
+      data: { data: [], pageCount: 40, total: 394 },
+      isLoading: false,
+      isFetching: false,
+      refetch: vi.fn(),
+    });
+
+    cleanup = renderResourceHook(router, (nextResource) => {
+      resource = nextResource;
+    });
+
+    expect(resource?.tableData.total).toBe(394);
   });
 
   it('defaults list sorting to createdAt descending when the schema has createdAt', () => {
