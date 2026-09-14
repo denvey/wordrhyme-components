@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 1.5.0
+
+### Minor Changes
+
+- d97a2a0: Expose typed server-side resource metadata on all generated CRUD procedures. Preserve the table object, primary-key field and operation for host integrations while retaining caller metadata, middleware and per-operation procedure configuration.
+
 ## 1.4.1
 
 ### Patch Changes
