@@ -12,7 +12,12 @@ import { Button } from '@wordrhyme/shadcn';
 import { Calendar } from '@wordrhyme/shadcn';
 import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import { Separator } from '@wordrhyme/shadcn';
-import { formatDate } from '@/lib/format';
+import { useDateFormatterVersion } from '@/lib/format';
+import {
+  calendarPresentation,
+  parseCalendarDate,
+  serializeCalendarDate,
+} from '@/lib/calendar-date';
 
 type DateSelection = Date[] | DateRange;
 
@@ -21,10 +26,7 @@ function getIsDateRange(value: DateSelection): value is DateRange {
 }
 
 function parseAsDate(timestamp: number | string | undefined): Date | undefined {
-  if (!timestamp) return undefined;
-  const numericTimestamp = typeof timestamp === 'string' ? Number(timestamp) : timestamp;
-  const date = new Date(numericTimestamp);
-  return !Number.isNaN(date.getTime()) ? date : undefined;
+  return parseCalendarDate(timestamp);
 }
 
 function parseColumnFilterValue(value: unknown) {
@@ -59,6 +61,9 @@ export function DataTableDateFilter<TData>({
   title,
   multiple,
 }: DataTableDateFilterProps<TData>) {
+  const formatterVersion = useDateFormatterVersion();
+  const presentation = React.useMemo(() => calendarPresentation(), [formatterVersion]);
+  const { formatDate } = presentation;
   const columnFilterValue = column.getFilterValue();
 
   const selectedDates = React.useMemo<DateSelection>(() => {
@@ -132,7 +137,10 @@ export function DataTableDateFilter<TData>({
           const nextTo = date.from;
           setLocalRange({ from: nextFrom, to: nextTo });
           if (nextTo) {
-            column.setFilterValue([nextFrom.getTime(), nextTo.getTime()]);
+            column.setFilterValue([
+              serializeCalendarDate(nextFrom),
+              serializeCalendarDate(nextTo),
+            ]);
           }
           return;
         }
@@ -140,10 +148,13 @@ export function DataTableDateFilter<TData>({
         setLocalRange(date);
         // 只有选满范围才触发过滤，避免中途请求
         if (from && to) {
-          column.setFilterValue([from, to]);
+          column.setFilterValue([
+            serializeCalendarDate(new Date(from)),
+            serializeCalendarDate(new Date(to)),
+          ]);
         }
       } else if (!multiple && 'getTime' in date) {
-        column.setFilterValue(date.getTime());
+        column.setFilterValue(serializeCalendarDate(date));
       }
     },
     [column, multiple, localRange.from],
@@ -166,13 +177,16 @@ export function DataTableDateFilter<TData>({
     return selectedDates.length > 0;
   }, [multiple, selectedDates]);
 
-  const formatDateRange = React.useCallback((range: DateRange) => {
-    if (!range.from && !range.to) return '';
-    if (range.from && range.to) {
-      return `${formatDate(range.from)} - ${formatDate(range.to)}`;
-    }
-    return formatDate(range.from ?? range.to);
-  }, []);
+  const formatDateRange = React.useCallback(
+    (range: DateRange) => {
+      if (!range.from && !range.to) return '';
+      if (range.from && range.to) {
+        return `${formatDate(range.from)} - ${formatDate(range.to)}`;
+      }
+      return formatDate(range.from ?? range.to);
+    },
+    [formatDate],
+  );
 
   const label = React.useMemo(() => {
     if (multiple) {
@@ -218,7 +232,7 @@ export function DataTableDateFilter<TData>({
         )}
       </span>
     );
-  }, [selectedDates, multiple, formatDateRange, title]);
+  }, [selectedDates, multiple, formatDateRange, title, formatDate]);
 
   return (
     <Popover>
@@ -227,7 +241,7 @@ export function DataTableDateFilter<TData>({
           {hasValue ? (
             <div
               role="button"
-              aria-label={`Clear ${title} filter`}
+              aria-label={presentation.clearLabel(title)}
               tabIndex={0}
               onClick={onReset}
               className="rounded-sm opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
@@ -243,16 +257,26 @@ export function DataTableDateFilter<TData>({
       <PopoverContent className="w-auto p-0" align="start">
         {multiple ? (
           <Calendar
+            lang={presentation.locale}
+            weekStartsOn={presentation.weekStartsOn}
+            formatters={presentation.formatters}
+            labels={presentation.labels}
             autoFocus
             captionLayout="dropdown"
             mode="range"
+            defaultMonth={localRange.from}
             selected={localRange}
             onSelect={onSelect}
           />
         ) : (
           <Calendar
+            lang={presentation.locale}
+            weekStartsOn={presentation.weekStartsOn}
+            formatters={presentation.formatters}
+            labels={presentation.labels}
             captionLayout="dropdown"
             mode="single"
+            defaultMonth={!getIsDateRange(selectedDates) ? selectedDates[0] : undefined}
             selected={!getIsDateRange(selectedDates) ? selectedDates[0] : undefined}
             onSelect={onSelect}
           />

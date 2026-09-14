@@ -1044,6 +1044,8 @@ setDateFormatter(undefined);
 
 `setDateFormatter` 是进程/运行时级配置，建议在应用启动时注册一个稳定的 formatter。多个注册可以重叠，清理函数只移除对应注册，允许乱序清理。SSR 场景不要在每个请求中重复调用 setter；如需按请求选择语言或时区，应由稳定 formatter 通过宿主提供的并发安全上下文读取当前请求策略。
 
+日期筛选日历可通过 `setDateFormatter(formatter, { locale, timeZone })` 接收宿主配置（`DateLocaleOptions`）。语言或时区改变时重新注册并清理旧注册，已挂载的筛选器会同步更新月份、星期和日期标签。筛选值使用 `YYYY-MM-DD` 日历日字符串；服务端配置 `resolveDateRange` 时按宿主查询时区解析边界，否则使用服务端本地时区，并继续兼容时间戳输入。日历标签不会把选中的日期当成时间戳再转换时区。
+
 ### Schema Bridge - 核心转换函数
 
 ```typescript
