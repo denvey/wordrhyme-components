@@ -4,15 +4,15 @@ import { startOfDay } from 'date-fns/startOfDay';
 import {
   type AnyColumn,
   and,
-  eq,
-  gt,
-  gte,
+  eq as drizzleEq,
+  gt as drizzleGt,
+  gte as drizzleGte,
   ilike,
   inArray,
   isNull,
-  lt,
-  lte,
-  ne,
+  lt as drizzleLt,
+  lte as drizzleLte,
+  ne as drizzleNe,
   not,
   notIlike,
   notInArray,
@@ -23,6 +23,22 @@ import {
 } from 'drizzle-orm';
 
 type ColumnTarget = AnyColumn | SQL;
+
+// Drizzle overloads accept either target separately, but not their union.
+// Narrow without wrapping the column so its driver encoder remains available.
+function comparison(compare: typeof drizzleEq) {
+  return (target: ColumnTarget, value: unknown): SQL =>
+    'dataType' in target
+      ? compare(target, value)
+      : compare(target, value instanceof Date ? value.toISOString() : value);
+}
+
+const eq = comparison(drizzleEq);
+const ne = comparison(drizzleNe);
+const gt = comparison(drizzleGt);
+const gte = comparison(drizzleGte);
+const lt = comparison(drizzleLt);
+const lte = comparison(drizzleLte);
 
 /** 过滤器变体类型 */
 export type FilterVariant =
@@ -199,7 +215,7 @@ function requireDateBoundary(
 }
 
 function resolvedDateCondition(
-  expr: SQL,
+  expr: ColumnTarget,
   operator: DateRangeOperator,
   range: DateFilterRange,
 ): SQL {
@@ -249,7 +265,9 @@ export function filterColumns<T extends Table>({
   const conditions = filters.map((filter) => {
     const column = resolveColumn ? resolveColumn(filter.id) : getColumn(table, filter.id);
     if (!column) return undefined;
-    const expr = toSqlTarget(column);
+    // Keep the column's driver encoder (notably for timestamp Date values).
+    // Wrapping it in SQL makes Drizzle bind raw, unencoded parameters.
+    const expr = column;
     if (
       (filter.variant === 'date' || filter.variant === 'dateRange') &&
       isDateRangeOperator(filter.operator)
@@ -321,13 +339,17 @@ export function filterColumns<T extends Table>({
 
       case 'inArray':
         if (Array.isArray(filter.value)) {
-          return inArray(expr, filter.value);
+          return 'dataType' in expr
+            ? inArray(expr, filter.value)
+            : inArray(expr, filter.value);
         }
         return undefined;
 
       case 'notInArray':
         if (Array.isArray(filter.value)) {
-          return notInArray(expr, filter.value);
+          return 'dataType' in expr
+            ? notInArray(expr, filter.value)
+            : notInArray(expr, filter.value);
         }
         return undefined;
 
