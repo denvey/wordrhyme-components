@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type {
@@ -1057,9 +1065,13 @@ describe('auto-crud table toolbar resolver', () => {
   });
 
   it('uses the same datetime presentation in the table and view modal', () => {
-    const dispose = setDateFormatter((_date, _options, preset) => preset === 'datetime' ? 'September 14, 2026 at 08:09:10' : 'date only');
+    const dispose = setDateFormatter((_date, _options, preset) =>
+      preset === 'datetime' ? 'September 14, 2026 at 08:09:10' : 'date only',
+    );
     try {
-      const resource = createAuditResource({ fields: { updatedAt: { table: { display: 'datetime' } } } });
+      const resource = createAuditResource({
+        fields: { updatedAt: { table: { display: 'datetime' } } },
+      });
       resource.modal.viewOpen = true;
       resource.modal.selected = resource.tableData.data[0]!;
       render(<AutoCrudTable schema={auditSchema} resource={resource} />);
@@ -1115,12 +1127,16 @@ describe('auto-crud table toolbar resolver', () => {
   });
 
   it('opts into table presentation in details while preserving hidden and denied fields', async () => {
-    dataSources.register('test.view-labels', () => [{ label: '中文名称', value: 'west' }]);
+    dataSources.register('test.view-labels', () => [
+      { label: '中文名称', value: 'west' },
+    ]);
     render(
       <AutoCrudTable
         schema={schema}
         resource={createResource({
-          fields: { region: { table: { display: 'text', dataSource: 'test.view-labels' } } },
+          fields: {
+            region: { table: { display: 'text', dataSource: 'test.view-labels' } },
+          },
           modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
         })}
         view={{ presentation: 'table' }}
@@ -1137,10 +1153,24 @@ describe('auto-crud table toolbar resolver', () => {
     render(
       <AutoCrudTable
         schema={schema}
-        resource={createResource({ modal: { viewOpen: true, selected: { id: '1', region: 'west' } } })}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
         view={{ presentation: 'table' }}
         fields={{ id: { hidden: true } }}
-        table={{ overrides: { region: { cell: ({ getValue, row }: { getValue: () => unknown; row: { original: { id: string } } }) => `${row.original.id}: ${getValue()}` } } }}
+        table={{
+          overrides: {
+            region: {
+              cell: ({
+                getValue,
+                row,
+              }: {
+                getValue: () => unknown;
+                row: { original: { id: string } };
+              }) => `${row.original.id}: ${getValue()}`,
+            },
+          },
+        }}
       />,
     );
     const dialog = within(screen.getByRole('dialog'));
@@ -1152,8 +1182,13 @@ describe('auto-crud table toolbar resolver', () => {
     render(
       <AutoCrudTable
         schema={schema}
-        resource={createResource({ modal: { viewOpen: true, selected: { id: '1', region: 'west' } } })}
-        view={{ presentation: 'table', overrides: { region: { cell: () => 'Full detail text' } } }}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        view={{
+          presentation: 'table',
+          overrides: { region: { cell: () => 'Full detail text' } },
+        }}
         table={{ overrides: { region: { cell: () => 'Truncated list text' } } }}
       />,
     );
@@ -1161,6 +1196,38 @@ describe('auto-crud table toolbar resolver', () => {
     expect(dialog.getByText('Full detail text')).toBeTruthy();
     expect(dialog.queryByText('Truncated list text')).toBeNull();
     expect(screen.getByText('Truncated list text')).toBeTruthy();
+  });
+
+  it('keeps shared hidden fields out of details even when visible in the list', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        fields={{ region: { hidden: true, table: { hidden: false } } }}
+        view={{ presentation: 'table' }}
+      />,
+    );
+    expect(screen.getByText('west')).toBeTruthy();
+    expect(within(screen.getByRole('dialog')).queryByText('west')).toBeNull();
+  });
+
+  it('preserves the table cell when details override only column order', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        table={{ overrides: { region: { cell: () => 'Formatted region' } } }}
+        view={{ presentation: 'table', overrides: { region: { index: 0 } } }}
+      />,
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('Formatted region')).toBeTruthy();
+    expect(dialog.queryByText('west')).toBeNull();
+    expect(dialog.getAllByRole('term')[0]?.textContent).toBe('Region');
   });
 
   it('keeps table-scoped data sources out of filters and the view modal', async () => {

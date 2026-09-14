@@ -506,7 +506,9 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   view?: {
     presentation?: 'table';
     /** Detail-only column overrides; the list presentation is unchanged. */
-    overrides?: NonNullable<Parameters<typeof createTableSchema<TSchema>>[1]>['overrides'];
+    overrides?: NonNullable<
+      Parameters<typeof createTableSchema<TSchema>>[1]
+    >['overrides'];
   };
   table?: {
     /** 隐藏的列 */
@@ -1914,9 +1916,16 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   locale: { viewModal: { title: string }; boolean: { true: string; false: string } };
   tableOverrides?: Parameters<typeof createTableSchema<TSchema>>[1];
 }) {
-  const columns = React.useMemo(() => createTableSchema(schema, tableOverrides), [schema, tableOverrides]);
-  const rows = React.useMemo(() => data ? [data] : [], [data]);
-  const table = useReactTable({ data: rows, columns, getCoreRowModel: getCoreRowModel() });
+  const columns = React.useMemo(
+    () => createTableSchema(schema, tableOverrides),
+    [schema, tableOverrides],
+  );
+  const rows = React.useMemo(() => (data ? [data] : []), [data]);
+  const table = useReactTable({
+    data: rows,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
   if (!data) return null;
 
   const shape = schema.shape;
@@ -1934,12 +1943,20 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
 
   const content = tableOverrides ? (
     <dl className="grid gap-4 py-4">
-      {table.getRowModel().rows[0]?.getAllCells().map((cell) => (
-        <div key={cell.id} className="grid grid-cols-3 items-start gap-4">
-          <dt className="text-sm font-medium text-muted-foreground">{fieldConfig?.[cell.column.id]?.label ?? humanize(cell.column.id)}</dt>
-          <dd className="col-span-2 text-sm">{flexRender(cell.column.columnDef.cell, cell.getContext())}</dd>
-        </div>
-      ))}
+      {table
+        .getRowModel()
+        .rows[0]?.getAllCells()
+        .filter((cell) => fields.some(([key]) => key === cell.column.id))
+        .map((cell) => (
+          <div key={cell.id} className="grid grid-cols-3 items-start gap-4">
+            <dt className="text-sm font-medium text-muted-foreground">
+              {fieldConfig?.[cell.column.id]?.label ?? humanize(cell.column.id)}
+            </dt>
+            <dd className="col-span-2 text-sm">
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </dd>
+          </div>
+        ))}
     </dl>
   ) : (
     <dl className="grid gap-4 py-4">
@@ -1957,8 +1974,13 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
           <div key={key} className="grid grid-cols-3 items-start gap-4">
             <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
             <dd className="col-span-2 text-sm">
-              {renderFieldValue(value, parsed.type, locale.boolean, options,
-                display === 'date' || display === 'datetime' ? display : 'auto')}
+              {renderFieldValue(
+                value,
+                parsed.type,
+                locale.boolean,
+                options,
+                display === 'date' || display === 'datetime' ? display : 'auto',
+              )}
             </dd>
           </div>
         );
@@ -2734,7 +2756,17 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         dynamicOptions={viewDynamicOptionsByField}
         denyFields={denyFields}
         locale={locale}
-        tableOverrides={viewConfig?.presentation === 'table' ? { overrides: { ...tableOverrides, ...viewConfig.overrides }, exclude: hiddenColumns } : undefined}
+        tableOverrides={
+          viewConfig?.presentation === 'table'
+            ? {
+                overrides: mergeTableOverrides(
+                  tableOverrides,
+                  viewConfig.overrides ?? {},
+                ),
+                exclude: hiddenColumns,
+              }
+            : undefined
+        }
       />
 
       {/* Delete Confirmation */}
