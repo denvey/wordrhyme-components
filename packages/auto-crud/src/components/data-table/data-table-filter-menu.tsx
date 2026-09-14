@@ -114,6 +114,7 @@ export function DataTableFilterMenu<TData>({
 
   const [filters, setFilters] = useReadableFilters<TData>(columns, {
     debounceMs,
+    resetPageKey: table.options.meta?.queryKeys?.page ?? 'page',
   });
   const debouncedSetFilters = useDebouncedCallback(setFilters, debounceMs);
 

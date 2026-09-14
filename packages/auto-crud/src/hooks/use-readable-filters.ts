@@ -1,18 +1,15 @@
-import * as React from 'react';
 import type { Column, ColumnDef } from '@tanstack/react-table';
+import type { UrlStateOptions } from '@/hooks/use-url-state';
 
-import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
-import {
-  getUrlParams,
-  setSearchParams,
-  type UrlStateOptions,
-} from '@/hooks/use-url-state';
 import type { ExtendedColumnFilter, FilterVariant } from '@/types/data-table';
+import * as React from 'react';
+import { getUrlParams, setSearchParams } from '@/hooks/use-url-state';
+import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
 
 const URL_CHANGE_EVENT = 'urlchange';
 
 function toSearchString(params: URLSearchParams): string {
-  const queryString = params.toString().replace(/%2C/g, ',');
+  const queryString = params.toString().replace(/%2C/gu, ',');
   return queryString ? `?${queryString}` : '';
 }
 
@@ -21,8 +18,25 @@ type ColumnLike<TData> =
   | ColumnDef<TData, unknown>
   | { id?: string; accessorKey?: string; meta?: { variant?: FilterVariant } };
 
+// AND/OR conditions are unordered; filter IDs and display order are UI state.
+function filterSignature<TData>(filters: ExtendedColumnFilter<TData>[]): string {
+  return JSON.stringify(
+    filters
+      .map(({ id, operator, value, variant }) =>
+        JSON.stringify([
+          id,
+          operator,
+          variant === 'multiSelect' && Array.isArray(value) ? [...value].sort() : value,
+        ]),
+      )
+      .sort(),
+  );
+}
+
 interface UseReadableFiltersOptions extends UrlStateOptions {
   debounceMs?: number;
+  /** Reset server-side pagination when effective filters change. */
+  resetPageKey?: string | false;
 }
 
 export function useReadableFilters<TData>(
@@ -36,7 +50,7 @@ export function useReadableFilters<TData>(
       | ((prev: ExtendedColumnFilter<TData>[]) => ExtendedColumnFilter<TData>[]),
   ) => void,
 ] {
-  const { history = 'replace', scroll = false } = options;
+  const { history = 'replace', scroll = false, resetPageKey = 'page' } = options;
 
   const columnSnapshot = React.useMemo(() => columns, [columns]);
 
@@ -77,11 +91,20 @@ export function useReadableFilters<TData>(
   const writeToUrl = React.useCallback(
     (next: ExtendedColumnFilter<TData>[]) => {
       const params = getUrlParams();
+      const previousFilters = parseReadableFilters(params, columnSnapshot);
       applyReadableFilters(params, columnSnapshot, next);
+      const nextFilters = parseReadableFilters(params, columnSnapshot);
+      if (
+        resetPageKey !== false &&
+        resetPageKey.length > 0 &&
+        filterSignature(previousFilters) !== filterSignature(nextFilters)
+      ) {
+        params.delete(resetPageKey);
+      }
       lastWrittenUrlRef.current = toSearchString(params);
       setSearchParams(params, { history, scroll });
     },
-    [columnSnapshot, history, scroll],
+    [columnSnapshot, history, resetPageKey, scroll],
   );
 
   const updateFilters = React.useCallback(

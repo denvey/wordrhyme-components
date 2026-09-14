@@ -88,6 +88,7 @@ export function AutoTableSimpleFilters<TData>({
   const queryStateOptions = table.options.meta?.queryStateOptions;
   const [queryFilters, setQueryFilters] = useReadableFilters<TData>(columns, {
     ...queryStateOptions,
+    resetPageKey: table.options.meta?.queryKeys?.page ?? 'page',
     shallow,
   });
 
