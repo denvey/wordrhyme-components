@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.5.6
+
+### Patch Changes
+
+- 28c74b8: Merge table data-source labels with explicit static labels, giving static labels precedence for matching values, and render empty arrays as the standard empty placeholder.
+
 ## 1.5.5
 
 ### Patch Changes
