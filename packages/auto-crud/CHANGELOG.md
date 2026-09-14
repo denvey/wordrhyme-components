@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.5.7
+
+### Patch Changes
+
+- c07aea5: Reset pagination to the first page when clear-all or remove-filter operations change the active readable filters.
+
 ## 1.5.6
 
 ### Patch Changes
