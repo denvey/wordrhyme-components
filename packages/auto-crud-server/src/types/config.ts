@@ -25,6 +25,16 @@ export type CrudOperation =
   | 'import'
   | 'createMany';
 
+/**
+ * Server-side metadata attached to every generated procedure.
+ * The `meta` endpoint uses the read operation `list`.
+ * Reserved keys describe the generated route; unrelated caller metadata is preserved.
+ */
+export interface CrudResourceMetadata<TTable extends PgTable = PgTable> {
+  __crudResource: Readonly<{ table: TTable; idField: string }>;
+  __crudOperation: CrudOperation;
+}
+
 export type WriteOperation = 'create' | 'update';
 
 /**

@@ -247,6 +247,7 @@ function listWhereQueries(db: ReturnType<typeof createListMockDb>) {
 
 // Mock procedure
 const mockProcedure = {
+  meta: vi.fn().mockReturnThis(),
   input: vi.fn().mockReturnThis(),
   output: vi.fn().mockReturnThis(),
   query: vi.fn().mockReturnThis(),
@@ -260,6 +261,7 @@ const mockProcedureWithMeta = {
 
 function createProcedureMock() {
   return {
+    meta: vi.fn().mockReturnThis(),
     input: vi.fn().mockReturnThis(),
     output: vi.fn().mockReturnThis(),
     query: vi.fn().mockReturnThis(),

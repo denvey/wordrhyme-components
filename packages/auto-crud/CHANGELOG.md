@@ -1,5 +1,17 @@
 # @wordrhyme/auto-crud
 
+## 1.5.5
+
+### Patch Changes
+
+- ccb5651: Allow host metadata to override owner field visibility, provide table-only value labels, and select declarative text, badge, date, or date-time cell presentation.
+
+## 1.5.4
+
+### Patch Changes
+
+- 20c85a3: Show the total number of rows matching the current search and filters in the table footer.
+
 ## 1.5.3
 
 ### Patch Changes
