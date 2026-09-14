@@ -22,6 +22,7 @@ export {
 export type {
   // Config types (v2.0 统一 API)
   CrudRouterConfig,
+  CrudResourceMetadata,
   ProcedureConfig,
   ProcedureMap,
   ProcedureFactory,

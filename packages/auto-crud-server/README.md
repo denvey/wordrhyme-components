@@ -1276,3 +1276,23 @@ MIT © [wordrhyme](https://github.com/pixpilot/shadcn-components)
 - [tRPC](https://trpc.io/) - End-to-end typesafe APIs
 - [Drizzle ORM](https://orm.drizzle.team/) - TypeScript ORM
 - [Prisma](https://www.prisma.io/) - Next-generation ORM
+
+## Server-side resource metadata
+
+Every generated procedure includes `CrudResourceMetadata` in its tRPC metadata:
+
+- `__crudResource.table`: the original Drizzle table object.
+- `__crudResource.idField`: the configured primary-key field (defaults to `id`).
+- `__crudOperation`: the generated CRUD operation. The schema `meta` endpoint uses `list`.
+
+The resource binding is frozen. These two keys are reserved and override caller values; other metadata (such as permission or billing configuration) is preserved. Single procedures, procedure maps (including a custom `meta` procedure), and procedure factories are supported.
+
+This metadata stays on the server; it is not added to the client-facing `meta` response. It describes the route and does not authorize requests. Applications remain responsible for permission checks and tenant isolation.
+
+```ts
+import type { CrudResourceMetadata } from '@wordrhyme/auto-crud-server';
+
+const t = initTRPC
+  .meta<Partial<CrudResourceMetadata> & { permission?: string }>()
+  .create();
+```
