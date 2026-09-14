@@ -30,9 +30,7 @@ describe('useReadableFilters', () => {
   });
 
   it('returns to the first page when a filter changes', () => {
-    let updateFilters:
-      | ((filters: ExtendedColumnFilter<Row>[]) => void)
-      | undefined;
+    let updateFilters: ((filters: ExtendedColumnFilter<Row>[]) => void) | undefined;
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -60,6 +58,42 @@ describe('useReadableFilters', () => {
     });
 
     expect(window.location.search).toBe('?opsOwnerUserId=ops-user-1');
+
+    cleanup = () => {
+      act(() => root.unmount());
+      container.remove();
+    };
+  });
+
+  it('resets the configured page key when filters are cleared', () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/stores?storesPage=10&opsOwnerUserId=ops-user-1',
+    );
+
+    let updateFilters: ((filters: ExtendedColumnFilter<Row>[]) => void) | undefined;
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    function TestComponent() {
+      const [, setFilters] = useReadableFilters<Row>(columns, {
+        resetPageKey: 'storesPage',
+      });
+      updateFilters = setFilters;
+      return null;
+    }
+
+    act(() => {
+      root.render(<TestComponent />);
+    });
+
+    act(() => {
+      updateFilters?.([]);
+    });
+
+    expect(window.location.search).toBe('');
 
     cleanup = () => {
       act(() => root.unmount());
