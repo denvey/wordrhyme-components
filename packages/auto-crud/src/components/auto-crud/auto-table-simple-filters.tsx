@@ -26,7 +26,11 @@ import { Slider } from '@wordrhyme/shadcn';
 import { Select } from '@wordrhyme/shadcn-ui';
 import { getDefaultFilterOperator } from '@/lib/data-table';
 import { useDateFormatterVersion } from '@/lib/format';
-import { calendarPresentation, parseCalendarDate, serializeCalendarDate } from '@/lib/calendar-date';
+import {
+  calendarPresentation,
+  parseCalendarDate,
+  serializeCalendarDate,
+} from '@/lib/calendar-date';
 import { generateId } from '@/lib/id';
 import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { cn } from '@/lib/utils';
@@ -702,7 +706,12 @@ interface SimpleDateFilterProps {
   onChange: (value: string | string[] | undefined) => void;
 }
 
-export function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilterProps) {
+export function SimpleDateFilter({
+  title,
+  multiple,
+  value,
+  onChange,
+}: SimpleDateFilterProps) {
   const [open, setOpen] = React.useState(false);
   const commit = (next: string | string[] | undefined) => {
     setOpen(false);

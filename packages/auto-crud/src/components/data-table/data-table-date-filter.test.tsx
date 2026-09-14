@@ -26,7 +26,8 @@ function column(value: unknown) {
 describe('localized calendar filters', () => {
   it('keeps September 14 in the label after selecting a same-day range', () => {
     setDateFormatter(() => '2026年9月13日', {
-      locale: 'zh-CN', timeZone: 'America/Los_Angeles',
+      locale: 'zh-CN',
+      timeZone: 'America/Los_Angeles',
     });
     function RangeFilter() {
       const [value, setValue] = useState<unknown>(['2026-09-14']);
