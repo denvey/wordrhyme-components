@@ -32,6 +32,7 @@ import { dataTableConfig } from '../config/data-table';
 import { isZodObject, nonEmpty } from '../lib/schema-utils';
 import type {
   CrudRouterConfig,
+  CrudResourceMetadata,
   CrudOperation,
   WriteOperation,
   AnyProcedure,
@@ -1417,10 +1418,23 @@ export function createCrudRouter<
   // 解析配置
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const resolved = resolveConfig(config as any) as ResolvedConfig<TContext, TSelect>;
+  const resource: CrudResourceMetadata<TTable>['__crudResource'] = Object.freeze({
+    table,
+    idField,
+  });
+  const procedureFactory = resolved.procedureFactory;
+  resolved.procedureFactory = (operation) =>
+    procedureFactory(operation).meta({
+      __crudResource: resource,
+      __crudOperation: operation,
+    } satisfies CrudResourceMetadata<TTable>);
   const metaProcedure = resolveMetaProcedure(
     config.procedure,
     resolved.procedureFactory('list'),
-  );
+  ).meta({
+    __crudResource: resource,
+    __crudOperation: 'list',
+  } satisfies CrudResourceMetadata<TTable>);
   const softDelete = resolveSoftDelete(softDeleteOption);
   const resolvedListInputSchema = (config.listInputSchema ??
     baseListInputSchema) as z.ZodType<TListInput>;
