@@ -169,6 +169,8 @@ export interface ExportInput {
 
 export interface CrudExtensionMetadata {
   schema?: unknown;
+  /** Field config may opt into preserveReferenceValue: true to return reference
+   * IDs for editing and data-source label resolution. Default: display values. */
   fields?: Record<string, unknown>;
   errors?: string[];
   /** 扩展提供的查询能力，会与 router 基础能力合并。 */

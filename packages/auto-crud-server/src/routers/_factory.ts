@@ -1057,6 +1057,7 @@ async function enrichCrudRows<TContext, TRow extends Record<string, unknown>>(
     id: target.id,
     entityIds,
   });
+  const metadata = await provider.getMetadata?.({ id: target.id });
 
   return rows.map((row) => {
     const rowId = row[idField];
@@ -1069,7 +1070,11 @@ async function enrichCrudRows<TContext, TRow extends Record<string, unknown>>(
       ...Object.fromEntries(
         Object.entries(projected).map(([field, value]) => [
           field,
-          readProjectionDisplay(value),
+          isObjectRecord(metadata?.fields?.[field])
+            && metadata.fields[field].preserveReferenceValue === true
+            && isObjectRecord(value)
+              ? value.refId ?? value.value ?? null
+              : readProjectionDisplay(value),
         ]),
       ),
     };

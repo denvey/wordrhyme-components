@@ -1718,7 +1718,7 @@ describe('createCrudRouter', () => {
       });
     });
 
-    it('should merge projection values into list rows through ctx.crudExtensions', async () => {
+    it.each([false, true])('merges projections with reference-value opt-in %s', async (preserveReferenceValue) => {
       const db = createListMockDb([
         { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
       ]);
@@ -1742,8 +1742,9 @@ describe('createCrudRouter', () => {
         db,
         crudExtensions: {
           readProjection,
+          getMetadata: async () => ({ fields: { owner: { preserveReferenceValue } } }),
         },
-      } as any) as ListCaller;
+      } as any) as CrudCaller;
 
       const result = await caller.list({
         page: 1,
@@ -1757,8 +1758,12 @@ describe('createCrudRouter', () => {
       });
       expect(result.data[0]).toMatchObject({
         id: '1',
-        owner: 'User One',
+        owner: preserveReferenceValue ? 'user-1' : 'User One',
       });
+      const detail = await caller.get('1');
+      expect(detail).toMatchObject({ owner: preserveReferenceValue ? 'user-1' : 'User One' });
+      const exported = await caller.export({});
+      expect(exported.data[0]).toMatchObject({ owner: preserveReferenceValue ? 'user-1' : 'User One' });
     });
 
     it('should keep extension id filters when filterableColumns are restricted', async () => {
