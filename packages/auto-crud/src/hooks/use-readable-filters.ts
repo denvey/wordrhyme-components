@@ -23,6 +23,8 @@ type ColumnLike<TData> =
 
 interface UseReadableFiltersOptions extends UrlStateOptions {
   debounceMs?: number;
+  /** Reset server-side pagination whenever filters change. */
+  resetPageKey?: string | false;
 }
 
 export function useReadableFilters<TData>(
@@ -36,7 +38,7 @@ export function useReadableFilters<TData>(
       | ((prev: ExtendedColumnFilter<TData>[]) => ExtendedColumnFilter<TData>[]),
   ) => void,
 ] {
-  const { history = 'replace', scroll = false } = options;
+  const { history = 'replace', scroll = false, resetPageKey = 'page' } = options;
 
   const columnSnapshot = React.useMemo(() => columns, [columns]);
 
@@ -78,10 +80,13 @@ export function useReadableFilters<TData>(
     (next: ExtendedColumnFilter<TData>[]) => {
       const params = getUrlParams();
       applyReadableFilters(params, columnSnapshot, next);
+      if (resetPageKey) {
+        params.delete(resetPageKey);
+      }
       lastWrittenUrlRef.current = toSearchString(params);
       setSearchParams(params, { history, scroll });
     },
-    [columnSnapshot, history, scroll],
+    [columnSnapshot, history, resetPageKey, scroll],
   );
 
   const updateFilters = React.useCallback(
