@@ -135,7 +135,7 @@ export interface Field {
         label?: string;
         /** 排序权重，数值越小越靠前 */
         index?: number;
-        /** 仅用于表格展示的静态值标签 */
+        /** 仅用于表格展示的静态值标签；与 dataSource 同时配置时覆盖同值的动态标签 */
         options?: FieldOption[];
         /** 仅用于表格展示的动态值标签源 */
         dataSource?: AutoCrudDataSourceConfig;
@@ -852,7 +852,7 @@ function shouldResolveOptions(
 ): config is Field {
   if (!config) return false;
   if (hiddenColumns.has(field)) return false;
-  if (getTableOptions(config)) return false;
+  if (getTableOptions(config) && !getTableConfig(config)?.dataSource) return false;
   return normalizeDataSourceConfig(getTableDataSource(config)) !== undefined;
 }
 
@@ -1459,9 +1459,7 @@ function buildTableOverrides(
             dynamicFilterState?.optionsByField[key] ??
             [])
           : undefined;
-      const dynamicResolveOptions = !presentationOptions
-        ? dynamicResolveState?.optionsByField[key]
-        : undefined;
+      const dynamicResolveOptions = dynamicResolveState?.optionsByField[key];
       const sharedDynamicResolveOptions = tableConfig?.dataSource
         ? undefined
         : dynamicResolveOptions;
@@ -1590,8 +1588,9 @@ function buildTableOverrides(
         const hasTableLabels =
           config.table.options !== undefined || config.table.dataSource !== undefined;
         if ((display && display !== 'auto') || hasTableLabels) {
-          const options =
-            presentationOptions ?? dynamicResolveOptions ?? mergedSharedDynamicOptions;
+          const options = tableConfig?.dataSource
+            ? mergeFieldOptions(dynamicResolveOptions, presentationOptions)
+            : (presentationOptions ?? mergedSharedDynamicOptions);
           result[key] = {
             ...result[key],
             cell: ({ row }: { row: { getValue: (field: string) => unknown } }) =>
@@ -1799,6 +1798,10 @@ function renderFieldValue(
   display: FieldTableDisplay = 'auto',
 ): React.ReactNode {
   if (value === null || value === undefined) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
+  if (Array.isArray(value) && value.length === 0) {
     return <span className="text-muted-foreground">-</span>;
   }
 

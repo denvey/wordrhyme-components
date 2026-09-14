@@ -190,6 +190,10 @@ function renderCell(
     return <span className="text-muted-foreground">-</span>;
   }
 
+  if (Array.isArray(value) && value.length === 0) {
+    return <span className="text-muted-foreground">-</span>;
+  }
+
   const formatOptionValue = (optionValue: unknown) => {
     const stringValue = String(optionValue);
     return options?.find((option) => option.value === stringValue)?.label ?? stringValue;

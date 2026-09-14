@@ -28,6 +28,8 @@ const schema = z.object({
   id: z.string(),
   spuId: z.string().optional(),
   region: z.string().optional(),
+  countries: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
 });
 
 type Row = z.infer<typeof schema>;
@@ -1135,6 +1137,83 @@ describe('auto-crud table toolbar resolver', () => {
     expect(loader).not.toHaveBeenCalledWith(
       expect.objectContaining({ field: 'region', type: 'filter' }),
     );
+  });
+
+  it('lets table options override matching dataSource labels', async () => {
+    const loader = vi.fn(() => [
+      { label: 'Resolved Account', value: 'user-1' },
+      { label: 'Shop', value: 'com.wordrhyme.shop' },
+    ]);
+    dataSources.register('test.dynamic-regions', loader);
+
+    render(
+      <AutoCrudTable
+        id="com.example.records"
+        schema={schema}
+        resource={createResource({
+          data: [
+            { id: '1', region: 'user-1' },
+            { id: '2', region: 'com.wordrhyme.shop' },
+          ],
+          fields: {
+            region: {
+              table: {
+                display: 'text',
+                dataSource: 'test.dynamic-regions',
+                options: [{ label: 'System', value: 'com.wordrhyme.shop' }],
+              },
+            },
+          },
+        })}
+      />,
+    );
+
+    await screen.findByText('Resolved Account');
+    expect(screen.getByText('System')).toBeTruthy();
+    expect(screen.queryByText('Shop')).toBeNull();
+    expect(loader).toHaveBeenCalledWith(
+      expect.objectContaining({
+        field: 'region',
+        type: 'resolve',
+        values: [{ region: 'user-1' }, { region: 'com.wordrhyme.shop' }],
+      }),
+    );
+  });
+
+  it('shows a dash for empty arrays in default and declarative text cells', () => {
+    render(
+      <AutoCrudTable
+        id="com.example.records"
+        schema={schema}
+        resource={createResource({
+          data: [{ id: 'empty-countries', countries: [], tags: [] }],
+          fields: {
+            countries: {
+              label: 'Countries',
+              table: {
+                display: 'text',
+                options: [{ label: 'China', value: 'CN' }],
+              },
+            },
+          },
+        })}
+      />,
+    );
+
+    const headers = Array.from(document.querySelectorAll('thead th'));
+    const countryColumnIndex = headers.findIndex((header) =>
+      header.textContent?.includes('Countries'),
+    );
+    const tagsColumnIndex = headers.findIndex((header) =>
+      header.textContent?.includes('Tags'),
+    );
+    const row = screen.getByText('empty-countries').closest('tr');
+    const cells = row?.querySelectorAll('td');
+
+    expect(countryColumnIndex).toBeGreaterThanOrEqual(0);
+    expect(tagsColumnIndex).toBeGreaterThanOrEqual(0);
+    expect(cells?.[countryColumnIndex]?.textContent).toBe('-');
+    expect(cells?.[tagsColumnIndex]?.textContent).toBe('-');
   });
 
   it('keeps field permissions ahead of resource visibility metadata', () => {
