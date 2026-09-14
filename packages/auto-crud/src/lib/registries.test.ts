@@ -17,4 +17,15 @@ describe('AutoCrud registries', () => {
     dataSources.unregister('test.coalesce-a');
     dataSources.unregister('test.coalesce-b');
   });
+
+  it('shares data sources across separate module instances', async () => {
+    const loader = vi.fn(async () => []);
+    dataSources.register('test.federated-source', loader);
+
+    vi.resetModules();
+    const reloaded = await import('./registries');
+
+    expect(reloaded.dataSources.get('test.federated-source')?.load).toBe(loader);
+    reloaded.dataSources.unregister('test.federated-source');
+  });
 });

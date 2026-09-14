@@ -156,7 +156,32 @@ function normalizeDataSourceRegistration(
   };
 }
 
-const dataSourceRegistry = createRegistry<AutoCrudDataSourceEntry>('data source');
+type DataSourceRegistry = ReturnType<typeof createRegistry<AutoCrudDataSourceEntry>>;
+
+type SharedRegistries = {
+  dataSources?: DataSourceRegistry;
+};
+
+const SHARED_REGISTRIES_KEY = Symbol.for('@wordrhyme/auto-crud/registries/v1');
+
+function getSharedDataSourceRegistry(): DataSourceRegistry {
+  const existing = Reflect.get(globalThis, SHARED_REGISTRIES_KEY) as
+    | SharedRegistries
+    | undefined;
+  if (existing?.dataSources) return existing.dataSources;
+
+  const dataSources = createRegistry<AutoCrudDataSourceEntry>('data source');
+  Reflect.set(globalThis, SHARED_REGISTRIES_KEY, {
+    ...existing,
+    dataSources,
+  } satisfies SharedRegistries);
+  return dataSources;
+}
+
+// Module Federation can evaluate AutoCRUD through more than one module instance.
+// Keep the public data-source registry shared within the current browser runtime so
+// registrations from plugin remotes are visible to the table instance that consumes them.
+const dataSourceRegistry = getSharedDataSourceRegistry();
 
 export const dataSources = {
   register(name: string, registration: AutoCrudDataSourceRegistration): void {
