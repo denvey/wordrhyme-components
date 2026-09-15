@@ -1070,11 +1070,11 @@ async function enrichCrudRows<TContext, TRow extends Record<string, unknown>>(
       ...Object.fromEntries(
         Object.entries(projected).map(([field, value]) => [
           field,
-          isObjectRecord(metadata?.fields?.[field])
-            && metadata.fields[field].preserveReferenceValue === true
-            && isObjectRecord(value)
-              ? value.refId ?? value.value ?? null
-              : readProjectionDisplay(value),
+          isObjectRecord(metadata?.fields?.[field]) &&
+          metadata.fields[field].preserveReferenceValue === true &&
+          isObjectRecord(value)
+            ? (value.refId ?? value.value ?? null)
+            : readProjectionDisplay(value),
         ]),
       ),
     };
