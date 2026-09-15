@@ -1023,12 +1023,13 @@ function createCrudBatchTransactionInput(
   };
 }
 
-function readProjectionDisplay(value: unknown): unknown {
+function readProjectionValue(value: unknown): unknown {
   if (!isObjectRecord(value)) return value;
+  if ('refId' in value && value.refId !== undefined) return value.refId;
+  if ('value' in value) return value.value;
   if ('display' in value && value.display !== null && value.display !== undefined) {
     return value.display;
   }
-  if ('value' in value) return value.value;
   return value;
 }
 
@@ -1057,7 +1058,6 @@ async function enrichCrudRows<TContext, TRow extends Record<string, unknown>>(
     id: target.id,
     entityIds,
   });
-  const metadata = await provider.getMetadata?.({ id: target.id });
 
   return rows.map((row) => {
     const rowId = row[idField];
@@ -1070,11 +1070,7 @@ async function enrichCrudRows<TContext, TRow extends Record<string, unknown>>(
       ...Object.fromEntries(
         Object.entries(projected).map(([field, value]) => [
           field,
-          isObjectRecord(metadata?.fields?.[field])
-            && metadata.fields[field].preserveReferenceValue === true
-            && isObjectRecord(value)
-              ? value.refId ?? value.value ?? null
-              : readProjectionDisplay(value),
+          readProjectionValue(value),
         ]),
       ),
     };

@@ -1718,16 +1718,63 @@ describe('createCrudRouter', () => {
       });
     });
 
-    it.each([false, true])('merges projections with reference-value opt-in %s', async (preserveReferenceValue) => {
+    it.each([
+      {
+        name: 'reference value',
+        projection: { value: 'user-1', display: 'User One' },
+        expected: 'user-1',
+      },
+      {
+        name: 'explicit reference ID',
+        projection: { refId: 'user-1', value: 'legacy', display: 'User One' },
+        expected: 'user-1',
+      },
+      {
+        name: 'empty reference',
+        projection: { refId: null, value: 'stale', display: 'Old User' },
+        expected: null,
+      },
+      {
+        name: 'undefined reference ID',
+        projection: { refId: undefined, value: 'user-1', display: 'User One' },
+        expected: 'user-1',
+      },
+      {
+        name: 'empty value',
+        projection: { value: null, display: 'Old User' },
+        expected: null,
+      },
+      {
+        name: 'multiple references',
+        projection: { value: ['user-1', 'user-2'], display: 'Two users' },
+        expected: ['user-1', 'user-2'],
+      },
+      { name: 'zero value', projection: { value: 0, display: 'Zero' }, expected: 0 },
+      {
+        name: 'false value',
+        projection: { value: false, display: 'No' },
+        expected: false,
+      },
+      { name: 'empty string', projection: { value: '', display: 'Empty' }, expected: '' },
+      { name: 'raw reference', projection: 'user-1', expected: 'user-1' },
+      { name: 'raw array', projection: ['user-1'], expected: ['user-1'] },
+      {
+        name: 'raw object',
+        projection: { nested: 'data' },
+        expected: { nested: 'data' },
+      },
+      {
+        name: 'display-only legacy projection',
+        projection: { display: 'User One' },
+        expected: 'User One',
+      },
+    ])('returns $name without metadata opt-in', async ({ projection, expected }) => {
       const db = createListMockDb([
         { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
       ]);
       const readProjection = vi.fn().mockResolvedValue({
         '1': {
-          owner: {
-            value: 'user-1',
-            display: 'User One',
-          },
+          owner: projection,
         },
       });
       const crudRouter = createCrudRouter({
@@ -1738,11 +1785,12 @@ describe('createCrudRouter', () => {
         selectSchema: taskSchema,
       });
 
+      const getMetadata = vi.fn().mockRejectedValue(new Error('Metadata unavailable'));
       const caller = crudRouter.createCaller({
         db,
         crudExtensions: {
           readProjection,
-          getMetadata: async () => ({ fields: { owner: { preserveReferenceValue } } }),
+          getMetadata,
         },
       } as any) as CrudCaller;
 
@@ -1758,12 +1806,13 @@ describe('createCrudRouter', () => {
       });
       expect(result.data[0]).toMatchObject({
         id: '1',
-        owner: preserveReferenceValue ? 'user-1' : 'User One',
+        owner: expected,
       });
       const detail = await caller.get('1');
-      expect(detail).toMatchObject({ owner: preserveReferenceValue ? 'user-1' : 'User One' });
+      expect(detail).toMatchObject({ owner: expected });
       const exported = await caller.export({});
-      expect(exported.data[0]).toMatchObject({ owner: preserveReferenceValue ? 'user-1' : 'User One' });
+      expect(exported.data[0]).toMatchObject({ owner: expected });
+      expect(getMetadata).not.toHaveBeenCalled();
     });
 
     it('should keep extension id filters when filterableColumns are restricted', async () => {
