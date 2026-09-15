@@ -1,4 +1,12 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import type {
@@ -1058,6 +1066,23 @@ describe('auto-crud table toolbar resolver', () => {
     }
   });
 
+  it('uses the same datetime presentation in the table and view modal', () => {
+    const dispose = setDateFormatter((_date, _options, preset) =>
+      preset === 'datetime' ? 'September 14, 2026 at 08:09:10' : 'date only',
+    );
+    try {
+      const resource = createAuditResource({
+        fields: { updatedAt: { table: { display: 'datetime' } } },
+      });
+      resource.modal.viewOpen = true;
+      resource.modal.selected = resource.tableData.data[0]!;
+      render(<AutoCrudTable schema={auditSchema} resource={resource} />);
+      expect(screen.getAllByText('September 14, 2026 at 08:09:10')).toHaveLength(2);
+    } finally {
+      act(() => dispose());
+    }
+  });
+
   it('renders resolved option labels as plain text when requested by metadata', () => {
     render(
       <AutoCrudTable
@@ -1103,7 +1128,232 @@ describe('auto-crud table toolbar resolver', () => {
     expect(screen.queryByText('owner cell')).toBeNull();
   });
 
-  it('keeps table-scoped data sources out of filters and the view modal', async () => {
+  it('shares field presentation in details by default while preserving denied fields', async () => {
+    dataSources.register('test.view-labels', () => [
+      { label: '中文名称', value: 'west' },
+    ]);
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          fields: {
+            region: { table: { display: 'text', dataSource: 'test.view-labels' } },
+          },
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        permissions={{ deny: ['id'] }}
+      />,
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    expect(await dialog.findByText('中文名称')).toBeTruthy();
+    expect(dialog.queryByText('west')).toBeNull();
+    expect(dialog.queryByText('Id')).toBeNull();
+  });
+
+  it('uses real table cell context for custom detail formatting', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        view={{ presentation: 'table' }}
+        fields={{ id: { hidden: true } }}
+        table={{
+          overrides: {
+            region: {
+              cell: ({
+                getValue,
+                row,
+              }: {
+                getValue: () => unknown;
+                row: { original: { id: string } };
+              }) => `${row.original.id}: ${getValue()}`,
+            },
+          },
+        }}
+      />,
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('1: west')).toBeTruthy();
+    expect(dialog.queryByText('Id')).toBeNull();
+  });
+
+  it('shows table-only hidden fields in details by default', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        fields={{ region: { table: { hidden: true } } }}
+        view={{ overrides: { region: { hidden: false } } }}
+      />,
+    );
+    expect(within(screen.getByRole('dialog')).getByText('west')).toBeTruthy();
+  });
+
+  it('renders detail-only label overrides', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        view={{ overrides: { region: { label: 'Detail region label' } } }}
+      />,
+    );
+    expect(
+      within(screen.getByRole('dialog')).getByText('Detail region label'),
+    ).toBeTruthy();
+  });
+
+  it('does not inherit custom list cells by default', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        table={{ overrides: { region: { cell: () => 'List action' } } }}
+      />,
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('west')).toBeTruthy();
+    expect(dialog.queryByText('List action')).toBeNull();
+  });
+
+  it('resolves table-hidden details using the selected record outside the current page', async () => {
+    const loader = vi.fn(() => [{ label: 'East detail', value: 'east' }]);
+    dataSources.register('test.hidden-detail', loader);
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '2', region: 'east' } },
+        })}
+        fields={{
+          region: {
+            filter: false,
+            table: { hidden: true, dataSource: 'test.hidden-detail', display: 'text' },
+          },
+        }}
+      />,
+    );
+    expect(
+      await within(screen.getByRole('dialog')).findByText('East detail'),
+    ).toBeTruthy();
+    expect(loader).toHaveBeenCalledWith(
+      expect.objectContaining({ values: [{ region: 'east' }] }),
+    );
+  });
+
+  it('does not let detail overrides reveal shared-hidden or denied fields', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        fields={{ region: { hidden: true } }}
+        permissions={{ deny: ['id'] }}
+        view={{ overrides: { region: { hidden: false }, id: { hidden: false } } }}
+      />,
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.queryByText('west')).toBeNull();
+    expect(dialog.queryByText('Id')).toBeNull();
+  });
+
+  it('shows all array values and preserves localized booleans in default details', () => {
+    const detailSchema = z.object({
+      id: z.string(),
+      tags: z.array(z.string()),
+      enabled: z.boolean(),
+    });
+    const resource = {
+      ...createResource(),
+      schema: detailSchema,
+      tableData: {
+        data: [{ id: '1', tags: ['a', 'b', 'c', 'd', 'e', 'f'], enabled: true }],
+        pageCount: 1,
+        isLoading: false,
+        isFetching: false,
+      },
+      modal: {
+        ...createResource().modal,
+        viewOpen: true,
+        selected: { id: '1', tags: ['a', 'b', 'c', 'd', 'e', 'f'], enabled: true },
+      },
+    } as unknown as UseAutoCrudResourceReturn<
+      typeof detailSchema,
+      z.infer<typeof detailSchema>
+    >;
+    render(
+      <AutoCrudTable
+        schema={detailSchema}
+        resource={resource}
+        locale={{ boolean: { true: 'Enabled detail', false: 'Disabled detail' } }}
+      />,
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('f')).toBeTruthy();
+    expect(dialog.queryByText('+1')).toBeNull();
+    expect(dialog.getByText('Enabled detail')).toBeTruthy();
+  });
+
+  it('keeps detail-only formatting out of the list', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        view={{
+          overrides: { region: { cell: () => 'Full detail text' } },
+        }}
+        table={{ overrides: { region: { cell: () => 'Truncated list text' } } }}
+      />,
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('Full detail text')).toBeTruthy();
+    expect(dialog.queryByText('Truncated list text')).toBeNull();
+    expect(screen.getByText('Truncated list text')).toBeTruthy();
+  });
+
+  it('keeps shared hidden fields out of details even when visible in the list', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        fields={{ region: { hidden: true, table: { hidden: false } } }}
+        view={{ presentation: 'table' }}
+      />,
+    );
+    expect(screen.getByText('west')).toBeTruthy();
+    expect(within(screen.getByRole('dialog')).queryByText('west')).toBeNull();
+  });
+
+  it('preserves the table cell when details override only column order', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+        })}
+        table={{ overrides: { region: { cell: () => 'Formatted region' } } }}
+        view={{ presentation: 'table', overrides: { region: { index: 0 } } }}
+      />,
+    );
+    const dialog = within(screen.getByRole('dialog'));
+    expect(dialog.getByText('Formatted region')).toBeTruthy();
+    expect(dialog.queryByText('west')).toBeNull();
+    expect(dialog.getAllByRole('term')[0]?.textContent).toBe('Region');
+  });
+
+  it('shares table data source labels with details but not filters', async () => {
     const loader = vi.fn(() => [{ label: 'West Table Label', value: 'west' }]);
     dataSources.register('test.dynamic-regions', loader);
 
@@ -1129,8 +1379,8 @@ describe('auto-crud table toolbar resolver', () => {
       />,
     );
 
-    await screen.findByText('West Table Label');
-    expect(screen.getByText('west')).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByText('West Table Label')).toHaveLength(2));
+    expect(screen.queryByText('west')).toBeNull();
     expect(loader).toHaveBeenCalledWith(
       expect.objectContaining({ field: 'region', type: 'resolve' }),
     );
@@ -1905,14 +2155,14 @@ describe('auto-crud table unified actions', () => {
   });
 });
 
-describe('table-only labels preserve shared detail labels', () => {
+describe('default details share list presentation labels', () => {
   afterEach(() => {
     cleanup();
     dataSources.unregister('test.dynamic-regions');
     dataSources.unregister('test.table-regions');
   });
   it.each(['static', 'dynamic'] as const)(
-    'preserves shared detail labels with %s table labels',
+    'uses %s table labels in details by default',
     async (mode) => {
       const loader = vi.fn(() => [{ label: 'Shared West Label', value: 'west' }]);
       dataSources.register('test.dynamic-regions', loader);
@@ -1936,9 +2186,11 @@ describe('table-only labels preserve shared detail labels', () => {
           })}
         />,
       );
-      expect(await screen.findByText('Table West Label')).toBeTruthy();
-      await waitFor(() => expect(loader).toHaveBeenCalled());
-      expect(await screen.findByText('Shared West Label')).toBeTruthy();
+      await waitFor(() =>
+        expect(screen.getAllByText('Table West Label')).toHaveLength(2),
+      );
+      expect(loader).not.toHaveBeenCalled();
+      expect(screen.queryByText('Shared West Label')).toBeNull();
     },
   );
 });
