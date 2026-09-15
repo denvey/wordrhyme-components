@@ -1,4 +1,4 @@
-import { getDateLocaleOptions } from './format';
+import { formatDate as formatLegacyDate, getDateLocaleOptions } from './format';
 
 /** Calendar days are wall dates, never instants in the host's time zone. */
 export function serializeCalendarDate(date: Date): string {
@@ -18,7 +18,8 @@ export function parseCalendarDate(value: string | number | undefined): Date | un
 }
 
 export function calendarPresentation() {
-  const locale = getDateLocaleOptions()?.locale ?? 'en-US';
+  const localeOptions = getDateLocaleOptions();
+  const locale = localeOptions?.locale ?? 'en-US';
   const chinese = locale.toLowerCase().startsWith('zh');
   const localeInfo = new Intl.Locale(locale) as Intl.Locale & {
     weekInfo?: { firstDay: number };
@@ -35,8 +36,12 @@ export function calendarPresentation() {
   return {
     locale,
     weekStartsOn: (firstDay % 7) as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-    formatDate: (date: Date | undefined) =>
-      date ? format(date, { year: 'numeric', month: 'long', day: 'numeric' }) : '',
+    formatDate: (date: Date | undefined) => {
+      // Existing registrations own selected-date labels until the host opts into
+      // calendar presentation. Calendar headings still use calendar-day formatting.
+      if (!localeOptions) return formatLegacyDate(date);
+      return date ? format(date, { year: 'numeric', month: 'long', day: 'numeric' }) : '';
+    },
     clearLabel: (title: string | undefined) =>
       chinese ? `清除${title ?? ''}筛选` : `Clear ${title ?? ''} filter`,
     formatters: {

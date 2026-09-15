@@ -1044,7 +1044,11 @@ setDateFormatter(undefined);
 
 `setDateFormatter` 是进程/运行时级配置，建议在应用启动时注册一个稳定的 formatter。多个注册可以重叠，清理函数只移除对应注册，允许乱序清理。SSR 场景不要在每个请求中重复调用 setter；如需按请求选择语言或时区，应由稳定 formatter 通过宿主提供的并发安全上下文读取当前请求策略。
 
-日期筛选日历可通过 `setDateFormatter(formatter, { locale, timeZone })` 接收宿主配置（`DateLocaleOptions`）。语言或时区改变时重新注册并清理旧注册，已挂载的筛选器会同步更新月份、星期和日期标签。筛选值使用 `YYYY-MM-DD` 日历日字符串；服务端配置 `resolveDateRange` 时按宿主查询时区解析边界，否则使用服务端本地时区，并继续兼容时间戳输入。日历标签不会把选中的日期当成时间戳再转换时区。
+原有 `setDateFormatter(formatter)` 调用保持兼容：筛选器的已选日期标签继续使用宿主 formatter，包括其自定义格式和时区行为。
+
+日期筛选日历可通过 `setDateFormatter(formatter, { locale, timeZone })` 接收宿主配置（`DateLocaleOptions`）。语言或时区改变时重新注册并清理旧注册，已挂载的筛选器会同步更新月份、星期和日期标签。筛选值使用 `YYYY-MM-DD` 日历日字符串；服务端配置 `resolveDateRange` 时按宿主查询时区解析边界，否则使用服务端本地时区，并继续兼容时间戳输入。显式传入日历配置后，日期标签使用指定 locale，直接格式化日历日，不再调用 formatter 或进行时间点的时区转换。`timeZone` 仅随注册保存宿主策略，不会改变日历的“今天”、默认月份或自动配置服务端查询时区；业务时区边界仍须由服务端 `resolveDateRange` 提供。
+
+升级时请同时更新 `@wordrhyme/auto-crud` 与 `@wordrhyme/auto-crud-server`：新日历提交 `YYYY-MM-DD`，旧服务端默认解析器无法识别。自定义 `resolveDateRange` 也应接受此格式；已有时间戳 URL 仍可读取。
 
 ### Schema Bridge - 核心转换函数
 

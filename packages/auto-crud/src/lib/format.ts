@@ -10,6 +10,9 @@ export type DateFormatter = (
 
 export interface DateLocaleOptions {
   locale: string;
+  /** Host policy metadata; calendar days are not shifted into this zone.
+   * Configure the server's resolveDateRange separately for query boundaries.
+   */
   timeZone: string;
 }
 

@@ -1,14 +1,24 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, expect, it } from 'vitest';
+import { setDateFormatter } from '@/lib/format';
 import { useDataTable } from '@/hooks/use-data-table';
 import { DataTableFilterList } from './data-table-filter-list';
 import { DataTableFilterMenu } from './data-table-filter-menu';
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  setDateFormatter(undefined);
+});
 
-it.each([DataTableFilterList, DataTableFilterMenu])(
-  'reads calendar dates in $name',
-  (Filter) => {
+it.each([
+  [DataTableFilterList, false],
+  [DataTableFilterMenu, false],
+  [DataTableFilterList, true],
+  [DataTableFilterMenu, true],
+] as const)(
+  'reads calendar dates in %s with legacy formatter=%s',
+  (Filter, legacyFormatter) => {
+    if (legacyFormatter) setDateFormatter(() => 'Custom host date');
     window.history.replaceState(null, '', '/?createdAt=2026-09-14');
     function Table() {
       const { table } = useDataTable({
@@ -30,6 +40,8 @@ it.each([DataTableFilterList, DataTableFilterMenu])(
     if (Filter === DataTableFilterList) {
       fireEvent.click(screen.getByRole('button', { name: /^Filter/ }));
     }
-    expect(screen.getByText('September 14, 2026')).toBeTruthy();
+    expect(
+      screen.getByText(legacyFormatter ? 'Custom host date' : 'September 14, 2026'),
+    ).toBeTruthy();
   },
 );
