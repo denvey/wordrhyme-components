@@ -1,10 +1,12 @@
 import type { DateRangeResolver } from './filter-columns';
+import { sql } from 'drizzle-orm';
 import { PgDialect, pgTable, timestamp } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 import { filterColumns } from './filter-columns';
 
 const records = pgTable('records', {
   createdAt: timestamp('created_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }),
 }).enableRLS();
 
 function compile(condition: ReturnType<typeof filterColumns>) {
@@ -13,6 +15,43 @@ function compile(condition: ReturnType<typeof filterColumns>) {
 }
 
 describe('filterColumns date range resolver', () => {
+  it('encodes dates for computed creation-time expressions', () => {
+    const query = compile(filterColumns({
+      table: records,
+      filters: [{ id: 'createdAt', value: ['2026-09-10', '2026-09-10'], variant: 'dateRange', operator: 'isBetween' }],
+      joinOperator: 'and',
+      resolveColumn: () => sql`coalesce(${records.updatedAt}, ${records.createdAt})`,
+      resolveDateRange: () => ({
+        start: new Date('2026-09-10T00:00:00.000Z'),
+        endExclusive: new Date('2026-09-11T00:00:00.000Z'),
+      }),
+    }));
+    expect(query.sql).toContain('coalesce("records"."updated_at", "records"."created_at") >= $1');
+    expect(query.sql).toContain('< $2');
+    expect(query.params).toEqual(['2026-09-10T00:00:00.000Z', '2026-09-11T00:00:00.000Z']);
+  });
+  it.each(['createdAt', 'updatedAt'] as const)(
+    'encodes same-day %s filters for the database driver, including resolved columns',
+    (id) => {
+      for (const resolveColumn of [undefined, () => records[id]]) {
+        const query = compile(filterColumns({
+          table: records,
+          filters: [{ id, value: ['2026-09-10', '2026-09-10'], variant: 'dateRange', operator: 'isBetween' }],
+          joinOperator: 'and',
+          resolveColumn,
+          resolveDateRange: () => ({
+            start: new Date('2026-09-10T00:00:00.000Z'),
+            endExclusive: new Date('2026-09-11T00:00:00.000Z'),
+          }),
+        }));
+        expect(query.sql).toContain(`"records"."${records[id].name}" >= $1`);
+        expect(query.sql).toContain(`"records"."${records[id].name}" < $2`);
+        expect(query.params).toEqual(['2026-09-10T00:00:00.000Z', '2026-09-11T00:00:00.000Z']);
+        expect(query.params.some((value) => value instanceof Date)).toBe(false);
+      }
+    },
+  );
+
   it('uses host UTC boundaries as a half-open range', () => {
     const start = new Date('2026-03-08T05:00:00.000Z');
     const endExclusive = new Date('2026-03-09T04:00:00.000Z');
@@ -40,7 +79,7 @@ describe('filterColumns date range resolver', () => {
     expect(resolveDateRange).toHaveBeenCalledOnce();
     expect(query.sql).toContain('"records"."created_at" >= $1');
     expect(query.sql).toContain('"records"."created_at" < $2');
-    expect(query.params).toEqual([start, endExclusive]);
+    expect(query.params).toEqual([start.toISOString(), endExclusive.toISOString()]);
   });
 
   it('uses the exclusive end for inclusive date comparisons', () => {
@@ -63,7 +102,7 @@ describe('filterColumns date range resolver', () => {
     );
 
     expect(query.sql).toContain('"records"."created_at" < $1');
-    expect(query.params).toEqual([endExclusive]);
+    expect(query.params).toEqual([endExclusive.toISOString()]);
   });
 
   it.each([
@@ -91,7 +130,7 @@ describe('filterColumns date range resolver', () => {
     );
 
     expect(query.sql).toContain(sqlFragment);
-    expect(query.params).toEqual([boundary]);
+    expect(query.params).toEqual([boundary.toISOString()]);
   });
 
   it('preserves legacy local parsing when the host resolver is absent', () => {
@@ -118,7 +157,7 @@ describe('filterColumns date range resolver', () => {
 
     expect(query.sql).toContain('"records"."created_at" >= $1');
     expect(query.sql).toContain('"records"."created_at" <= $2');
-    expect(query.params).toEqual([expectedStart, expectedEnd]);
+    expect(query.params).toEqual([expectedStart.toISOString(), expectedEnd.toISOString()]);
   });
 
   it('rejects invalid host boundaries instead of widening the filter', () => {
