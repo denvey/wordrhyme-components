@@ -5,6 +5,7 @@ import type {
   AutoCrudQueryCapabilities,
   UseAutoCrudResourceReturn,
 } from '@/hooks/use-auto-crud-resource';
+import type { ColumnOverrides } from '@/lib/schema-bridge/types';
 import type { JsonSchemaFormScope } from '@wordrhyme/formily-shadcn';
 import type { ModalVariant } from './form-modal';
 import type { CrudPermissions } from '@/types/permissions';
@@ -502,14 +503,16 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
    * 支持共用配置（label, hidden）+ 表格/表单特定配置
    */
   fields?: Fields;
-  /** 表格配置 */
+  /** Detail presentation shares field formatting by default. */
   view?: {
+    /** Explicitly reuse custom list cells with a separate, single-row table context. */
     presentation?: 'table';
     /** Detail-only column overrides; the list presentation is unchanged. */
     overrides?: NonNullable<
       Parameters<typeof createTableSchema<TSchema>>[1]
     >['overrides'];
   };
+  /** 表格配置 */
   table?: {
     /** 隐藏的列 */
     hidden?: string[];
@@ -838,20 +841,6 @@ function mergeFieldOptions(
   }
 
   return mergeFilterOptions(current, incoming ?? []);
-}
-
-function mergeOptionsByField(
-  left: Record<string, FieldOption[]> | undefined,
-  right: Record<string, FieldOption[]> | undefined,
-): Record<string, FieldOption[]> {
-  const keys = new Set([...Object.keys(left ?? {}), ...Object.keys(right ?? {})]);
-
-  return Object.fromEntries(
-    Array.from(keys).flatMap((key) => {
-      const options = mergeFieldOptions(left?.[key], right?.[key]);
-      return options ? [[key, options]] : [];
-    }),
-  );
 }
 
 function shouldResolveOptions(
@@ -1806,6 +1795,7 @@ function renderFieldValue(
   booleanLocale: { true: string; false: string },
   options?: FieldOption[],
   display: FieldTableDisplay = 'auto',
+  maxItems = 5,
 ): React.ReactNode {
   if (value === null || value === undefined) {
     return <span className="text-muted-foreground">-</span>;
@@ -1825,12 +1815,14 @@ function renderFieldValue(
     if (Array.isArray(value)) {
       return (
         <div className="flex gap-1 flex-wrap">
-          {value.slice(0, 5).map((item, index) => (
+          {value.slice(0, maxItems).map((item, index) => (
             <Badge key={index} variant="secondary">
               {String(item)}
             </Badge>
           ))}
-          {value.length > 5 && <Badge variant="outline">+{value.length - 5}</Badge>}
+          {value.length > maxItems && (
+            <Badge variant="outline">+{value.length - maxItems}</Badge>
+          )}
         </div>
       );
     }
@@ -1846,12 +1838,14 @@ function renderFieldValue(
     if (Array.isArray(value)) {
       return (
         <div className="flex gap-1 flex-wrap">
-          {value.slice(0, 5).map((v, i) => (
+          {value.slice(0, maxItems).map((v, i) => (
             <Badge key={i} variant="secondary">
               {getOptionLabel(v, options)}
             </Badge>
           ))}
-          {value.length > 5 && <Badge variant="outline">+{value.length - 5}</Badge>}
+          {value.length > maxItems && (
+            <Badge variant="outline">+{value.length - maxItems}</Badge>
+          )}
         </div>
       );
     }
@@ -1877,12 +1871,14 @@ function renderFieldValue(
     case 'array':
       return Array.isArray(value) ? (
         <div className="flex gap-1 flex-wrap">
-          {value.slice(0, 5).map((v, i) => (
+          {value.slice(0, maxItems).map((v, i) => (
             <Badge key={i} variant="secondary">
               {String(v)}
             </Badge>
           ))}
-          {value.length > 5 && <Badge variant="outline">+{value.length - 5}</Badge>}
+          {value.length > maxItems && (
+            <Badge variant="outline">+{value.length - maxItems}</Badge>
+          )}
         </div>
       ) : null;
     default:
@@ -1893,7 +1889,28 @@ function renderFieldValue(
 /**
  * ViewModal 组件 - 详情查看弹窗
  */
-function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
+interface ViewModalProps<TSchema extends z.ZodObject<z.ZodRawShape>> {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  variant: ModalVariant;
+  data: z.output<TSchema> | null;
+  schema: TSchema;
+  fields?: Fields;
+  dynamicOptions?: Record<string, FieldOption[]>;
+  denyFields?: string[];
+  locale: { viewModal: { title: string }; boolean: { true: string; false: string } };
+  tableOverrides?: ColumnOverrides<z.output<TSchema>>;
+  view?: AutoCrudTableProps<TSchema>['view'];
+}
+
+function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>(
+  props: ViewModalProps<TSchema>,
+) {
+  if (!props.open || !props.data) return null;
+  return <ViewModalContent {...props} />;
+}
+
+function ViewModalContent<TSchema extends z.ZodObject<z.ZodRawShape>>({
   open,
   onOpenChange,
   variant,
@@ -1904,87 +1921,93 @@ function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>({
   denyFields,
   locale,
   tableOverrides,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  variant: ModalVariant;
-  data: z.output<TSchema> | null;
-  schema: TSchema;
-  fields?: Fields;
-  dynamicOptions?: Record<string, FieldOption[]>;
-  denyFields?: string[];
-  locale: { viewModal: { title: string }; boolean: { true: string; false: string } };
-  tableOverrides?: Parameters<typeof createTableSchema<TSchema>>[1];
-}) {
-  const columns = React.useMemo(
-    () => createTableSchema(schema, tableOverrides),
-    [schema, tableOverrides],
-  );
+  view,
+}: ViewModalProps<TSchema>) {
+  const excluded = React.useMemo(() => {
+    const denied = new Set(denyFields ?? []);
+    return Object.keys(schema.shape).filter((key) => {
+      const config = fieldConfig?.[key];
+      return (
+        denied.has(key) ||
+        config?.hidden ||
+        view?.overrides?.[key]?.hidden ||
+        (isDefaultHiddenAuditField(key) &&
+          !isFieldTableExplicitlyVisible(config) &&
+          view?.overrides?.[key]?.hidden !== false)
+      );
+    });
+  }, [schema, fieldConfig, denyFields, view?.overrides]);
   const rows = React.useMemo(() => (data ? [data] : []), [data]);
+  const resolvedOptions = useDynamicResolveOptions(fieldConfig, rows, excluded);
+  const columns = React.useMemo(() => {
+    const overrides: Record<
+      string,
+      NonNullable<ColumnOverrides<z.output<TSchema>>[keyof z.output<TSchema>]>
+    > = {};
+    for (const [key, fieldSchema] of Object.entries(schema.shape).filter(
+      ([fieldKey]) => !excluded.includes(fieldKey),
+    )) {
+      const config = fieldConfig?.[key] ?? {};
+      const tableConfig = getTableConfig(config);
+      const listOverride = tableOverrides?.[key];
+      const options =
+        getTableOptions(config) ??
+        resolvedOptions.optionsByField[key] ??
+        (tableConfig?.dataSource !== undefined ? undefined : dynamicOptions?.[key]);
+      overrides[key] = {
+        label: tableConfig?.label ?? config.label ?? listOverride?.label ?? humanize(key),
+        index: tableConfig?.index ?? listOverride?.index,
+        cell: ({ getValue }: { getValue: () => unknown }): React.ReactNode =>
+          renderFieldValue(
+            getValue(),
+            parseZodField(fieldSchema as z.ZodType).type,
+            locale.boolean,
+            options,
+            tableConfig?.display ?? 'auto',
+            Infinity,
+          ),
+        ...(view?.presentation === 'table' ? listOverride : undefined),
+        // List visibility does not govern details. Shared hidden/deny are excluded above.
+        hidden: false,
+        ...view?.overrides?.[key],
+      };
+    }
+    return createTableSchema(schema, {
+      overrides: overrides as NonNullable<
+        Parameters<typeof createTableSchema<TSchema>>[1]
+      >['overrides'],
+      exclude: excluded,
+    });
+  }, [
+    schema,
+    excluded,
+    fieldConfig,
+    tableOverrides,
+    view,
+    resolvedOptions.optionsByField,
+    dynamicOptions,
+    locale.boolean,
+  ]);
   const table = useReactTable({
     data: rows,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
-  if (!data) return null;
-
-  const shape = schema.shape;
-  // Critical #2: 同时检查 hidden 和 deny 字段
-  const denySet = new Set(denyFields ?? []);
-  const fields = Object.entries(shape).filter(([key]) => {
-    if (denySet.has(key)) return false; // deny 字段不显示
-    const config = fieldConfig?.[key];
-    if (config?.hidden) return false;
-    if (isDefaultHiddenAuditField(key) && !isFieldTableExplicitlyVisible(config)) {
-      return false;
-    }
-    return true;
-  });
-
-  const content = tableOverrides ? (
+  const content = (
     <dl className="grid gap-4 py-4">
       {table
         .getRowModel()
         .rows[0]?.getAllCells()
-        .filter((cell) => fields.some(([key]) => key === cell.column.id))
         .map((cell) => (
           <div key={cell.id} className="grid grid-cols-3 items-start gap-4">
             <dt className="text-sm font-medium text-muted-foreground">
-              {fieldConfig?.[cell.column.id]?.label ?? humanize(cell.column.id)}
+              {cell.column.columnDef.meta?.label ?? humanize(cell.column.id)}
             </dt>
-            <dd className="col-span-2 text-sm">
+            <dd className="col-span-2 min-w-0 whitespace-pre-wrap break-words text-sm">
               {flexRender(cell.column.columnDef.cell, cell.getContext())}
             </dd>
           </div>
         ))}
-    </dl>
-  ) : (
-    <dl className="grid gap-4 py-4">
-      {fields.map(([key, fieldSchema]) => {
-        const parsed = parseZodField(fieldSchema as z.ZodType);
-        const label = fieldConfig?.[key]?.label ?? humanize(key);
-        const value = (data as Record<string, unknown>)[key];
-        const tableConfig = fieldConfig?.[key]?.table;
-        const display = typeof tableConfig === 'object' ? tableConfig.display : undefined;
-        const options =
-          normalizeFieldOptions(fieldConfig?.[key]?.enum) ??
-          normalizeFieldOptions(dynamicOptions?.[key]);
-
-        return (
-          <div key={key} className="grid grid-cols-3 items-start gap-4">
-            <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-            <dd className="col-span-2 text-sm">
-              {renderFieldValue(
-                value,
-                parsed.type,
-                locale.boolean,
-                options,
-                display === 'date' || display === 'datetime' ? display : 'auto',
-              )}
-            </dd>
-          </div>
-        );
-      })}
     </dl>
   );
 
@@ -2225,45 +2248,6 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     resolvedFields,
     resource.tableData.data as readonly Record<string, unknown>[],
     hiddenColumns,
-  );
-  // Table-only labels must not replace the shared resolver used by details.
-  // Fields without table overrides reuse the existing resolution above.
-  const sharedResolveFields = React.useMemo<Fields>(
-    () =>
-      Object.fromEntries(
-        Object.entries(resolvedFields).flatMap(([field, config]) => {
-          const table = getTableConfig(config);
-          if (table?.options === undefined && table?.dataSource === undefined) return [];
-          const { table: _table, ...sharedConfig } = config;
-          return [[field, sharedConfig]];
-        }),
-      ),
-    [resolvedFields],
-  );
-  const sharedResolveOptions = useDynamicResolveOptions(
-    sharedResolveFields,
-    resource.tableData.data as readonly Record<string, unknown>[],
-    hiddenColumns,
-  );
-  const viewDynamicOptionsByField = React.useMemo(
-    () =>
-      mergeOptionsByField(
-        mergeOptionsByField(
-          dynamicFilterOptions.labelOptionsByField,
-          sharedResolveOptions.optionsByField,
-        ),
-        Object.fromEntries(
-          Object.entries(dynamicResolveOptions.optionsByField).filter(
-            ([field]) => !getTableConfig(resolvedFields[field] ?? {})?.dataSource,
-          ),
-        ),
-      ),
-    [
-      dynamicFilterOptions.labelOptionsByField,
-      dynamicResolveOptions.optionsByField,
-      sharedResolveOptions.optionsByField,
-      resolvedFields,
-    ],
   );
   const resourceIdKey = resource.idKey ?? 'id';
   const actionRegistryVersion = useCrudActionsVersion();
@@ -2751,22 +2735,13 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         onOpenChange={(open) => !open && resource.handlers.closeModals()}
         variant={resource.modal.variant}
         data={resource.modal.selected}
-        schema={resolvedSchema}
+        schema={resolvedSchema as TSchema}
         fields={resolvedFields}
-        dynamicOptions={viewDynamicOptionsByField}
+        dynamicOptions={dynamicFilterOptions.labelOptionsByField}
         denyFields={denyFields}
         locale={locale}
-        tableOverrides={
-          viewConfig?.presentation === 'table'
-            ? {
-                overrides: mergeTableOverrides(
-                  tableOverrides,
-                  viewConfig.overrides ?? {},
-                ),
-                exclude: hiddenColumns,
-              }
-            : undefined
-        }
+        tableOverrides={tableOverrides as ColumnOverrides<z.output<TSchema>>}
+        view={viewConfig}
       />
 
       {/* Delete Confirmation */}

@@ -1454,3 +1454,34 @@ MIT © [wordrhyme](https://github.com/pixpilot/shadcn-components)
 - [Shadcn UI](https://ui.shadcn.com/) - 优雅的 UI 组件
 - [Notion](https://notion.so) - 高级筛选器设计
 - [Linear](https://linear.app) - 命令面板设计
+
+### Detail presentation
+
+Details automatically share field labels, `enum`/`dataSource` mappings and
+`fields[field].table` presentation settings (`label`, `display`, `options`,
+`dataSource`) with the list. No presentation switch is required. Default details
+show full text and all array items, preserving localized boolean labels.
+Table-only hidden fields remain available in details; shared `hidden` and
+`permissions.deny` always take precedence. Labels are resolved from the selected
+record, including when it is absent from the current list page.
+
+```tsx
+<AutoCrudTable
+  schema={schema}
+  resource={resource}
+  fields={{ description: { table: { hidden: true } } }}
+  view={{
+    overrides: {
+      description: { label: 'Full description', index: 0 },
+      region: { cell: ({ getValue }) => <strong>{String(getValue())}</strong> },
+    },
+  }}
+/>
+```
+
+`view.overrides` changes details only. Custom list `cell` callbacks are not inherited
+by default because they can contain list actions or depend on table state. To
+explicitly reuse them, set `view.presentation: 'table'`; detail overrides still win.
+This provides a real **separate single-row** TanStack context, not the original
+list's pagination, selection or row index. Reused custom cells retain their own
+truncation and interaction behavior.
