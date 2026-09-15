@@ -103,12 +103,24 @@ function isEmpty(column: ColumnTarget): SQL {
 }
 
 /**
- * 安全解析日期时间戳
+ * 安全解析日历日期或日期时间戳
  * @returns Date 对象，如果解析失败返回 null
  */
 function safeParseDate(value: string | number | undefined | null): Date | null {
   if (value === undefined || value === null || value === '') {
     return null;
+  }
+
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number) as [number, number, number];
+    // Match the legacy server-local boundary policy; a host resolver can provide
+    // explicit business-time-zone boundaries before this fallback is reached.
+    const date = new Date(0);
+    date.setFullYear(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+      ? date
+      : null;
   }
 
   const timestamp = typeof value === 'string' ? Number(value) : value;

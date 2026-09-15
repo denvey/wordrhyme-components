@@ -27,7 +27,12 @@ import {
 } from '@wordrhyme/shadcn';
 import { useDebouncedCallback } from '@/hooks/use-debounced-callback';
 import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';
-import { formatDate } from '@/lib/format';
+import { useDateFormatterVersion } from '@/lib/format';
+import {
+  calendarPresentation,
+  parseCalendarDate,
+  serializeCalendarDate,
+} from '@/lib/calendar-date';
 import { generateId } from '@/lib/id';
 import { cn } from '@/lib/utils';
 import type { ExtendedColumnFilter, FilterOperator, Option } from '@/types/data-table';
@@ -368,6 +373,7 @@ function DataTableFilterItem<TData>({
   onFilterRemove,
 }: DataTableFilterItemProps<TData>) {
   {
+    useDateFormatterVersion();
     const [showFieldSelector, setShowFieldSelector] = React.useState(false);
     const [showOperatorSelector, setShowOperatorSelector] = React.useState(false);
     const [showValueSelector, setShowValueSelector] = React.useState(false);
@@ -530,6 +536,7 @@ function FilterValueSelector<TData>({
   value,
   onSelect,
 }: FilterValueSelectorProps<TData>) {
+  useDateFormatterVersion();
   const variant = column.columnDef.meta?.variant ?? 'text';
 
   switch (variant) {
@@ -569,11 +576,15 @@ function FilterValueSelector<TData>({
     case 'dateRange':
       return (
         <Calendar
+          lang={calendarPresentation().locale}
+          weekStartsOn={calendarPresentation().weekStartsOn}
+          formatters={calendarPresentation().formatters}
+          labels={calendarPresentation().labels}
           autoFocus
           captionLayout="dropdown"
           mode="single"
-          selected={value ? new Date(value) : undefined}
-          onSelect={(date) => onSelect(date?.getTime().toString() ?? '')}
+          selected={parseCalendarDate(value)}
+          onSelect={(date) => onSelect(date ? serializeCalendarDate(date) : '')}
         />
       );
 
@@ -818,17 +829,17 @@ function onFilterInputRender<TData>({
         ? filter.value.filter(Boolean)
         : [filter.value, filter.value].filter(Boolean);
 
-      const startDate = dateValue[0] ? new Date(Number(dateValue[0])) : undefined;
-      const endDate = dateValue[1] ? new Date(Number(dateValue[1])) : undefined;
+      const startDate = dateValue[0] ? parseCalendarDate(dateValue[0]) : undefined;
+      const endDate = dateValue[1] ? parseCalendarDate(dateValue[1]) : undefined;
 
       const isSameDate =
         startDate && endDate && startDate.toDateString() === endDate.toDateString();
 
       const displayValue =
         filter.operator === 'isBetween' && dateValue.length === 2 && !isSameDate
-          ? `${formatDate(startDate, { month: 'short' })} - ${formatDate(endDate, { month: 'short' })}`
+          ? `${calendarPresentation().formatDate(startDate)} - ${calendarPresentation().formatDate(endDate)}`
           : startDate
-            ? formatDate(startDate, { month: 'short' })
+            ? calendarPresentation().formatDate(startDate)
             : 'Pick date...';
 
       return (
@@ -851,14 +862,18 @@ function onFilterInputRender<TData>({
           <PopoverContent id={inputListboxId} align="start" className="w-auto p-0">
             {filter.operator === 'isBetween' ? (
               <Calendar
+                lang={calendarPresentation().locale}
+                weekStartsOn={calendarPresentation().weekStartsOn}
+                formatters={calendarPresentation().formatters}
+                labels={calendarPresentation().labels}
                 autoFocus
                 captionLayout="dropdown"
                 mode="range"
                 selected={
                   dateValue.length === 2
                     ? {
-                        from: new Date(Number(dateValue[0])),
-                        to: new Date(Number(dateValue[1])),
+                        from: parseCalendarDate(dateValue[0]),
+                        to: parseCalendarDate(dateValue[1]),
                       }
                     : {
                         from: new Date(),
@@ -869,8 +884,8 @@ function onFilterInputRender<TData>({
                   onFilterUpdate(filter.filterId, {
                     value: date
                       ? [
-                          (date.from?.getTime() ?? '').toString(),
-                          (date.to?.getTime() ?? '').toString(),
+                          date.from ? serializeCalendarDate(date.from) : '',
+                          date.to ? serializeCalendarDate(date.to) : '',
                         ]
                       : [],
                   });
@@ -878,13 +893,17 @@ function onFilterInputRender<TData>({
               />
             ) : (
               <Calendar
+                lang={calendarPresentation().locale}
+                weekStartsOn={calendarPresentation().weekStartsOn}
+                formatters={calendarPresentation().formatters}
+                labels={calendarPresentation().labels}
                 autoFocus
                 captionLayout="dropdown"
                 mode="single"
-                selected={dateValue[0] ? new Date(Number(dateValue[0])) : undefined}
+                selected={dateValue[0] ? parseCalendarDate(dateValue[0]) : undefined}
                 onSelect={(date) => {
                   onFilterUpdate(filter.filterId, {
-                    value: (date?.getTime() ?? '').toString(),
+                    value: date ? serializeCalendarDate(date) : '',
                   });
                 }}
               />

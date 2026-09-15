@@ -8,8 +8,17 @@ export type DateFormatter = (
   preset?: DateFormatPreset,
 ) => string;
 
+export interface DateLocaleOptions {
+  locale: string;
+  /** Host policy metadata; calendar days are not shifted into this zone.
+   * Configure the server's resolveDateRange separately for query boundaries.
+   */
+  timeZone: string;
+}
+
 interface DateFormatterRegistration {
   formatter: DateFormatter;
+  options?: DateLocaleOptions;
   token: symbol;
 }
 
@@ -74,13 +83,19 @@ function hasValidCanonicalDateTimePrefix(value: string): boolean {
   return !match || isValidCalendarDate(match[1], match[2], match[3]);
 }
 
+export function getDateLocaleOptions(): DateLocaleOptions | undefined {
+  return hostDateFormatters[hostDateFormatters.length - 1]?.options;
+}
+
 /**
- * Register the host's process-wide date presentation policy without coupling
- * AutoCrud to locale or timezone selection. The returned cleanup removes only
- * this registration, so overlapping registrations may be disposed out of order.
+ * Register the host's date formatter and optional calendar locale policy.
+ * Cleanup removes only this registration, including out-of-order cleanup.
  * Passing undefined clears every registration.
  */
-export function setDateFormatter(formatter?: DateFormatter): () => void {
+export function setDateFormatter(
+  formatter?: DateFormatter,
+  options?: DateLocaleOptions,
+): () => void {
   if (formatter === undefined) {
     const hadFormatter = hostDateFormatters.length > 0;
     hostDateFormatters = [];
@@ -88,19 +103,23 @@ export function setDateFormatter(formatter?: DateFormatter): () => void {
     return () => undefined;
   }
 
-  const registration = { formatter, token: Symbol('date-formatter') };
+  const registration = {
+    formatter,
+    ...(options ? { options } : {}),
+    token: Symbol('date-formatter'),
+  };
   hostDateFormatters.push(registration);
   notifyDateFormatterChange();
 
   return () => {
-    const currentFormatter = getHostDateFormatter();
+    const currentRegistration = hostDateFormatters[hostDateFormatters.length - 1];
     const previousLength = hostDateFormatters.length;
     hostDateFormatters = hostDateFormatters.filter(
       ({ token }) => token !== registration.token,
     );
     if (
       hostDateFormatters.length !== previousLength &&
-      getHostDateFormatter() !== currentFormatter
+      hostDateFormatters[hostDateFormatters.length - 1] !== currentRegistration
     ) {
       notifyDateFormatterChange();
     }

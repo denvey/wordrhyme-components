@@ -25,7 +25,12 @@ import { Separator } from '@wordrhyme/shadcn';
 import { Slider } from '@wordrhyme/shadcn';
 import { Select } from '@wordrhyme/shadcn-ui';
 import { getDefaultFilterOperator } from '@/lib/data-table';
-import { formatDate } from '@/lib/format';
+import { useDateFormatterVersion } from '@/lib/format';
+import {
+  calendarPresentation,
+  parseCalendarDate,
+  serializeCalendarDate,
+} from '@/lib/calendar-date';
 import { generateId } from '@/lib/id';
 import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { cn } from '@/lib/utils';
@@ -702,12 +707,23 @@ interface SimpleDateFilterProps {
   onChange: (value: string | string[] | undefined) => void;
 }
 
-function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilterProps) {
+export function SimpleDateFilter({
+  title,
+  multiple,
+  value,
+  onChange,
+}: SimpleDateFilterProps) {
+  const [open, setOpen] = React.useState(false);
+  const commit = (next: string | string[] | undefined) => {
+    setOpen(false);
+    onChange(next);
+  };
+  const formatterVersion = useDateFormatterVersion();
+  const presentation = React.useMemo(() => calendarPresentation(), [formatterVersion]);
+  const { formatDate } = presentation;
   const timestamps = Array.isArray(value) ? value : value ? [value] : [];
-  const fromTimestamp = timestamps[0] ? Number(timestamps[0]) : undefined;
-  const toTimestamp = timestamps[1] ? Number(timestamps[1]) : undefined;
-  const fromDate = fromTimestamp ? new Date(fromTimestamp) : undefined;
-  const toDate = toTimestamp ? new Date(toTimestamp) : undefined;
+  const fromDate = parseCalendarDate(timestamps[0]);
+  const toDate = parseCalendarDate(timestamps[1]);
 
   const [localRange, setLocalRange] = React.useState<DateRange>({
     from: undefined,
@@ -723,7 +739,7 @@ function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilter
 
   const onReset = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onChange(undefined);
+    commit(undefined);
   };
 
   const label = multiple
@@ -737,7 +753,7 @@ function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilter
       : undefined;
 
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="border-dashed font-normal">
           {hasValue ? (
@@ -770,6 +786,11 @@ function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilter
       <PopoverContent className="w-auto p-0" align="start">
         {multiple ? (
           <Calendar
+            lang={presentation.locale}
+            weekStartsOn={presentation.weekStartsOn}
+            formatters={presentation.formatters}
+            labels={presentation.labels}
+            defaultMonth={fromDate}
             autoFocus
             captionLayout="dropdown"
             mode="range"
@@ -782,7 +803,7 @@ function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilter
 
               if (!range?.from && !range?.to) {
                 // User cleared the selection
-                onChange(undefined);
+                commit(undefined);
                 setLocalRange({ from: undefined, to: undefined });
                 return;
               }
@@ -811,9 +832,9 @@ function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilter
                   const [finalFrom, finalTo] =
                     prevFrom <= newDate ? [prevFrom, newDate] : [newDate, prevFrom];
                   setLocalRange({ from: finalFrom, to: finalTo });
-                  onChange([
-                    finalFrom.getTime().toString(),
-                    finalTo.getTime().toString(),
+                  commit([
+                    serializeCalendarDate(finalFrom),
+                    serializeCalendarDate(finalTo),
                   ]);
                   return;
                 }
@@ -822,9 +843,9 @@ function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilter
               // Case 2: Different days - this is a proper range from DayPicker
               if (from != null && to != null && from !== to) {
                 setLocalRange({ from: range.from, to: range.to });
-                onChange([
-                  range.from!.getTime().toString(),
-                  range.to!.getTime().toString(),
+                commit([
+                  serializeCalendarDate(range.from!),
+                  serializeCalendarDate(range.to!),
                 ]);
                 return;
               }
@@ -838,10 +859,15 @@ function SimpleDateFilter({ title, multiple, value, onChange }: SimpleDateFilter
           />
         ) : (
           <Calendar
+            lang={presentation.locale}
+            weekStartsOn={presentation.weekStartsOn}
+            formatters={presentation.formatters}
+            labels={presentation.labels}
+            defaultMonth={fromDate}
             captionLayout="dropdown"
             mode="single"
             selected={fromDate}
-            onSelect={(date) => onChange(date ? date.getTime().toString() : undefined)}
+            onSelect={(date) => commit(date ? serializeCalendarDate(date) : undefined)}
           />
         )}
       </PopoverContent>
