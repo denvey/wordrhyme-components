@@ -16,37 +16,63 @@ function compile(condition: ReturnType<typeof filterColumns>) {
 
 describe('filterColumns date range resolver', () => {
   it('encodes dates for computed creation-time expressions', () => {
-    const query = compile(filterColumns({
-      table: records,
-      filters: [{ id: 'createdAt', value: ['2026-09-10', '2026-09-10'], variant: 'dateRange', operator: 'isBetween' }],
-      joinOperator: 'and',
-      resolveColumn: () => sql`coalesce(${records.updatedAt}, ${records.createdAt})`,
-      resolveDateRange: () => ({
-        start: new Date('2026-09-10T00:00:00.000Z'),
-        endExclusive: new Date('2026-09-11T00:00:00.000Z'),
+    const query = compile(
+      filterColumns({
+        table: records,
+        filters: [
+          {
+            id: 'createdAt',
+            value: ['2026-09-10', '2026-09-10'],
+            variant: 'dateRange',
+            operator: 'isBetween',
+          },
+        ],
+        joinOperator: 'and',
+        resolveColumn: () => sql`coalesce(${records.updatedAt}, ${records.createdAt})`,
+        resolveDateRange: () => ({
+          start: new Date('2026-09-10T00:00:00.000Z'),
+          endExclusive: new Date('2026-09-11T00:00:00.000Z'),
+        }),
       }),
-    }));
-    expect(query.sql).toContain('coalesce("records"."updated_at", "records"."created_at") >= $1');
+    );
+    expect(query.sql).toContain(
+      'coalesce("records"."updated_at", "records"."created_at") >= $1',
+    );
     expect(query.sql).toContain('< $2');
-    expect(query.params).toEqual(['2026-09-10T00:00:00.000Z', '2026-09-11T00:00:00.000Z']);
+    expect(query.params).toEqual([
+      '2026-09-10T00:00:00.000Z',
+      '2026-09-11T00:00:00.000Z',
+    ]);
   });
   it.each(['createdAt', 'updatedAt'] as const)(
     'encodes same-day %s filters for the database driver, including resolved columns',
     (id) => {
       for (const resolveColumn of [undefined, () => records[id]]) {
-        const query = compile(filterColumns({
-          table: records,
-          filters: [{ id, value: ['2026-09-10', '2026-09-10'], variant: 'dateRange', operator: 'isBetween' }],
-          joinOperator: 'and',
-          resolveColumn,
-          resolveDateRange: () => ({
-            start: new Date('2026-09-10T00:00:00.000Z'),
-            endExclusive: new Date('2026-09-11T00:00:00.000Z'),
+        const query = compile(
+          filterColumns({
+            table: records,
+            filters: [
+              {
+                id,
+                value: ['2026-09-10', '2026-09-10'],
+                variant: 'dateRange',
+                operator: 'isBetween',
+              },
+            ],
+            joinOperator: 'and',
+            resolveColumn,
+            resolveDateRange: () => ({
+              start: new Date('2026-09-10T00:00:00.000Z'),
+              endExclusive: new Date('2026-09-11T00:00:00.000Z'),
+            }),
           }),
-        }));
+        );
         expect(query.sql).toContain(`"records"."${records[id].name}" >= $1`);
         expect(query.sql).toContain(`"records"."${records[id].name}" < $2`);
-        expect(query.params).toEqual(['2026-09-10T00:00:00.000Z', '2026-09-11T00:00:00.000Z']);
+        expect(query.params).toEqual([
+          '2026-09-10T00:00:00.000Z',
+          '2026-09-11T00:00:00.000Z',
+        ]);
         expect(query.params.some((value) => value instanceof Date)).toBe(false);
       }
     },
@@ -157,7 +183,10 @@ describe('filterColumns date range resolver', () => {
 
     expect(query.sql).toContain('"records"."created_at" >= $1');
     expect(query.sql).toContain('"records"."created_at" <= $2');
-    expect(query.params).toEqual([expectedStart.toISOString(), expectedEnd.toISOString()]);
+    expect(query.params).toEqual([
+      expectedStart.toISOString(),
+      expectedEnd.toISOString(),
+    ]);
   });
 
   it('rejects invalid host boundaries instead of widening the filter', () => {

@@ -1718,53 +1718,60 @@ describe('createCrudRouter', () => {
       });
     });
 
-    it.each([false, true])('merges projections with reference-value opt-in %s', async (preserveReferenceValue) => {
-      const db = createListMockDb([
-        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
-      ]);
-      const readProjection = vi.fn().mockResolvedValue({
-        '1': {
-          owner: {
-            value: 'user-1',
-            display: 'User One',
+    it.each([false, true])(
+      'merges projections with reference-value opt-in %s',
+      async (preserveReferenceValue) => {
+        const db = createListMockDb([
+          { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+        ]);
+        const readProjection = vi.fn().mockResolvedValue({
+          '1': {
+            owner: {
+              value: 'user-1',
+              display: 'User One',
+            },
           },
-        },
-      });
-      const crudRouter = createCrudRouter({
-        id: 'com.example.tasks',
-        table: mockTable,
-        schema: insertTaskSchema,
-        updateSchema: updateTaskSchema,
-        selectSchema: taskSchema,
-      });
+        });
+        const crudRouter = createCrudRouter({
+          id: 'com.example.tasks',
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          selectSchema: taskSchema,
+        });
 
-      const caller = crudRouter.createCaller({
-        db,
-        crudExtensions: {
-          readProjection,
-          getMetadata: async () => ({ fields: { owner: { preserveReferenceValue } } }),
-        },
-      } as any) as CrudCaller;
+        const caller = crudRouter.createCaller({
+          db,
+          crudExtensions: {
+            readProjection,
+            getMetadata: async () => ({ fields: { owner: { preserveReferenceValue } } }),
+          },
+        } as any) as CrudCaller;
 
-      const result = await caller.list({
-        page: 1,
-        perPage: 10,
-        joinOperator: 'and',
-      });
+        const result = await caller.list({
+          page: 1,
+          perPage: 10,
+          joinOperator: 'and',
+        });
 
-      expect(readProjection).toHaveBeenCalledWith({
-        id: 'com.example.tasks',
-        entityIds: ['1'],
-      });
-      expect(result.data[0]).toMatchObject({
-        id: '1',
-        owner: preserveReferenceValue ? 'user-1' : 'User One',
-      });
-      const detail = await caller.get('1');
-      expect(detail).toMatchObject({ owner: preserveReferenceValue ? 'user-1' : 'User One' });
-      const exported = await caller.export({});
-      expect(exported.data[0]).toMatchObject({ owner: preserveReferenceValue ? 'user-1' : 'User One' });
-    });
+        expect(readProjection).toHaveBeenCalledWith({
+          id: 'com.example.tasks',
+          entityIds: ['1'],
+        });
+        expect(result.data[0]).toMatchObject({
+          id: '1',
+          owner: preserveReferenceValue ? 'user-1' : 'User One',
+        });
+        const detail = await caller.get('1');
+        expect(detail).toMatchObject({
+          owner: preserveReferenceValue ? 'user-1' : 'User One',
+        });
+        const exported = await caller.export({});
+        expect(exported.data[0]).toMatchObject({
+          owner: preserveReferenceValue ? 'user-1' : 'User One',
+        });
+      },
+    );
 
     it('should keep extension id filters when filterableColumns are restricted', async () => {
       const db = createListMockDb([
