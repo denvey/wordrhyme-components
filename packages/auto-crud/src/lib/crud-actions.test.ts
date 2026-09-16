@@ -104,6 +104,23 @@ describe('crudActions', () => {
   });
 });
 
+it.each(['start', 'end'] as const)('falls back to %s when a later entry hides the anchor', (position) => {
+  crudActions.clear();
+  crudActions.register({
+    targetId: 'target', zone: 'row', ownerId: 'plugin',
+    actions: [
+      { type: 'custom', before: 'delete', position, order: 10 },
+      { type: 'delete', hidden: true, order: 20 },
+    ],
+  });
+  const result = crudActions.resolve('target', 'row', [
+    { type: 'view' }, { type: 'delete' }, { type: 'edit' },
+  ]).map((item) => item.type);
+  expect(result).toEqual(position === 'start'
+    ? ['custom', 'view', 'edit'] : ['view', 'edit', 'custom']);
+  crudActions.clear();
+});
+
 it('inserts a custom row action before delete and falls back when delete is absent', () => {
   crudActions.clear();
   crudActions.register({

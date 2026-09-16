@@ -152,23 +152,14 @@ function resolveActions<TAction extends CrudActionBase>(
   const nextActions = [...baseActions];
   const startCustomActions: TAction[] = [];
   const endCustomActions: TAction[] = [];
+  const customActions: TAction[] = [];
 
   for (const entry of registered) {
     const action = entry.action;
     if (action.hidden && isCustomAction(action)) continue;
 
     if (isCustomAction(action)) {
-      const custom = withoutRegistryMeta(action);
-      const anchor = custom.before
-        ? nextActions.findIndex((item) => item.type === custom.before)
-        : -1;
-      if (anchor >= 0) {
-        nextActions.splice(anchor, 0, custom);
-      } else if (custom.position === 'start') {
-        startCustomActions.push(custom);
-      } else {
-        endCustomActions.push(custom);
-      }
+      customActions.push(withoutRegistryMeta(action));
       continue;
     }
 
@@ -188,6 +179,20 @@ function resolveActions<TAction extends CrudActionBase>(
       };
     } else {
       nextActions.push(builtin);
+    }
+  }
+
+  // Resolve anchors only after all builtin overrides and removals are applied.
+  for (const custom of customActions) {
+    const anchor = custom.before
+      ? nextActions.findIndex((item) => !isCustomAction(item) && item.type === custom.before)
+      : -1;
+    if (anchor >= 0) {
+      nextActions.splice(anchor, 0, custom);
+    } else if (custom.position === 'start') {
+      startCustomActions.push(custom);
+    } else {
+      endCustomActions.push(custom);
     }
   }
 
