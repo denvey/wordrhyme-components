@@ -150,6 +150,16 @@ jobs:
           VERIFY_DIR=$(mktemp -d)
           cd "$VERIFY_DIR"
           npm init --yes
-          npm install "@wordrhyme/auto-crud@$PACKAGE_VERSION" \
-            --package-lock-only --ignore-scripts --legacy-peer-deps \
-            --registry=https://registry.npmjs.org
+          # npm may acknowledge publication before the version is installable.
+          for attempt in $(seq 1 10); do
+            if npm install "@wordrhyme/auto-crud@$PACKAGE_VERSION" \
+              --package-lock-only --ignore-scripts --legacy-peer-deps \
+              --registry=https://registry.npmjs.org; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 10 ]; then
+              sleep 30
+            fi
+          done
+          echo "Published AutoCrud dependencies could not be resolved"
+          exit 1
