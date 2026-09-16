@@ -1856,64 +1856,23 @@ function renderFieldValue(
     }
 
     const tone = options.find((option) => option.value === String(value))?.badgeTone;
-    const colors =
+    const toneClassName =
       tone &&
       {
-        neutral: {
-          color: '#475569',
-          backgroundColor: '#f8fafc',
-          borderColor: '#e2e8f0',
-          dot: '#94a3b8',
-        },
-        success: {
-          color: '#047857',
-          backgroundColor: '#ecfdf5',
-          borderColor: '#a7f3d0',
-          dot: '#10b981',
-        },
-        warning: {
-          color: '#b45309',
-          backgroundColor: '#fffbeb',
-          borderColor: '#fde68a',
-          dot: '#f59e0b',
-        },
-        info: {
-          color: '#1d4ed8',
-          backgroundColor: '#eff6ff',
-          borderColor: '#bfdbfe',
-          dot: '#3b82f6',
-        },
+        neutral: 'border-border bg-muted text-muted-foreground',
+        success: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+        warning: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
+        info: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300',
       }[tone];
-    if (colors) {
+    if (toneClassName) {
       return (
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 7,
-            padding: '2px 10px',
-            border: `1px solid ${colors.borderColor}`,
-            borderRadius: 8,
-            whiteSpace: 'nowrap',
-            fontSize: 13,
-            lineHeight: '20px',
-            fontWeight: 400,
-            color: colors.color,
-            backgroundColor: colors.backgroundColor,
-          }}
-        >
+        <Badge variant="outline" className={toneClassName}>
           <span
             aria-hidden="true"
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              flexShrink: 0,
-              backgroundColor: colors.dot,
-            }}
+            className="size-1.5 shrink-0 rounded-full bg-current"
           />
           {getOptionLabel(value, options)}
-        </span>
+        </Badge>
       );
     }
     return (
