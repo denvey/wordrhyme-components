@@ -1491,3 +1491,7 @@ explicitly reuse them, set `view.presentation: 'table'`; detail overrides still 
 This provides a real **separate single-row** TanStack context, not the original
 list's pagination, selection or row index. Reused custom cells retain their own
 truncation and interaction behavior.
+
+### 状态徽标颜色
+
+对于 `table.display: "badge"`，标量字段的 `table.options` 可设置 `badgeTone`，支持 `neutral`、`success`、`warning`、`info`。徽标保留文字标签并附带装饰圆点，未配置颜色时沿用原有徽标样式，纯文本展示不受影响。业务状态与颜色的对应关系由调用方配置。

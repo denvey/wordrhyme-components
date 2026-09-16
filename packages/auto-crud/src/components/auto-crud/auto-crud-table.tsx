@@ -93,6 +93,8 @@ export interface FilterConfig {
 }
 
 export interface FieldOption {
+  /** Optional semantic color and dot for status badges. */
+  badgeTone?: 'neutral' | 'success' | 'warning' | 'info';
   label: string;
   value: string;
   searchText?: string | string[];
@@ -1853,6 +1855,67 @@ function renderFieldValue(
       );
     }
 
+    const tone = options.find((option) => option.value === String(value))?.badgeTone;
+    const colors =
+      tone &&
+      {
+        neutral: {
+          color: '#475569',
+          backgroundColor: '#f8fafc',
+          borderColor: '#e2e8f0',
+          dot: '#94a3b8',
+        },
+        success: {
+          color: '#047857',
+          backgroundColor: '#ecfdf5',
+          borderColor: '#a7f3d0',
+          dot: '#10b981',
+        },
+        warning: {
+          color: '#b45309',
+          backgroundColor: '#fffbeb',
+          borderColor: '#fde68a',
+          dot: '#f59e0b',
+        },
+        info: {
+          color: '#1d4ed8',
+          backgroundColor: '#eff6ff',
+          borderColor: '#bfdbfe',
+          dot: '#3b82f6',
+        },
+      }[tone];
+    if (colors) {
+      return (
+        <span
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 7,
+            padding: '2px 10px',
+            border: `1px solid ${colors.borderColor}`,
+            borderRadius: 8,
+            whiteSpace: 'nowrap',
+            fontSize: 13,
+            lineHeight: '20px',
+            fontWeight: 400,
+            color: colors.color,
+            backgroundColor: colors.backgroundColor,
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              flexShrink: 0,
+              backgroundColor: colors.dot,
+            }}
+          />
+          {getOptionLabel(value, options)}
+        </span>
+      );
+    }
     return (
       <Badge variant="outline" className="capitalize">
         {getOptionLabel(value, options)}

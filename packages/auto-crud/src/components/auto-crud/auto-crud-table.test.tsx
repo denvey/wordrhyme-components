@@ -1083,6 +1083,28 @@ describe('auto-crud table toolbar resolver', () => {
     }
   });
 
+  it('renders a semantic status badge from table option metadata', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          fields: {
+            region: {
+              table: {
+                display: 'badge',
+                options: [{ label: 'Imported', value: 'west', badgeTone: 'success' }],
+              },
+            },
+          },
+        })}
+      />,
+    );
+    const badge = screen.getByText('Imported');
+    expect(badge.style.backgroundColor).toBe('rgb(236, 253, 245)');
+    expect(badge.style.borderRadius).toBe('8px');
+    expect(badge.querySelector('[aria-hidden="true"]')).not.toBeNull();
+  });
+
   it('renders resolved option labels as plain text when requested by metadata', () => {
     render(
       <AutoCrudTable
