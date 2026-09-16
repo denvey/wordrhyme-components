@@ -1491,3 +1491,9 @@ explicitly reuse them, set `view.presentation: 'table'`; detail overrides still 
 This provides a real **separate single-row** TanStack context, not the original
 list's pagination, selection or row index. Reused custom cells retain their own
 truncation and interaction behavior.
+
+### 自定义行操作的菜单上下文与排序
+
+注册的自定义行操作可设置 `before: "delete"`，将其放在指定内置操作前。目标操作不存在时沿用 `position` 的排序规则；此配置不增加目标操作或授予权限。
+
+行操作组件接收上下文中的 `MenuItem`，应使用它以保证菜单根节点和菜单项共享同一运行时上下文。组件需要在菜单中保持弹窗会话时，可在选择事件中调用 `preventDefault()`，避免菜单关闭导致组件卸载。

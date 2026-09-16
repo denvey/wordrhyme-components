@@ -17,7 +17,7 @@ import type {
   BatchUpdateField,
 } from './auto-table-action-bar';
 import { CrudFormModal } from './crud-form-modal';
-import { Button } from '@wordrhyme/shadcn';
+import { Button, DropdownMenuItem } from '@wordrhyme/shadcn';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -224,6 +224,8 @@ type ActionMeta = {
 };
 
 export interface AutoCrudRowActionContext<T> {
+  /** Menu primitive from the same runtime instance as the owning menu. */
+  MenuItem: typeof DropdownMenuItem;
   crudId: string;
   idKey: string;
   row: T;
@@ -253,6 +255,8 @@ export type RowCustomActionItem<T> = ActionMeta & {
   onClick?: (row: T) => void;
   component?: ActionComponent<AutoCrudRowActionContext<T>>;
   position?: 'start' | 'end';
+  /** Place a registered custom action before the named builtin, when present. */
+  before?: RowBuiltinActionType;
   separator?: boolean;
   variant?: 'default' | 'destructive';
 };
@@ -2070,6 +2074,7 @@ export function resolveActions<T>(
       : actionsOrFn;
 
   const getContext = (row: T): AutoCrudRowActionContext<T> => ({
+    MenuItem: DropdownMenuItem,
     crudId: context.crudId,
     idKey: context.idKey,
     row,

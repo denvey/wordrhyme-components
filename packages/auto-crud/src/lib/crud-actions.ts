@@ -6,6 +6,8 @@ export type CrudActionBase = {
   order?: number;
   hidden?: boolean;
   position?: 'start' | 'end';
+  /** Insert a custom action before a builtin action type, if present. */
+  before?: string;
 };
 
 export type CrudActionEntry<TAction extends CrudActionBase = CrudActionBase> = {
@@ -157,7 +159,12 @@ function resolveActions<TAction extends CrudActionBase>(
 
     if (isCustomAction(action)) {
       const custom = withoutRegistryMeta(action);
-      if (custom.position === 'start') {
+      const anchor = custom.before
+        ? nextActions.findIndex((item) => item.type === custom.before)
+        : -1;
+      if (anchor >= 0) {
+        nextActions.splice(anchor, 0, custom);
+      } else if (custom.position === 'start') {
         startCustomActions.push(custom);
       } else {
         endCustomActions.push(custom);

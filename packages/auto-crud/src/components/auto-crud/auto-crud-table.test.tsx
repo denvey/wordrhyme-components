@@ -2060,6 +2060,37 @@ describe('auto-crud table unified actions', () => {
     expect(screen.queryByText('Delete')).toBeNull();
   });
 
+  it('supplies the owning menu primitive to external row components', async () => {
+    const selected = vi.fn();
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource()}
+        actions={{
+          row: [
+            {
+              type: 'custom',
+              component: ({ MenuItem, row }) => (
+                <MenuItem
+                  onSelect={(event) => {
+                    event.preventDefault();
+                    selected(row);
+                  }}
+                >
+                  External sync
+                </MenuItem>
+              ),
+            },
+          ],
+        }}
+      />,
+    );
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'External sync' }));
+    expect(selected).toHaveBeenCalledWith({ id: '1', region: 'west' });
+    expect(screen.getByRole('menuitem', { name: 'External sync' })).toBeTruthy();
+  });
+
   it('renders row custom components with row context', async () => {
     const resource = createResource();
 

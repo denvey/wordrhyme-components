@@ -103,3 +103,28 @@ describe('crudActions', () => {
     unsubscribe();
   });
 });
+
+it('inserts a custom row action before delete and falls back when delete is absent', () => {
+  crudActions.clear();
+  crudActions.register({
+    targetId: 'example.products',
+    zone: 'row',
+    ownerId: 'example.sync',
+    actions: [{ type: 'custom', before: 'delete', label: 'Sync' }],
+  });
+  expect(
+    crudActions
+      .resolve('example.products', 'row', [
+        { type: 'view' },
+        { type: 'edit' },
+        { type: 'delete' },
+      ])
+      .map((item) => item.type),
+  ).toEqual(['view', 'edit', 'custom', 'delete']);
+  expect(
+    crudActions
+      .resolve('example.products', 'row', [{ type: 'view' }])
+      .map((item) => item.type),
+  ).toEqual(['view', 'custom']);
+  crudActions.clear();
+});
