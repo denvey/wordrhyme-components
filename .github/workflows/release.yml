@@ -59,6 +59,23 @@ jobs:
           # Release only the explicit .changeset entries committed with a change.
           AUTO_CHANGESET: false
 
+      - name: Ensure shadcn release is published
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./packages/shadcn/package.json').version")
+
+          if npm view "@wordrhyme/shadcn@$PACKAGE_VERSION" version >/dev/null 2>&1; then
+            echo "@wordrhyme/shadcn@$PACKAGE_VERSION is already published"
+            exit 0
+          fi
+
+          pnpm --filter @wordrhyme/shadcn... build
+          pnpm --dir packages/shadcn pack --pack-destination "$RUNNER_TEMP"
+          npm publish "$RUNNER_TEMP/wordrhyme-shadcn-$PACKAGE_VERSION.tgz" \
+            --access public \
+            --provenance
+
       - name: Ensure shadcn-ui release is published
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -126,3 +143,13 @@ jobs:
           npm publish "$RUNNER_TEMP/wordrhyme-auto-crud-$PACKAGE_VERSION.tgz" \
             --access public \
             --provenance
+
+      - name: Verify published AutoCrud dependency closure
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./packages/auto-crud/package.json').version")
+          VERIFY_DIR=$(mktemp -d)
+          cd "$VERIFY_DIR"
+          npm init --yes
+          npm install "@wordrhyme/auto-crud@$PACKAGE_VERSION" \
+            --package-lock-only --ignore-scripts --legacy-peer-deps \
+            --registry=https://registry.npmjs.org
