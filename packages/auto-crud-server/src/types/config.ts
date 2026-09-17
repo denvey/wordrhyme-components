@@ -210,7 +210,8 @@ export interface CrudExtensionsProvider {
   }) => Promise<void>;
   /**
    * Field projections may be raw values or envelopes containing refId, value,
-   * and display. list/get/export return a defined refId (including null), then
+   * and display. Host envelopes with a non-ref type return value directly.
+   * Otherwise list/get/export return a defined refId (including null), then
    * value when present. Providers should put editable values in value, including
    * ID arrays for multi-reference fields. display is a legacy fallback only when
    * no raw value exists; consumers resolve labels through their data sources.

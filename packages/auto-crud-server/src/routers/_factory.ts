@@ -1025,6 +1025,10 @@ function createCrudBatchTransactionInput(
 
 function readProjectionValue(value: unknown): unknown {
   if (!isObjectRecord(value)) return value;
+  // Host envelopes include refId: null for non-reference fields as well.
+  if (typeof value.type === 'string' && value.type !== 'ref' && 'value' in value) {
+    return value.value;
+  }
   if ('refId' in value && value.refId !== undefined) return value.refId;
   if ('value' in value) return value.value;
   if ('display' in value && value.display !== null && value.display !== undefined) {
