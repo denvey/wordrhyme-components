@@ -1718,35 +1718,105 @@ describe('createCrudRouter', () => {
       });
     });
 
-    it.each([false, true])(
-      'merges projections with reference-value opt-in %s',
-      async (preserveReferenceValue) => {
-        const db = createListMockDb([
-          { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
-        ]);
-        const readProjection = vi.fn().mockResolvedValue({
-          '1': {
-            owner: {
-              value: 'user-1',
-              display: 'User One',
-            },
-          },
-        });
-        const crudRouter = createCrudRouter({
-          id: 'com.example.tasks',
-          table: mockTable,
-          schema: insertTaskSchema,
-          updateSchema: updateTaskSchema,
-          selectSchema: taskSchema,
-        });
+    it.each([
+      ...[
+        { type: 'text', value: 'hello' },
+        { type: 'select', value: 'imported' },
+        { type: 'select', value: ['CN', 'US'] },
+        { type: 'number', value: 0 },
+        { type: 'boolean', value: false },
+        { type: 'json', value: { nested: 'data' } },
+        { type: 'date', value: '2026-09-17' },
+        { type: 'datetime', value: '2026-09-17T00:00:00.000Z' },
+        { type: 'text', value: '' },
+        { type: 'text', value: null },
+      ].map(({ type, value }) => ({
+        name: `Host ${type} envelope with null refId and ${JSON.stringify(value)}`,
+        projection: {
+          pluginId: 'example', field: 'owner', type, value,
+          refId: null, refEntity: null, display: 'Display label',
+        },
+        expected: value,
+      })),
+      {
+        name: 'Host empty reference envelope',
+        projection: { type: 'ref', refId: null, value: 'stale', display: 'Old user' },
+        expected: null,
+      },
+      {
+        name: 'reference value',
+        projection: { value: 'user-1', display: 'User One' },
+        expected: 'user-1',
+      },
+      {
+        name: 'explicit reference ID',
+        projection: { refId: 'user-1', value: 'legacy', display: 'User One' },
+        expected: 'user-1',
+      },
+      {
+        name: 'empty reference',
+        projection: { refId: null, value: 'stale', display: 'Old User' },
+        expected: null,
+      },
+      {
+        name: 'undefined reference ID',
+        projection: { refId: undefined, value: 'user-1', display: 'User One' },
+        expected: 'user-1',
+      },
+      {
+        name: 'empty value',
+        projection: { value: null, display: 'Old User' },
+        expected: null,
+      },
+      {
+        name: 'multiple references',
+        projection: { value: ['user-1', 'user-2'], display: 'Two users' },
+        expected: ['user-1', 'user-2'],
+      },
+      { name: 'zero value', projection: { value: 0, display: 'Zero' }, expected: 0 },
+      {
+        name: 'false value',
+        projection: { value: false, display: 'No' },
+        expected: false,
+      },
+      { name: 'empty string', projection: { value: '', display: 'Empty' }, expected: '' },
+      { name: 'raw reference', projection: 'user-1', expected: 'user-1' },
+      { name: 'raw array', projection: ['user-1'], expected: ['user-1'] },
+      {
+        name: 'raw object',
+        projection: { nested: 'data' },
+        expected: { nested: 'data' },
+      },
+      {
+        name: 'display-only legacy projection',
+        projection: { display: 'User One' },
+        expected: 'User One',
+      },
+    ])('returns $name without metadata opt-in', async ({ projection, expected }) => {
+      const db = createListMockDb([
+        { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+      ]);
+      const readProjection = vi.fn().mockResolvedValue({
+        '1': {
+          owner: projection,
+        },
+      });
+      const crudRouter = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
 
-        const caller = crudRouter.createCaller({
-          db,
-          crudExtensions: {
-            readProjection,
-            getMetadata: async () => ({ fields: { owner: { preserveReferenceValue } } }),
-          },
-        } as any) as CrudCaller;
+      const getMetadata = vi.fn().mockRejectedValue(new Error('Metadata unavailable'));
+      const caller = crudRouter.createCaller({
+        db,
+        crudExtensions: {
+          readProjection,
+          getMetadata,
+        },
+      } as any) as CrudCaller;
 
         const result = await caller.list({
           page: 1,
@@ -1754,24 +1824,20 @@ describe('createCrudRouter', () => {
           joinOperator: 'and',
         });
 
-        expect(readProjection).toHaveBeenCalledWith({
-          id: 'com.example.tasks',
-          entityIds: ['1'],
-        });
-        expect(result.data[0]).toMatchObject({
-          id: '1',
-          owner: preserveReferenceValue ? 'user-1' : 'User One',
-        });
-        const detail = await caller.get('1');
-        expect(detail).toMatchObject({
-          owner: preserveReferenceValue ? 'user-1' : 'User One',
-        });
-        const exported = await caller.export({});
-        expect(exported.data[0]).toMatchObject({
-          owner: preserveReferenceValue ? 'user-1' : 'User One',
-        });
-      },
-    );
+      expect(readProjection).toHaveBeenCalledWith({
+        id: 'com.example.tasks',
+        entityIds: ['1'],
+      });
+      expect(result.data[0]).toMatchObject({
+        id: '1',
+        owner: expected,
+      });
+      const detail = await caller.get('1');
+      expect(detail).toMatchObject({ owner: expected });
+      const exported = await caller.export({});
+      expect(exported.data[0]).toMatchObject({ owner: expected });
+      expect(getMetadata).not.toHaveBeenCalled();
+    });
 
     it('should keep extension id filters when filterableColumns are restricted', async () => {
       const db = createListMockDb([

@@ -169,8 +169,6 @@ export interface ExportInput {
 
 export interface CrudExtensionMetadata {
   schema?: unknown;
-  /** Field config may opt into preserveReferenceValue: true to return reference
-   * IDs for editing and data-source label resolution. Default: display values. */
   fields?: Record<string, unknown>;
   errors?: string[];
   /** 扩展提供的查询能力，会与 router 基础能力合并。 */
@@ -210,6 +208,14 @@ export interface CrudExtensionsProvider {
     rows: CrudExtensionValueWrite[];
     tx?: unknown;
   }) => Promise<void>;
+  /**
+   * Field projections may be raw values or envelopes containing refId, value,
+   * and display. Host envelopes with a non-ref type return value directly.
+   * Otherwise list/get/export return a defined refId (including null), then
+   * value when present. Providers should put editable values in value, including
+   * ID arrays for multi-reference fields. display is a legacy fallback only when
+   * no raw value exists; consumers resolve labels through their data sources.
+   */
   readProjection?: (input: {
     id: string;
     entityIds: string[];
