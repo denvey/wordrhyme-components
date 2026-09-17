@@ -1794,11 +1794,11 @@ describe('createCrudRouter', () => {
         },
       } as any) as CrudCaller;
 
-      const result = await caller.list({
-        page: 1,
-        perPage: 10,
-        joinOperator: 'and',
-      });
+        const result = await caller.list({
+          page: 1,
+          perPage: 10,
+          joinOperator: 'and',
+        });
 
       expect(readProjection).toHaveBeenCalledWith({
         id: 'com.example.tasks',
