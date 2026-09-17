@@ -794,6 +794,26 @@ crudActions.register({
 
 同一个 `ownerId + targetId + zone` 再次注册会替换该 owner 的旧动作；卸载插件或页面时可调用 `crudActions.unregister(ownerId)`。
 
+插件的 `actions` 数组与页面配置一样，用数组表达操作的相对顺序。例如，在删除前插入同步操作：
+
+```tsx
+crudActions.register({
+  targetId: 'com.wordrhyme.shop.products',
+  zone: 'row',
+  ownerId: 'com.wordrhyme.sync',
+  actions: [{ type: 'custom', label: '同步', onClick: sync }, { type: 'delete' }],
+});
+```
+
+插件仍是增量合并：未提及的宿主或其他插件操作保留，隐藏内置项必须显式使用 `hidden: true`。
+有可见内置项的数组按声明顺序排列：从第一个列出的内置项所在位置开始，依次插入自定义项，只在顺序冲突时移动已存在的内置项。
+未提及的操作之间保持相对顺序。内置项的已有 handler 等属性保留，只有显式声明的属性会覆盖它们。
+只有自定义项（或列出的内置项全部被隐藏）时，沿用 `position: 'start' | 'end'`，同一位置内仍按数组顺序排列。
+
+多插件按各自数组中最小的 `order`（未设置为 100）、`ownerId` 依次合并；后处理的数组在顺序冲突时优先，但不会删除前面的插件操作。
+`order` 不再重排同一插件数组内的显示顺序。内置属性覆盖仍沿用原有的 action `order`、`ownerId`、注册序优先级，最后一个配置生效。
+使用 `order` 排列同一插件操作的旧调用方，应把数组调整为所需顺序。最终权限过滤只移除不可用的内置操作，不改变其余操作顺序或授予权限。
+
 ---
 
 ## 🎬 行操作配置
@@ -1492,8 +1512,6 @@ This provides a real **separate single-row** TanStack context, not the original
 list's pagination, selection or row index. Reused custom cells retain their own
 truncation and interaction behavior.
 
-### 自定义行操作的菜单上下文与排序
-
-注册的自定义行操作可设置 `before: "delete"`，将其放在指定内置操作前。目标操作不存在时沿用 `position` 的排序规则；此配置不增加目标操作或授予权限。
+### 自定义行操作的菜单上下文
 
 行操作组件接收上下文中的 `MenuItem`，应使用它以保证菜单根节点和菜单项共享同一运行时上下文。组件需要在菜单中保持弹窗会话时，可在选择事件中调用 `preventDefault()`，避免菜单关闭导致组件卸载。
