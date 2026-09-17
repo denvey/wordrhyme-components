@@ -17,7 +17,7 @@ import type {
   BatchUpdateField,
 } from './auto-table-action-bar';
 import { CrudFormModal } from './crud-form-modal';
-import { Button } from '@wordrhyme/shadcn';
+import { Button, DropdownMenuItem } from '@wordrhyme/shadcn';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -224,6 +224,8 @@ type ActionMeta = {
 };
 
 export interface AutoCrudRowActionContext<T> {
+  /** Menu primitive from the same runtime instance as the owning menu. */
+  MenuItem: typeof DropdownMenuItem;
   crudId: string;
   idKey: string;
   row: T;
@@ -256,9 +258,6 @@ export type RowCustomActionItem<T> = ActionMeta & {
   separator?: boolean;
   variant?: 'default' | 'destructive';
 };
-
-/** @deprecated Use RowCustomActionItem instead. */
-type CustomActionItem<T> = RowCustomActionItem<T>;
 
 /**
  * Row action item.
@@ -2046,7 +2045,7 @@ function ViewModalContent<TSchema extends z.ZodObject<z.ZodRawShape>>({
  * 解析列表行操作
  */
 export function resolveActions<T>(
-  actionsOrFn: ActionConfig<T> | undefined,
+  actions: readonly RowActionItem<T>[],
   defaults: {
     openView: (row: T) => void;
     openEdit: ((row: T) => void) | undefined;
@@ -2059,17 +2058,8 @@ export function resolveActions<T>(
     idKey: string;
   },
 ): ResolvedActionItem<T>[] {
-  const resolvedItems =
-    typeof actionsOrFn === 'function'
-      ? actionsOrFn([
-          { type: 'view' },
-          { type: 'edit' },
-          { type: 'copy' },
-          { type: 'delete' },
-        ])
-      : actionsOrFn;
-
   const getContext = (row: T): AutoCrudRowActionContext<T> => ({
+    MenuItem: DropdownMenuItem,
     crudId: context.crudId,
     idKey: context.idKey,
     row,
@@ -2080,68 +2070,9 @@ export function resolveActions<T>(
     ...(defaults.openDelete ? { openDelete: defaults.openDelete } : {}),
   });
 
-  const defaultItems: ResolvedActionItem<T>[] = [
-    { label: rowActionsLocale.view, onClick: defaults.openView },
-    ...(defaults.openEdit
-      ? [{ label: rowActionsLocale.edit, onClick: defaults.openEdit }]
-      : []),
-    ...(defaults.copyRow
-      ? [{ label: rowActionsLocale.copy, onClick: defaults.copyRow }]
-      : []),
-    ...(defaults.openDelete
-      ? [
-          {
-            label: rowActionsLocale.delete,
-            onClick: defaults.openDelete,
-            separator: true,
-            variant: 'destructive' as const,
-          },
-        ]
-      : []),
-  ];
-
-  if (resolvedItems === undefined) {
-    return defaultItems;
-  }
-
-  const items = resolvedItems.filter((item) => !item.hidden);
-
-  if (items.length === 0) {
-    return [];
-  }
-
-  const hasBuiltin = items.some((i) => i.type !== 'custom');
-
-  if (!hasBuiltin) {
-    // 只有 custom 项 → 内置保持默认，custom 按 position 追加
-    const startItems = items
-      .filter(
-        (i): i is CustomActionItem<T> => i.type === 'custom' && i.position === 'start',
-      )
-      .map(({ label, onClick, component, separator, variant }) => ({
-        label,
-        onClick,
-        component,
-        getContext,
-        separator,
-        variant,
-      }));
-    const endItems = items
-      .filter(
-        (i): i is CustomActionItem<T> => i.type === 'custom' && i.position !== 'start',
-      )
-      .map(({ label, onClick, component, separator, variant }) => ({
-        label,
-        onClick,
-        component,
-        getContext,
-        separator,
-        variant,
-      }));
-    return [...startItems, ...defaultItems, ...endItems];
-  }
-
-  // 包含内置项 → 数组完全接管
+  // Owner defaults and plugin ordering have already been resolved. Only render
+  // the merged array; restoring defaults here would undo explicit hiding.
+  const items = actions.filter((item) => !item.hidden);
   const handlerMap: Record<string, ((row: T) => void) | undefined> = {
     view: defaults.openView,
     edit: defaults.openEdit,
