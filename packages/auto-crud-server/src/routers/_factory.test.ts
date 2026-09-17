@@ -1719,6 +1719,30 @@ describe('createCrudRouter', () => {
     });
 
     it.each([
+      ...[
+        { type: 'text', value: 'hello' },
+        { type: 'select', value: 'imported' },
+        { type: 'select', value: ['CN', 'US'] },
+        { type: 'number', value: 0 },
+        { type: 'boolean', value: false },
+        { type: 'json', value: { nested: 'data' } },
+        { type: 'date', value: '2026-09-17' },
+        { type: 'datetime', value: '2026-09-17T00:00:00.000Z' },
+        { type: 'text', value: '' },
+        { type: 'text', value: null },
+      ].map(({ type, value }) => ({
+        name: `Host ${type} envelope with null refId and ${JSON.stringify(value)}`,
+        projection: {
+          pluginId: 'example', field: 'owner', type, value,
+          refId: null, refEntity: null, display: 'Display label',
+        },
+        expected: value,
+      })),
+      {
+        name: 'Host empty reference envelope',
+        projection: { type: 'ref', refId: null, value: 'stale', display: 'Old user' },
+        expected: null,
+      },
       {
         name: 'reference value',
         projection: { value: 'user-1', display: 'User One' },
@@ -1794,11 +1818,11 @@ describe('createCrudRouter', () => {
         },
       } as any) as CrudCaller;
 
-      const result = await caller.list({
-        page: 1,
-        perPage: 10,
-        joinOperator: 'and',
-      });
+        const result = await caller.list({
+          page: 1,
+          perPage: 10,
+          joinOperator: 'and',
+        });
 
       expect(readProjection).toHaveBeenCalledWith({
         id: 'com.example.tasks',
