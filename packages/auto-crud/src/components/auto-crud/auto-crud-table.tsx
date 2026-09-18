@@ -17,7 +17,8 @@ import type {
   BatchUpdateField,
 } from './auto-table-action-bar';
 import { CrudFormModal } from './crud-form-modal';
-import { Button, DropdownMenuItem } from '@wordrhyme/shadcn';
+import { Button } from '@wordrhyme/shadcn';
+import { DropdownMenuItem } from '@wordrhyme/ui';
 import {
   AlertDialog,
   AlertDialogAction,

@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { DropdownMenuItem } from '@wordrhyme/ui';
 import type {
   AutoCrudQueryCapabilities,
   UseAutoCrudResourceReturn,
@@ -2135,16 +2136,19 @@ describe('auto-crud table unified actions', () => {
           row: [
             {
               type: 'custom',
-              component: ({ MenuItem, row }) => (
-                <MenuItem
-                  onSelect={(event) => {
-                    event.preventDefault();
-                    selected(row);
-                  }}
-                >
-                  External sync
-                </MenuItem>
-              ),
+              component: ({ MenuItem, row }) => {
+                expect(MenuItem).toBe(DropdownMenuItem);
+                return (
+                  <MenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      selected(row);
+                    }}
+                  >
+                    External sync
+                  </MenuItem>
+                );
+              },
             },
           ],
         }}

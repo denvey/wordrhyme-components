@@ -21,6 +21,7 @@ export default defineConfig({
     'react-dom',
     'react/jsx-runtime',
     'zod',
+    '@wordrhyme/ui',
     '@wordrhyme/shadcn',
     '@wordrhyme/shadcn-ui',
     '@formily/core',
