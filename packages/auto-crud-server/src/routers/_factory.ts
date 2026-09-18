@@ -22,7 +22,7 @@ import {
   sql,
 } from 'drizzle-orm';
 import type { AnyColumn, SQL } from 'drizzle-orm';
-import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
+import type { PgTable } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { router, publicProcedure } from '../trpc';
@@ -675,31 +675,16 @@ function resolveColumnTarget<TTable extends PgTable>({
   return getTableColumn(table, columnId);
 }
 
-// Request one extra match to detect overflow without returning partial results.
-const MAX_EXTENSION_MATCHES = 50_000;
-function checkedExtensionIds(ids: string[]): string[] {
-  if (ids.length > MAX_EXTENSION_MATCHES) {
-    throw new TRPCError({ code: 'PRECONDITION_FAILED',
-      message: 'CRUD extension matches exceed 50000; narrow the extension filters or search' });
-  }
-  return ids;
-}
-const CRUD_EXTENSION_FILTER_ID = 'auto-crud-extension-filter';
-const CRUD_EXTENSION_SEARCH_IDS = Symbol('auto-crud-extension-search-ids');
+const CRUD_EXTENSION_FILTER = Symbol('auto-crud-extension-filter');
+const CRUD_EXTENSION_SEARCH = Symbol('auto-crud-extension-search');
 
 type CrudExtensionInput = (ListInput | ExportInput) & {
-  [CRUD_EXTENSION_SEARCH_IDS]?: string[];
+  [CRUD_EXTENSION_FILTER]?: SQL;
+  [CRUD_EXTENSION_SEARCH]?: SQL;
 };
 
 function isObjectRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isCrudExtensionIdFilter(
-  filter: { id: string; filterId?: string },
-  idField: string,
-): boolean {
-  return filter.id === idField && filter.filterId === CRUD_EXTENSION_FILTER_ID;
 }
 
 function readCrudTarget(config: { id?: string }): { id: string } | null {
@@ -1157,102 +1142,46 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
 
   const provider = resolveCrudExtensions(ctx, config);
 
-  // Never use a truncated match set for base filtering, counting or pagination.
-  const matchRequests: Array<Promise<string[]>> = [];
-  if (extensionFilters.length > 0) {
-    if (!provider?.matchEntityIds) {
-      throw new TRPCError({
-        code: 'PRECONDITION_FAILED',
-        message: 'CRUD extension filtering is not available',
-      });
+  const extensionSearch = search && !searchDisabled;
+  if (!provider?.buildConditions) {
+    if (extensionFilters.length > 0 || (extensionSearch && provider?.searchEntityIds)) {
+      throw new TRPCError({ code: 'PRECONDITION_FAILED',
+        message: 'CRUD extension queries require a provider with buildConditions; upgrade the Host/provider' });
     }
-
-    matchRequests.push(
-      provider.matchEntityIds({
-        id: target.id,
-        filters: extensionFilters as CrudExtensionFilter[],
-        joinOperator: input.joinOperator,
-        limit: MAX_EXTENSION_MATCHES + 1,
-      }),
-    );
+    if (extensionSearch && !buildCrudSearchCondition({ table, search, searchColumns })) {
+      throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'CRUD search is not available' });
+    }
+    return { ...input, filters: baseFilters };
   }
-
-  let searchRequest: Promise<string[]> | undefined;
-  if (search && !searchDisabled && provider?.searchEntityIds) {
-    searchRequest = provider.searchEntityIds({
-      id: target.id,
-      search,
-      limit: MAX_EXTENSION_MATCHES + 1,
-    });
-  } else if (
-    search &&
-    !searchDisabled &&
-    !buildCrudSearchCondition({ table, search, searchColumns })
-  ) {
-    throw new TRPCError({
-      code: 'PRECONDITION_FAILED',
-      message: 'CRUD search is not available',
-    });
+  if (extensionFilters.length === 0 && !extensionSearch) return { ...input, filters: baseFilters };
+  const entityId = getTableColumn(table, idField);
+  if (!entityId) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'CRUD identity column is unavailable' });
+  // Only a trusted in-process provider constructs these conditions. Input never carries SQL.
+  const conditions = await provider.buildConditions({
+    id: target.id, entityId, filters: extensionFilters as CrudExtensionFilter[],
+    ...(input.joinOperator ? { joinOperator: input.joinOperator } : {}),
+    ...(extensionSearch ? { search } : {}),
+  });
+  if (extensionFilters.length > 0 && !conditions.filter) {
+    throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'CRUD extension filter condition is unavailable' });
   }
-
-  const [filterResults, searchResults] = await Promise.all([Promise.all(matchRequests), searchRequest]);
-  const matchedSets = filterResults.map(ids => new Set(checkedExtensionIds(ids)));
-  const extensionSearchIds = searchResults === undefined ? undefined : checkedExtensionIds(searchResults);
-
-  const effectiveInput: CrudExtensionInput =
-    extensionSearchIds === undefined
-      ? input
-      : { ...input, [CRUD_EXTENSION_SEARCH_IDS]: extensionSearchIds };
-
-  if (matchedSets.length === 0) {
-    return { ...effectiveInput, filters: baseFilters };
+  if (extensionSearch && !conditions.search && !buildCrudSearchCondition({ table, search, searchColumns })) {
+    throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'CRUD search is not available' });
   }
-
-  let matchedIds = matchedSets[0] ? [...matchedSets[0]] : [];
-  for (const set of matchedSets.slice(1)) {
-    matchedIds = matchedIds.filter((id) => set.has(id));
-  }
-
   return {
-    ...effectiveInput,
-    filters: [
-      ...baseFilters,
-      {
-        id: idField,
-        value: matchedIds,
-        variant: 'multiSelect',
-        operator: 'inArray',
-        filterId: CRUD_EXTENSION_FILTER_ID,
-      },
-    ],
+    ...input, filters: baseFilters,
+    ...(extensionFilters.length > 0 && conditions.filter ? { [CRUD_EXTENSION_FILTER]: conditions.filter } : {}),
+    ...(extensionSearch && conditions.search ? { [CRUD_EXTENSION_SEARCH]: conditions.search } : {}),
   };
 }
 
-function extensionIdsCondition(column: PgColumn, ids: string[]): SQL {
-  if (ids.length === 0) return sql`false`;
-  // PostgreSQL infers the array element type from the left-hand column.
-  // Keep the indexed column uncast and bind one parameter rather than one per ID.
-  return sql`${column} = ANY(${sql.param(ids)})`;
-}
-
-function filterCrudColumns(
-  options: Parameters<typeof filterColumns>[0],
-  idField: string,
-): SQL | undefined {
-  const conditions = options.filters.map((filter) =>
-    isCrudExtensionIdFilter(filter, idField) && Array.isArray(filter.value)
-      ? extensionIdsCondition(
-          getTableColumn(options.table as PgTable, idField)! as PgColumn,
-          filter.value.map(String),
-        )
-      : filterColumns({ ...options, filters: [filter] }),
-  );
-  return options.joinOperator === 'or' ? or(...conditions) : and(...conditions);
+function combineExtensionFilter(base: SQL | undefined, input: CrudExtensionInput): SQL | undefined {
+  const extension = input[CRUD_EXTENSION_FILTER];
+  return input.joinOperator === 'or' ? or(base, extension) : and(base, extension);
 }
 
 function buildCrudSearchWithExtensions<TTable extends PgTable>(
   table: TTable,
-  idField: string,
   input: CrudExtensionInput,
   searchColumns: CrudColumnCapability<TTable> | undefined,
 ): SQL | undefined {
@@ -1261,10 +1190,8 @@ function buildCrudSearchWithExtensions<TTable extends PgTable>(
     search: input.search,
     searchColumns,
   });
-  const extensionIds = input[CRUD_EXTENSION_SEARCH_IDS];
-  if (extensionIds === undefined) return baseCondition;
-
-  const extensionCondition = extensionIdsCondition(getTableColumn(table, idField)! as PgColumn, extensionIds);
+  const extensionCondition = input[CRUD_EXTENSION_SEARCH];
+  if (extensionCondition === undefined) return baseCondition;
   return baseCondition ? or(baseCondition, extensionCondition) : extensionCondition;
 }
 
@@ -1668,12 +1595,11 @@ export function createCrudRouter<
 
             const validatedFilters = effectiveInput.filters?.filter(
               (filter) =>
-                isCrudExtensionIdFilter(filter, idField) ||
                 validateColumn(filter.id, filterableColumns),
             );
 
             const filterCondition = validatedFilters?.length
-              ? filterCrudColumns({
+              ? filterColumns({
                   table,
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   filters: validatedFilters as any,
@@ -1689,19 +1615,18 @@ export function createCrudRouter<
                   },
                   resolveDateRange: (ctx as { resolveDateRange?: DateRangeResolver })
                     .resolveDateRange,
-                }, idField)
+                })
               : undefined;
 
             const searchCondition = buildCrudSearchWithExtensions(
               table,
-              idField,
               effectiveInput,
               searchColumns,
             );
             const where = buildWhere(
               ctx,
               'list',
-              combineConditions(filterCondition, searchCondition),
+              combineConditions(combineExtensionFilter(filterCondition, effectiveInput), searchCondition),
             );
 
             let query = ctx.db.select().from(table).$dynamic();
@@ -2298,12 +2223,11 @@ export function createCrudRouter<
 
             const validatedFilters = effectiveInput.filters?.filter(
               (filter) =>
-                isCrudExtensionIdFilter(filter, idField) ||
                 validateColumn(filter.id, filterableColumns),
             );
 
             const filterCondition = validatedFilters?.length
-              ? filterCrudColumns({
+              ? filterColumns({
                   table,
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   filters: validatedFilters as any,
@@ -2319,19 +2243,18 @@ export function createCrudRouter<
                   },
                   resolveDateRange: (ctx as { resolveDateRange?: DateRangeResolver })
                     .resolveDateRange,
-                }, idField)
+                })
               : undefined;
 
             const searchCondition = buildCrudSearchWithExtensions(
               table,
-              idField,
               effectiveInput,
               searchColumns,
             );
             const where = buildWhere(
               ctx,
               'export',
-              combineConditions(filterCondition, searchCondition),
+              combineConditions(combineExtensionFilter(filterCondition, effectiveInput), searchCondition),
             );
 
             let query = ctx.db.select().from(table).$dynamic();

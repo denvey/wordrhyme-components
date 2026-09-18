@@ -222,19 +222,27 @@ export interface CrudExtensionsProvider {
     fields?: string[];
   }) => Promise<Record<string, Record<string, unknown>>>;
   /**
-   * Return matching IDs, up to the requested limit (no smaller hidden cap).
-   * The router requests 50,001 IDs as an overflow probe and rejects more than
-   * 50,000 rather than returning partial lists, totals or exports. Implement
-   * the limit in the provider query where possible; this bounds the returned
-   * array, not the provider's internal query work.
+   * Trusted server-side provider only: compose tenant-scoped SQL predicates.
+   * No matching ID arrays are materialized. Conditions join the base query
+   * before permissions, count, pagination and export limits are applied.
+   * Non-empty filters require a filter condition; a search with no matches
+   * should return SQL false. Never accept SQL supplied by an HTTP client.
    */
+  buildConditions?: (input: {
+    id: string;
+    entityId: AnyColumn;
+    filters: CrudExtensionFilter[];
+    joinOperator?: 'and' | 'or';
+    search?: string;
+  }) => Promise<{ filter?: SQL; search?: SQL }>;
+  /** Legacy API; list/export require buildConditions for extension matching. */
   matchEntityIds?: (input: {
     id: string;
     filters: CrudExtensionFilter[];
     joinOperator?: 'and' | 'or';
     limit?: number;
   }) => Promise<string[]>;
-  /** Same completeness and overflow-probe contract as matchEntityIds. */
+  /** Legacy ID lookup; not used by the list/export query path. */
   searchEntityIds?: (input: {
     id: string;
     search: string;
