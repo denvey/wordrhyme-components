@@ -1839,8 +1839,8 @@ describe('createCrudRouter', () => {
       expect(getMetadata).not.toHaveBeenCalled();
     });
 
-    it.each(['filter', 'search'] as const)('keeps extension %s matches beyond the first 5000 for list and export', async (mode) => {
-      const ids = Array.from({ length: 5004 }, (_, index) => String(index + 1));
+    it.each(['filter', 'search'] as const)('binds extension %s matches up to the budget as one array for list and export', async (mode) => {
+      const ids = Array.from({ length: 50000 }, (_, index) => String(index + 1));
       const db = createListMockDb([
         { id: '5004', title: 'Last match', status: 'todo', createdAt: new Date() },
       ]);
@@ -1862,7 +1862,27 @@ describe('createCrudRouter', () => {
       expect(match).toHaveBeenCalledTimes(2);
       const queries = listWhereQueries(db);
       expect(queries.length).toBeGreaterThan(0);
-      for (const query of queries) expect(query.params).toContain('5004');
+      for (const query of queries) {
+        expect(query.sql).toContain('ANY(');
+        expect(query.params).toContainEqual(ids);
+        expect(query.params.length).toBeLessThan(10);
+      }
+    });
+
+    it.each(['filter', 'search'] as const)('rejects overflowing extension %s results before list or export queries', async (mode) => {
+      const db = createListMockDb([]);
+      const match = vi.fn(async () => Array.from({ length: 50001 }, (_, index) => String(index)));
+      const router = createCrudRouter({ id: 'com.example.tasks', table: mockTable,
+        schema: insertTaskSchema, updateSchema: updateTaskSchema, selectSchema: taskSchema });
+      const caller = router.createCaller({ db, crudExtensions: { matchEntityIds: match, searchEntityIds: match } } as any) as CrudCaller;
+      const input = mode === 'filter' ? { filters: [{ id: 'owner', value: ['pending'], operator: 'eq' as const,
+        variant: 'multiSelect' as const, filterId: 'owner' }] } : { search: 'pending' };
+      await expect(caller.list({ ...input, page: 1, perPage: 10, joinOperator: 'and' }))
+        .rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+      await expect(caller.export({ ...input, limit: 10, joinOperator: 'and' }))
+        .rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+      expect(match).toHaveBeenCalledWith(expect.objectContaining({ limit: 50001 }));
+      expect(listWhereQueries(db)).toEqual([]);
     });
 
     it('should keep extension id filters when filterableColumns are restricted', async () => {
@@ -1913,6 +1933,7 @@ describe('createCrudRouter', () => {
           },
         ],
         joinOperator: 'and',
+        limit: 50001,
       });
       expect(db.builders[0]?.where).toHaveBeenCalled();
       expect(db.builders[1]?.where).toHaveBeenCalled();
@@ -1953,7 +1974,7 @@ describe('createCrudRouter', () => {
       const queries = listWhereQueries(db);
       expect(queries).toHaveLength(4);
       for (const query of queries) {
-        expect(query.sql).toContain(' or false');
+        expect(query.sql).toMatch(/ or \(?false\)?/);
         expect(query.params).toContain('%needle%');
         expect(query.params).not.toContain('__auto_crud_no_crud_extension_match__');
       }

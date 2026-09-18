@@ -22,7 +22,7 @@ import {
   sql,
 } from 'drizzle-orm';
 import type { AnyColumn, SQL } from 'drizzle-orm';
-import type { PgTable } from 'drizzle-orm/pg-core';
+import type { PgColumn, PgTable } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import { router, publicProcedure } from '../trpc';
@@ -675,6 +675,15 @@ function resolveColumnTarget<TTable extends PgTable>({
   return getTableColumn(table, columnId);
 }
 
+// Request one extra match to detect overflow without returning partial results.
+const MAX_EXTENSION_MATCHES = 50_000;
+function checkedExtensionIds(ids: string[]): string[] {
+  if (ids.length > MAX_EXTENSION_MATCHES) {
+    throw new TRPCError({ code: 'PRECONDITION_FAILED',
+      message: 'CRUD extension matches exceed 50000; narrow the extension filters or search' });
+  }
+  return ids;
+}
 const CRUD_EXTENSION_FILTER_ID = 'auto-crud-extension-filter';
 const CRUD_EXTENSION_SEARCH_IDS = Symbol('auto-crud-extension-search-ids');
 
@@ -1148,8 +1157,7 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
 
   const provider = resolveCrudExtensions(ctx, config);
 
-  // Match the complete extension set before applying base filters, ACLs and pagination.
-  // Capping IDs here can exclude every visible row and corrupt counts/exports.
+  // Never use a truncated match set for base filtering, counting or pagination.
   const matchRequests: Array<Promise<string[]>> = [];
   if (extensionFilters.length > 0) {
     if (!provider?.matchEntityIds) {
@@ -1164,15 +1172,17 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
         id: target.id,
         filters: extensionFilters as CrudExtensionFilter[],
         joinOperator: input.joinOperator,
+        limit: MAX_EXTENSION_MATCHES + 1,
       }),
     );
   }
 
-  let extensionSearchIds: string[] | undefined;
+  let searchRequest: Promise<string[]> | undefined;
   if (search && !searchDisabled && provider?.searchEntityIds) {
-    extensionSearchIds = await provider.searchEntityIds({
+    searchRequest = provider.searchEntityIds({
       id: target.id,
       search,
+      limit: MAX_EXTENSION_MATCHES + 1,
     });
   } else if (
     search &&
@@ -1185,9 +1195,9 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
     });
   }
 
-  const matchedSets = (await Promise.all(matchRequests)).map(
-    (matchedIds) => new Set(matchedIds),
-  );
+  const [filterResults, searchResults] = await Promise.all([Promise.all(matchRequests), searchRequest]);
+  const matchedSets = filterResults.map(ids => new Set(checkedExtensionIds(ids)));
+  const extensionSearchIds = searchResults === undefined ? undefined : checkedExtensionIds(searchResults);
 
   const effectiveInput: CrudExtensionInput =
     extensionSearchIds === undefined
@@ -1218,6 +1228,28 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
   };
 }
 
+function extensionIdsCondition(column: PgColumn, ids: string[]): SQL {
+  if (ids.length === 0) return sql`false`;
+  // PostgreSQL infers the array element type from the left-hand column.
+  // Keep the indexed column uncast and bind one parameter rather than one per ID.
+  return sql`${column} = ANY(${sql.param(ids)})`;
+}
+
+function filterCrudColumns(
+  options: Parameters<typeof filterColumns>[0],
+  idField: string,
+): SQL | undefined {
+  const conditions = options.filters.map((filter) =>
+    isCrudExtensionIdFilter(filter, idField) && Array.isArray(filter.value)
+      ? extensionIdsCondition(
+          getTableColumn(options.table as PgTable, idField)! as PgColumn,
+          filter.value.map(String),
+        )
+      : filterColumns({ ...options, filters: [filter] }),
+  );
+  return options.joinOperator === 'or' ? or(...conditions) : and(...conditions);
+}
+
 function buildCrudSearchWithExtensions<TTable extends PgTable>(
   table: TTable,
   idField: string,
@@ -1232,7 +1264,7 @@ function buildCrudSearchWithExtensions<TTable extends PgTable>(
   const extensionIds = input[CRUD_EXTENSION_SEARCH_IDS];
   if (extensionIds === undefined) return baseCondition;
 
-  const extensionCondition = inArray(getTableColumn(table, idField)!, extensionIds);
+  const extensionCondition = extensionIdsCondition(getTableColumn(table, idField)! as PgColumn, extensionIds);
   return baseCondition ? or(baseCondition, extensionCondition) : extensionCondition;
 }
 
@@ -1641,7 +1673,7 @@ export function createCrudRouter<
             );
 
             const filterCondition = validatedFilters?.length
-              ? filterColumns({
+              ? filterCrudColumns({
                   table,
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   filters: validatedFilters as any,
@@ -1657,7 +1689,7 @@ export function createCrudRouter<
                   },
                   resolveDateRange: (ctx as { resolveDateRange?: DateRangeResolver })
                     .resolveDateRange,
-                })
+                }, idField)
               : undefined;
 
             const searchCondition = buildCrudSearchWithExtensions(
@@ -2271,7 +2303,7 @@ export function createCrudRouter<
             );
 
             const filterCondition = validatedFilters?.length
-              ? filterColumns({
+              ? filterCrudColumns({
                   table,
                   // eslint-disable-next-line @typescript-eslint/no-explicit-any
                   filters: validatedFilters as any,
@@ -2287,7 +2319,7 @@ export function createCrudRouter<
                   },
                   resolveDateRange: (ctx as { resolveDateRange?: DateRangeResolver })
                     .resolveDateRange,
-                })
+                }, idField)
               : undefined;
 
             const searchCondition = buildCrudSearchWithExtensions(

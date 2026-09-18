@@ -221,12 +221,20 @@ export interface CrudExtensionsProvider {
     entityIds: string[];
     fields?: string[];
   }) => Promise<Record<string, Record<string, unknown>>>;
+  /**
+   * Return matching IDs, up to the requested limit (no smaller hidden cap).
+   * The router requests 50,001 IDs as an overflow probe and rejects more than
+   * 50,000 rather than returning partial lists, totals or exports. Implement
+   * the limit in the provider query where possible; this bounds the returned
+   * array, not the provider's internal query work.
+   */
   matchEntityIds?: (input: {
     id: string;
     filters: CrudExtensionFilter[];
     joinOperator?: 'and' | 'or';
     limit?: number;
   }) => Promise<string[]>;
+  /** Same completeness and overflow-probe contract as matchEntityIds. */
   searchEntityIds?: (input: {
     id: string;
     search: string;
