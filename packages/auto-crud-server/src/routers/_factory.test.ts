@@ -1839,6 +1839,32 @@ describe('createCrudRouter', () => {
       expect(getMetadata).not.toHaveBeenCalled();
     });
 
+    it.each(['filter', 'search'] as const)('keeps extension %s matches beyond the first 5000 for list and export', async (mode) => {
+      const ids = Array.from({ length: 5004 }, (_, index) => String(index + 1));
+      const db = createListMockDb([
+        { id: '5004', title: 'Last match', status: 'todo', createdAt: new Date() },
+      ]);
+      const match = vi.fn(async ({ limit }: { limit?: number }) =>
+        limit === undefined ? ids : ids.slice(0, limit));
+      const router = createCrudRouter({
+        id: 'com.example.tasks', table: mockTable,
+        schema: insertTaskSchema, updateSchema: updateTaskSchema, selectSchema: taskSchema,
+      });
+      const caller = router.createCaller({
+        db, crudExtensions: { matchEntityIds: match, searchEntityIds: match },
+      } as any) as CrudCaller;
+      const input = mode === 'filter' ? {
+        filters: [{ id: 'owner', value: ['pending'], operator: 'eq' as const,
+          variant: 'multiSelect' as const, filterId: 'owner' }],
+      } : { search: 'pending' };
+      await caller.list({ ...input, page: 1, perPage: 10, joinOperator: 'and' });
+      await caller.export({ ...input, limit: 10, joinOperator: 'and' });
+      expect(match).toHaveBeenCalledTimes(2);
+      const queries = listWhereQueries(db);
+      expect(queries.length).toBeGreaterThan(0);
+      for (const query of queries) expect(query.params).toContain('5004');
+    });
+
     it('should keep extension id filters when filterableColumns are restricted', async () => {
       const db = createListMockDb([
         { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
@@ -1887,7 +1913,6 @@ describe('createCrudRouter', () => {
           },
         ],
         joinOperator: 'and',
-        limit: 5000,
       });
       expect(db.builders[0]?.where).toHaveBeenCalled();
       expect(db.builders[1]?.where).toHaveBeenCalled();

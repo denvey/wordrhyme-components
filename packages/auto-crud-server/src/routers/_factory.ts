@@ -1148,6 +1148,8 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
 
   const provider = resolveCrudExtensions(ctx, config);
 
+  // Match the complete extension set before applying base filters, ACLs and pagination.
+  // Capping IDs here can exclude every visible row and corrupt counts/exports.
   const matchRequests: Array<Promise<string[]>> = [];
   if (extensionFilters.length > 0) {
     if (!provider?.matchEntityIds) {
@@ -1162,7 +1164,6 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
         id: target.id,
         filters: extensionFilters as CrudExtensionFilter[],
         joinOperator: input.joinOperator,
-        limit: 5000,
       }),
     );
   }
@@ -1172,7 +1173,6 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
     extensionSearchIds = await provider.searchEntityIds({
       id: target.id,
       search,
-      limit: 5000,
     });
   } else if (
     search &&
