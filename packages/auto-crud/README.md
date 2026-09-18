@@ -1515,3 +1515,24 @@ truncation and interaction behavior.
 ### 自定义行操作的菜单上下文
 
 行操作组件接收上下文中的 `MenuItem`，应使用它以保证菜单根节点和菜单项共享同一运行时上下文。组件需要在菜单中保持弹窗会话时，可在选择事件中调用 `preventDefault()`，避免菜单关闭导致组件卸载。
+
+### Row action menu UI contract
+
+The row action menu created by `createActionsColumn` uses the public
+`@wordrhyme/ui` entry (a peer dependency). Custom `component` actions, including
+WordRhyme Host resource permission actions, must use menu items from that same
+shared entry. A private Radix or `@wordrhyme/shadcn` menu item cannot be inserted
+into this menu.
+
+The package build keeps `@wordrhyme/ui` external. In a WordRhyme plugin remote,
+consume the Host's existing Federation share using
+`'@wordrhyme/ui': { singleton: true, import: false }`. Do not alias this import to
+private source or substitute an unshared subpath. Independently implemented
+menus remain supported when their context-dependent components stay together.
+
+Runtime consumers must provide `@wordrhyme/ui >=0.1.0-alpha.20 <0.2.0`, which
+adds the CommonJS export condition while keeping the same ESM module instance.
+Publish that UI version before this AutoCrud change. The development dependency
+is pinned to the already-published alpha.19 for reproducible ESM tests and type
+checks until alpha.20 is published; it is not the supported CommonJS runtime.
+The CommonJS export/identity regression belongs to the UI provider repository.
