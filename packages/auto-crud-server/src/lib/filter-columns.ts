@@ -4,15 +4,15 @@ import { startOfDay } from 'date-fns/startOfDay';
 import {
   type AnyColumn,
   and,
-  eq,
-  gt,
-  gte,
+  eq as drizzleEq,
+  gt as drizzleGt,
+  gte as drizzleGte,
   ilike,
   inArray,
   isNull,
-  lt,
-  lte,
-  ne,
+  lt as drizzleLt,
+  lte as drizzleLte,
+  ne as drizzleNe,
   not,
   notIlike,
   notInArray,
@@ -23,6 +23,22 @@ import {
 } from 'drizzle-orm';
 
 type ColumnTarget = AnyColumn | SQL;
+
+// Drizzle overloads accept either target separately, but not their union.
+// Narrow without wrapping the column so its driver encoder remains available.
+function comparison(compare: typeof drizzleEq) {
+  return (target: ColumnTarget, value: unknown): SQL =>
+    'dataType' in target
+      ? compare(target, value)
+      : compare(target, value instanceof Date ? value.toISOString() : value);
+}
+
+const eq = comparison(drizzleEq);
+const ne = comparison(drizzleNe);
+const gt = comparison(drizzleGt);
+const gte = comparison(drizzleGte);
+const lt = comparison(drizzleLt);
+const lte = comparison(drizzleLte);
 
 /** 过滤器变体类型 */
 export type FilterVariant =
@@ -103,12 +119,26 @@ function isEmpty(column: ColumnTarget): SQL {
 }
 
 /**
- * 安全解析日期时间戳
+ * 安全解析日历日期或日期时间戳
  * @returns Date 对象，如果解析失败返回 null
  */
 function safeParseDate(value: string | number | undefined | null): Date | null {
   if (value === undefined || value === null || value === '') {
     return null;
+  }
+
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number) as [number, number, number];
+    // Match the legacy server-local boundary policy; a host resolver can provide
+    // explicit business-time-zone boundaries before this fallback is reached.
+    const date = new Date(0);
+    date.setFullYear(year, month - 1, day);
+    date.setHours(0, 0, 0, 0);
+    return date.getFullYear() === year &&
+      date.getMonth() === month - 1 &&
+      date.getDate() === day
+      ? date
+      : null;
   }
 
   const timestamp = typeof value === 'string' ? Number(value) : value;
@@ -199,7 +229,7 @@ function requireDateBoundary(
 }
 
 function resolvedDateCondition(
-  expr: SQL,
+  expr: ColumnTarget,
   operator: DateRangeOperator,
   range: DateFilterRange,
 ): SQL {
@@ -249,7 +279,9 @@ export function filterColumns<T extends Table>({
   const conditions = filters.map((filter) => {
     const column = resolveColumn ? resolveColumn(filter.id) : getColumn(table, filter.id);
     if (!column) return undefined;
-    const expr = toSqlTarget(column);
+    // Keep the column's driver encoder (notably for timestamp Date values).
+    // Wrapping it in SQL makes Drizzle bind raw, unencoded parameters.
+    const expr = column;
     if (
       (filter.variant === 'date' || filter.variant === 'dateRange') &&
       isDateRangeOperator(filter.operator)
@@ -321,13 +353,17 @@ export function filterColumns<T extends Table>({
 
       case 'inArray':
         if (Array.isArray(filter.value)) {
-          return inArray(expr, filter.value);
+          return 'dataType' in expr
+            ? inArray(expr, filter.value)
+            : inArray(expr, filter.value);
         }
         return undefined;
 
       case 'notInArray':
         if (Array.isArray(filter.value)) {
-          return notInArray(expr, filter.value);
+          return 'dataType' in expr
+            ? notInArray(expr, filter.value)
+            : notInArray(expr, filter.value);
         }
         return undefined;
 

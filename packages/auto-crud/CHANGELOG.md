@@ -1,5 +1,31 @@
 # @wordrhyme/auto-crud
 
+## 1.6.0
+
+### Minor Changes
+
+- 827d0ac: Share field labels, option resolution and date/status formatting with detail views by default. Details preserve full text and arrays, resolve the selected record independently of list visibility, and support detail-only label, cell, order and visibility overrides. Shared hidden fields and denied fields remain excluded. Custom list cells can be reused explicitly with a separate single-row table context.
+
+### Patch Changes
+
+- 0cf6f23: Allow the host date formatter registration to carry calendar locale and time-zone policy. Keep calendar selections as YYYY-MM-DD values and update mounted date filters when the host policy changes.
+
+  Accept strict calendar-date strings in the default server date-filter fallback while retaining timestamp input support.
+
+  Preserve selected-date labels from existing formatter-only registrations until the host explicitly opts into calendar locale presentation.
+
+## 1.5.7
+
+### Patch Changes
+
+- c07aea5: Reset pagination to the first page when clear-all or remove-filter operations change the active readable filters.
+
+## 1.5.6
+
+### Patch Changes
+
+- 28c74b8: Merge table data-source labels with explicit static labels, giving static labels precedence for matching values, and render empty arrays as the standard empty placeholder.
+
 ## 1.5.5
 
 ### Patch Changes

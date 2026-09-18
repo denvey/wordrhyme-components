@@ -1,5 +1,18 @@
 # @wordrhyme/auto-crud-server
 
+## 1.5.1
+
+### Patch Changes
+
+- 0cf6f23: Allow the host date formatter registration to carry calendar locale and time-zone policy. Keep calendar selections as YYYY-MM-DD values and update mounted date filters when the host policy changes.
+
+  Accept strict calendar-date strings in the default server date-filter fallback while retaining timestamp input support.
+
+  Preserve selected-date labels from existing formatter-only registrations until the host explicitly opts into calendar locale presentation.
+
+- 1b16a12: Keep Drizzle columns intact while building filter comparisons so column driver encoders serialize timestamp and other typed values correctly. Normalize Date parameters for raw SQL targets.
+- 2333d62: Support preserveReferenceValue in extension field metadata so list, get and export return reference IDs for editing and data-source label resolution while retaining display values by default.
+
 ## 1.5.0
 
 ### Minor Changes

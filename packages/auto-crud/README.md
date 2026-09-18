@@ -794,6 +794,26 @@ crudActions.register({
 
 同一个 `ownerId + targetId + zone` 再次注册会替换该 owner 的旧动作；卸载插件或页面时可调用 `crudActions.unregister(ownerId)`。
 
+插件的 `actions` 数组与页面配置一样，用数组表达操作的相对顺序。例如，在删除前插入同步操作：
+
+```tsx
+crudActions.register({
+  targetId: 'com.wordrhyme.shop.products',
+  zone: 'row',
+  ownerId: 'com.wordrhyme.sync',
+  actions: [{ type: 'custom', label: '同步', onClick: sync }, { type: 'delete' }],
+});
+```
+
+插件仍是增量合并：未提及的宿主或其他插件操作保留，隐藏内置项必须显式使用 `hidden: true`。
+有可见内置项的数组按声明顺序排列：从第一个列出的内置项所在位置开始，依次插入自定义项，只在顺序冲突时移动已存在的内置项。
+未提及的操作之间保持相对顺序。内置项的已有 handler 等属性保留，只有显式声明的属性会覆盖它们。
+只有自定义项（或列出的内置项全部被隐藏）时，沿用 `position: 'start' | 'end'`，同一位置内仍按数组顺序排列。
+
+多插件按各自数组中最小的 `order`（未设置为 100）、`ownerId` 依次合并；后处理的数组在顺序冲突时优先，但不会删除前面的插件操作。
+`order` 不再重排同一插件数组内的显示顺序。内置属性覆盖仍沿用原有的 action `order`、`ownerId`、注册序优先级，最后一个配置生效。
+使用 `order` 排列同一插件操作的旧调用方，应把数组调整为所需顺序。最终权限过滤只移除不可用的内置操作，不改变其余操作顺序或授予权限。
+
 ---
 
 ## 🎬 行操作配置
@@ -1043,6 +1063,12 @@ setDateFormatter(undefined);
 ```
 
 `setDateFormatter` 是进程/运行时级配置，建议在应用启动时注册一个稳定的 formatter。多个注册可以重叠，清理函数只移除对应注册，允许乱序清理。SSR 场景不要在每个请求中重复调用 setter；如需按请求选择语言或时区，应由稳定 formatter 通过宿主提供的并发安全上下文读取当前请求策略。
+
+原有 `setDateFormatter(formatter)` 调用保持兼容：筛选器的已选日期标签继续使用宿主 formatter，包括其自定义格式和时区行为。
+
+日期筛选日历可通过 `setDateFormatter(formatter, { locale, timeZone })` 接收宿主配置（`DateLocaleOptions`）。语言或时区改变时重新注册并清理旧注册，已挂载的筛选器会同步更新月份、星期和日期标签。筛选值使用 `YYYY-MM-DD` 日历日字符串；服务端配置 `resolveDateRange` 时按宿主查询时区解析边界，否则使用服务端本地时区，并继续兼容时间戳输入。显式传入日历配置后，日期标签使用指定 locale，直接格式化日历日，不再调用 formatter 或进行时间点的时区转换。`timeZone` 仅随注册保存宿主策略，不会改变日历的“今天”、默认月份或自动配置服务端查询时区；业务时区边界仍须由服务端 `resolveDateRange` 提供。
+
+升级时请同时更新 `@wordrhyme/auto-crud` 与 `@wordrhyme/auto-crud-server`：新日历提交 `YYYY-MM-DD`，旧服务端默认解析器无法识别。自定义 `resolveDateRange` 也应接受此格式；已有时间戳 URL 仍可读取。
 
 ### Schema Bridge - 核心转换函数
 
@@ -1454,3 +1480,38 @@ MIT © [wordrhyme](https://github.com/pixpilot/shadcn-components)
 - [Shadcn UI](https://ui.shadcn.com/) - 优雅的 UI 组件
 - [Notion](https://notion.so) - 高级筛选器设计
 - [Linear](https://linear.app) - 命令面板设计
+
+### Detail presentation
+
+Details automatically share field labels, `enum`/`dataSource` mappings and
+`fields[field].table` presentation settings (`label`, `display`, `options`,
+`dataSource`) with the list. No presentation switch is required. Default details
+show full text and all array items, preserving localized boolean labels.
+Table-only hidden fields remain available in details; shared `hidden` and
+`permissions.deny` always take precedence. Labels are resolved from the selected
+record, including when it is absent from the current list page.
+
+```tsx
+<AutoCrudTable
+  schema={schema}
+  resource={resource}
+  fields={{ description: { table: { hidden: true } } }}
+  view={{
+    overrides: {
+      description: { label: 'Full description', index: 0 },
+      region: { cell: ({ getValue }) => <strong>{String(getValue())}</strong> },
+    },
+  }}
+/>
+```
+
+`view.overrides` changes details only. Custom list `cell` callbacks are not inherited
+by default because they can contain list actions or depend on table state. To
+explicitly reuse them, set `view.presentation: 'table'`; detail overrides still win.
+This provides a real **separate single-row** TanStack context, not the original
+list's pagination, selection or row index. Reused custom cells retain their own
+truncation and interaction behavior.
+
+### 自定义行操作的菜单上下文
+
+行操作组件接收上下文中的 `MenuItem`，应使用它以保证菜单根节点和菜单项共享同一运行时上下文。组件需要在菜单中保持弹窗会话时，可在选择事件中调用 `preventDefault()`，避免菜单关闭导致组件卸载。

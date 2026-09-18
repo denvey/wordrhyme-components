@@ -1145,6 +1145,18 @@ create index tasks_tenant_created_at_id_idx
 应为真实文本列配置 `pg_trgm` GIN 索引；JSON/custom expression 需要与生成 SQL 一致的
 表达式索引。
 
+扩展字段筛选与搜索使用可信服务端 provider 的 `buildConditions` 契约。Host 接收
+CRUD target、原表 ID 列、扩展筛选条件和搜索词，返回组织隔离的 SQL `filter` / `search`
+条件（例如关联 `EXISTS`），不返回全量 ID 数组。基础筛选与扩展筛选按 `joinOperator`
+组合；基础搜索与扩展搜索按 OR 组合，两组再按 AND 组合。最终仍经过原有 scope、
+软删除和 Host 的权限治理，列表、精确总数与导出使用同一条件。
+
+这个契约只适用于同进程可信 Host，不接受客户端 SQL，也不授予插件 Core 表访问权限。
+扩展条件不设匹配 ID 数量上限；数据库负载仍需通过索引和查询执行策略管理。
+Host 与此版本必须配套升级：仅提供旧 `matchEntityIds` / `searchEntityIds` 的 provider
+执行扩展查询时会收到 `PRECONDITION_FAILED`，不会静默降级到可能截断的 ID 查询。
+纯基础表查询、分页大小和导出数量限制保持原有行为。
+
 扩展字段 provider 可以实现批量写接口，避免 `createMany`、`updateMany` 和 `import`
 逐行访问数据库。未实现时仍兼容旧的 `saveExtraValues`：
 
