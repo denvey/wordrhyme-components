@@ -1512,6 +1512,10 @@ This provides a real **separate single-row** TanStack context, not the original
 list's pagination, selection or row index. Reused custom cells retain their own
 truncation and interaction behavior.
 
+### 状态徽标颜色
+
+对于 `table.display: "badge"`，标量字段的 `table.options` 可设置 `badgeTone`，支持 `neutral`、`success`、`warning`、`info`。徽标保留文字标签并附带装饰圆点，未配置颜色时沿用原有徽标样式，纯文本展示不受影响。业务状态与颜色的对应关系由调用方配置。
+
 ### 自定义行操作的菜单上下文
 
 行操作组件接收上下文中的 `MenuItem`，应使用它以保证菜单根节点和菜单项共享同一运行时上下文。组件需要在菜单中保持弹窗会话时，可在选择事件中调用 `preventDefault()`，避免菜单关闭导致组件卸载。

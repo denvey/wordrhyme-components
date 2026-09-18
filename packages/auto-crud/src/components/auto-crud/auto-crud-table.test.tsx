@@ -1085,6 +1085,35 @@ describe('auto-crud table toolbar resolver', () => {
     }
   });
 
+  it.each([
+    ['neutral', 'bg-muted', 'text-muted-foreground'],
+    ['success', 'bg-emerald-50', 'dark:text-emerald-300'],
+    ['warning', 'bg-amber-50', 'dark:text-amber-300'],
+    ['info', 'bg-blue-50', 'dark:text-blue-300'],
+  ] as const)('renders a theme-aware %s status badge', (badgeTone, background, foreground) => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          fields: {
+            region: {
+              table: {
+                display: 'badge',
+                options: [{ label: 'Imported', value: 'west', badgeTone }],
+              },
+            },
+          },
+        })}
+      />,
+    );
+    const badge = screen.getByText('Imported');
+    expect(badge.getAttribute('data-slot')).toBe('badge');
+    expect(badge.style.backgroundColor).toBe('');
+    expect(badge.className).toContain(background);
+    expect(badge.className).toContain(foreground);
+    expect(badge.querySelector('[aria-hidden="true"]')).not.toBeNull();
+  });
+
   it('renders resolved option labels as plain text when requested by metadata', () => {
     render(
       <AutoCrudTable

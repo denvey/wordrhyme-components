@@ -94,6 +94,8 @@ export interface FilterConfig {
 }
 
 export interface FieldOption {
+  /** Optional semantic color and dot for status badges. */
+  badgeTone?: 'neutral' | 'success' | 'warning' | 'info';
   label: string;
   value: string;
   searchText?: string | string[];
@@ -1853,6 +1855,26 @@ function renderFieldValue(
       );
     }
 
+    const tone = options.find((option) => option.value === String(value))?.badgeTone;
+    const toneClassName =
+      tone &&
+      {
+        neutral: 'border-border bg-muted text-muted-foreground',
+        success: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+        warning: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
+        info: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300',
+      }[tone];
+    if (toneClassName) {
+      return (
+        <Badge variant="outline" className={toneClassName}>
+          <span
+            aria-hidden="true"
+            className="size-1.5 shrink-0 rounded-full bg-current"
+          />
+          {getOptionLabel(value, options)}
+        </Badge>
+      );
+    }
     return (
       <Badge variant="outline" className="capitalize">
         {getOptionLabel(value, options)}
