@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { DropdownMenuItem } from '@wordrhyme/ui';
 import type {
   AutoCrudQueryCapabilities,
   UseAutoCrudResourceReturn,
@@ -20,6 +21,7 @@ import type {
   AutoCrudToolbarContext,
   AutoCrudToolbarResolver,
   Fields,
+  RowActionItem,
 } from './auto-crud-table';
 import { AutoCrudTable, setToolbarResolver } from './auto-crud-table';
 
@@ -2065,6 +2067,25 @@ describe('auto-crud table unified actions', () => {
     });
   });
 
+  it('keeps only custom row actions after plugins hide all builtins', async () => {
+    crudActions.register<RowActionItem<Row>>({
+      targetId: 'stores',
+      zone: 'row',
+      ownerId: 'sync',
+      actions: [{ type: 'custom', label: 'Sync', onClick: vi.fn() }, { type: 'delete' }],
+    });
+    crudActions.register({
+      targetId: 'stores',
+      zone: 'row',
+      ownerId: 'visibility',
+      actions: ['view', 'edit', 'copy', 'delete'].map((type) => ({ type, hidden: true })),
+    });
+    render(<AutoCrudTable id="stores" schema={schema} resource={createResource()} />);
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }));
+    const items = await screen.findAllByRole('menuitem');
+    expect(items.map((item) => item.textContent)).toEqual(['Sync']);
+  });
+
   it('does not restore default batch actions after registered actions hide them all', () => {
     crudActions.register({
       targetId: 'com.wordrhyme.shop.stores',
@@ -2087,6 +2108,85 @@ describe('auto-crud table unified actions', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
 
     expect(screen.queryByText('Delete')).toBeNull();
+  });
+
+  it.each([
+    ['owner', true],
+    ['owner', false],
+    ['plugin', true],
+    ['plugin', false],
+  ] as const)(
+    'uses array order for %s actions with delete permission %s',
+    async (source, canDelete) => {
+      const selected = vi.fn();
+      const actions: RowActionItem<Row>[] = [
+        { type: 'view', label: 'View' },
+        { type: 'edit', label: 'Edit' },
+        { type: 'copy', label: 'Copy' },
+        { type: 'custom', label: 'Sync', onClick: selected },
+        { type: 'delete', label: 'Delete' },
+      ];
+      if (source === 'plugin') {
+        crudActions.register({
+          targetId: 'stores',
+          zone: 'row',
+          ownerId: 'sync',
+          actions,
+        });
+      }
+      render(
+        <AutoCrudTable
+          id="stores"
+          schema={schema}
+          resource={createResource()}
+          permissions={{ can: { delete: canDelete } }}
+          actions={source === 'owner' ? { row: actions } : undefined}
+        />,
+      );
+      fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }));
+      const items = await screen.findAllByRole('menuitem');
+      expect(items.map((item) => item.textContent)).toEqual(
+        canDelete
+          ? ['View', 'Edit', 'Copy', 'Sync', 'Delete']
+          : ['View', 'Edit', 'Copy', 'Sync'],
+      );
+      fireEvent.click(screen.getByRole('menuitem', { name: 'Sync' }));
+      expect(selected).toHaveBeenCalledWith({ id: '1', region: 'west' });
+    },
+  );
+
+  it('supplies the owning menu primitive to external row components', async () => {
+    const selected = vi.fn();
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource()}
+        actions={{
+          row: [
+            {
+              type: 'custom',
+              component: ({ MenuItem, row }) => {
+                expect(MenuItem).toBe(DropdownMenuItem);
+                return (
+                  <MenuItem
+                    onSelect={(event) => {
+                      event.preventDefault();
+                      selected(row);
+                    }}
+                  >
+                    External sync
+                  </MenuItem>
+                );
+              },
+            },
+          ],
+        }}
+      />,
+    );
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'Open menu' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'External sync' }));
+    expect(selected).toHaveBeenCalledWith({ id: '1', region: 'west' });
+    expect(screen.getByRole('menuitem', { name: 'External sync' })).toBeTruthy();
   });
 
   it('renders row custom components with row context', async () => {

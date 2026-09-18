@@ -794,6 +794,26 @@ crudActions.register({
 
 同一个 `ownerId + targetId + zone` 再次注册会替换该 owner 的旧动作；卸载插件或页面时可调用 `crudActions.unregister(ownerId)`。
 
+插件的 `actions` 数组与页面配置一样，用数组表达操作的相对顺序。例如，在删除前插入同步操作：
+
+```tsx
+crudActions.register({
+  targetId: 'com.wordrhyme.shop.products',
+  zone: 'row',
+  ownerId: 'com.wordrhyme.sync',
+  actions: [{ type: 'custom', label: '同步', onClick: sync }, { type: 'delete' }],
+});
+```
+
+插件仍是增量合并：未提及的宿主或其他插件操作保留，隐藏内置项必须显式使用 `hidden: true`。
+有可见内置项的数组按声明顺序排列：从第一个列出的内置项所在位置开始，依次插入自定义项，只在顺序冲突时移动已存在的内置项。
+未提及的操作之间保持相对顺序。内置项的已有 handler 等属性保留，只有显式声明的属性会覆盖它们。
+只有自定义项（或列出的内置项全部被隐藏）时，沿用 `position: 'start' | 'end'`，同一位置内仍按数组顺序排列。
+
+多插件按各自数组中最小的 `order`（未设置为 100）、`ownerId` 依次合并；后处理的数组在顺序冲突时优先，但不会删除前面的插件操作。
+`order` 不再重排同一插件数组内的显示顺序。内置属性覆盖仍沿用原有的 action `order`、`ownerId`、注册序优先级，最后一个配置生效。
+使用 `order` 排列同一插件操作的旧调用方，应把数组调整为所需顺序。最终权限过滤只移除不可用的内置操作，不改变其余操作顺序或授予权限。
+
 ---
 
 ## 🎬 行操作配置
@@ -1495,3 +1515,28 @@ truncation and interaction behavior.
 ### 状态徽标颜色
 
 对于 `table.display: "badge"`，标量字段的 `table.options` 可设置 `badgeTone`，支持 `neutral`、`success`、`warning`、`info`。徽标保留文字标签并附带装饰圆点，未配置颜色时沿用原有徽标样式，纯文本展示不受影响。业务状态与颜色的对应关系由调用方配置。
+
+### 自定义行操作的菜单上下文
+
+行操作组件接收上下文中的 `MenuItem`，应使用它以保证菜单根节点和菜单项共享同一运行时上下文。组件需要在菜单中保持弹窗会话时，可在选择事件中调用 `preventDefault()`，避免菜单关闭导致组件卸载。
+
+### Row action menu UI contract
+
+The row action menu created by `createActionsColumn` uses the public
+`@wordrhyme/ui` entry (a peer dependency). Custom `component` actions, including
+WordRhyme Host resource permission actions, must use menu items from that same
+shared entry. A private Radix or `@wordrhyme/shadcn` menu item cannot be inserted
+into this menu.
+
+The package build keeps `@wordrhyme/ui` external. In a WordRhyme plugin remote,
+consume the Host's existing Federation share using
+`'@wordrhyme/ui': { singleton: true, import: false }`. Do not alias this import to
+private source or substitute an unshared subpath. Independently implemented
+menus remain supported when their context-dependent components stay together.
+
+Runtime consumers must provide `@wordrhyme/ui >=0.1.0-alpha.20 <0.2.0`, which
+adds the CommonJS export condition while keeping the same ESM module instance.
+Publish that UI version before this AutoCrud change. The development dependency
+is pinned to the already-published alpha.19 for reproducible ESM tests and type
+checks until alpha.20 is published; it is not the supported CommonJS runtime.
+The CommonJS export/identity regression belongs to the UI provider repository.

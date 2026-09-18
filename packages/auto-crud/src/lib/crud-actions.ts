@@ -150,20 +150,14 @@ function resolveActions<TAction extends CrudActionBase>(
   const nextActions = [...baseActions];
   const startCustomActions: TAction[] = [];
   const endCustomActions: TAction[] = [];
+  const groups = new Map<string, CrudActionEntry<TAction>[]>();
 
   for (const entry of registered) {
+    const group = groups.get(entry.ownerId) ?? [];
+    group.push(entry);
+    groups.set(entry.ownerId, group);
     const action = entry.action;
-    if (action.hidden && isCustomAction(action)) continue;
-
-    if (isCustomAction(action)) {
-      const custom = withoutRegistryMeta(action);
-      if (custom.position === 'start') {
-        startCustomActions.push(custom);
-      } else {
-        endCustomActions.push(custom);
-      }
-      continue;
-    }
+    if (isCustomAction(action)) continue;
 
     const existingIndex = nextActions.findIndex((item) => item.type === action.type);
     if (action.hidden) {
@@ -181,6 +175,44 @@ function resolveActions<TAction extends CrudActionBase>(
       };
     } else {
       nextActions.push(builtin);
+    }
+  }
+
+  // Keep existing override precedence, but use each owner's original array for
+  // placement. Groups follow their first entry in the stable registry order.
+  for (const group of groups.values()) {
+    const items = group
+      .sort((left, right) => left.seq - right.seq)
+      .flatMap(({ action }) => {
+        if (action.hidden) return [];
+        if (isCustomAction(action)) return [withoutRegistryMeta(action)];
+        const builtin = nextActions.find((item) => item.type === action.type);
+        return builtin ? [builtin] : [];
+      });
+    const firstBuiltin = items.find((item) => !isCustomAction(item));
+    if (firstBuiltin) {
+      // Leave unmentioned items in place. Move a listed item only when needed to
+      // follow the previous one; custom items occupy their declared array slot.
+      let cursor = nextActions.indexOf(firstBuiltin);
+      for (const item of items) {
+        const existing = nextActions.indexOf(item);
+        if (existing >= cursor) {
+          cursor = existing + 1;
+        } else {
+          if (existing >= 0) {
+            nextActions.splice(existing, 1);
+            cursor -= 1;
+          }
+          nextActions.splice(cursor, 0, item);
+          cursor += 1;
+        }
+      }
+    } else {
+      for (const custom of items) {
+        (custom.position === 'start' ? startCustomActions : endCustomActions).push(
+          custom,
+        );
+      }
     }
   }
 
