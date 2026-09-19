@@ -13,7 +13,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@wordrhyme/shadcn';
+} from '@wordrhyme/ui';
 import { Ellipsis } from 'lucide-react';
 import { formatDate } from '@/lib/format';
 import { humanize } from '@/lib/humanize';
