@@ -528,8 +528,6 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
      * - 数组: 第一个为默认值，显示切换按钮
      */
     filterModes?: FilterMode | FilterMode[];
-    /** Additional controls rendered after a named simple filter. */
-    afterFilter?: { id: string; content: React.ReactNode };
     /** 全局搜索框；默认在存在 search: true 字段时显示 */
     search?:
       | boolean
@@ -2195,6 +2193,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const [exporting, setExporting] = React.useState(false);
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
   const dynamicFilterOptions = useDynamicFilterOptions(resolvedFields);
+  const filterOnly = React.useMemo(() => Object.entries(resolvedFields)
+    .filter(([key, config]) => config.table === false && config.filter && config.hidden !== true
+      && !denyFields?.includes(key) && !tableConfig?.hidden?.includes(key)
+      && tableConfig?.overrides?.[key]?.hidden !== true)
+    .map(([key]) => key), [resolvedFields, denyFields, tableConfig?.hidden, tableConfig?.overrides]);
   const hiddenColumns = React.useMemo(
     () =>
       buildHiddenColumns(
@@ -2650,10 +2653,10 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           ? { total: resource.tableData.total }
           : {})}
         overrides={tableOverrides as any}
-        exclude={hiddenColumns as any}
+        exclude={hiddenColumns.filter(key => !filterOnly.includes(key)) as any}
+        filterOnly={filterOnly}
         filterMode={tableConfig?.filterModes}
         search={searchConfig}
-        afterFilter={tableConfig?.afterFilter}
         actions={tableRowActions}
         onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}

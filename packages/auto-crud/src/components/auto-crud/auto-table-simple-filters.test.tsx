@@ -1,17 +1,8 @@
 import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeAll, expect, it, vi } from 'vitest';
+import { afterEach, expect, it } from 'vitest';
 import { setDateFormatter } from '@/lib/format';
-import { SimpleDateFilter, SimpleFacetedFilter } from './auto-table-simple-filters';
-
-beforeAll(() => {
-  Element.prototype.scrollIntoView = vi.fn();
-  globalThis.ResizeObserver = class ResizeObserver {
-    observe() {}
-    unobserve() {}
-    disconnect() {}
-  };
-});
+import { SimpleDateFilter } from './auto-table-simple-filters';
 
 afterEach(() => {
   cleanup();
@@ -69,17 +60,4 @@ it('keeps the range picker open until the second date is selected', () => {
   expect(screen.getByRole('dialog')).toBeTruthy();
   fireEvent.click(days()[11]!);
   expect(screen.queryByRole('dialog')).toBeNull();
-});
-
-
-it('uses the same searchable single-select interaction for external filters', async () => {
-  function Filter() {
-    const [value, setValue] = useState<string[]>([]);
-    return <SimpleFacetedFilter title="所属客户" options={[{ value: 'one', label: '客户一' }, { value: 'two', label: '客户二' }]}
-      value={value} onChange={setValue} />;
-  }
-  render(<Filter />);
-  fireEvent.click(screen.getByRole('button', { name: '所属客户' }));
-  fireEvent.click(await screen.findByText('客户二'));
-  expect(screen.getByRole('button', { name: /所属客户.*客户二/ })).toBeTruthy();
 });

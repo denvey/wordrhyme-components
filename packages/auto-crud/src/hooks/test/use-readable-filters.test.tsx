@@ -213,3 +213,21 @@ describe('pagination with equivalent readable filters', () => {
     expect(window.location.search).toBe('?page=10');
   });
 });
+
+it('hydrates newly registered fields from URL without changing the page', () => {
+  window.history.replaceState(null, '', '/orders?customerId=c1&page=4');
+  const { result, rerender, unmount } = renderHook(
+    ({ enabled }) =>
+      useReadableFilters(
+        enabled ? [{ id: 'customerId', meta: { variant: 'select' as const } }] : [],
+      ),
+    { initialProps: { enabled: false } },
+  );
+  expect(result.current[0]).toEqual([]);
+  rerender({ enabled: true });
+  expect(result.current[0]).toEqual([
+    expect.objectContaining({ id: 'customerId', value: 'c1', operator: 'eq' }),
+  ]);
+  expect(new URLSearchParams(window.location.search).get('page')).toBe('4');
+  unmount();
+});

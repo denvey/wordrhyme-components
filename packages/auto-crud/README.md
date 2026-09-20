@@ -1548,3 +1548,28 @@ Publish that UI version before this AutoCrud change. The development dependency
 is pinned to the already-published alpha.19 for reproducible ESM tests and type
 checks until alpha.20 is published; it is not the supported CommonJS runtime.
 The CommonJS export/identity regression belongs to the UI provider repository.
+
+### Filter-only fields
+
+Use `table: false` with an explicit `filter` to keep a field in the standard
+filter bar without rendering a data column. Shared `hidden`, permission `deny`,
+and explicit table exclusions still hide the filter. Pass the same filter
+configuration to the resource so URL values use the same variants/operators:
+
+```tsx
+const fields = {
+  customerId: {
+    label: 'Customer',
+    table: false as const,
+    form: false as const,
+    filter: { variant: 'select' as const, dataSource: 'customers', index: 20 },
+  },
+};
+const resource = useAutoCrudResource({ router, schema, fields });
+return <AutoCrudTable schema={schema} resource={resource} fields={fields} />;
+```
+
+The field must exist in the schema or resource metadata, and the server must
+resolve its filter. A data source loads options; it does not translate query
+conditions. Standard filters share URL state, Reset, and pagination. Dynamically
+registered schema fields hydrate existing URL values without resetting the page.

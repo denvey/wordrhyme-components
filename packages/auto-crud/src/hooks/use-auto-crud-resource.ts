@@ -421,6 +421,8 @@ export interface UseAutoCrudResourceParams<
   router: CrudRouter;
   /** Zod schema */
   schema: TSchema;
+  /** Field filter configuration shared with AutoCrudTable. */
+  fields?: Fields;
   /**
    * 查询参数变换函数
    *
@@ -451,6 +453,7 @@ export function useAutoCrudResource<
   router,
   schema,
   query: queryTransform,
+  fields,
   options = {},
 }: UseAutoCrudResourceParams<TSchema, TListItem>): UseAutoCrudResourceReturn<
   TSchema,
@@ -502,8 +505,18 @@ export function useAutoCrudResource<
   // ========== URL 状态管理（内部自动 or 外部传入） ==========
   // 从 schema 推导 columns（用于 useReadableFilters）
   const columns = useMemo(
-    () => createTableSchema(resolvedSchema as any),
-    [resolvedSchema],
+    () =>
+      createTableSchema(resolvedSchema as any, {
+        overrides: Object.fromEntries(
+          Object.entries({ ...fields, ...metadataFields }).flatMap(([key, field]) => {
+            const filter = field.filter;
+            return filter && typeof filter === 'object' && filter.variant
+              ? [[key, { meta: { variant: filter.variant } }]]
+              : [];
+          }),
+        ),
+      }),
+    [resolvedSchema, fields, metadataFields],
   );
 
   // 内部 URL 状态：分页、排序、joinOperator

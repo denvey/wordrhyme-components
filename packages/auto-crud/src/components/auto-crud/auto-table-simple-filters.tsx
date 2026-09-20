@@ -58,7 +58,6 @@ interface AutoTableSimpleFiltersProps<TData> {
   filters?: ExtendedColumnFilter<TData>[];
   onFiltersChange?: (filters: ExtendedColumnFilter<TData>[]) => void;
   leading?: React.ReactNode;
-  afterFilter?: { id: string; content: React.ReactNode } | undefined;
 }
 
 export function AutoTableSimpleFilters<TData>({
@@ -67,7 +66,6 @@ export function AutoTableSimpleFilters<TData>({
   filters: externalFilters,
   onFiltersChange,
   leading,
-  afterFilter,
 }: AutoTableSimpleFiltersProps<TData>) {
   const columnDefs = table.options.columns;
   const columns = React.useMemo(
@@ -355,117 +353,81 @@ export function AutoTableSimpleFilters<TData>({
         const value = getFilterValue(column.id);
         const isHidden = !expanded && visibleCount !== null && index >= visibleCount;
 
-        const control = (() => {
-          switch (meta.variant) {
-            case 'text':
-              return (
-                <div
-                  key={column.id}
-                  className={isHidden ? 'hidden' : ''}
-                  data-filter-item
-                >
-                  <Input
-                    placeholder={meta.placeholder ?? meta.label ?? column.id}
-                    value={typeof value === 'string' ? value : ''}
-                    onChange={(e) => updateFilter(column.id, e.target.value || undefined)}
-                    className="h-8 w-36 shrink-0"
-                  />
-                </div>
-              );
+        switch (meta.variant) {
+          case 'text':
+            return (
+              <div key={column.id} className={isHidden ? 'hidden' : ''} data-filter-item>
+                <Input
+                  placeholder={meta.placeholder ?? meta.label ?? column.id}
+                  value={typeof value === 'string' ? value : ''}
+                  onChange={(e) => updateFilter(column.id, e.target.value || undefined)}
+                  className="h-8 w-36 shrink-0"
+                />
+              </div>
+            );
 
-            case 'select':
-            case 'multiSelect': {
-              const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
-              const currentOptions = meta.autoCrudFilterOptions ?? meta.options ?? [];
-              const filterOptions = mergeSelectedFilterOptions(
-                currentOptions,
-                meta.options ?? [],
-                selectedValues,
-              );
+          case 'select':
+          case 'multiSelect': {
+            const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
+            const currentOptions = meta.autoCrudFilterOptions ?? meta.options ?? [];
+            const filterOptions = mergeSelectedFilterOptions(
+              currentOptions,
+              meta.options ?? [],
+              selectedValues,
+            );
 
-              return (
-                <div
-                  key={column.id}
-                  className={isHidden ? 'hidden' : ''}
-                  data-filter-item
-                >
-                  <SimpleFacetedFilter
-                    title={meta.label ?? column.id}
-                    options={filterOptions}
-                    multiple={meta.variant === 'multiSelect'}
-                    value={selectedValues}
-                    hasMore={meta.autoCrudFilterHasMore}
-                    loading={meta.autoCrudFilterLoading}
-                    searchValue={meta.autoCrudFilterSearchValue}
-                    shouldFilter={meta.autoCrudFilterShouldFilter}
-                    onChange={(v) => updateFilter(column.id, v.length ? v : undefined)}
-                    onPopupScroll={meta.autoCrudFilterOnPopupScroll}
-                    onSearch={meta.autoCrudFilterOnSearch}
-                  />
-                </div>
-              );
-            }
-
-            case 'range':
-              return (
-                <div
-                  key={column.id}
-                  className={isHidden ? 'hidden' : ''}
-                  data-filter-item
-                >
-                  <SimpleSliderFilter
-                    title={meta.label ?? column.id}
-                    range={meta.range as [number, number] | undefined}
-                    unit={meta.unit}
-                    value={
-                      Array.isArray(value)
-                        ? (value.map(Number) as [number, number])
-                        : undefined
-                    }
-                    onChange={(v) =>
-                      updateFilter(column.id, v ? v.map(String) : undefined)
-                    }
-                  />
-                </div>
-              );
-
-            case 'date':
-            case 'dateRange':
-              return (
-                <div
-                  key={column.id}
-                  className={isHidden ? 'hidden' : ''}
-                  data-filter-item
-                >
-                  <SimpleDateFilter
-                    title={meta.label ?? column.id}
-                    multiple={meta.variant === 'dateRange'}
-                    value={value}
-                    onChange={(v) => updateFilter(column.id, v)}
-                  />
-                </div>
-              );
-
-            default:
-              return null;
+            return (
+              <div key={column.id} className={isHidden ? 'hidden' : ''} data-filter-item>
+                <SimpleFacetedFilter
+                  title={meta.label ?? column.id}
+                  options={filterOptions}
+                  multiple={meta.variant === 'multiSelect'}
+                  value={selectedValues}
+                  hasMore={meta.autoCrudFilterHasMore}
+                  loading={meta.autoCrudFilterLoading}
+                  searchValue={meta.autoCrudFilterSearchValue}
+                  shouldFilter={meta.autoCrudFilterShouldFilter}
+                  onChange={(v) => updateFilter(column.id, v.length ? v : undefined)}
+                  onPopupScroll={meta.autoCrudFilterOnPopupScroll}
+                  onSearch={meta.autoCrudFilterOnSearch}
+                />
+              </div>
+            );
           }
-        })();
-        if (
-          afterFilter?.id !== column.id ||
-          !React.isValidElement<{ className?: string; children?: React.ReactNode }>(
-            control,
-          )
-        )
-          return control;
-        return React.cloneElement(control, {
-          className: isHidden ? 'hidden' : 'flex shrink-0 items-center gap-2',
-          children: (
-            <>
-              {control.props.children}
-              {afterFilter.content}
-            </>
-          ),
-        });
+
+          case 'range':
+            return (
+              <div key={column.id} className={isHidden ? 'hidden' : ''} data-filter-item>
+                <SimpleSliderFilter
+                  title={meta.label ?? column.id}
+                  range={meta.range as [number, number] | undefined}
+                  unit={meta.unit}
+                  value={
+                    Array.isArray(value)
+                      ? (value.map(Number) as [number, number])
+                      : undefined
+                  }
+                  onChange={(v) => updateFilter(column.id, v ? v.map(String) : undefined)}
+                />
+              </div>
+            );
+
+          case 'date':
+          case 'dateRange':
+            return (
+              <div key={column.id} className={isHidden ? 'hidden' : ''} data-filter-item>
+                <SimpleDateFilter
+                  title={meta.label ?? column.id}
+                  multiple={meta.variant === 'dateRange'}
+                  value={value}
+                  onChange={(v) => updateFilter(column.id, v)}
+                />
+              </div>
+            );
+
+          default:
+            return null;
+        }
       })}
 
       {/* 展开/收起按钮 - 始终渲染用于测量占位，不需要时隐藏 */}
@@ -515,7 +477,7 @@ interface SimpleFacetedFilterProps {
   onSearch?: (value: string) => void;
 }
 
-export function SimpleFacetedFilter({
+function SimpleFacetedFilter({
   title,
   options,
   multiple,
