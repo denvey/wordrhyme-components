@@ -88,6 +88,7 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
    * 默认: ["simple", "advanced", "command"] (全部显示)
    */
   filterMode?: FilterMode | FilterMode[];
+  afterFilter?: { id: string; content: React.ReactNode } | undefined;
   /** 全局搜索框 */
   search?:
     | boolean
@@ -132,6 +133,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   pinnedColumns,
   filterMode,
   search = false,
+  afterFilter,
   onDeleteSelected,
   onUpdateSelected,
   batchUpdateFields,
@@ -292,7 +294,12 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     switch (currentMode) {
       case 'simple':
         return (
-          <AutoTableSimpleFilters table={table} shallow={shallow} leading={searchInput} />
+          <AutoTableSimpleFilters
+            table={table}
+            shallow={shallow}
+            leading={searchInput}
+            afterFilter={afterFilter}
+          />
         );
       case 'command':
         return (

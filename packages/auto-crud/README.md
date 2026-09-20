@@ -1481,6 +1481,14 @@ MIT © [wordrhyme](https://github.com/pixpilot/shadcn-components)
 - [Notion](https://notion.so) - 高级筛选器设计
 - [Linear](https://linear.app) - 命令面板设计
 
+### Status badge colors
+
+For `table.display: "badge"`, a scalar field's `table.options` entries may set `badgeTone` to `neutral`, `success`, `warning`, or `info`. This renders a tinted, outlined rounded label with a decorative dot. Labels remain readable without color; omitted tones retain the default badge. `display: "text"` is unaffected. Domain-specific state-to-tone mappings belong in the consuming plugin metadata.
+
+Registered custom actions may set `before: "delete"` (or another builtin action type) to appear immediately before that action. If the builtin is absent, the existing `position` fallback applies. This only controls ordering and does not add or grant the target action.
+
+Custom row components receive `MenuItem` in their action context. Use this supplied primitive instead of importing a menu item from another UI bundle: the menu root and item must share the same Radix runtime context. Prevent the select event's default dismissal when the component owns an open dialog, so the menu does not unmount the workflow.
+
 ### Detail presentation
 
 Details automatically share field labels, `enum`/`dataSource` mappings and

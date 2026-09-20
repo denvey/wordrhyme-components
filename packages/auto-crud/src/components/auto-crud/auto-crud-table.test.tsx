@@ -2323,3 +2323,14 @@ describe('default details share list presentation labels', () => {
     },
   );
 });
+
+
+it('places extension controls after the requested simple filter', async () => {
+  render(<AutoCrudTable schema={schema} resource={createResource()}
+    fields={{ region: { label: 'Region', filter: { index: 0 } }, countries: { filter: false }, tags: { filter: false } }}
+    table={{ filterModes: ['simple'], afterFilter: { id: 'region', content: <button>Extension filter</button> } }} />);
+  const input = await screen.findByPlaceholderText('Region');
+  const extension = screen.getByRole('button', { name: 'Extension filter' });
+  expect(input.closest('[data-filter-item]')).toBe(extension.closest('[data-filter-item]'));
+  expect(input.compareDocumentPosition(extension) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
