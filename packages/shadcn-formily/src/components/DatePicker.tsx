@@ -16,13 +16,16 @@ function toDate(value: BaseDatePickerProps['value']): Date | undefined {
   if (typeof value !== 'string' && typeof value !== 'number') return undefined;
 
   // Date-only fields represent a local calendar day, not UTC midnight.
-  const parts = typeof value === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
+  const parts = typeof value === 'string'
+    ? /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/u.exec(value)
+    : null;
   const date = parts
-    ? new Date(Number(parts[1]), Number(parts[2]) - 1, Number(parts[3]))
+    ? new Date(Number(parts.groups?.year), Number(parts.groups?.month) - 1, Number(parts.groups?.day))
     : new Date(value);
   if (Number.isNaN(date.getTime())) return undefined;
-  if (parts && (date.getFullYear() !== Number(parts[1])
-    || date.getMonth() !== Number(parts[2]) - 1 || date.getDate() !== Number(parts[3]))) return undefined;
+  if (parts && (date.getFullYear() !== Number(parts.groups?.year)
+    || date.getMonth() !== Number(parts.groups?.month) - 1
+    || date.getDate() !== Number(parts.groups?.day))) return undefined;
   return date;
 }
 

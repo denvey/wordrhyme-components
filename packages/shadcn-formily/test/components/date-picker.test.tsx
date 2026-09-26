@@ -8,10 +8,10 @@ const selected = new Date(2026, 8, 27);
 vi.mock('@wordrhyme/shadcn-ui', () => ({
   DatePicker: ({ value, onChange }: { value?: Date; onChange?: (date?: Date) => void }) => (
     <>
-      <button onClick={() => onChange?.(selected)}>
+      <button type="button" onClick={() => onChange?.(selected)}>
         {value ? `${value.getFullYear()}-${value.getMonth() + 1}-${value.getDate()}` : 'Pick a date'}
       </button>
-      <button onClick={() => onChange?.(undefined)}>Clear</button>
+      <button type="button" onClick={() => onChange?.(undefined)}>Clear</button>
     </>
   ),
 }));
@@ -23,7 +23,7 @@ function mount(value: unknown) {
   return form;
 }
 
-describe('Formily DatePicker serialized values', () => {
+describe('formily DatePicker serialized values', () => {
   it.each(['2026-09-26', '2026-09-26T12:00:00.000Z', new Date(2026, 8, 26), new Date(2026, 8, 26).getTime()])(
     'renders a persisted date without changing the form on mount: %s', (value) => {
       const form = mount(value);
