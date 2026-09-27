@@ -25,7 +25,7 @@ export type {
   ToolbarBuiltinActionType,
   ToolbarCustomActionItem,
 } from './components/auto-crud/auto-crud-table';
-export type { RowActionDialogHost, RowActionDialogProps } from './lib/schema-bridge/zod-to-columns';
+export type { RowActionDialogHost, RowActionDialogProps } from './lib/row-action-dialog';
 export { setToolbarResolver } from './components/auto-crud/auto-crud-table';
 
 // i18n

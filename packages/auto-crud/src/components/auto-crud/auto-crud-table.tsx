@@ -33,9 +33,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/sha
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/shadcn';
 import {
   parseZodField,
-  type RowActionDialogHost,
   type ResolvedActionItem,
 } from '@/lib/schema-bridge/zod-to-columns';
+import { useRowActionDialog, type RowActionDialogHost } from '@/lib/row-action-dialog';
 import { formatDate } from '@/lib/format';
 import { humanize } from '@/lib/humanize';
 import { Badge } from '@wordrhyme/shadcn';
@@ -238,7 +238,7 @@ export interface AutoCrudRowActionContext<T> {
   openEdit?: (row: T) => void;
   copyRow?: (row: T) => void;
   openDelete?: (row: T) => void;
-  /** Mount a controlled dialog beside the row menu so it survives menu dismissal. */
+  /** Open a fresh controlled dialog at table level. Closing releases its state; row removal does not close it. */
   showDialog: RowActionDialogHost['showDialog'];
 }
 
@@ -1863,8 +1863,10 @@ function renderFieldValue(
       tone &&
       {
         neutral: 'border-border bg-muted text-muted-foreground',
-        success: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
-        warning: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
+        success:
+          'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+        warning:
+          'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
         info: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300',
       }[tone];
     if (toneClassName) {
@@ -2082,9 +2084,9 @@ export function resolveActions<T>(
   context: {
     crudId: string;
     idKey: string;
-  },
+  } & RowActionDialogHost,
 ): ResolvedActionItem<T>[] {
-  const getContext = (row: T, host: RowActionDialogHost): AutoCrudRowActionContext<T> => ({
+  const getContext = (row: T): AutoCrudRowActionContext<T> => ({
     MenuItem: DropdownMenuItem,
     crudId: context.crudId,
     idKey: context.idKey,
@@ -2094,7 +2096,7 @@ export function resolveActions<T>(
     ...(defaults.openEdit ? { openEdit: defaults.openEdit } : {}),
     ...(defaults.copyRow ? { copyRow: defaults.copyRow } : {}),
     ...(defaults.openDelete ? { openDelete: defaults.openDelete } : {}),
-    showDialog: host.showDialog,
+    showDialog: context.showDialog,
   });
 
   // Owner defaults and plugin ordering have already been resolved. Only render
@@ -2459,13 +2461,22 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       resource.handlers.openView,
     ],
   );
+  const { showDialog, dialog: rowActionDialog } = useRowActionDialog();
   const tableRowActions = React.useMemo(
     () =>
       resolveActions(registryRowActions, rowActionDefaults, locale.rowActions, {
         crudId: id ?? '',
         idKey: resourceIdKey,
+        showDialog,
       }),
-    [id, locale.rowActions, registryRowActions, resourceIdKey, rowActionDefaults],
+    [
+      id,
+      locale.rowActions,
+      registryRowActions,
+      resourceIdKey,
+      rowActionDefaults,
+      showDialog,
+    ],
   );
 
   return (
@@ -2665,6 +2676,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         onSelectedRowsChange={handleSelectedRowsChange}
         getSelectedRows={getSelectedRowsRef}
       />
+
+      {/* Custom row dialogs outlive their source menu and row. */}
+      {rowActionDialog}
 
       {/* Modals */}
       {/* Create/Edit Modal */}

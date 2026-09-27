@@ -1,15 +1,18 @@
-import * as React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import type { RowActionDialogProps } from '../row-action-dialog';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
-import { DropdownMenuItem } from '@wordrhyme/ui';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem as PrivateItem,
   DropdownMenuTrigger,
+  DropdownMenuItem as PrivateItem,
 } from '@wordrhyme/shadcn';
-import { createActionsColumn, type RowActionDialogHost, type RowActionDialogProps } from './zod-to-columns';
+import { Dialog, DialogContent, DialogTitle, DropdownMenuItem } from '@wordrhyme/ui';
+import * as React from 'react';
+import { afterEach, expect, it, vi } from 'vitest';
+import { resolveActions } from '@/components/auto-crud/auto-crud-table';
+import { useRowActionDialog } from '../row-action-dialog';
+import { createActionsColumn } from './zod-to-columns';
 
 afterEach(cleanup);
 const record = { id: 'product-1' };
@@ -68,60 +71,128 @@ it('keeps a plugin-owned menu usable when its context-dependent components stay 
   expect(select).toHaveBeenCalledOnce();
 });
 
+const released = vi.fn();
 function TestDialog({ open, onOpenChange, onDismiss }: RowActionDialogProps) {
-  if (!open) return null;
+  const [draft, setDraft] = React.useState('');
+  React.useEffect(() => () => released(), []);
   return (
-    <div role="dialog" aria-label="Row details">
-      <input aria-label="Draft note" defaultValue="" />
-      <button onClick={() => onOpenChange(false)}>Close details</button>
-      <button onClick={onDismiss}>Dismiss details</button>
-    </div>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent aria-describedby={undefined}>
+        <DialogTitle>Row details</DialogTitle>
+        <input
+          aria-label="Draft note"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+        />
+        <button onClick={() => onOpenChange(false)}>Close details</button>
+        <button onClick={onDismiss}>Dismiss details</button>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function DialogMenu() {
+function MenuRow({
+  actions,
+}: {
+  actions: ReturnType<typeof resolveActions<typeof record>>;
+}) {
   const table = useReactTable({
     data: [record],
-    columns: [createActionsColumn<typeof record>([{
-      getContext: (_row, host) => host,
-      component: (host: RowActionDialogHost) => (
-        <DropdownMenuItem onSelect={() => host.showDialog(<TestDialog open={false} onOpenChange={() => {}} />)}>
-          Show details
-        </DropdownMenuItem>
-      ),
-    }])],
+    columns: [createActionsColumn(actions)],
     getCoreRowModel: getCoreRowModel(),
   });
   const cell = table.getRowModel().rows[0]!.getVisibleCells()[0]!;
   return <>{flexRender(cell.column.columnDef.cell, cell.getContext())}</>;
 }
 
-it('keeps a row dialog mounted after menu dismissal and supports closing and reopening', async () => {
+function DialogMenu({ showRow = true }: { showRow?: boolean }) {
+  const { showDialog, dialog } = useRowActionDialog();
+  const actions = resolveActions<typeof record>(
+    [
+      {
+        type: 'custom',
+        component: ({ MenuItem, showDialog: openDialog }) => (
+          <MenuItem
+            onSelect={() =>
+              openDialog(<TestDialog open={false} onOpenChange={() => {}} />)
+            }
+          >
+            Show details
+          </MenuItem>
+        ),
+      },
+    ],
+    {
+      openView: () => {},
+      openEdit: undefined,
+      copyRow: undefined,
+      openDelete: undefined,
+    },
+    { view: 'View', edit: 'Edit', copy: 'Copy', delete: 'Delete' },
+    {
+      crudId: 'products',
+      idKey: 'id',
+      showDialog,
+    },
+  );
+  return (
+    <>
+      {showRow && <MenuRow actions={actions} />}
+      {dialog}
+    </>
+  );
+}
+
+async function openDetails() {
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Open menu' }), {
+    key: 'ArrowDown',
+  });
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Show details' }));
+  await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+  expect(screen.getByRole('dialog', { name: 'Row details' })).toBeTruthy();
+  await waitFor(() =>
+    expect(screen.getByRole('dialog').contains(document.activeElement)).toBe(true),
+  );
+}
+
+it('keeps a real dialog after menu dismissal and releases its state on close and reopen', async () => {
+  released.mockClear();
   render(<DialogMenu />);
-  const open = async () => {
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Open menu' }), { key: 'ArrowDown' });
-    fireEvent.click(await screen.findByRole('menuitem', { name: 'Show details' }));
-    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
-    expect(screen.getByRole('dialog', { name: 'Row details' })).toBeTruthy();
-  };
-  await open();
+  await openDetails();
+  fireEvent.change(screen.getByRole('textbox', { name: 'Draft note' }), {
+    target: { value: 'abandoned' },
+  });
   fireEvent.click(screen.getByRole('button', { name: 'Close details' }));
   expect(screen.queryByRole('dialog')).toBeNull();
-  await open();
+  expect(released).toHaveBeenCalledOnce();
+  await openDetails();
+  expect(
+    screen.getByRole<HTMLInputElement>('textbox', { name: 'Draft note' }).value,
+  ).toBe('');
   fireEvent.click(screen.getByRole('button', { name: 'Dismiss details' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  expect(released).toHaveBeenCalledTimes(2);
+});
+
+it('preserves the dialog and unsaved input when columns are regenerated or the row unmounts', async () => {
+  const { rerender } = render(<DialogMenu />);
+  await openDetails();
+  const input = screen.getByRole('textbox', { name: 'Draft note' });
+  fireEvent.change(input, { target: { value: 'unsaved draft' } });
+  rerender(<DialogMenu />);
+  expect(screen.getByRole('textbox', { name: 'Draft note' })).toBe(input);
+  rerender(<DialogMenu showRow={false} />);
+  expect(screen.queryByRole('button', { name: 'Open menu' })).toBeNull();
+  expect(screen.getByRole('textbox', { name: 'Draft note' })).toBe(input);
+  expect((input as HTMLInputElement).value).toBe('unsaved draft');
+  fireEvent.click(screen.getByRole('button', { name: 'Close details' }));
   expect(screen.queryByRole('dialog')).toBeNull();
 });
 
-it('preserves the dialog and unsaved input when columns are regenerated', async () => {
-  const { rerender } = render(<DialogMenu />);
-  fireEvent.keyDown(screen.getByRole('button', { name: 'Open menu' }), { key: 'ArrowDown' });
-  fireEvent.click(await screen.findByRole('menuitem', { name: 'Show details' }));
-  await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
-  const input = screen.getByRole('textbox', { name: 'Draft note' });
-  fireEvent.change(input, { target: { value: 'unsaved draft' } });
-  // A parent render rebuilds both the columns and action configuration.
-  rerender(<DialogMenu />);
-  expect(screen.getByRole('dialog', { name: 'Row details' })).toBeTruthy();
-  expect(screen.getByRole('textbox', { name: 'Draft note' })).toBe(input);
-  expect((input as HTMLInputElement).value).toBe('unsaved draft');
+it('closes with Escape and removes the modal pointer lock', async () => {
+  render(<DialogMenu />);
+  await openDetails();
+  fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+  expect(document.body.style.pointerEvents).not.toBe('none');
 });

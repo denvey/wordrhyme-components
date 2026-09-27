@@ -2,4 +2,4 @@
 '@wordrhyme/auto-crud': minor
 ---
 
-Allow custom row actions to mount controlled dialogs outside the dropdown menu so they remain mounted after the menu closes.
+Allow custom row actions to open controlled dialogs hosted by AutoCrudTable. Dialogs survive menu dismissal, column updates, and source-row removal; closing releases the dialog, and each new opening starts a fresh session.

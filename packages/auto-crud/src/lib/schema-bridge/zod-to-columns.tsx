@@ -388,19 +388,9 @@ export interface ResolvedActionItem<T, TContext = any> {
   label?: string;
   onClick?: (row: T) => void;
   component?: React.ReactNode | ((context: TContext) => React.ReactNode);
-  getContext?: (row: T, host: RowActionDialogHost) => TContext;
+  getContext?: (row: T) => TContext;
   separator?: boolean;
   variant?: 'default' | 'destructive';
-}
-
-export interface RowActionDialogProps {
-  open: boolean;
-  onOpenChange(open: boolean): void;
-  onDismiss?(): void;
-}
-
-export interface RowActionDialogHost {
-  showDialog<P extends RowActionDialogProps>(dialog: React.ReactElement<P>): void;
 }
 
 /**
@@ -416,59 +406,43 @@ declare module '@tanstack/react-table' {
 
 function ActionsCell<T>({ row, column }: CellContext<T, unknown>) {
   const items = column.columnDef.meta?.rowActions ?? [];
-  const [dialog, setDialog] = React.useState<React.ReactElement<RowActionDialogProps> | null>(null);
-  const [dialogOpen, setDialogOpen] = React.useState(false);
-  const showDialog: RowActionDialogHost['showDialog'] = (next) => {
-    setDialog(next);
-    setDialogOpen(true);
-  };
-  const closeDialog = React.useCallback(() => setDialog(null), []);
-  const host = { showDialog };
-
   const renderActionComponent = (item: ResolvedActionItem<T>) => {
     if (!item.component) return null;
 
     return typeof item.component === 'function'
-      ? item.component(item.getContext?.(row.original, host))
+      ? item.component(item.getContext?.(row.original))
       : item.component;
   };
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            aria-label="Open menu"
-            variant="ghost"
-            className="flex size-8 p-0 data-[state=open]:bg-muted"
-          >
-            <Ellipsis className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40">
-          {items.map((item, i) => (
-            <React.Fragment key={i}>
-              {item.separator && <DropdownMenuSeparator />}
-              {item.component ? (
-                renderActionComponent(item)
-              ) : item.label && item.onClick ? (
-                <DropdownMenuItem
-                  className={item.variant === 'destructive' ? 'text-destructive' : ''}
-                  onClick={() => item.onClick?.(row.original)}
-                >
-                  {item.label}
-                </DropdownMenuItem>
-              ) : null}
-            </React.Fragment>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {dialog ? React.cloneElement(dialog, {
-        open: dialogOpen,
-        onOpenChange: setDialogOpen,
-        onDismiss: closeDialog,
-      }) : null}
-    </>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          aria-label="Open menu"
+          variant="ghost"
+          className="flex size-8 p-0 data-[state=open]:bg-muted"
+        >
+          <Ellipsis className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40">
+        {items.map((item, i) => (
+          <React.Fragment key={i}>
+            {item.separator && <DropdownMenuSeparator />}
+            {item.component ? (
+              renderActionComponent(item)
+            ) : item.label && item.onClick ? (
+              <DropdownMenuItem
+                className={item.variant === 'destructive' ? 'text-destructive' : ''}
+                onClick={() => item.onClick?.(row.original)}
+              >
+                {item.label}
+              </DropdownMenuItem>
+            ) : null}
+          </React.Fragment>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
