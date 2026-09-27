@@ -72,6 +72,7 @@ function TestDialog({ open, onOpenChange, onDismiss }: RowActionDialogProps) {
   if (!open) return null;
   return (
     <div role="dialog" aria-label="Row details">
+      <input aria-label="Draft note" defaultValue="" />
       <button onClick={() => onOpenChange(false)}>Close details</button>
       <button onClick={onDismiss}>Dismiss details</button>
     </div>
@@ -109,4 +110,18 @@ it('keeps a row dialog mounted after menu dismissal and supports closing and reo
   await open();
   fireEvent.click(screen.getByRole('button', { name: 'Dismiss details' }));
   expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('preserves the dialog and unsaved input when columns are regenerated', async () => {
+  const { rerender } = render(<DialogMenu />);
+  fireEvent.keyDown(screen.getByRole('button', { name: 'Open menu' }), { key: 'ArrowDown' });
+  fireEvent.click(await screen.findByRole('menuitem', { name: 'Show details' }));
+  await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+  const input = screen.getByRole('textbox', { name: 'Draft note' });
+  fireEvent.change(input, { target: { value: 'unsaved draft' } });
+  // A parent render rebuilds both the columns and action configuration.
+  rerender(<DialogMenu />);
+  expect(screen.getByRole('dialog', { name: 'Row details' })).toBeTruthy();
+  expect(screen.getByRole('textbox', { name: 'Draft note' })).toBe(input);
+  expect((input as HTMLInputElement).value).toBe('unsaved draft');
 });

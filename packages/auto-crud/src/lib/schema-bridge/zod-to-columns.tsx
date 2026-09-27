@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { ColumnDef, Row } from '@tanstack/react-table';
+import type { CellContext, ColumnDef, RowData } from '@tanstack/react-table';
 import { z } from 'zod';
 import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header';
 import { Badge } from '@wordrhyme/shadcn';
@@ -408,7 +408,14 @@ export interface RowActionDialogHost {
  */
 export type ActionsColumnConfig<T> = ResolvedActionItem<T, any>[];
 
-function ActionsCell<T>({ row, items }: { row: Row<T>; items: ActionsColumnConfig<T> }) {
+declare module '@tanstack/react-table' {
+  interface ColumnMeta<TData extends RowData, TValue> {
+    rowActions?: ActionsColumnConfig<TData>;
+  }
+}
+
+function ActionsCell<T>({ row, column }: CellContext<T, unknown>) {
+  const items = column.columnDef.meta?.rowActions ?? [];
   const [dialog, setDialog] = React.useState<React.ReactElement<RowActionDialogProps> | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const showDialog: RowActionDialogHost['showDialog'] = (next) => {
@@ -471,7 +478,8 @@ function ActionsCell<T>({ row, items }: { row: Row<T>; items: ActionsColumnConfi
 export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef<T> {
   return {
     id: 'actions',
-    cell: ({ row }) => <ActionsCell row={row} items={items} />,
+    cell: ActionsCell,
+    meta: { rowActions: items },
     size: 40,
   };
 }
