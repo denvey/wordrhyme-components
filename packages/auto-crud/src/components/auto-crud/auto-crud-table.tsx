@@ -33,6 +33,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/sha
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/shadcn';
 import {
   parseZodField,
+  type RowActionDialogHost,
   type ResolvedActionItem,
 } from '@/lib/schema-bridge/zod-to-columns';
 import { formatDate } from '@/lib/format';
@@ -237,6 +238,8 @@ export interface AutoCrudRowActionContext<T> {
   openEdit?: (row: T) => void;
   copyRow?: (row: T) => void;
   openDelete?: (row: T) => void;
+  /** Mount a controlled dialog beside the row menu so it survives menu dismissal. */
+  showDialog: RowActionDialogHost['showDialog'];
 }
 
 type ActionComponent<TContext> =
@@ -2081,7 +2084,7 @@ export function resolveActions<T>(
     idKey: string;
   },
 ): ResolvedActionItem<T>[] {
-  const getContext = (row: T): AutoCrudRowActionContext<T> => ({
+  const getContext = (row: T, host: RowActionDialogHost): AutoCrudRowActionContext<T> => ({
     MenuItem: DropdownMenuItem,
     crudId: context.crudId,
     idKey: context.idKey,
@@ -2091,6 +2094,7 @@ export function resolveActions<T>(
     ...(defaults.openEdit ? { openEdit: defaults.openEdit } : {}),
     ...(defaults.copyRow ? { copyRow: defaults.copyRow } : {}),
     ...(defaults.openDelete ? { openDelete: defaults.openDelete } : {}),
+    showDialog: host.showDialog,
   });
 
   // Owner defaults and plugin ordering have already been resolved. Only render

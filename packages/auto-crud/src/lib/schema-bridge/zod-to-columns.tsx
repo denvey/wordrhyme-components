@@ -388,9 +388,19 @@ export interface ResolvedActionItem<T, TContext = any> {
   label?: string;
   onClick?: (row: T) => void;
   component?: React.ReactNode | ((context: TContext) => React.ReactNode);
-  getContext?: (row: T) => TContext;
+  getContext?: (row: T, host: RowActionDialogHost) => TContext;
   separator?: boolean;
   variant?: 'default' | 'destructive';
+}
+
+export interface RowActionDialogProps {
+  open: boolean;
+  onOpenChange(open: boolean): void;
+  onDismiss?(): void;
+}
+
+export interface RowActionDialogHost {
+  showDialog<P extends RowActionDialogProps>(dialog: React.ReactElement<P>): void;
 }
 
 /**
@@ -398,21 +408,26 @@ export interface ResolvedActionItem<T, TContext = any> {
  */
 export type ActionsColumnConfig<T> = ResolvedActionItem<T, any>[];
 
-/**
- * 创建操作列
- */
-export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef<T> {
-  const renderActionComponent = (item: ResolvedActionItem<T>, row: Row<T>) => {
+function ActionsCell<T>({ row, items }: { row: Row<T>; items: ActionsColumnConfig<T> }) {
+  const [dialog, setDialog] = React.useState<React.ReactElement<RowActionDialogProps> | null>(null);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const showDialog: RowActionDialogHost['showDialog'] = (next) => {
+    setDialog(next);
+    setDialogOpen(true);
+  };
+  const closeDialog = React.useCallback(() => setDialog(null), []);
+  const host = { showDialog };
+
+  const renderActionComponent = (item: ResolvedActionItem<T>) => {
     if (!item.component) return null;
 
     return typeof item.component === 'function'
-      ? item.component(item.getContext?.(row.original))
+      ? item.component(item.getContext?.(row.original, host))
       : item.component;
   };
 
-  return {
-    id: 'actions',
-    cell: ({ row }) => (
+  return (
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -428,7 +443,7 @@ export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef
             <React.Fragment key={i}>
               {item.separator && <DropdownMenuSeparator />}
               {item.component ? (
-                renderActionComponent(item, row)
+                renderActionComponent(item)
               ) : item.label && item.onClick ? (
                 <DropdownMenuItem
                   className={item.variant === 'destructive' ? 'text-destructive' : ''}
@@ -441,7 +456,22 @@ export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-    ),
+      {dialog ? React.cloneElement(dialog, {
+        open: dialogOpen,
+        onOpenChange: setDialogOpen,
+        onDismiss: closeDialog,
+      }) : null}
+    </>
+  );
+}
+
+/**
+ * 创建操作列
+ */
+export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef<T> {
+  return {
+    id: 'actions',
+    cell: ({ row }) => <ActionsCell row={row} items={items} />,
     size: 40,
   };
 }

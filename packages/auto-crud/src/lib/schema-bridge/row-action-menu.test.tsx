@@ -9,7 +9,7 @@ import {
   DropdownMenuItem as PrivateItem,
   DropdownMenuTrigger,
 } from '@wordrhyme/shadcn';
-import { createActionsColumn } from './zod-to-columns';
+import { createActionsColumn, type RowActionDialogHost, type RowActionDialogProps } from './zod-to-columns';
 
 afterEach(cleanup);
 const record = { id: 'product-1' };
@@ -66,4 +66,47 @@ it('keeps a plugin-owned menu usable when its context-dependent components stay 
   });
   fireEvent.click(await screen.findByRole('menuitem', { name: 'Private action' }));
   expect(select).toHaveBeenCalledOnce();
+});
+
+function TestDialog({ open, onOpenChange, onDismiss }: RowActionDialogProps) {
+  if (!open) return null;
+  return (
+    <div role="dialog" aria-label="Row details">
+      <button onClick={() => onOpenChange(false)}>Close details</button>
+      <button onClick={onDismiss}>Dismiss details</button>
+    </div>
+  );
+}
+
+function DialogMenu() {
+  const table = useReactTable({
+    data: [record],
+    columns: [createActionsColumn<typeof record>([{
+      getContext: (_row, host) => host,
+      component: (host: RowActionDialogHost) => (
+        <DropdownMenuItem onSelect={() => host.showDialog(<TestDialog open={false} onOpenChange={() => {}} />)}>
+          Show details
+        </DropdownMenuItem>
+      ),
+    }])],
+    getCoreRowModel: getCoreRowModel(),
+  });
+  const cell = table.getRowModel().rows[0]!.getVisibleCells()[0]!;
+  return <>{flexRender(cell.column.columnDef.cell, cell.getContext())}</>;
+}
+
+it('keeps a row dialog mounted after menu dismissal and supports closing and reopening', async () => {
+  render(<DialogMenu />);
+  const open = async () => {
+    fireEvent.keyDown(screen.getByRole('button', { name: 'Open menu' }), { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Show details' }));
+    await waitFor(() => expect(screen.queryByRole('menu')).toBeNull());
+    expect(screen.getByRole('dialog', { name: 'Row details' })).toBeTruthy();
+  };
+  await open();
+  fireEvent.click(screen.getByRole('button', { name: 'Close details' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
+  await open();
+  fireEvent.click(screen.getByRole('button', { name: 'Dismiss details' }));
+  expect(screen.queryByRole('dialog')).toBeNull();
 });
