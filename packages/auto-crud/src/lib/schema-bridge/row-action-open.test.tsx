@@ -56,7 +56,7 @@ it('keeps unavailable operations disabled and legacy optional methods absent', (
 it('delegates custom dialogs to the existing host and keeps showDialog compatible', () => {
   const { context, showDialog } = setup();
   const dialog = <div />;
-  context.open({ type: 'custom', dialog });
+  context.open({ type: 'custom', component: dialog });
   context.showDialog(dialog);
   expect(showDialog).toHaveBeenCalledTimes(2);
   expect(showDialog).toHaveBeenLastCalledWith(dialog);
@@ -66,7 +66,7 @@ it('delegates custom dialogs to the existing host and keeps showDialog compatibl
 const valid: AutoCrudRowOpenOptions<typeof row> = { type: 'edit', row };
 // @ts-expect-error Built-in operations require a row.
 const missingRow: AutoCrudRowOpenOptions<typeof row> = { type: 'edit' };
-// @ts-expect-error Custom operations require a dialog, not a row.
+// @ts-expect-error Custom operations require a component, not a row.
 const wrongPayload: AutoCrudRowOpenOptions<typeof row> = { type: 'custom', row };
 // @ts-expect-error Unknown operation types are not supported.
 const unknownType: AutoCrudRowOpenOptions<typeof row> = { type: 'unknown', row };

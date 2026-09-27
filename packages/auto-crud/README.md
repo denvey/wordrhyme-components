@@ -939,13 +939,16 @@ open({ type: 'copy', row });
 open({ type: 'delete', row });
 open({
   type: 'custom',
-  dialog: <TransferDialog customer={row} open={false} onOpenChange={() => {}} />,
+  component: <TransferDialog customer={row} open={false} onOpenChange={() => {}} />,
 });
 ```
 
 `AutoCrudRowOpenOptions<T>` 是判别联合：内置操作必须传 `row`，
-`custom` 必须传 `dialog`。内置操作复用旧方法的处理器，不可用的操作不执行；
+`custom` 必须传 `component`。内置操作复用旧方法的处理器，不可用的操作不执行；
 仍可通过旧的可选方法（如 `openEdit`）判断是否应显示对应菜单项。
+
+自定义 `component` 由开发者实现弹窗或抽屉，并接收 `open/onOpenChange` 控制。
+`AutoCrudTable` 只管理生命周期，不额外包裹内置弹窗，也不会把普通组件自动变成弹窗。
 
 ### 自定义行操作弹窗
 

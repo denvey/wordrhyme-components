@@ -233,7 +233,7 @@ type ActionMeta = {
 
 export type AutoCrudRowOpenOptions<T> =
   | { type: 'view' | 'edit' | 'copy' | 'delete'; row: T }
-  | { type: 'custom'; dialog: React.ReactElement<RowActionDialogProps> };
+  | { type: 'custom'; component: React.ReactElement<RowActionDialogProps> };
 
 export interface AutoCrudRowActionContext<T> {
   /** Unified entry point. Unavailable built-in operations are ignored. */
@@ -2109,7 +2109,7 @@ export function resolveActions<T>(
     showDialog: context.showDialog,
     open: (options) => {
       if (options.type === 'custom') {
-        context.showDialog(options.dialog);
+        context.showDialog(options.component);
       } else {
         handlerMap[options.type]?.(options.row);
       }
