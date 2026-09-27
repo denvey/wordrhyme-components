@@ -111,10 +111,13 @@ function DialogMenu({ showRow = true }: { showRow?: boolean }) {
     [
       {
         type: 'custom',
-        component: ({ MenuItem, showDialog: openDialog }) => (
+        component: ({ MenuItem, open }) => (
           <MenuItem
             onSelect={() =>
-              openDialog(<TestDialog open={false} onOpenChange={() => {}} />)
+              open({
+                type: 'custom',
+                dialog: <TestDialog open={false} onOpenChange={() => {}} />,
+              })
             }
           >
             Show details

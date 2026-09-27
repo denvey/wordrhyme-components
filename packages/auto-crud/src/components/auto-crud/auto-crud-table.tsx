@@ -35,7 +35,11 @@ import {
   parseZodField,
   type ResolvedActionItem,
 } from '@/lib/schema-bridge/zod-to-columns';
-import { useRowActionDialog, type RowActionDialogHost } from '@/lib/row-action-dialog';
+import {
+  useRowActionDialog,
+  type RowActionDialogHost,
+  type RowActionDialogProps,
+} from '@/lib/row-action-dialog';
 import { formatDate } from '@/lib/format';
 import { humanize } from '@/lib/humanize';
 import { Badge } from '@wordrhyme/shadcn';
@@ -227,7 +231,13 @@ type ActionMeta = {
   hidden?: boolean;
 };
 
+export type AutoCrudRowOpenOptions<T> =
+  | { type: 'view' | 'edit' | 'copy' | 'delete'; row: T }
+  | { type: 'custom'; dialog: React.ReactElement<RowActionDialogProps> };
+
 export interface AutoCrudRowActionContext<T> {
+  /** Unified entry point. Unavailable built-in operations are ignored. */
+  open: (options: AutoCrudRowOpenOptions<T>) => void;
   /** Menu primitive from the same runtime instance as the owning menu. */
   MenuItem: typeof DropdownMenuItem;
   crudId: string;
@@ -2097,6 +2107,13 @@ export function resolveActions<T>(
     ...(defaults.copyRow ? { copyRow: defaults.copyRow } : {}),
     ...(defaults.openDelete ? { openDelete: defaults.openDelete } : {}),
     showDialog: context.showDialog,
+    open: (options) => {
+      if (options.type === 'custom') {
+        context.showDialog(options.dialog);
+      } else {
+        handlerMap[options.type]?.(options.row);
+      }
+    },
   });
 
   // Owner defaults and plugin ordering have already been resolved. Only render

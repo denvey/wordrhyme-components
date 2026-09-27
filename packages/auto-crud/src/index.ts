@@ -12,6 +12,7 @@ export type {
   AutoCrudActionConfig,
   AutoCrudActionsConfig,
   AutoCrudRowActionContext,
+  AutoCrudRowOpenOptions,
   AutoCrudToolbarContext,
   AutoCrudToolbarResolver,
   RowActionConfig,

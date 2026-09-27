@@ -914,6 +914,7 @@ type RowCustomActionItem<T> = ActionMeta & {
 };
 
 interface AutoCrudRowActionContext<T> {
+  open: (options: AutoCrudRowOpenOptions<T>) => void;
   crudId: string;
   idKey: string;
   row: T;
@@ -925,6 +926,26 @@ interface AutoCrudRowActionContext<T> {
   showDialog: RowActionDialogHost['showDialog'];
 }
 ```
+
+### 统一打开入口
+
+行操作上下文提供 `open(options)`，旧的 `openView`、`openEdit`、`copyRow`、
+`openDelete` 和 `showDialog` 保持兼容：
+
+```tsx
+open({ type: 'view', row });
+open({ type: 'edit', row });
+open({ type: 'copy', row });
+open({ type: 'delete', row });
+open({
+  type: 'custom',
+  dialog: <TransferDialog customer={row} open={false} onOpenChange={() => {}} />,
+});
+```
+
+`AutoCrudRowOpenOptions<T>` 是判别联合：内置操作必须传 `row`，
+`custom` 必须传 `dialog`。内置操作复用旧方法的处理器，不可用的操作不执行；
+仍可通过旧的可选方法（如 `openEdit`）判断是否应显示对应菜单项。
 
 ### 自定义行操作弹窗
 
