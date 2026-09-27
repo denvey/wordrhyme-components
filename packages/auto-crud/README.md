@@ -923,14 +923,13 @@ interface AutoCrudRowActionContext<T> {
   openEdit?: (row: T) => void;
   copyRow?: (row: T) => void;
   openDelete?: (row: T) => void;
-  showDialog: RowActionDialogHost['showDialog'];
 }
 ```
 
 ### 统一打开入口
 
 行操作上下文提供 `open(options)`，旧的 `openView`、`openEdit`、`copyRow`、
-`openDelete` 和 `showDialog` 保持兼容：
+`openDelete` 保持兼容：
 
 ```tsx
 open({ type: 'view', row });
@@ -952,29 +951,30 @@ open({
 
 ### 自定义行操作弹窗
 
-在自定义行操作的 `component` 中，使用上下文的 `MenuItem` 和 `showDialog`：
+在行操作配置的 `component` 中使用 `open` 打开自定义弹窗：
 
 ```tsx
 {
   type: 'custom',
-  component: ({ row, MenuItem, showDialog }) => (
-    <MenuItem onSelect={() => showDialog(
-      <TransferDialog customer={row} open={false} onOpenChange={() => {}} />
-    )}>
+  component: ({ row, MenuItem, open }) => (
+    <MenuItem onSelect={() => open({
+      type: 'custom',
+      component: <TransferDialog customer={row} open={false} onOpenChange={() => {}} />,
+    })}>
       交接
     </MenuItem>
   ),
 }
 ```
 
-`TransferDialog` 接收 `RowActionDialogProps`，由 `AutoCrudTable` 托管其
-`open`、`onOpenChange` 和可选的 `onDismiss`（传入的同名属性会被覆盖）。
-调用 `onOpenChange(false)` 或 `onDismiss()` 会立即卸载弹窗并释放表单状态；
-每次 `showDialog` 都创建新会话，替换当前自定义弹窗。
+`TransferDialog` 由开发者实现并接收 `RowActionDialogProps`。`AutoCrudTable` 托管
+`open`、`onOpenChange` 和可选的 `onDismiss`（调用方传入的同名属性会被覆盖），
+但不额外包裹弹窗。调用 `onOpenChange(false)` 或 `onDismiss()` 会卸载弹窗并清理状态；
+每次 `open({ type: 'custom', component })` 都创建新会话并替换当前自定义弹窗。
 
 弹窗位于表格层，菜单关闭、列配置重建、翻页或筛选移除原行都不会卸载它。
 它继续使用打开时传入的记录，关闭后再次打开才获取新的记录。
-表格卸载时弹窗一起释放。弹窗自身仍负责 Portal、布局和业务提交。
+表格卸载时弹窗一起释放。弹窗自身负责 Portal、布局和业务提交。
 
 ## 🔄 批量操作
 

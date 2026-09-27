@@ -13,17 +13,17 @@ function setup(enabled = true) {
     copyRow: enabled ? vi.fn() : undefined,
     openDelete: enabled ? vi.fn() : undefined,
   };
-  const showDialog = vi.fn();
+  const openComponent = vi.fn();
   const items = resolveActions<typeof row>(
     [{ type: 'custom', label: 'Action' }],
     handlers,
     { view: 'View', edit: 'Edit', copy: 'Copy', delete: 'Delete' },
-    { crudId: 'test', idKey: 'id', showDialog },
+    { crudId: 'test', idKey: 'id', openComponent },
   );
   return {
     context: items[0]!.getContext!(row) as AutoCrudRowActionContext<typeof row>,
     handlers,
-    showDialog,
+    openComponent,
   };
 }
 
@@ -44,22 +44,21 @@ it('dispatches built-in operations to the same handlers as the legacy methods', 
 });
 
 it('keeps unavailable operations disabled and legacy optional methods absent', () => {
-  const { context, handlers, showDialog } = setup(false);
+  const { context, handlers, openComponent } = setup(false);
   for (const type of ['edit', 'copy', 'delete'] as const) context.open({ type, row });
   expect(context.openEdit).toBeUndefined();
   expect(context.copyRow).toBeUndefined();
   expect(context.openDelete).toBeUndefined();
   expect(handlers.openView).not.toHaveBeenCalled();
-  expect(showDialog).not.toHaveBeenCalled();
+  expect(openComponent).not.toHaveBeenCalled();
 });
 
-it('delegates custom dialogs to the existing host and keeps showDialog compatible', () => {
-  const { context, showDialog } = setup();
+it('delegates custom components to the table level host', () => {
+  const { context, openComponent } = setup();
   const dialog = <div />;
   context.open({ type: 'custom', component: dialog });
-  context.showDialog(dialog);
-  expect(showDialog).toHaveBeenCalledTimes(2);
-  expect(showDialog).toHaveBeenLastCalledWith(dialog);
+  expect(openComponent).toHaveBeenCalledOnce();
+  expect(openComponent).toHaveBeenCalledWith(dialog);
 });
 
 // Compile-time coverage for the exported discriminated union.

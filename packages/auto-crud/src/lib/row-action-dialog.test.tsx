@@ -30,10 +30,12 @@ it('starts a fresh session on replacement and ignores the previous session dismi
     );
   }
   function Host() {
-    const { showDialog, dialog } = useRowActionDialog();
+    const { openComponent, dialog } = useRowActionDialog();
     return (
       <>
-        <button onClick={() => showDialog(<Form open={false} onOpenChange={() => {}} />)}>
+        <button
+          onClick={() => openComponent(<Form open={false} onOpenChange={() => {}} />)}
+        >
           Open
         </button>
         {dialog}

@@ -106,7 +106,7 @@ function MenuRow({
 }
 
 function DialogMenu({ showRow = true }: { showRow?: boolean }) {
-  const { showDialog, dialog } = useRowActionDialog();
+  const { openComponent, dialog } = useRowActionDialog();
   const actions = resolveActions<typeof record>(
     [
       {
@@ -135,7 +135,7 @@ function DialogMenu({ showRow = true }: { showRow?: boolean }) {
     {
       crudId: 'products',
       idKey: 'id',
-      showDialog,
+      openComponent,
     },
   );
   return (

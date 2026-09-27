@@ -35,11 +35,7 @@ import {
   parseZodField,
   type ResolvedActionItem,
 } from '@/lib/schema-bridge/zod-to-columns';
-import {
-  useRowActionDialog,
-  type RowActionDialogHost,
-  type RowActionDialogProps,
-} from '@/lib/row-action-dialog';
+import { useRowActionDialog, type RowActionDialogProps } from '@/lib/row-action-dialog';
 import { formatDate } from '@/lib/format';
 import { humanize } from '@/lib/humanize';
 import { Badge } from '@wordrhyme/shadcn';
@@ -248,8 +244,6 @@ export interface AutoCrudRowActionContext<T> {
   openEdit?: (row: T) => void;
   copyRow?: (row: T) => void;
   openDelete?: (row: T) => void;
-  /** Open a fresh controlled dialog at table level. Closing releases its state; row removal does not close it. */
-  showDialog: RowActionDialogHost['showDialog'];
 }
 
 type ActionComponent<TContext> =
@@ -2094,7 +2088,8 @@ export function resolveActions<T>(
   context: {
     crudId: string;
     idKey: string;
-  } & RowActionDialogHost,
+    openComponent: (component: React.ReactElement<RowActionDialogProps>) => void;
+  },
 ): ResolvedActionItem<T>[] {
   const getContext = (row: T): AutoCrudRowActionContext<T> => ({
     MenuItem: DropdownMenuItem,
@@ -2106,10 +2101,9 @@ export function resolveActions<T>(
     ...(defaults.openEdit ? { openEdit: defaults.openEdit } : {}),
     ...(defaults.copyRow ? { copyRow: defaults.copyRow } : {}),
     ...(defaults.openDelete ? { openDelete: defaults.openDelete } : {}),
-    showDialog: context.showDialog,
     open: (options) => {
       if (options.type === 'custom') {
-        context.showDialog(options.component);
+        context.openComponent(options.component);
       } else {
         handlerMap[options.type]?.(options.row);
       }
@@ -2478,13 +2472,13 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       resource.handlers.openView,
     ],
   );
-  const { showDialog, dialog: rowActionDialog } = useRowActionDialog();
+  const { openComponent, dialog: rowActionDialog } = useRowActionDialog();
   const tableRowActions = React.useMemo(
     () =>
       resolveActions(registryRowActions, rowActionDefaults, locale.rowActions, {
         crudId: id ?? '',
         idKey: resourceIdKey,
-        showDialog,
+        openComponent,
       }),
     [
       id,
@@ -2492,7 +2486,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       registryRowActions,
       resourceIdKey,
       rowActionDefaults,
-      showDialog,
+      openComponent,
     ],
   );
 

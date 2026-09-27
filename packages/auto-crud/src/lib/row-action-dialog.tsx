@@ -8,16 +8,11 @@ export interface RowActionDialogProps {
   onDismiss?: () => void;
 }
 
-export interface RowActionDialogHost {
-  /** Opens a fresh dialog session. The host owns open, onOpenChange and onDismiss. */
-  showDialog: <P extends RowActionDialogProps>(dialog: React.ReactElement<P>) => void;
-}
-
 /** Keep custom dialogs at table level, independently of the source row's lifetime. */
 export function useRowActionDialog() {
   const [dialog, setDialog] = React.useState<React.ReactElement | null>(null);
   const session = React.useRef(0);
-  const showDialog: RowActionDialogHost['showDialog'] = React.useCallback(
+  const openComponent = React.useCallback(
     (next: React.ReactElement<RowActionDialogProps>) => {
       const id = ++session.current;
       const dismiss = () => {
@@ -37,5 +32,5 @@ export function useRowActionDialog() {
     },
     [],
   );
-  return { showDialog, dialog };
+  return { openComponent, dialog };
 }
