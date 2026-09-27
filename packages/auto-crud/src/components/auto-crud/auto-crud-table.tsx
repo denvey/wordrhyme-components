@@ -35,6 +35,7 @@ import {
   parseZodField,
   type ResolvedActionItem,
 } from '@/lib/schema-bridge/zod-to-columns';
+import { useRowActionDialog, type RowActionDialogProps } from '@/lib/row-action-dialog';
 import { formatDate } from '@/lib/format';
 import { humanize } from '@/lib/humanize';
 import { Badge } from '@wordrhyme/shadcn';
@@ -226,7 +227,13 @@ type ActionMeta = {
   hidden?: boolean;
 };
 
+export type AutoCrudRowOpenOptions<T> =
+  | { type: 'view' | 'edit' | 'copy' | 'delete'; row: T }
+  | { type: 'custom'; component: React.ReactElement<RowActionDialogProps> };
+
 export interface AutoCrudRowActionContext<T> {
+  /** Unified entry point. Unavailable built-in operations are ignored. */
+  open: (options: AutoCrudRowOpenOptions<T>) => void;
   /** Menu primitive from the same runtime instance as the owning menu. */
   MenuItem: typeof DropdownMenuItem;
   crudId: string;
@@ -1860,8 +1867,10 @@ function renderFieldValue(
       tone &&
       {
         neutral: 'border-border bg-muted text-muted-foreground',
-        success: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
-        warning: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
+        success:
+          'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+        warning:
+          'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300',
         info: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300',
       }[tone];
     if (toneClassName) {
@@ -2079,6 +2088,7 @@ export function resolveActions<T>(
   context: {
     crudId: string;
     idKey: string;
+    openComponent: (component: React.ReactElement<RowActionDialogProps>) => void;
   },
 ): ResolvedActionItem<T>[] {
   const getContext = (row: T): AutoCrudRowActionContext<T> => ({
@@ -2091,6 +2101,13 @@ export function resolveActions<T>(
     ...(defaults.openEdit ? { openEdit: defaults.openEdit } : {}),
     ...(defaults.copyRow ? { copyRow: defaults.copyRow } : {}),
     ...(defaults.openDelete ? { openDelete: defaults.openDelete } : {}),
+    open: (options) => {
+      if (options.type === 'custom') {
+        context.openComponent(options.component);
+      } else {
+        handlerMap[options.type]?.(options.row);
+      }
+    },
   });
 
   // Owner defaults and plugin ordering have already been resolved. Only render
@@ -2455,13 +2472,22 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       resource.handlers.openView,
     ],
   );
+  const { openComponent, dialog: rowActionDialog } = useRowActionDialog();
   const tableRowActions = React.useMemo(
     () =>
       resolveActions(registryRowActions, rowActionDefaults, locale.rowActions, {
         crudId: id ?? '',
         idKey: resourceIdKey,
+        openComponent,
       }),
-    [id, locale.rowActions, registryRowActions, resourceIdKey, rowActionDefaults],
+    [
+      id,
+      locale.rowActions,
+      registryRowActions,
+      resourceIdKey,
+      rowActionDefaults,
+      openComponent,
+    ],
   );
 
   return (
@@ -2661,6 +2687,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         onSelectedRowsChange={handleSelectedRowsChange}
         getSelectedRows={getSelectedRowsRef}
       />
+
+      {/* Custom row dialogs outlive their source menu and row. */}
+      {rowActionDialog}
 
       {/* Modals */}
       {/* Create/Edit Modal */}

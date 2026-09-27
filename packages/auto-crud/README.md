@@ -914,6 +914,7 @@ type RowCustomActionItem<T> = ActionMeta & {
 };
 
 interface AutoCrudRowActionContext<T> {
+  open: (options: AutoCrudRowOpenOptions<T>) => void;
   crudId: string;
   idKey: string;
   row: T;
@@ -924,6 +925,56 @@ interface AutoCrudRowActionContext<T> {
   openDelete?: (row: T) => void;
 }
 ```
+
+### 统一打开入口
+
+行操作上下文提供 `open(options)`，旧的 `openView`、`openEdit`、`copyRow`、
+`openDelete` 保持兼容：
+
+```tsx
+open({ type: 'view', row });
+open({ type: 'edit', row });
+open({ type: 'copy', row });
+open({ type: 'delete', row });
+open({
+  type: 'custom',
+  component: <TransferDialog customer={row} open={false} onOpenChange={() => {}} />,
+});
+```
+
+`AutoCrudRowOpenOptions<T>` 是判别联合：内置操作必须传 `row`，
+`custom` 必须传 `component`。内置操作复用旧方法的处理器，不可用的操作不执行；
+仍可通过旧的可选方法（如 `openEdit`）判断是否应显示对应菜单项。
+
+自定义 `component` 由开发者实现弹窗或抽屉，并接收 `open/onOpenChange` 控制。
+`AutoCrudTable` 只管理生命周期，不额外包裹内置弹窗，也不会把普通组件自动变成弹窗。
+
+### 自定义行操作弹窗
+
+在行操作配置的 `component` 中使用 `open` 打开自定义弹窗：
+
+```tsx
+{
+  type: 'custom',
+  component: ({ row, MenuItem, open }) => (
+    <MenuItem onSelect={() => open({
+      type: 'custom',
+      component: <TransferDialog customer={row} open={false} onOpenChange={() => {}} />,
+    })}>
+      交接
+    </MenuItem>
+  ),
+}
+```
+
+`TransferDialog` 由开发者实现并接收 `RowActionDialogProps`。`AutoCrudTable` 托管
+`open`、`onOpenChange` 和可选的 `onDismiss`（调用方传入的同名属性会被覆盖），
+但不额外包裹弹窗。调用 `onOpenChange(false)` 或 `onDismiss()` 会卸载弹窗并清理状态；
+每次 `open({ type: 'custom', component })` 都创建新会话并替换当前自定义弹窗。
+
+弹窗位于表格层，菜单关闭、列配置重建、翻页或筛选移除原行都不会卸载它。
+它继续使用打开时传入的记录，关闭后再次打开才获取新的记录。
+表格卸载时弹窗一起释放。弹窗自身负责 Portal、布局和业务提交。
 
 ## 🔄 批量操作
 
