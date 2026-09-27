@@ -1481,6 +1481,14 @@ MIT © [wordrhyme](https://github.com/pixpilot/shadcn-components)
 - [Notion](https://notion.so) - 高级筛选器设计
 - [Linear](https://linear.app) - 命令面板设计
 
+### Status badge colors
+
+For `table.display: "badge"`, a scalar field's `table.options` entries may set `badgeTone` to `neutral`, `success`, `warning`, or `info`. This renders a tinted, outlined rounded label with a decorative dot. Labels remain readable without color; omitted tones retain the default badge. `display: "text"` is unaffected. Domain-specific state-to-tone mappings belong in the consuming plugin metadata.
+
+Registered custom actions may set `before: "delete"` (or another builtin action type) to appear immediately before that action. If the builtin is absent, the existing `position` fallback applies. This only controls ordering and does not add or grant the target action.
+
+Custom row components receive `MenuItem` in their action context. Use this supplied primitive instead of importing a menu item from another UI bundle: the menu root and item must share the same Radix runtime context. Prevent the select event's default dismissal when the component owns an open dialog, so the menu does not unmount the workflow.
+
 ### Detail presentation
 
 Details automatically share field labels, `enum`/`dataSource` mappings and
@@ -1540,3 +1548,28 @@ Publish that UI version before this AutoCrud change. The development dependency
 is pinned to the already-published alpha.19 for reproducible ESM tests and type
 checks until alpha.20 is published; it is not the supported CommonJS runtime.
 The CommonJS export/identity regression belongs to the UI provider repository.
+
+### Filter-only fields
+
+Use `table: false` with an explicit `filter` to keep a field in the standard
+filter bar without rendering a data column. Shared `hidden`, permission `deny`,
+and explicit table exclusions still hide the filter. Pass the same filter
+configuration to the resource so URL values use the same variants/operators:
+
+```tsx
+const fields = {
+  customerId: {
+    label: 'Customer',
+    table: false as const,
+    form: false as const,
+    filter: { variant: 'select' as const, dataSource: 'customers', index: 20 },
+  },
+};
+const resource = useAutoCrudResource({ router, schema, fields });
+return <AutoCrudTable schema={schema} resource={resource} fields={fields} />;
+```
+
+The field must exist in the schema or resource metadata, and the server must
+resolve its filter. A data source loads options; it does not translate query
+conditions. Standard filters share URL state, Reset, and pagination. Dynamically
+registered schema fields hydrate existing URL values without resetting the page.

@@ -63,6 +63,16 @@ export function useReadableFilters<TData>(
     return initial;
   });
 
+  // Providers/metadata may introduce fields after the first render. Hydrate them
+  // from the URL without writing it or resetting pagination.
+  React.useEffect(() => {
+    const next = parseReadableFilters(getUrlParams(), columnSnapshot);
+    filtersRef.current = next;
+    setFilters((previous) =>
+      JSON.stringify(previous) === JSON.stringify(next) ? previous : next,
+    );
+  }, [columnSnapshot]);
+
   // Listen for external URL changes (popstate, other hooks)
   React.useEffect(() => {
     const handleUrlChange = () => {

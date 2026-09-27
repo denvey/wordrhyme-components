@@ -75,6 +75,7 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
   overrides?: ColumnOverrides<z.infer<T>>;
   enableRowSelection?: boolean;
   exclude?: (keyof z.infer<T>)[];
+  filterOnly?: string[];
   actions?: ActionsColumnConfig<z.infer<T>>;
   /** 自定义固定列配置 */
   pinnedColumns?: {
@@ -128,6 +129,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   overrides,
   enableRowSelection = true,
   exclude,
+  filterOnly,
   actions,
   pinnedColumns,
   filterMode,
@@ -174,7 +176,18 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   // 区别只在于 UI 展示方式
   const enableAdvancedFilter = true;
   const columns = useMemo(() => {
-    const dataColumns = createTableSchema(schema, { overrides, exclude });
+    const columnOverrides = Object.assign({}, overrides);
+    for (const key of filterOnly ?? []) {
+      const field = key as keyof z.infer<T>;
+      Object.assign(columnOverrides, { [field]: { ...columnOverrides[field], hidden: false } });
+    }
+    const dataColumns = createTableSchema(schema, {
+      overrides: columnOverrides,
+      exclude,
+    }).map(column => {
+      const key = column.id ?? ('accessorKey' in column ? String(column.accessorKey) : '');
+      return filterOnly?.includes(key) ? { ...column, enableHiding: false, enableSorting: false } : column;
+    });
     const result = enableRowSelection
       ? [createSelectColumn<z.infer<T>>(), ...dataColumns]
       : dataColumns;
@@ -185,7 +198,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     }
 
     return result;
-  }, [schema, overrides, enableRowSelection, exclude, actions]);
+  }, [schema, overrides, enableRowSelection, exclude, actions, filterOnly]);
 
   const stableInitialState = useMemo(
     () => ({
@@ -208,6 +221,14 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     shallow: false,
     clearOnDefault: true,
   });
+
+  useEffect(() => {
+    if (!filterOnly?.length) return;
+    table.setColumnVisibility(previous => {
+      if (filterOnly.every(key => previous[key] === false)) return previous;
+      return { ...previous, ...Object.fromEntries(filterOnly.map(key => [key, false])) };
+    });
+  }, [table, filterOnly]);
 
   const rowSelection = table.getState().rowSelection;
   const columnFilters = table.getState().columnFilters;

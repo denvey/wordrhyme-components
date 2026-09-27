@@ -6,6 +6,8 @@ export type CrudActionBase = {
   order?: number;
   hidden?: boolean;
   position?: 'start' | 'end';
+  /** Insert a custom action before a builtin action type, if present. */
+  before?: string;
 };
 
 export type CrudActionEntry<TAction extends CrudActionBase = CrudActionBase> = {
@@ -158,7 +160,7 @@ function resolveActions<TAction extends CrudActionBase>(
   for (const entry of registered) {
     if (isMaskedCustom(entry.action)) continue;
     const group = groups.get(entry.ownerId) ?? [];
-    group.push(entry);
+    if (!(isCustomAction(entry.action) && entry.action.before)) group.push(entry);
     groups.set(entry.ownerId, group);
     const action = entry.action;
     if (isCustomAction(action)) continue;
@@ -218,6 +220,15 @@ function resolveActions<TAction extends CrudActionBase>(
         );
       }
     }
+  }
+
+  // Preserve explicit anchors from local consumers alongside array-based ordering.
+  for (const { action } of registered) {
+    if (!isCustomAction(action) || !action.before || action.hidden) continue;
+    const custom = withoutRegistryMeta(action);
+    const anchor = nextActions.findIndex((item) => !isCustomAction(item) && item.type === action.before);
+    if (anchor >= 0) nextActions.splice(anchor, 0, custom);
+    else (custom.position === 'start' ? startCustomActions : endCustomActions).push(custom);
   }
 
   return [...startCustomActions, ...nextActions, ...endCustomActions];

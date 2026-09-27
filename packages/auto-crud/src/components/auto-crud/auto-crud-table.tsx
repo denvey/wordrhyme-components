@@ -258,6 +258,8 @@ export type RowCustomActionItem<T> = ActionMeta & {
   onClick?: (row: T) => void;
   component?: ActionComponent<AutoCrudRowActionContext<T>>;
   position?: 'start' | 'end';
+  /** Place a registered custom action before the named builtin, when present. */
+  before?: RowBuiltinActionType;
   separator?: boolean;
   variant?: 'default' | 'destructive';
 };
@@ -2191,6 +2193,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const [exporting, setExporting] = React.useState(false);
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
   const dynamicFilterOptions = useDynamicFilterOptions(resolvedFields);
+  const filterOnly = React.useMemo(() => Object.entries(resolvedFields)
+    .filter(([key, config]) => config.table === false && config.filter && config.hidden !== true
+      && !denyFields?.includes(key) && !tableConfig?.hidden?.includes(key)
+      && tableConfig?.overrides?.[key]?.hidden !== true)
+    .map(([key]) => key), [resolvedFields, denyFields, tableConfig?.hidden, tableConfig?.overrides]);
   const hiddenColumns = React.useMemo(
     () =>
       buildHiddenColumns(
@@ -2646,7 +2653,8 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           ? { total: resource.tableData.total }
           : {})}
         overrides={tableOverrides as any}
-        exclude={hiddenColumns as any}
+        exclude={hiddenColumns.filter(key => !filterOnly.includes(key)) as any}
+        filterOnly={filterOnly}
         filterMode={tableConfig?.filterModes}
         search={searchConfig}
         actions={tableRowActions}
