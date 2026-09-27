@@ -83,6 +83,29 @@ describe('crudActions', () => {
     expect(crudActions.resolve<TestAction>('target', 'row', ownerActions)).toEqual([]);
   });
 
+  it('allows an extension to mask a custom owner action by id', () => {
+    const ownerActions: TestAction[] = [
+      { type: 'view' },
+      { type: 'custom', id: 'crm.customer.delete-permanently', label: '永久删除' },
+    ];
+
+    expect(crudActions.resolve<TestAction>('target', 'row', ownerActions)).toEqual([
+      { type: 'view' },
+      { type: 'custom', label: '永久删除' },
+    ]);
+
+    crudActions.register({
+      targetId: 'target',
+      zone: 'row',
+      ownerId: 'com.wordrhyme.omnids',
+      actions: [{ type: 'custom', id: 'crm.customer.delete-permanently', hidden: true }],
+    });
+
+    expect(crudActions.resolve<TestAction>('target', 'row', ownerActions)).toEqual([
+      { type: 'view' },
+    ]);
+  });
+
   it('notifies subscribers with a version snapshot', async () => {
     const listener = vi.fn();
     const before = crudActions.getSnapshot();

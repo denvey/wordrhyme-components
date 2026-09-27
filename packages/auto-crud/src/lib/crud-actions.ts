@@ -138,13 +138,16 @@ function resolveActions<TAction extends CrudActionBase>(
   zone: CrudActionZone,
   ownerActions: readonly TAction[],
 ): TAction[] {
+  const registered = targetId ? crudActions.get<TAction>(targetId, zone) : [];
+  const hiddenCustomIds = new Set(registered.flatMap(({ action }) =>
+    isCustomAction(action) && action.hidden && action.id ? [action.id] : [],
+  ));
+  const isMaskedCustom = (action: CrudActionBase) =>
+    isCustomAction(action) && Boolean(action.id && hiddenCustomIds.has(action.id));
   const baseActions = ownerActions
-    .filter((action) => !action.hidden)
+    .filter((action) => !action.hidden && !isMaskedCustom(action))
     .map((action) => withoutRegistryMeta(action));
 
-  if (!targetId) return baseActions;
-
-  const registered = crudActions.get<TAction>(targetId, zone);
   if (registered.length === 0) return baseActions;
 
   const nextActions = [...baseActions];
@@ -153,6 +156,7 @@ function resolveActions<TAction extends CrudActionBase>(
   const groups = new Map<string, CrudActionEntry<TAction>[]>();
 
   for (const entry of registered) {
+    if (isMaskedCustom(entry.action)) continue;
     const group = groups.get(entry.ownerId) ?? [];
     group.push(entry);
     groups.set(entry.ownerId, group);
