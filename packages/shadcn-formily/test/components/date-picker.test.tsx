@@ -24,13 +24,26 @@ function mount(value: unknown) {
 }
 
 describe('formily DatePicker serialized values', () => {
-  it.each(['2026-09-26', '2026-09-26T12:00:00.000Z', new Date(2026, 8, 26), new Date(2026, 8, 26).getTime()])(
+  it.each(['2026-09-26', new Date(2026, 8, 26), new Date(2026, 8, 26).getTime()])(
     'renders a persisted date without changing the form on mount: %s', (value) => {
       const form = mount(value);
       expect(screen.getByText('2026-9-26')).toBeTruthy();
       expect(form.values.inquiryDate).toEqual(value);
     },
   );
+
+  it.each([
+    '2026-09-26T00:00:00.000Z',
+    '2026-09-26T12:00:00.000Z',
+    Date.UTC(2026, 8, 26, 12),
+  ])('renders an instant as its local calendar day: %s', (value) => {
+    const form = mount(value);
+    // Instants can fall on the previous or next day in the runner's timezone.
+    const localDate = new Date(value);
+    const expected = `${localDate.getFullYear()}-${localDate.getMonth() + 1}-${localDate.getDate()}`;
+    expect(screen.getByText(expected)).toBeTruthy();
+    expect(form.values.inquiryDate).toEqual(value);
+  });
 
   it.each([undefined, null, '', 'invalid', '2026-02-30', new Date(Number.NaN)])(
     'renders empty and invalid values safely: %s', (value) => {
