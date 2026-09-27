@@ -78,7 +78,8 @@ export function DateOnlyPicker({
           mode="single"
           selected={selected}
           defaultMonth={selected}
-          captionLayout="dropdown"
+          // A year dropdown implicitly caps navigation at the current year.
+          captionLayout="dropdown-months"
           formatters={presentation.formatters}
           labels={presentation.labels}
           weekStartsOn={presentation.weekStartsOn}
