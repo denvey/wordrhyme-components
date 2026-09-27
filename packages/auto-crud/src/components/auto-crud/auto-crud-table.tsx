@@ -1628,8 +1628,8 @@ function buildCapabilityTableOverrides(
     if (capabilities.filters) {
       if (!capabilities.filters.enabled) {
         override.enableColumnFilter = false;
-      } else if (filterSet) {
-        override.enableColumnFilter = filterSet.has(key);
+      } else if (filterSet && !filterSet.has(key)) {
+        override.enableColumnFilter = false;
       }
     }
 
