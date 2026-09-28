@@ -1,4 +1,4 @@
-import { flexRender, type Table as TanstackTable } from '@tanstack/react-table';
+import { flexRender, type Column, type Table as TanstackTable } from '@tanstack/react-table';
 import type * as React from 'react';
 
 import { DataTablePagination } from '@/components/data-table/data-table-pagination';
@@ -17,6 +17,19 @@ import { cn } from '@/lib/utils';
 interface DataTableProps<TData> extends React.ComponentProps<'div'> {
   table: TanstackTable<TData>;
   actionBar?: React.ReactNode;
+}
+
+function getColumnSizingStyle<TData, TValue>(
+  column: Column<TData, TValue>,
+): React.CSSProperties {
+  const { size, minSize, maxSize } = column.columnDef;
+  if (size === undefined && minSize === undefined && maxSize === undefined) return {};
+
+  return {
+    width: column.getSize(),
+    ...(typeof minSize === 'number' ? { minWidth: minSize } : {}),
+    ...(typeof maxSize === 'number' ? { maxWidth: maxSize } : {}),
+  };
 }
 
 export function DataTable<TData>({
@@ -45,6 +58,7 @@ export function DataTable<TData>({
                     colSpan={header.colSpan}
                     style={{
                       ...getColumnPinningStyle({ column: header.column }),
+                      ...getColumnSizingStyle(header.column),
                     }}
                   >
                     {header.isPlaceholder
@@ -72,6 +86,7 @@ export function DataTable<TData>({
                         }
                         style={{
                           ...getColumnPinningStyle({ column: cell.column }),
+                          ...getColumnSizingStyle(cell.column),
                         }}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
