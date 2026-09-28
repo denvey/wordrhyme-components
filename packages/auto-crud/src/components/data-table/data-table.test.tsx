@@ -43,6 +43,7 @@ function makeTable(total: number | null = 394) {
     getHeaderGroups: () => [],
     getRowModel: () => ({ rows: [row] }),
     getAllColumns: () => [column],
+    getVisibleLeafColumns: () => [column],
     getFilteredSelectedRowModel: () => ({ rows: [] }),
     getFilteredRowModel: () => ({ rows: [row] }),
     getRowCount: () => total ?? 1,

@@ -1,4 +1,4 @@
-import { flexRender, type Column, type Table as TanstackTable } from '@tanstack/react-table';
+import { flexRender, type Table as TanstackTable } from '@tanstack/react-table';
 import type * as React from 'react';
 
 import { DataTablePagination } from '@/components/data-table/data-table-pagination';
@@ -19,19 +19,6 @@ interface DataTableProps<TData> extends React.ComponentProps<'div'> {
   actionBar?: React.ReactNode;
 }
 
-function getColumnSizingStyle<TData, TValue>(
-  column: Column<TData, TValue>,
-): React.CSSProperties {
-  const { size, minSize, maxSize } = column.columnDef;
-  if (size === undefined && minSize === undefined && maxSize === undefined) return {};
-
-  return {
-    width: column.getSize(),
-    ...(typeof minSize === 'number' ? { minWidth: minSize } : {}),
-    ...(typeof maxSize === 'number' ? { maxWidth: maxSize } : {}),
-  };
-}
-
 export function DataTable<TData>({
   table,
   actionBar,
@@ -41,6 +28,15 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   useDateFormatterVersion();
 
+  const columns = table.getVisibleLeafColumns();
+  // TanStack uses MAX_SAFE_INTEGER when no column width cap is configured.
+  // Auto table layout can stretch cells beyond max-width, so capped tables
+  // need an explicit total width and column tracks (including cell padding).
+  const hasWidthCap = columns.some(
+    (column) =>
+      (column.columnDef.maxSize ?? Number.MAX_SAFE_INTEGER) < Number.MAX_SAFE_INTEGER,
+  );
+
   return (
     <div
       className={cn('flex w-full flex-col gap-2.5 overflow-auto', className)}
@@ -48,7 +44,23 @@ export function DataTable<TData>({
     >
       {children}
       <div className="overflow-hidden rounded-md border">
-        <Table>
+        <Table
+          style={
+            hasWidthCap
+              ? {
+                  tableLayout: 'fixed',
+                  width: columns.reduce((width, column) => width + column.getSize(), 0),
+                }
+              : undefined
+          }
+        >
+          {hasWidthCap && (
+            <colgroup>
+              {columns.map((column) => (
+                <col key={column.id} style={{ width: column.getSize() }} />
+              ))}
+            </colgroup>
+          )}
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -58,7 +70,6 @@ export function DataTable<TData>({
                     colSpan={header.colSpan}
                     style={{
                       ...getColumnPinningStyle({ column: header.column }),
-                      ...getColumnSizingStyle(header.column),
                     }}
                   >
                     {header.isPlaceholder
@@ -86,7 +97,6 @@ export function DataTable<TData>({
                         }
                         style={{
                           ...getColumnPinningStyle({ column: cell.column }),
-                          ...getColumnSizingStyle(cell.column),
                         }}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
