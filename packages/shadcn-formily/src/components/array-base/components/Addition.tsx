@@ -18,7 +18,13 @@ export function ArrayAddition({
   ref,
   ...props
 }: IArrayBaseAdditionProps & { ref?: React.RefObject<HTMLButtonElement | null> }) {
-  const { fullWidth = true } = props;
+  const {
+    fullWidth = true,
+    defaultValue,
+    method,
+    icon,
+    ...buttonProps
+  } = props;
   const self = useField();
   const array = useArray();
 
@@ -43,7 +49,7 @@ export function ArrayAddition({
     <ButtonExtended
       type="button"
       variant={fullWidth ? 'ghost' : 'outline'}
-      {...props}
+      {...buttonProps}
       disabledTooltip={tooltip}
       disabled={isDisabled}
       className={cn(props.className, {
@@ -56,7 +62,7 @@ export function ArrayAddition({
           props.onClick(e);
           if (e.defaultPrevented) return;
         }
-        const defaultValue = getDefaultValue(props.defaultValue, array.schema);
+        const initialValue = getDefaultValue(defaultValue, array.schema);
 
         /*
          * Draft-only mode: delegate insertion to the editor component
@@ -68,28 +74,28 @@ export function ArrayAddition({
         const isDraftOnly =
           (array.props as { autoSave?: boolean } | undefined)?.autoSave === false;
         if (isDraftOnly) {
-          const method = props.method ?? 'push';
-          const insertionIndex = method === 'unshift' ? 0 : currentLength;
+          const insertionMethod = method ?? 'push';
+          const insertionIndex = insertionMethod === 'unshift' ? 0 : currentLength;
 
           array.props?.onAdd?.(insertionIndex, {
             mode: 'draft-only',
-            method,
-            initialDraftValue: defaultValue,
+            method: insertionMethod,
+            initialDraftValue: initialValue,
           });
           return;
         }
 
-        if (props.method === 'unshift') {
-          array.field?.unshift?.(defaultValue).catch(console.error);
+        if (method === 'unshift') {
+          array.field?.unshift?.(initialValue).catch(console.error);
           array.props?.onAdd?.(0);
         } else {
-          array.field?.push?.(defaultValue).catch(console.error);
+          array.field?.push?.(initialValue).catch(console.error);
           array.props?.onAdd?.((array?.field?.value?.length ?? 1) - 1);
         }
       }}
     >
       {!isAtMax &&
-        (props.icon !== undefined ? props.icon : <PlusIcon className="mr-2 size-4" />)}
+        (icon !== undefined ? icon : <PlusIcon className="mr-2 size-4" />)}
       {buttonLabel}
     </ButtonExtended>
   );
