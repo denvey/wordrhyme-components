@@ -148,6 +148,8 @@ export interface Field {
         dataSource?: AutoCrudDataSourceConfig;
         /** 声明式单元格展示模式；非 auto 模式会覆盖拥有方自定义 cell */
         display?: FieldTableDisplay;
+        /** 应用于表格 body 单元格的可选 className */
+        cellClassName?: string;
         /** 筛选器配置 */
         meta?: Record<string, unknown>;
         /** 其他列配置 */
@@ -1484,6 +1486,12 @@ function buildTableOverrides(
         config.table !== false && typeof config.table === 'object'
           ? (config.table.meta as Record<string, unknown> | undefined)
           : undefined;
+      const tableCellMeta =
+        config.table !== false &&
+        typeof config.table === 'object' &&
+        config.table.cellClassName
+          ? { cellClassName: config.table.cellClassName }
+          : undefined;
 
       const fieldEnumMeta = tableOptions
         ? {
@@ -1547,7 +1555,7 @@ function buildTableOverrides(
       }
 
       // 始终合并 meta（无论 filter 状态如何）
-      if (fieldEnumMeta || fieldDataSourceMeta || tableMeta || filterMeta) {
+      if (fieldEnumMeta || fieldDataSourceMeta || tableMeta || tableCellMeta || filterMeta) {
         result[key] = {
           ...result[key],
           meta: {
@@ -1555,6 +1563,7 @@ function buildTableOverrides(
             ...(fieldEnumMeta ?? {}),
             ...(fieldDataSourceMeta ?? {}),
             ...(tableMeta ?? {}),
+            ...(tableCellMeta ?? {}),
             ...(filterMeta ?? {}), // filter meta 优先级更高
           },
         };
@@ -1585,6 +1594,7 @@ function buildTableOverrides(
       // 处理 table 对象配置
       else if (config.table && typeof config.table === 'object') {
         const { meta, display, ...tableProps } = config.table;
+        delete tableProps.cellClassName;
         delete tableProps.options;
         delete tableProps.dataSource;
         result[key] = {

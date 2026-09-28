@@ -59,16 +59,25 @@ export function DataTable<TData>({
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      style={{
-                        ...getColumnPinningStyle({ column: cell.column }),
-                      }}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
+                  {row.getVisibleCells().map((cell) => {
+                    const cellClassName = (
+                      cell.column.columnDef.meta as { cellClassName?: unknown } | undefined
+                    )?.cellClassName;
+
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        className={
+                          typeof cellClassName === 'string' ? cellClassName : undefined
+                        }
+                        style={{
+                          ...getColumnPinningStyle({ column: cell.column }),
+                        }}
+                      >
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </TableCell>
+                    );
+                  })}
                 </TableRow>
               ))
             ) : (

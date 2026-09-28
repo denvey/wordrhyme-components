@@ -391,6 +391,23 @@ interface Field {
 type Fields = Record<string, Field>;
 ```
 
+### 列宽与单元格样式
+
+`table` 中的 `size`、`minSize` 和 `maxSize` 控制列宽。`cellClassName` 会应用到该列每一行的 body 单元格；不配置时沿用默认展示。
+
+```typescript
+fields={{
+  primaryContactValue: {
+    table: {
+      size: 250,
+      minSize: 250,
+      maxSize: 250,
+      cellClassName: 'whitespace-normal break-words',
+    },
+  },
+}}
+```
+
 ### 基础配置
 
 ```typescript
