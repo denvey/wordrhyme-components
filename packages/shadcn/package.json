@@ -66,6 +66,7 @@
   },
   "dependencies": {
     "@diceui/tags-input": "0.7.2",
+    "@floating-ui/react": "^0.27.20",
     "@hookform/resolvers": "^5.5.7",
     "@pixpilot/hash": "catalog:prod",
     "@radix-ui/react-alert-dialog": "^1.1.23",

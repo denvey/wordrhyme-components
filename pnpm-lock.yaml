@@ -321,6 +321,9 @@ importers:
       '@diceui/tags-input':
         specifier: 0.7.2
         version: 0.7.2(@floating-ui/react@0.27.20(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      '@floating-ui/react':
+        specifier: ^0.27.20
+        version: 0.27.20(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@hookform/resolvers':
         specifier: ^5.5.7
         version: 5.5.7(@standard-schema/spec@1.1.0)(ajv@8.17.1)(react-hook-form@7.83.0(react@19.2.8))(zod@4.4.3)
@@ -532,7 +535,7 @@ importers:
         version: 9.39.4(jiti@2.6.1)
       jsdom:
         specifier: catalog:dev
-        version: 27.4.0(postcss@8.5.14)
+        version: 27.4.0
       react:
         specifier: catalog:prod
         version: 19.2.8
@@ -2024,9 +2027,6 @@ packages:
     peerDependencies:
       react: '>=17.0.0'
       react-dom: '>=17.0.0'
-
-  '@floating-ui/utils@0.2.10':
-    resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
@@ -9633,7 +9633,7 @@ snapshots:
 
   '@floating-ui/core@1.7.3':
     dependencies:
-      '@floating-ui/utils': 0.2.10
+      '@floating-ui/utils': 0.2.12
     optional: true
 
   '@floating-ui/core@1.8.0':
@@ -9643,7 +9643,7 @@ snapshots:
   '@floating-ui/dom@1.7.4':
     dependencies:
       '@floating-ui/core': 1.7.3
-      '@floating-ui/utils': 0.2.10
+      '@floating-ui/utils': 0.2.12
     optional: true
 
   '@floating-ui/dom@1.8.0':
@@ -9664,9 +9664,6 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
       tabbable: 6.3.0
-
-  '@floating-ui/utils@0.2.10':
-    optional: true
 
   '@floating-ui/utils@0.2.12': {}
 
@@ -12801,7 +12798,6 @@ snapshots:
       css-tree: 3.1.0
     transitivePeerDependencies:
       - postcss
-    optional: true
 
   cssstyle@5.3.4(postcss@8.5.14):
     dependencies:
@@ -14336,7 +14332,6 @@ snapshots:
       - postcss
       - supports-color
       - utf-8-validate
-    optional: true
 
   jsdom@27.4.0(postcss@8.5.14):
     dependencies:
