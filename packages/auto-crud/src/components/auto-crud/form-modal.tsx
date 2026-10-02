@@ -7,14 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@wordrhyme/shadcn';
+} from '@wordrhyme/ui';
 import {
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   SheetDescription,
-} from '@wordrhyme/shadcn';
+} from '@wordrhyme/ui';
 import { cn } from '../../lib/utils';
 
 export type ModalVariant = 'dialog' | 'sheet';
