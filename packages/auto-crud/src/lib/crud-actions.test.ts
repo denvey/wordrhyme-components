@@ -372,4 +372,27 @@ describe('registered action array order', () => {
       crudActions.resolve('target', 'toolbar', [{ type: 'custom', id: 'shared' }]),
     ).toEqual([{ type: 'custom' }]);
   });
+  it.each(['row', 'toolbar', 'batch'] as const)(
+    'deduplicates a shared object in %s',
+    (zone) => {
+      const shared: TestAction = { type: 'custom', id: 'shared', label: 'Shared' };
+      for (const ownerId of ['plugin-b', 'plugin-a']) {
+        crudActions.register({
+          targetId: 'target',
+          zone,
+          ownerId,
+          actions: [shared, shared],
+        });
+      }
+      expect(crudActions.resolve('target', zone, [])).toEqual([
+        { type: 'custom', label: 'Shared' },
+      ]);
+      crudActions.unregister('plugin-b');
+      expect(crudActions.resolve('target', zone, [])).toEqual([
+        { type: 'custom', label: 'Shared' },
+      ]);
+      crudActions.unregister('plugin-a');
+      expect(crudActions.resolve('target', zone, [])).toEqual([]);
+    },
+  );
 });
