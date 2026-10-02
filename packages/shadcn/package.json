@@ -13,6 +13,7 @@
   },
   "sideEffects": false,
   "exports": {
+    "./tailwind.css": "./tailwind.css",
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
@@ -23,11 +24,13 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
+    "tailwind.css",
     "dist"
   ],
   "publishConfig": {
     "access": "public",
     "exports": {
+      "./tailwind.css": "./tailwind.css",
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",

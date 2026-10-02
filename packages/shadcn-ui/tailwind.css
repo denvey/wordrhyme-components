@@ -1,0 +1,3 @@
+@import "@wordrhyme/shadcn/tailwind.css";
+
+@source "./dist/**/*.{js,cjs}";

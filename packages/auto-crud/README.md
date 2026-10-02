@@ -1612,3 +1612,19 @@ crudActions.register({
 - 未匹配拥有方的 ID 只追加一次；不带 ID 的 custom 操作继续独立追加。
 - 注销扩展后恢复拥有方操作；内置操作继续按 `type` 合并及执行权限检查。
 - custom 操作仍由业务方提供权限守卫；ID 不授予权限，也不影响后端鉴权。
+
+## Tailwind CSS v4
+
+Import the public source entry in the application's Tailwind CSS stylesheet:
+
+```css
+@import "tailwindcss";
+@import "@wordrhyme/auto-crud/tailwind.css";
+```
+
+The entry registers this package's published `dist/**/*.js` and `dist/**/*.cjs`
+files for class detection and imports its component dependencies' source entries
+transitively. It contains only `@source` and `@import` directives; the application
+provides the Tailwind reset, theme, and utility output. No application-specific
+`node_modules` paths are needed. The root `tailwind.css` file is included directly
+in the published package and does not depend on the JavaScript build.
