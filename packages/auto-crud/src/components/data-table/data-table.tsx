@@ -28,7 +28,11 @@ export function DataTable<TData>({
 }: DataTableProps<TData>) {
   useDateFormatterVersion();
 
-  const columns = table.getVisibleLeafColumns();
+  const columns = [
+    ...table.getLeftVisibleLeafColumns(),
+    ...table.getCenterVisibleLeafColumns(),
+    ...table.getRightVisibleLeafColumns(),
+  ];
   // TanStack uses MAX_SAFE_INTEGER when no column width cap is configured.
   // Auto table layout can stretch cells beyond max-width, so capped tables
   // need an explicit total width and column tracks (including cell padding).
@@ -68,6 +72,7 @@ export function DataTable<TData>({
                   <TableHead
                     key={header.id}
                     colSpan={header.colSpan}
+                    className={hasWidthCap ? 'overflow-hidden text-ellipsis' : undefined}
                     style={{
                       ...getColumnPinningStyle({ column: header.column }),
                     }}
@@ -86,15 +91,18 @@ export function DataTable<TData>({
                 <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                   {row.getVisibleCells().map((cell) => {
                     const cellClassName = (
-                      cell.column.columnDef.meta as { cellClassName?: unknown } | undefined
+                      cell.column.columnDef.meta as
+                        | { cellClassName?: unknown }
+                        | undefined
                     )?.cellClassName;
 
                     return (
                       <TableCell
                         key={cell.id}
-                        className={
-                          typeof cellClassName === 'string' ? cellClassName : undefined
-                        }
+                        className={cn(
+                          hasWidthCap && 'overflow-hidden text-ellipsis',
+                          typeof cellClassName === 'string' ? cellClassName : undefined,
+                        )}
                         style={{
                           ...getColumnPinningStyle({ column: cell.column }),
                         }}

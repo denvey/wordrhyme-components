@@ -1555,7 +1555,13 @@ function buildTableOverrides(
       }
 
       // 始终合并 meta（无论 filter 状态如何）
-      if (fieldEnumMeta || fieldDataSourceMeta || tableMeta || tableCellMeta || filterMeta) {
+      if (
+        fieldEnumMeta ||
+        fieldDataSourceMeta ||
+        tableMeta ||
+        tableCellMeta ||
+        filterMeta
+      ) {
         result[key] = {
           ...result[key],
           meta: {

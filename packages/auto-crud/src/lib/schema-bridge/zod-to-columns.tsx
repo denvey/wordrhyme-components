@@ -245,7 +245,7 @@ function renderCell(
     case 'number':
       return <span className="tabular-nums">{String(value)}</span>;
     default:
-      return <span className="truncate max-w-48">{String(value)}</span>;
+      return <span>{String(value)}</span>;
   }
 }
 
