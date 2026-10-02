@@ -184,7 +184,7 @@ function resolveActions<TAction extends CrudActionBase>(
   const groups = new Map<string, CrudActionEntry<TAction>[]>();
 
   for (const entry of registered) {
-    if (isMaskedCustom(entry.action) || isReplacedCustom(entry)) continue;
+    if (isMaskedCustom(entry.action)) continue;
     const group = groups.get(entry.ownerId) ?? [];
     group.push(entry);
     groups.set(entry.ownerId, group);
@@ -215,8 +215,9 @@ function resolveActions<TAction extends CrudActionBase>(
   for (const group of groups.values()) {
     const items = group
       .sort((left, right) => left.seq - right.seq)
-      .flatMap(({ action }) => {
-        if (action.hidden) return [];
+      .flatMap((entry) => {
+        const { action } = entry;
+        if (action.hidden || isReplacedCustom(entry)) return [];
         if (isCustomAction(action)) return [withoutRegistryMeta(action)];
         const builtin = nextActions.find((item) => item.type === action.type);
         return builtin ? [builtin] : [];
