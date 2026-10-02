@@ -29,6 +29,7 @@ const ArrayInlineBase: React.FC<ArrayComponentProps> = observer((props) => {
     actions,
     transformActions,
     className,
+    sortable,
     ...otherProps
   } = props;
 
@@ -53,6 +54,7 @@ const ArrayInlineBase: React.FC<ArrayComponentProps> = observer((props) => {
       disabled={disabled}
       actions={actions}
       transformActions={transformActions}
+      sortable={sortable}
       onAdd={onAdd}
       onCopy={onCopy}
       onRemove={onRemove}
