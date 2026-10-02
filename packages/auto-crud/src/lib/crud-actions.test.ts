@@ -310,4 +310,66 @@ describe('registered action array order', () => {
       { type: 'delete', label: 'A' },
     ]);
   });
+  it.each(['row', 'toolbar', 'batch'] as const)(
+    'replaces named actions in place in %s',
+    (zone) => {
+      const owner: TestAction[] = [
+        { type: 'custom', id: 'detail', label: 'Detail' },
+        { type: 'custom', id: 'refresh', label: 'Refresh' },
+        { type: 'delete' },
+      ];
+      crudActions.register({
+        targetId: 'target',
+        zone,
+        ownerId: 'plugin',
+        actions: [{ type: 'custom', id: 'refresh', label: 'Replacement' }],
+      });
+      expect(crudActions.resolve('target', zone, owner)).toEqual([
+        { type: 'custom', label: 'Detail' },
+        { type: 'custom', label: 'Replacement' },
+        { type: 'delete' },
+      ]);
+      expect(crudActions.resolve('other', zone, owner)[1]).toEqual({
+        type: 'custom',
+        label: 'Refresh',
+      });
+      crudActions.unregister('plugin');
+      expect(crudActions.resolve('target', zone, owner)[1]).toEqual({
+        type: 'custom',
+        label: 'Refresh',
+      });
+    },
+  );
+
+  it('deduplicates registered IDs with stable precedence and preserves anonymous actions', () => {
+    for (const ownerId of ['plugin-b', 'plugin-a']) {
+      crudActions.register({
+        targetId: 'target',
+        zone: 'row',
+        ownerId,
+        actions: [
+          { type: 'custom', id: 'shared', label: ownerId },
+          { type: 'custom', label: 'Anonymous' },
+        ],
+      });
+    }
+    expect(crudActions.resolve('target', 'row', [])).toEqual([
+      { type: 'custom', label: 'Anonymous' },
+      { type: 'custom', label: 'plugin-b' },
+      { type: 'custom', label: 'Anonymous' },
+    ]);
+    crudActions.register({
+      targetId: 'target',
+      zone: 'row',
+      ownerId: 'mask',
+      actions: [{ type: 'custom', id: 'shared', hidden: true }],
+    });
+    expect(crudActions.resolve('target', 'row', [])).toEqual([
+      { type: 'custom', label: 'Anonymous' },
+      { type: 'custom', label: 'Anonymous' },
+    ]);
+    expect(
+      crudActions.resolve('target', 'toolbar', [{ type: 'custom', id: 'shared' }]),
+    ).toEqual([{ type: 'custom' }]);
+  });
 });

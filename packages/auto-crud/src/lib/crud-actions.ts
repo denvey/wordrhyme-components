@@ -139,14 +139,41 @@ function resolveActions<TAction extends CrudActionBase>(
   ownerActions: readonly TAction[],
 ): TAction[] {
   const registered = targetId ? crudActions.get<TAction>(targetId, zone) : [];
-  const hiddenCustomIds = new Set(registered.flatMap(({ action }) =>
-    isCustomAction(action) && action.hidden && action.id ? [action.id] : [],
-  ));
+  const hiddenCustomIds = new Set(
+    registered.flatMap(({ action }) =>
+      isCustomAction(action) && action.hidden && action.id ? [action.id] : [],
+    ),
+  );
   const isMaskedCustom = (action: CrudActionBase) =>
     isCustomAction(action) && Boolean(action.id && hiddenCustomIds.has(action.id));
+  // Resolve identity before stripping registry metadata. Anonymous custom actions
+  // retain their append behavior; named actions share one slot per target/zone.
+  const customOverrides = new Map<string, TAction>();
+  for (const { action } of registered) {
+    if (isCustomAction(action) && action.id && !isMaskedCustom(action)) {
+      customOverrides.set(action.id, action);
+    }
+  }
+  const ownerCustomIds = new Set(
+    ownerActions.flatMap((action) =>
+      isCustomAction(action) && action.id ? [action.id] : [],
+    ),
+  );
   const baseActions = ownerActions
     .filter((action) => !action.hidden && !isMaskedCustom(action))
-    .map((action) => withoutRegistryMeta(action));
+    .map((action) =>
+      withoutRegistryMeta(
+        isCustomAction(action) && action.id
+          ? (customOverrides.get(action.id) ?? action)
+          : action,
+      ),
+    );
+  const isReplacedCustom = (action: CrudActionBase) =>
+    isCustomAction(action) &&
+    Boolean(
+      action.id &&
+      (ownerCustomIds.has(action.id) || customOverrides.get(action.id) !== action),
+    );
 
   if (registered.length === 0) return baseActions;
 
@@ -156,7 +183,7 @@ function resolveActions<TAction extends CrudActionBase>(
   const groups = new Map<string, CrudActionEntry<TAction>[]>();
 
   for (const entry of registered) {
-    if (isMaskedCustom(entry.action)) continue;
+    if (isMaskedCustom(entry.action) || isReplacedCustom(entry.action)) continue;
     const group = groups.get(entry.ownerId) ?? [];
     group.push(entry);
     groups.set(entry.ownerId, group);
