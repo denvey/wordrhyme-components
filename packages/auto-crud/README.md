@@ -1591,3 +1591,24 @@ Publish that UI version before this AutoCrud change. The development dependency
 is pinned to the already-published alpha.19 for reproducible ESM tests and type
 checks until alpha.20 is published; it is not the supported CommonJS runtime.
 The CommonJS export/identity regression belongs to the UI provider repository.
+
+### 按 ID 隐藏或替换自定义操作
+
+拥有方为 custom 操作声明稳定 `id` 后，扩展可以在相同 CRUD target 和操作区域
+（`row`、`toolbar` 或 `batch`）使用同 ID 替换该操作；拥有方的原位置保留。
+替换使用扩展提供的完整操作，不继承原操作的组件或回调。
+
+```ts
+crudActions.register({
+  targetId: 'products',
+  zone: 'row',
+  ownerId: 'consumer',
+  actions: [{ type: 'custom', id: 'products.inspect', hidden: true }],
+});
+```
+
+- `hidden: true` 屏蔽同 target、同区域内所有匹配 ID 的 custom 操作，优先于替换。
+- 多个扩展提供同 ID 时，按已有 `order`、`ownerId`、注册序号排序，最后一个生效。
+- 未匹配拥有方的 ID 只追加一次；不带 ID 的 custom 操作继续独立追加。
+- 注销扩展后恢复拥有方操作；内置操作继续按 `type` 合并及执行权限检查。
+- custom 操作仍由业务方提供权限守卫；ID 不授予权限，也不影响后端鉴权。
