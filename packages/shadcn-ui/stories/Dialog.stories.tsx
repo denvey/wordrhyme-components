@@ -1,7 +1,11 @@
+/* eslint-disable ts/no-floating-promises */
+/* eslint-disable react-hooks/rules-of-hooks */
 import type { Meta, StoryObj } from '@storybook/react';
+import type { ComponentProps } from 'react';
 import { Label } from '@wordrhyme/shadcn';
 import * as React from 'react';
-import { Button } from '../src/Button';
+import { OverlayProvider } from '../src';
+import { Button } from '../src/button';
 import {
   Card,
   CardContent,
@@ -9,7 +13,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from '../src/Card';
+} from '../src/card';
 import {
   Dialog,
   DialogBody,
@@ -21,6 +25,75 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '../src/dialog';
+import { dialog, useDialog } from '../src/dialog-registry';
+
+// --- Provider-driven (imperative) dialogs ---
+// These demonstrate the dialog-registry (registerDialog / dialog.create)
+// alongside the declarative examples, so every Dialog story lives in one place.
+
+interface RegisteredStoryDialogProps extends ComponentProps<typeof Dialog> {
+  description?: string;
+  title?: string;
+}
+
+function RegisteredStoryDialog({
+  description = 'This is a registered dialog component. It can be shown using dialog.show(...) or the typed controller returned by dialog.register(...).',
+  title = 'Registered Dialog',
+  ...dialogProps
+}: RegisteredStoryDialogProps) {
+  return (
+    <Dialog {...dialogProps}>
+      <DialogContent className="!max-w-[325px]">
+        <DialogHeader>
+          <DialogTitle data-slot="dialog-title">{title}</DialogTitle>
+        </DialogHeader>
+        <DialogBody>{description}</DialogBody>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface CustomStoryDialogProps {
+  description?: string;
+  title?: string;
+}
+
+const customStoryDialog = dialog.create<CustomStoryDialogProps>(
+  ({
+    description = 'This dialog was created with dialog.create(...), so it owns the NiceModal lifecycle directly.',
+    title = 'Custom Dialog',
+  }) => {
+    const modal = useDialog();
+
+    const handleClose = (result: string) => {
+      modal.resolve(result);
+      modal.hide();
+    };
+
+    return (
+      <Dialog
+        open={modal.visible}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            handleClose('Closed');
+          }
+        }}
+      >
+        <DialogContent className="!max-w-[325px]">
+          <DialogHeader>
+            <DialogTitle data-slot="dialog-title">{title}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>{description}</DialogBody>
+          <div className="flex justify-end">
+            <Button id="close-dialog" onClick={() => handleClose('Done')}>
+              Done
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  },
+);
 
 /**
  * A modal dialog component for displaying content in an overlay.
@@ -715,4 +788,121 @@ function PersistentDialogStoryContent() {
  */
 export const WithoutBackdropDismiss: Story = {
   render: () => <PersistentDialogStoryContent />,
+};
+
+/**
+ * Imperatively shown dialog registered with `dialog.register(...)` and opened
+ * through its typed controller. Wrapped in a `DialogProvider`.
+ */
+export const RegisterViaProvider: Story = {
+  decorators: [
+    (Story) => (
+      <OverlayProvider>
+        <Story />
+      </OverlayProvider>
+    ),
+  ],
+  render: () => {
+    const registeredDialog = React.useMemo(
+      () =>
+        dialog.register('storybook-registered-dialog', RegisteredStoryDialog, {
+          title: 'Registered dialog',
+        }),
+      [],
+    );
+
+    return (
+      <div className="flex min-w-[320px] flex-col items-center gap-4 rounded-lg border bg-background p-6 text-center shadow-sm">
+        <h3 className="text-lg font-semibold">Register Dialog</h3>
+        <Button
+          data-slot="show-registered-dialog"
+          onClick={() => {
+            registeredDialog.show({
+              description:
+                'registerDialog now injects open and onOpenChange automatically.',
+            });
+          }}
+        >
+          Typed show
+        </Button>
+      </div>
+    );
+  },
+};
+
+/**
+ * Imperatively shown dialog built with `dialog.create(...)`, which owns the
+ * NiceModal lifecycle and drives `useDialog()` itself. Wrapped in a
+ * `DialogProvider`.
+ */
+export const CreateViaProvider: Story = {
+  decorators: [
+    (Story) => (
+      <OverlayProvider>
+        <Story />
+      </OverlayProvider>
+    ),
+  ],
+  render: () => (
+    <div className="flex min-w-[320px] flex-col items-center gap-4 rounded-lg border bg-background p-6 text-center shadow-sm">
+      <h3 className="text-lg font-semibold">dialog.create</h3>
+      <div className="flex flex-wrap justify-center gap-2">
+        <Button
+          data-slot="show-dialog"
+          onClick={() => {
+            customStoryDialog.show({
+              description:
+                'Use dialog.create when the component should call useDialog itself.',
+            });
+          }}
+        >
+          Custom show
+        </Button>
+        <Button
+          data-slot="show-dialog-with-promise"
+          onClick={() => {
+            customStoryDialog.show({
+              title: 'Custom dialog 2',
+            });
+          }}
+        >
+          Show dialog 2
+        </Button>
+      </div>
+    </div>
+  ),
+};
+
+function PortalContainerStoryContent() {
+  const portalContainerRef = React.useRef<HTMLDivElement>(null);
+
+  return (
+    <OverlayProvider portalContainerRef={portalContainerRef}>
+      <div className="flex flex-col items-center gap-4">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline">Open Route Dialog</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Route-scoped dialog</DialogTitle>
+              <DialogDescription>
+                This portal is mounted in the route overlay root.
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+        <div
+          ref={portalContainerRef}
+          data-testid="dialog-portal-container"
+          className="relative h-80 w-full max-w-lg overflow-hidden rounded-lg border bg-muted/30"
+        />
+      </div>
+    </OverlayProvider>
+  );
+}
+
+/** Dialog portal scoped by OverlayProvider instead of a per-dialog prop. */
+export const PortalContainer: Story = {
+  render: () => <PortalContainerStoryContent />,
 };

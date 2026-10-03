@@ -8,10 +8,20 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pixpilot/shadcn-components.git",
+    "url": "https://github.com/denvey/wordrhyme-components",
     "directory": "packages/shadcn-auth"
   },
-  "exports": "./src/index.ts",
+  "bugs": {
+    "url": "https://github.com/denvey/wordrhyme-components/issues"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -66,7 +76,13 @@
     "tailwindcss": "^4.2.2",
     "tsdown": "catalog:dev",
     "typescript": "catalog:dev",
-    "typescript-eslint": "catalog:dev"
+    "typescript-eslint": "catalog:dev",
+    "@testing-library/jest-dom": "catalog:dev",
+    "@testing-library/react": "catalog:dev",
+    "jsdom": "catalog:dev"
   },
-  "prettier": "@internal/prettier-config"
+  "prettier": "@internal/prettier-config",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }

@@ -1,10 +1,10 @@
 import type { ComponentProps } from 'react';
 
+import type { SelectSimpleProps } from '../select';
 import { useControlled } from '@internal/hooks';
 import { cn } from '@wordrhyme/shadcn';
 import React from 'react';
-import type { SelectSimpleProps } from '../Select';
-import { Select } from '../Select';
+import { Select } from '../select';
 import { getId } from '../utils';
 import { Slider as ShadcnSlider } from './Slider';
 

@@ -1,0 +1,736 @@
+{
+  "version": "0",
+  "stories": {
+    "shadcn-ui-drawer--default": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"drawer-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "n8WgbcKaaD6z",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "name": "takeScreenshot"
+            }
+          ],
+          "id": "Gp1IFjgpJBzC",
+          "title": "Take screenshot"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "timeout": 200
+              },
+              "name": "waitForTimeout"
+            }
+          ],
+          "id": "QYKNgjFAZBWQ",
+          "title": "delay 200"
+        },
+        {
+          "actions": [
+            {
+              "name": "takeScreenshot"
+            }
+          ],
+          "id": "pyQV9BCah5wN",
+          "title": "Take screenshot"
+        },
+        {
+          "actions": [
+            {
+              "name": "mouse.up"
+            }
+          ],
+          "id": "UXqqxR9iG4K-",
+          "title": "mouse.up"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "timeout": 200
+              },
+              "name": "waitForTimeout"
+            }
+          ],
+          "id": "mKSChufM73Sg",
+          "title": "delay 200"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "from": {
+                  "x": 500,
+                  "y": 45
+                },
+                "to": {
+                  "x": 620,
+                  "y": 55
+                },
+                "options": {
+                  "skipMouseUp": true,
+                  "steps": 10
+                }
+              },
+              "name": "mouseFromTo"
+            }
+          ],
+          "id": "rD_kbUav986c",
+          "title": "mouseFromTo"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "7uFXUa3I5Sm7",
+                  "name": "click"
+                }
+              ],
+              "id": "SMnOiXcQSRXe",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "id": "4ub1ZvG--1lF",
+                  "name": "takeScreenshot"
+                }
+              ],
+              "id": "Be6hdHE8NIUe",
+              "title": "Take screenshot"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "x": 114,
+                    "y": 51
+                  },
+                  "id": "za472gvC3hhe",
+                  "name": "mouse.click"
+                }
+              ],
+              "id": "GPldAr2kYnfg",
+              "title": "mouse.click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "oEZAwBYvDM7z",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "JXMTjMAd2jL_",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "Ma2gKRrquZ0A",
+          "browserType": "chromium",
+          "id": "SudlCVgic5z8",
+          "index": 0,
+          "title": "should show and hide drawer"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "pUr741o4tdOX",
+                  "name": "click"
+                }
+              ],
+              "id": "F8IZxhptlzAJ",
+              "title": "click"
+            }
+          ],
+          "browserOptionsId": "42IS_f186pza",
+          "browserType": "chromium",
+          "id": "99F2qK-QQAhB",
+          "index": 1,
+          "screenshotOptionsId": "yhuT8pCqZrcR",
+          "title": "should go full width in small screen"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "mhi5WescqvOS",
+                  "name": "click"
+                }
+              ],
+              "id": "7nz8wmYsxGlo",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "id": "iIm8bQ6dGfy6",
+                  "name": "takeScreenshot"
+                }
+              ],
+              "id": "otp-g_2BiBmx",
+              "title": "Take screenshot"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "from": {
+                      "x": 500,
+                      "y": 45
+                    },
+                    "to": {
+                      "x": 620,
+                      "y": 55
+                    },
+                    "options": {
+                      "skipMouseUp": true,
+                      "steps": 10
+                    }
+                  },
+                  "id": "SfOu8uyrT_4V",
+                  "name": "mouseFromTo"
+                }
+              ],
+              "id": "pkLGtpHVEjzf",
+              "title": "mouseFromTo"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "timeout": 200
+                  },
+                  "id": "ty-bM2055TEo",
+                  "name": "waitForTimeout"
+                }
+              ],
+              "id": "Q3Wm18m_qt8h",
+              "title": "delay 200"
+            },
+            {
+              "actions": [
+                {
+                  "id": "vUhFDk_-tMo5",
+                  "name": "takeScreenshot"
+                }
+              ],
+              "id": "3E7uNcc7eOd8",
+              "title": "Take screenshot"
+            },
+            {
+              "actions": [
+                {
+                  "id": "rfRGANfFEF5w",
+                  "name": "mouse.up"
+                }
+              ],
+              "id": "WInPzhKTkWHS",
+              "title": "mouse.up"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "timeout": 200
+                  },
+                  "id": "sCVzJBHdXukP",
+                  "name": "waitForTimeout"
+                }
+              ],
+              "id": "0S77xRyoneqo",
+              "title": "delay 200"
+            }
+          ],
+          "browserOptionsId": "e7gPR14t7RcM",
+          "browserType": "chromium",
+          "id": "LtJ1c0Quud1Q",
+          "index": 2,
+          "screenshotOptionsId": "vnlyGPjF4YTO",
+          "title": "should drag to right and close drawer"
+        }
+      ]
+    },
+    "shadcn-ui-drawer--no-drag-root": {
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "onR9lTHlIdk7",
+                  "name": "click"
+                }
+              ],
+              "id": "HeRr0vnvOgXs",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "from": {
+                      "x": 484,
+                      "y": 39
+                    },
+                    "to": {
+                      "x": 545,
+                      "y": 46
+                    },
+                    "options": {
+                      "steps": 5,
+                      "skipMouseUp": true
+                    }
+                  },
+                  "id": "4gQ-9YYB1E_Q",
+                  "name": "mouseFromTo"
+                }
+              ],
+              "id": "sJWMFQy5enZX",
+              "title": "mouseFromTo"
+            }
+          ],
+          "browserOptionsId": "e7gPR14t7RcM",
+          "browserType": "chromium",
+          "id": "smtz7ECM61Wc",
+          "index": 0,
+          "screenshotOptionsId": "zfx_6yfoaAhN",
+          "title": "should not move on drag when root set to no drag"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "noDragSelectOpenAction",
+                  "name": "click"
+                }
+              ],
+              "id": "noDragSelectOpenActionSet",
+              "title": "open drawer"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "from": {
+                      "x": 359,
+                      "y": 118
+                    },
+                    "to": {
+                      "x": 660,
+                      "y": 118
+                    }
+                  },
+                  "id": "noDragSelectDragAction",
+                  "name": "mouseFromTo"
+                }
+              ],
+              "id": "noDragSelectDragActionSet",
+              "title": "drag-select the first line of the textarea"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-content\"]"
+                  },
+                  "id": "noDragSelectScreenshotAction",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "noDragSelectScreenshotActionSet",
+              "title": "capture highlighted text"
+            }
+          ],
+          "browserOptionsId": "e7gPR14t7RcM",
+          "browserType": "chromium",
+          "id": "noDragSelectScreenshot",
+          "index": 1,
+          "title": "should allow text selection when root set to no drag"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "K5aemDYiKodl",
+                  "name": "click"
+                }
+              ],
+              "id": "_F79knlNxtse",
+              "temp": true,
+              "title": "open drawer"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "from": {
+                      "x": 364,
+                      "y": 71
+                    },
+                    "to": {
+                      "x": 521,
+                      "y": 70
+                    }
+                  },
+                  "id": "KzEwPNe-eJfv",
+                  "name": "mouseFromTo"
+                }
+              ],
+              "id": "9UPT-vwwVwmG",
+              "temp": true,
+              "title": "drag-select describtion"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-header\"]"
+                  },
+                  "id": "KUxs9P0NdExg",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "g3RQ1LnAcx2c",
+              "temp": true,
+              "title": "capture highlighted text"
+            }
+          ],
+          "browserOptionsId": "e7gPR14t7RcM",
+          "browserType": "chromium",
+          "id": "Om2gScVJ7Oh5",
+          "index": 2,
+          "title": "should drag and select drawer desciption"
+        }
+      ]
+    },
+    "shadcn-ui-drawer--no-drag-components": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"drawer-trigger\"]"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "Rn9YvmuQQgdN",
+          "title": "click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "options": {
+                  "skipMouseUp": true
+                },
+                "from": {
+                  "x": 389,
+                  "y": 452
+                },
+                "to": {
+                  "x": 503,
+                  "y": 452
+                }
+              },
+              "name": "mouseFromTo"
+            }
+          ],
+          "id": "8VAVNHySP1Zs",
+          "title": "mouseFromTo"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "ZetzYXhyfpBf",
+                  "name": "click"
+                }
+              ],
+              "id": "QfwxaL8-LxkT",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "options": {
+                      "skipMouseUp": true
+                    },
+                    "from": {
+                      "x": 431,
+                      "y": 310
+                    },
+                    "to": {
+                      "x": 560,
+                      "y": 308
+                    }
+                  },
+                  "id": "8W8njX1fXQYl",
+                  "name": "mouseFromTo"
+                }
+              ],
+              "id": "RBHvSFsdgTBC",
+              "title": "mouseFromTo"
+            }
+          ],
+          "browserOptionsId": "e7gPR14t7RcM",
+          "browserType": "chromium",
+          "id": "zmLJa7rEv3WG",
+          "index": 1,
+          "screenshotOptionsId": "JXyADAjVcSD9",
+          "title": "should not allow drag when body set to nodrag"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "oaJA1gA_i6jb",
+                  "name": "click"
+                }
+              ],
+              "id": "8reqyDC2m2iW",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "options": {
+                      "skipMouseUp": true
+                    },
+                    "from": {
+                      "x": 499,
+                      "y": 39
+                    },
+                    "to": {
+                      "x": 570,
+                      "y": 39
+                    }
+                  },
+                  "id": "JAvE-VCQ9iFf",
+                  "name": "mouseFromTo"
+                }
+              ],
+              "id": "wBERUgYNxb4t",
+              "title": "mouseFromTo"
+            }
+          ],
+          "browserOptionsId": "e7gPR14t7RcM",
+          "browserType": "chromium",
+          "id": "jE7f1xK0S3is",
+          "index": 1,
+          "screenshotOptionsId": "NPJZdEP_8Zci",
+          "title": "should not allow drag on header"
+        },
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "wWZvXJAgo9F4",
+                  "name": "click"
+                }
+              ],
+              "id": "v_ifLBNRZNsS",
+              "title": "click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "options": {
+                      "skipMouseUp": true
+                    },
+                    "from": {
+                      "x": 389,
+                      "y": 452
+                    },
+                    "to": {
+                      "x": 503,
+                      "y": 452
+                    }
+                  },
+                  "id": "ZfpKaLJIbvwc",
+                  "name": "mouseFromTo"
+                }
+              ],
+              "id": "i9ljKXhq85sb",
+              "title": "mouseFromTo"
+            }
+          ],
+          "browserOptionsId": "e7gPR14t7RcM",
+          "browserType": "chromium",
+          "id": "Mg00DpZTYuJ_",
+          "index": 2,
+          "screenshotOptionsId": "yl2F2lc8A3Pc",
+          "title": "should not allow drag on footer"
+        }
+      ]
+    },
+    "shadcn-ui-drawer--portal-container": {
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-trigger\"]"
+                  },
+                  "id": "portalDrawerOpenAction",
+                  "name": "click"
+                }
+              ],
+              "id": "portalDrawerOpenActionSet",
+              "title": "open route drawer"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-content\"]"
+                  },
+                  "id": "portalDrawerScreenshotAction",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "portalDrawerScreenshotActionSet",
+              "title": "capture route-scoped drawer"
+            }
+          ],
+          "browserOptionsId": "e7gPR14t7RcM",
+          "browserType": "chromium",
+          "id": "portalDrawerScreenshot",
+          "index": 0,
+          "title": "drawer inside OverlayProvider portal container"
+        }
+      ]
+    }
+  },
+  "browserOptions": {
+    "Ma2gKRrquZ0A": {
+      "viewport": {
+        "height": 348,
+        "width": 672
+      },
+      "cursor": true
+    },
+    "42IS_f186pza": {
+      "viewport": {
+        "height": 354,
+        "width": 605
+      },
+      "cursor": true
+    },
+    "e7gPR14t7RcM": {
+      "viewport": {
+        "height": 502,
+        "width": 716
+      },
+      "cursor": true
+    }
+  },
+  "screenshotOptions": {
+    "yhuT8pCqZrcR": {
+      "clip": {
+        "height": 73,
+        "width": 595,
+        "x": 6,
+        "y": 5
+      }
+    },
+    "zfx_6yfoaAhN": {
+      "clip": {
+        "height": 64,
+        "width": 395,
+        "x": 314,
+        "y": 7
+      }
+    },
+    "JXyADAjVcSD9": {
+      "clip": {
+        "height": 69,
+        "width": 390,
+        "x": 323,
+        "y": 290
+      }
+    },
+    "NPJZdEP_8Zci": {
+      "clip": {
+        "height": 42,
+        "width": 230,
+        "x": 481,
+        "y": 19
+      }
+    },
+    "yl2F2lc8A3Pc": {
+      "clip": {
+        "height": 82,
+        "width": 355,
+        "x": 355,
+        "y": 395
+      }
+    },
+    "vnlyGPjF4YTO": {
+      "clip": {
+        "height": 71,
+        "width": 372,
+        "x": 339,
+        "y": 9
+      }
+    }
+  }
+}

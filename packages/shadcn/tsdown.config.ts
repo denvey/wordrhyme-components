@@ -5,5 +5,5 @@ export default defineConfig({
   dts: true,
   minify: false,
   clean: true,
-  format: ['esm'],
+  format: ['esm', 'cjs'],
 });

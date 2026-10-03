@@ -13,33 +13,38 @@ import { extractComponents } from '../../utils/extract-components';
 import { ArrayCards } from '../array-cards';
 import { ArrayCollapse } from '../array-collapse';
 import { ArrayDialog } from '../array-dialog';
+import { ArrayDrawer } from '../array-drawer';
 import { ArrayInline } from '../array-inline';
 import { ArrayPopover } from '../array-popover';
 import { ArrayTags } from '../array-tags';
 import { ArrayToggleGroup } from '../array-toggle-group';
-import { Checkbox } from '../Checkbox';
-import { Column } from '../Column';
-import { DatePicker } from '../DatePicker';
+import { Checkbox } from '../checkbox';
+import { Column } from '../column';
+import { DatePicker } from '../date-picker';
+import { DialogItem } from '../dialog-item';
+import { DrawerItem } from '../drawer-item';
+import { FormGrid } from '../form-grid';
 import { FormItem } from '../form-item';
-import { FormGrid } from '../FormGrid';
-import { Hidden } from '../Hidden';
-import { IconToggle } from '../IconToggle';
-import { Input } from '../Input';
+import { Hidden } from '../hidden';
+import { IconToggle } from '../icon-toggle';
+import { Input } from '../input';
 import { NumberInput } from '../number';
-import { ObjectContainer } from '../ObjectContainer';
-import { ConnectedRadio as Radio } from '../Radio';
-import { Row } from '../Row';
-import { Select } from '../Select';
-import { Separator } from '../Separator';
-import { Switch } from '../Switch';
-import { Textarea } from '../Textarea';
-import { ToggleButton } from '../ToggleButton';
-import { ToggleGroup } from '../ToggleGroup';
+import { ObjectContainer } from '../object-container';
+import { PopoverItem } from '../popover-item';
+import { ConnectedRadio as Radio } from '../radio';
+import { Row } from '../row';
+import { Select } from '../select';
+import { Separator } from '../separator';
+import { Switch } from '../switch';
+import { Textarea } from '../textarea';
+import { ToggleButton } from '../toggle-button';
+import { ToggleGroup } from '../toggle-group';
 
 export const basicComponentRegistry = {
   ArrayCards: { component: ArrayCards, decorator: 'FormItem' },
   ArrayCollapse: { component: ArrayCollapse, decorator: 'FormItem' },
   ArrayDialog: { component: ArrayDialog, decorator: 'FormItem' },
+  ArrayDrawer: { component: ArrayDrawer, decorator: 'FormItem' },
   ArrayInline: { component: ArrayInline, decorator: 'FormItem' },
   ArrayPopover: { component: ArrayPopover, decorator: 'FormItem' },
   ArrayTags: { component: ArrayTags, decorator: 'FormItem' },
@@ -48,6 +53,10 @@ export const basicComponentRegistry = {
   Checkbox: { component: Checkbox, decorator: 'FormItem' },
   Column: { component: Column },
   DatePicker: { component: DatePicker, decorator: 'FormItem' },
+  // Decorators used in place of FormItem to edit a field in an overlay.
+  DialogItem: { component: DialogItem },
+  DrawerItem: { component: DrawerItem },
+  PopoverItem: { component: PopoverItem },
   FormGrid: { component: FormGrid },
   FormItem: { component: FormItem },
   Hidden: { component: Hidden },

@@ -1,5 +1,5 @@
-import type { Button } from '@wordrhyme/shadcn';
-import { buttonVariants } from '@wordrhyme/shadcn';
+import { buttonVariants } from './button';
+import type { VariantProps } from 'class-variance-authority';
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react';
 
 import * as React from 'react';
@@ -33,11 +33,12 @@ function PaginationItem({ ...props }: React.ComponentProps<'li'>) {
 
 type PaginationLinkProps = {
   isActive?: boolean;
-} & Pick<React.ComponentProps<typeof Button>, 'size'> &
+} & Pick<VariantProps<typeof buttonVariants>, 'size'> &
   React.ComponentProps<'a'>;
 
 function PaginationLink({
   className,
+  children,
   isActive,
   size = 'icon',
   ...props
@@ -48,6 +49,7 @@ function PaginationLink({
       data-slot="pagination-link"
       data-active={isActive}
       className={cn(
+        'cursor-pointer',
         buttonVariants({
           variant: isActive ? 'outline' : 'ghost',
           size,
@@ -55,7 +57,9 @@ function PaginationLink({
         className,
       )}
       {...props}
-    />
+    >
+      {children}
+    </a>
   );
 }
 

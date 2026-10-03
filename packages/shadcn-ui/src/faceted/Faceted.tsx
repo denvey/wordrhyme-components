@@ -33,9 +33,9 @@ function useFacetedContext(name: string) {
   return context;
 }
 
-interface FacetedProps<Multiple extends boolean = false> extends React.ComponentProps<
-  typeof Popover
-> {
+export interface FacetedProps<
+  Multiple extends boolean = false,
+> extends React.ComponentProps<typeof Popover> {
   value?: FacetedValue<Multiple>;
   onValueChange?: (value: FacetedValue<Multiple> | undefined) => void;
   children?: React.ReactNode;

@@ -11,6 +11,10 @@
     "url": "https://github.com/denvey/wordrhyme-components",
     "directory": "packages/shadcn-formily"
   },
+  "bugs": {
+    "url": "https://github.com/pixpilot/shadcn-components/issues"
+  },
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -18,9 +22,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "bin": {
+    "formily-shadcn-mcp": "./dist/mcp-server.js"
+  },
   "files": [
     "dist"
   ],
@@ -41,7 +45,7 @@
     "prepublishOnly": "pnpm run clean && pnpm run build",
     "clean": "git clean -xdf .cache .turbo dist",
     "clean:all": "git clean -xdf .cache .turbo dist node_modules",
-    "build": "tsdown",
+    "build": "pnpm run mcp:generate && tsdown",
     "build:watch": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
     "test:watch": "vitest --watch",
@@ -49,7 +53,8 @@
     "test:coverage": "vitest --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
-    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore"
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore",
+    "mcp:generate": "tsx ../mcp/src/generate-mcp-registry-cli.ts"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
@@ -73,7 +78,9 @@
     "@wordrhyme/shadcn-ui": "workspace:*",
     "json-schema-traverse": "^1.0.0",
     "lucide-react": "^0.562.0",
-    "pretty-bytes": "catalog:prod"
+    "pretty-bytes": "catalog:prod",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "zod": "catalog:prod"
   },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
@@ -90,7 +97,13 @@
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
     "tsdown": "catalog:dev",
-    "typescript": "catalog:dev"
+    "typescript": "catalog:dev",
+    "@internal/mcp": "workspace:*",
+    "@tiptap/core": "^3.22.3",
+    "tsx": "catalog:dev"
   },
-  "prettier": "@internal/prettier-config"
+  "prettier": "@internal/prettier-config",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }
