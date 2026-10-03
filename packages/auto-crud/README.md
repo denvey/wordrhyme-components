@@ -1618,8 +1618,8 @@ crudActions.register({
 Import the public source entry in the application's Tailwind CSS stylesheet:
 
 ```css
-@import "tailwindcss";
-@import "@wordrhyme/auto-crud/tailwind.css";
+@import 'tailwindcss';
+@import '@wordrhyme/auto-crud/tailwind.css';
 ```
 
 The entry registers this package's published `dist/**/*.js` and `dist/**/*.cjs`

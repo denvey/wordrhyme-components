@@ -7,8 +7,8 @@
 Import the public source entry in the application's Tailwind CSS stylesheet:
 
 ```css
-@import "tailwindcss";
-@import "@wordrhyme/shadcn-ui/tailwind.css";
+@import 'tailwindcss';
+@import '@wordrhyme/shadcn-ui/tailwind.css';
 ```
 
 The entry registers this package's published `dist/**/*.js` and `dist/**/*.cjs`

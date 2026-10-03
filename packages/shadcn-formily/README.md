@@ -268,8 +268,8 @@ The label resolution priority is:
 Import the public source entry in the application's Tailwind CSS stylesheet:
 
 ```css
-@import "tailwindcss";
-@import "@wordrhyme/formily-shadcn/tailwind.css";
+@import 'tailwindcss';
+@import '@wordrhyme/formily-shadcn/tailwind.css';
 ```
 
 The entry registers this package's published `dist/**/*.js` and `dist/**/*.cjs`
