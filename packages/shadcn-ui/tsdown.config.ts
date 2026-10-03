@@ -7,5 +7,5 @@ export default defineConfig({
   minify: false,
   clean: true,
   format: ['esm', 'cjs'],
-  hooks: { 'build:done': buildStyles },
+  hooks: { 'build:done': (ctx) => buildStyles(ctx, '@wordrhyme/shadcn') },
 });

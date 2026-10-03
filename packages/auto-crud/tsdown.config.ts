@@ -11,7 +11,14 @@ export default defineConfig({
   clean: true,
   splitting: false,
   treeshake: true,
-  hooks: { 'build:done': (ctx) => buildStyles(ctx, 'styles.build.css') },
+  hooks: {
+    'build:done': (ctx) =>
+      buildStyles(
+        ctx,
+        '@wordrhyme/formily-shadcn',
+        './node_modules/@wordrhyme/ui/dist/**/*.js',
+      ),
+  },
   resolve: {
     alias: {
       '@': path.resolve(dirname(fileURLToPath(import.meta.url)), 'src'),

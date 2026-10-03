@@ -12,7 +12,7 @@
     "directory": "packages/shadcn-ui"
   },
   "exports": {
-    "./tailwind.css": "./tailwind.css",
+    "./tailwind.css": "./dist/tailwind.css",
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
@@ -24,13 +24,12 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "tailwind.css",
     "dist"
   ],
   "publishConfig": {
     "access": "public",
     "exports": {
-      "./tailwind.css": "./tailwind.css",
+      "./tailwind.css": "./dist/tailwind.css",
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",

@@ -1,4 +1,0 @@
-@import './tailwind.css';
-
-/* AutoCrud also renders modal and menu primitives from its WordRhyme UI peer. */
-@source './node_modules/@wordrhyme/ui/dist/**/*.js';

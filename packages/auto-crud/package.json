@@ -15,7 +15,7 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    "./tailwind.css": "./tailwind.css",
+    "./tailwind.css": "./dist/tailwind.css",
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
@@ -24,7 +24,6 @@
     "./styles.css": "./dist/styles.css"
   },
   "files": [
-    "tailwind.css",
     "dist"
   ],
   "publishConfig": {

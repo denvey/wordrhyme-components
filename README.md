@@ -66,6 +66,9 @@ Custom UI components and utilities built with shadcn/ui.
 import only the highest-level package you use; its entry includes the component
 dependency chain.
 
+Both public entries are generated in `dist` during the package build. Their
+import paths stay the same; workspace consumers must build the packages first.
+
 ### Tailwind CSS v4
 
 Import the source entry in your application's Tailwind stylesheet:
