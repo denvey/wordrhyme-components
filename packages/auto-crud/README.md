@@ -1612,3 +1612,23 @@ crudActions.register({
 - 未匹配拥有方的 ID 只追加一次；不带 ID 的 custom 操作继续独立追加。
 - 注销扩展后恢复拥有方操作；内置操作继续按 `type` 合并及执行权限检查。
 - custom 操作仍由业务方提供权限守卫；ID 不授予权限，也不影响后端鉴权。
+
+## Styles
+
+Choose one mode and import only the highest-level package you use.
+
+With Tailwind CSS v4, in your application stylesheet:
+
+```css
+@import 'tailwindcss';
+@import '@wordrhyme/auto-crud/tailwind.css';
+```
+
+Without Tailwind CSS, in your application entry:
+
+```ts
+import '@wordrhyme/auto-crud/styles.css';
+```
+
+See the [shared style guide](https://github.com/denvey/wordrhyme-components#styles)
+for theme setup, dark mode, and custom classes.

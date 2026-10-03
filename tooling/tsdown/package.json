@@ -7,6 +7,10 @@
     ".": {
       "types": "./index.d.ts",
       "import": "./index.js"
+    },
+    "./styles": {
+      "types": "./build-styles.d.ts",
+      "import": "./build-styles.js"
     }
   },
   "scripts": {
@@ -17,6 +21,10 @@
   },
   "dependencies": {
     "@pixpilot/tsdown-config": "^0.3.0",
+    "@tailwindcss/postcss": "catalog:dev",
+    "postcss": "catalog:dev",
+    "tailwindcss": "catalog:dev",
+    "tailwindcss-animate": "catalog:dev",
     "tsdown": "catalog:dev"
   },
   "devDependencies": {
