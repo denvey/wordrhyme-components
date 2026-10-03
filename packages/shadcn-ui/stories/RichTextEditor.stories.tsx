@@ -1,4 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import type { Editor } from '@tiptap/core';
+import { Mark, mergeAttributes } from '@tiptap/core';
 import { useState } from 'react';
 import { RichTextEditor } from '../src/rich-text-editor/RichTextEditor';
 
@@ -35,6 +37,17 @@ const meta = {
     toolbarItems: {
       control: 'object',
       description: 'Array of toolbar items to display',
+    },
+    maxLength: {
+      control: 'number',
+      description:
+        'Maximum number of characters allowed. Shows a counter below the content area',
+    },
+    autoFocus: {
+      control: 'select',
+      options: [false, true, 'start', 'end', 'all'],
+      description: 'Focus the editor on mount, and where the cursor is placed',
+      defaultValue: false,
     },
     allowLinkTarget: {
       control: 'boolean',
@@ -152,6 +165,108 @@ export const WithLink: Story = {
 export const WithPlaceholder: Story = {
   args: {
     placeholder: 'Start writing your amazing content here...',
+  },
+};
+
+/**
+ * `autoFocus` puts the cursor in the editor as soon as it mounts. Use `'end'`
+ * to continue after existing content, `'start'` (or `true`) to land before it,
+ * `'all'` to select everything, or a number for an explicit document position.
+ */
+export const WithAutoFocus: Story = {
+  args: {
+    value: '<p>The cursor starts at the end of this sentence.</p>',
+    autoFocus: 'end',
+  },
+};
+
+/**
+ * Passing `maxLength` caps the number of characters the editor accepts and
+ * renders a `current / max` counter below the content area. The count is based
+ * on the plain text content, so HTML markup does not consume the budget.
+ *
+ * Once the limit is reached, further input is rejected and the counter turns
+ * into the destructive color.
+ */
+export const WithMaxLength: Story = {
+  args: {
+    value: '<p>This editor accepts at most 120 characters.</p>',
+    maxLength: 120,
+    toolbarItems: ['bold', 'italic', '|', 'bulletList'],
+  },
+};
+
+/**
+ * When placed inside a fixed-height container, the editor keeps the toolbar
+ * pinned to the top and scrolls the content area internally instead of letting
+ * the whole editor overflow its parent.
+ *
+ * This works automatically: give the editor a bounded height (here via
+ * `slots.root.className="h-full"` inside a fixed-height wrapper) and the
+ * flex layout takes care of the rest.
+ */
+export const ConstrainedHeight: Story = {
+  render: function ConstrainedHeightEditor() {
+    const longContent = Array.from(
+      { length: 12 },
+      (_, i) =>
+        `<h2>Section ${i + 1}</h2><p>This is a long paragraph used to demonstrate internal scrolling. The toolbar should stay pinned to the top while this content scrolls. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>`,
+    ).join('');
+
+    return (
+      <div
+        id="rich-text-editor-constrained-wrapper"
+        className="h-[400px] w-full max-w-2xl"
+      >
+        <RichTextEditor value={longContent} slots={{ root: { className: 'h-full' } }} />
+      </div>
+    );
+  },
+};
+
+/**
+ * You can extend the editor with any TipTap `Extension`, `Node`, or `Mark`
+ * through the `extensions` prop. They are appended to the built-in extensions
+ * (StarterKit, Link, TextAlign, Placeholder).
+ *
+ * This example defines a custom `highlight` mark inline (no extra dependency)
+ * that wraps the selection in a `<mark>` element, and wires it to a custom
+ * toolbar button. In real projects you can pass official packages the same way,
+ * e.g. `extensions={[Highlight, Image]}` from `@tiptap/extension-highlight` and
+ * `@tiptap/extension-image`.
+ */
+export const WithCustomExtension: Story = {
+  render: function CustomExtensionEditor() {
+    // A minimal custom mark. Anything created with TipTap's `Mark.create`,
+    // `Node.create`, or `Extension.create` can be passed to `extensions`.
+    const Highlight = Mark.create({
+      name: 'highlight',
+      parseHTML() {
+        return [{ tag: 'mark' }];
+      },
+      renderHTML({ HTMLAttributes }) {
+        return ['mark', mergeAttributes(HTMLAttributes), 0];
+      },
+    });
+
+    return (
+      <RichTextEditor
+        value="<p>Select some text and press the highlighter button.</p>"
+        extensions={[Highlight]}
+        toolbarItems={[
+          'bold',
+          'italic',
+          '|',
+          {
+            icon: '🖍️',
+            tooltip: 'Highlight',
+            onClick: (editor: Editor) =>
+              editor.chain().focus().toggleMark('highlight').run(),
+            isActive: (editor: Editor) => editor.isActive('highlight'),
+          },
+        ]}
+      />
+    );
   },
 };
 

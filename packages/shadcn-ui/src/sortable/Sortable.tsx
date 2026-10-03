@@ -97,7 +97,7 @@ interface GetItemValue<T> {
   getItemValue: (item: T) => UniqueIdentifier;
 }
 
-type SortableRootProps<T> = DndContextProps &
+export type SortableRootProps<T> = DndContextProps &
   (T extends object ? GetItemValue<T> : Partial<GetItemValue<T>>) & {
     value: T[];
     onValueChange?: (items: T[]) => void;

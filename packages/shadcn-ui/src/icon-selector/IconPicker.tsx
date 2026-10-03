@@ -7,7 +7,7 @@ import { Icon } from '@iconify/react';
 import { cn } from '@wordrhyme/shadcn';
 import { Plus, X } from 'lucide-react';
 import { useCallback, useState } from 'react';
-import { Button } from '../Button';
+import { Button } from '../button';
 import { useMediaQuery } from '../hooks';
 import { getId } from '../utils';
 import { ICON_SELECTOR_ERROR_MESSAGE } from './constants';
@@ -47,6 +47,7 @@ export interface IconPickerProps {
     valueText?: { className?: string };
     clearIcon?: { className?: string };
   };
+  className?: string;
 }
 
 const ICON_SIZE = '!h-4 !w-4';
@@ -64,6 +65,7 @@ export const IconPicker: FC<IconPickerProps> = ({
   emptyText = <Plus className={ICON_SIZE} />,
   showClearButton = true,
   slots,
+  className,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -83,6 +85,11 @@ export const IconPicker: FC<IconPickerProps> = ({
     setIsOpen(false);
     onOpenChange?.(false);
   }, [onChange, onOpenChange]);
+
+  const handleOpenPicker = useCallback(() => {
+    setIsOpen(true);
+    onOpenChange?.(true);
+  }, [onOpenChange]);
 
   const hasValue = typeof value === 'string' && value.length > 0;
 
@@ -152,7 +159,7 @@ export const IconPicker: FC<IconPickerProps> = ({
           type="button"
           variant="outline"
           aria-label={iconButtonLabel}
-          className={cn('p-2 min-w-10', slots?.preview?.className)}
+          className={cn('p-2 min-w-10', slots?.preview?.className, className)}
         >
           {iconButtonContent}
           {shouldShowClearButton && (
@@ -183,9 +190,12 @@ export const IconPicker: FC<IconPickerProps> = ({
 
   return (
     <div className={cn('flex items-center gap-2', slots?.root?.className)}>
-      <div
+      <button
+        type="button"
+        aria-label={iconButtonLabel}
+        onClick={handleOpenPicker}
         className={cn(
-          'flex items-center gap-2 rounded-md border border-input bg-background px-3 py-2',
+          'flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 hover:bg-muted/50',
           slots?.preview?.className,
         )}
       >
@@ -197,7 +207,7 @@ export const IconPicker: FC<IconPickerProps> = ({
             {value}
           </span>
         )}
-      </div>
+      </button>
 
       <IconPickerContainer
         effectiveMode={effectiveMode}

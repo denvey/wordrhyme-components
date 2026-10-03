@@ -11,6 +11,10 @@
     "url": "https://github.com/denvey/wordrhyme-components",
     "directory": "packages/shadcn-ui"
   },
+  "bugs": {
+    "url": "https://github.com/pixpilot/shadcn-components/issues"
+  },
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -18,9 +22,9 @@
       "require": "./dist/index.cjs"
     }
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "bin": {
+    "shadcn-ui-mcp": "./dist/mcp-server.js"
+  },
   "files": [
     "dist"
   ],
@@ -41,7 +45,7 @@
     "prepublishOnly": "pnpm run clean && pnpm run build",
     "clean": "git clean -xdf .cache .turbo dist",
     "clean:all": "git clean -xdf .cache .turbo dist node_modules",
-    "build": "tsdown",
+    "build": "pnpm run mcp:generate && tsdown",
     "build:watch": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
     "test:watch": "vitest --watch",
@@ -49,7 +53,8 @@
     "test:coverage": "vitest --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
-    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore"
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore",
+    "mcp:generate": "tsx ../mcp/src/generate-mcp-registry-cli.ts"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
@@ -67,8 +72,7 @@
     "@pixpilot/hash": "catalog:prod",
     "@pixpilot/string": "catalog:prod",
     "@radix-ui/react-direction": "^1.1.1",
-    "@radix-ui/react-slot": "^1.2.4",
-    "@tailwindcss/typography": "^0.5.19",
+    "@radix-ui/react-slot": "catalog:prod",
     "@tanstack/react-virtual": "^3.13.23",
     "@tiptap/core": "^3.22.3",
     "@tiptap/extension-link": "^3.22.3",
@@ -82,7 +86,10 @@
     "next-themes": "catalog:prod",
     "pretty-bytes": "^7.1.0",
     "react-responsive": "^10.0.1",
-    "sonner": "catalog:prod"
+    "sonner": "2.0.7",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@tiptap/extensions": "^3.22.3",
+    "zod": "catalog:prod"
   },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
@@ -104,7 +111,12 @@
     "react-dom": "catalog:prod",
     "tailwindcss": "catalog:dev",
     "tsdown": "catalog:dev",
-    "typescript": "catalog:dev"
+    "typescript": "catalog:dev",
+    "@internal/mcp": "workspace:*",
+    "tsx": "catalog:dev"
   },
-  "prettier": "@internal/prettier-config"
+  "prettier": "@internal/prettier-config",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }
