@@ -1,4 +1,5 @@
 import { defineConfig } from 'tsdown';
+import { buildStyles } from '@internal/tsdown-config/styles';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
@@ -10,6 +11,7 @@ export default defineConfig({
   clean: true,
   splitting: false,
   treeshake: true,
+  hooks: { 'build:done': (ctx) => buildStyles(ctx, 'styles.build.css') },
   resolve: {
     alias: {
       '@': path.resolve(dirname(fileURLToPath(import.meta.url)), 'src'),

@@ -7,6 +7,10 @@
     ".": {
       "types": "./index.d.ts",
       "import": "./index.js"
+    },
+    "./styles": {
+      "types": "./build-styles.d.ts",
+      "import": "./build-styles.js"
     }
   },
   "scripts": {
@@ -17,7 +21,11 @@
   },
   "dependencies": {
     "@pixpilot/tsdown-config": "^0.3.0",
-    "tsdown": "catalog:dev"
+    "tsdown": "catalog:dev",
+    "postcss": "catalog:dev",
+    "tailwindcss": "catalog:dev",
+    "@tailwindcss/postcss": "catalog:dev",
+    "tailwindcss-animate": "catalog:dev"
   },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",

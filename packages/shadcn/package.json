@@ -11,14 +11,17 @@
     "url": "https://github.com/denvey/wordrhyme-components",
     "directory": "packages/shadcn"
   },
-  "sideEffects": false,
+  "sideEffects": [
+    "**/*.css"
+  ],
   "exports": {
     "./tailwind.css": "./tailwind.css",
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    }
+    },
+    "./styles.css": "./dist/styles.css"
   },
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -39,7 +42,8 @@
       "./form": {
         "import": "./dist/form/index.js",
         "require": "./dist/form/index.cjs"
-      }
+      },
+      "./styles.css": "./dist/styles.css"
     },
     "main": "./dist/index.cjs",
     "module": "./dist/index.js",
