@@ -14,7 +14,7 @@ declare module '@tanstack/react-table' {
     label?: string;
     index?: number;
     /** 应用于该列 body 单元格的 className */
-    cellClassName?: string;
+    className?: string;
     placeholder?: string;
     variant?: FilterVariant;
     options?: Option[];

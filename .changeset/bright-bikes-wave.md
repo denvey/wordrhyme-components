@@ -8,4 +8,4 @@ Use fixed column tracks for tables with a finite maxSize so browser auto layout 
 
 Keep column tracks in pinned rendering order, contain overflowing cell content in fixed layouts, and let default text inherit configured cell wrapping.
 
-Reuse the existing table metadata channel via `table.meta.cellClassName`, without adding a separate top-level field or metadata conversion path.
+Reuse the existing table metadata channel via `table.meta.className`, without adding a separate top-level field or metadata conversion path.

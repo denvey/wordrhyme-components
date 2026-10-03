@@ -90,14 +90,16 @@ export function DataTable<TData>({
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                   {row.getVisibleCells().map((cell) => {
-                    const cellClassName = cell.column.columnDef.meta?.cellClassName;
+                    const columnClassName = cell.column.columnDef.meta?.className;
 
                     return (
                       <TableCell
                         key={cell.id}
                         className={cn(
                           hasWidthCap && 'overflow-hidden text-ellipsis',
-                          typeof cellClassName === 'string' ? cellClassName : undefined,
+                          typeof columnClassName === 'string'
+                            ? columnClassName
+                            : undefined,
                         )}
                         style={{
                           ...getColumnPinningStyle({ column: cell.column }),

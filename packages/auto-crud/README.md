@@ -393,9 +393,9 @@ type Fields = Record<string, Field>;
 
 ### 列宽与单元格样式
 
-`table` 中的 `size`、`minSize` 和 `maxSize` 控制列宽。`table.meta.cellClassName` 会应用到该列每一行的 body 单元格；不配置时沿用默认展示。
+`table` 中的 `size`、`minSize` 和 `maxSize` 控制列宽。`table.meta.className` 会应用到该列每一行的 body 单元格；不配置时沿用默认展示。
 
-任一可见列设置有限的 `maxSize` 后，表格使用固定列宽布局，其他列采用各自的 `size` 或 TanStack 默认宽度。默认正文保持单行，超出列宽的文本省略；通过 `table.meta.cellClassName` 可以改为换行展示。
+任一可见列设置有限的 `maxSize` 后，表格使用固定列宽布局，其他列采用各自的 `size` 或 TanStack 默认宽度。默认正文保持单行，超出列宽的文本省略；通过 `table.meta.className` 可以改为换行展示。
 
 ```typescript
 fields={{
@@ -405,7 +405,7 @@ fields={{
       minSize: 250,
       maxSize: 250,
       meta: {
-        cellClassName: 'whitespace-normal break-words',
+        className: 'whitespace-normal break-words',
       },
     },
   },
