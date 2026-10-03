@@ -59,6 +59,47 @@ Formily integration for shadcn/ui components
 
 Custom UI components and utilities built with shadcn/ui.
 
+## Styles
+
+`@wordrhyme/shadcn`, `@wordrhyme/shadcn-ui`, `@wordrhyme/formily-shadcn`, and
+`@wordrhyme/auto-crud` each provide two stylesheet entries. Choose one mode and
+import only the highest-level package you use; its entry includes the component
+dependency chain.
+
+### Tailwind CSS v4
+
+Import the source entry in your application's Tailwind stylesheet:
+
+```css
+@import 'tailwindcss';
+@import '@wordrhyme/auto-crud/tailwind.css';
+```
+
+`tailwind.css` registers the packages' published JavaScript for class detection.
+Your application supplies the Tailwind compiler, theme, reset, and plugins needed
+by the components. This entry only registers sources; it does not add a theme or
+generate CSS itself.
+
+### Without Tailwind CSS
+
+Import the precompiled stylesheet once in your application entry:
+
+```ts
+import '@wordrhyme/auto-crud/styles.css';
+```
+
+`styles.css` includes component utilities, default theme variables, dark mode,
+and animations. No Tailwind compiler is needed. It omits global Preflight and page
+background rules; your application supplies native element normalization and
+page fonts. The utility class names also apply elsewhere on the page.
+
+Load theme overrides after this stylesheet (for example, override `--primary`
+and `--primary-foreground` on `:root`). Add `dark` to `html` for dark mode.
+Additional `className` values need your own CSS or inline styles.
+
+AutoCrud's precompiled stylesheet also covers modal and menu primitives from
+the `@wordrhyme/ui` peer installed at build time. Keep a supported version of that
+JavaScript peer installed in your application.
 
 ## 🚢 Releases
 
