@@ -375,6 +375,7 @@ interface Field {
   /** 表格特定配置 */
   table?: {
     hidden?: boolean; // 仅表格隐藏
+    classNames?: { th?: string; td?: string }; // 该列的表头和正文类名
     meta?: Record<string, unknown>; // 筛选器配置
     [key: string]: unknown;
   };
@@ -390,6 +391,72 @@ interface Field {
 
 type Fields = Record<string, Field>;
 ```
+
+### 列宽与单元格样式
+
+`fields.xxx.table` 中的 `size`、`minSize` 和 `maxSize` 控制列宽。`fields.xxx.table.classNames` 按元素分组配置该列的 CSS 类名：`th` 应用于该列的表头单元格，`td` 应用于该列每一行的正文单元格。
+
+任一可见列设置有限的 `maxSize` 后，表格使用固定列宽布局，其他列采用各自的 `size` 或 TanStack 默认宽度。默认正文保持单行，超出列宽的文本省略；通过 `fields.xxx.table.classNames.td` 可以为该列配置换行展示。
+
+```typescript
+fields={{
+  primaryContactValue: {
+    table: {
+      size: 250,
+      minSize: 250,
+      maxSize: 250,
+      classNames: {
+        th: 'text-center',
+        td: 'whitespace-normal break-words',
+      },
+    },
+  },
+}}
+```
+
+### 全局表格类名
+
+组件顶层的 `table.classNames` 为整个表格设置类名，所有值均为 CSS 类名字符串。
+
+| 配置    | 作用范围                         |
+| ------- | -------------------------------- |
+| `table` | `<table>` 元素                   |
+| `thead` | `<thead>` 表头区域               |
+| `tbody` | `<tbody>` 正文区域               |
+| `tr`    | 所有表头行、正文行和空状态行     |
+| `th`    | 所有表头单元格                   |
+| `td`    | 所有正文单元格，包括空状态单元格 |
+
+单元格类名按默认类名、全局类名、列级类名的顺序合并；存在冲突的 Tailwind 类名由后者覆盖。空状态单元格跨越所有列，只应用全局 `td` 类名。
+
+```tsx
+<AutoCrudTable
+  schema={schema}
+  resource={resource}
+  table={{
+    classNames: {
+      table: 'text-xs',
+      thead: 'bg-muted',
+      tbody: 'text-foreground',
+      tr: 'hover:bg-accent/50',
+      th: 'h-12 text-left',
+      td: 'py-3 text-left',
+    },
+  }}
+  fields={{
+    primaryContactValue: {
+      table: {
+        classNames: {
+          th: 'text-center',
+          td: 'text-center whitespace-normal break-words',
+        },
+      },
+    },
+  }}
+/>
+```
+
+直接使用 `AutoTable` 或 `DataTable` 时，通过组件的 `classNames` prop 传入同一组全局类名。直接定义 TanStack 列时，通过 `columnDef.meta.classNames` 配置该列的 `th`、`td`。
 
 ### 基础配置
 

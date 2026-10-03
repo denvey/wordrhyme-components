@@ -1,5 +1,6 @@
 'use client';
 
+import type { ColumnMeta } from '@tanstack/react-table';
 import type { z } from 'zod';
 import type {
   AutoCrudQueryCapabilities,
@@ -9,6 +10,7 @@ import type { ColumnOverrides } from '@/lib/schema-bridge/types';
 import type { JsonSchemaFormScope } from '@wordrhyme/formily-shadcn';
 import type { ModalVariant } from './form-modal';
 import type { CrudPermissions } from '@/types/permissions';
+import type { DataTableClassNames } from '@/types/data-table';
 import { AutoTable, type FilterMode } from './auto-table';
 import type {
   BatchActionConfig,
@@ -148,7 +150,9 @@ export interface Field {
         dataSource?: AutoCrudDataSourceConfig;
         /** 声明式单元格展示模式；非 auto 模式会覆盖拥有方自定义 cell */
         display?: FieldTableDisplay;
-        /** 筛选器配置 */
+        /** 该列的类名；th 应用于表头，td 应用于正文单元格 */
+        classNames?: ColumnMeta<unknown, unknown>['classNames'];
+        /** 列元数据 */
         meta?: Record<string, unknown>;
         /** 其他列配置 */
         [key: string]: unknown;
@@ -523,6 +527,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   };
   /** 表格配置 */
   table?: {
+    /** 按元素分组的全局表格类名；列级 th/td 类名优先 */
+    classNames?: DataTableClassNames;
     /** 隐藏的列 */
     hidden?: string[];
     /** 列覆盖配置 */
@@ -1484,7 +1490,7 @@ function buildTableOverrides(
         config.table !== false && typeof config.table === 'object'
           ? (config.table.meta as Record<string, unknown> | undefined)
           : undefined;
-
+      const tableClassNames = tableConfig?.classNames;
       const fieldEnumMeta = tableOptions
         ? {
             options: tableOptions,
@@ -1547,7 +1553,13 @@ function buildTableOverrides(
       }
 
       // 始终合并 meta（无论 filter 状态如何）
-      if (fieldEnumMeta || fieldDataSourceMeta || tableMeta || filterMeta) {
+      if (
+        fieldEnumMeta ||
+        fieldDataSourceMeta ||
+        tableMeta ||
+        tableClassNames !== undefined ||
+        filterMeta
+      ) {
         result[key] = {
           ...result[key],
           meta: {
@@ -1555,6 +1567,7 @@ function buildTableOverrides(
             ...(fieldEnumMeta ?? {}),
             ...(fieldDataSourceMeta ?? {}),
             ...(tableMeta ?? {}),
+            ...(tableClassNames !== undefined ? { classNames: tableClassNames } : {}),
             ...(filterMeta ?? {}), // filter meta 优先级更高
           },
         };
@@ -1585,6 +1598,7 @@ function buildTableOverrides(
       // 处理 table 对象配置
       else if (config.table && typeof config.table === 'object') {
         const { meta, display, ...tableProps } = config.table;
+        delete tableProps.classNames;
         delete tableProps.options;
         delete tableProps.dataSource;
         result[key] = {
@@ -2672,6 +2686,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           ? { total: resource.tableData.total }
           : {})}
         overrides={tableOverrides as any}
+        classNames={tableConfig?.classNames}
         exclude={hiddenColumns as any}
         filterMode={tableConfig?.filterModes}
         search={searchConfig}
