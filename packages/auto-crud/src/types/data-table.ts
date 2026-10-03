@@ -13,8 +13,10 @@ declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string;
     index?: number;
-    /** 应用于该列 body 单元格的 className */
-    className?: string;
+    /** 按元素分组的列样式类名 */
+    styles?: {
+      td?: string;
+    };
     placeholder?: string;
     variant?: FilterVariant;
     options?: Option[];

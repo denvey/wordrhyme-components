@@ -1,5 +1,6 @@
 'use client';
 
+import type { ColumnMeta } from '@tanstack/react-table';
 import type { z } from 'zod';
 import type {
   AutoCrudQueryCapabilities,
@@ -148,6 +149,8 @@ export interface Field {
         dataSource?: AutoCrudDataSourceConfig;
         /** 声明式单元格展示模式；非 auto 模式会覆盖拥有方自定义 cell */
         display?: FieldTableDisplay;
+        /** 按元素分组的样式类名；td 应用于正文单元格 */
+        styles?: ColumnMeta<unknown, unknown>['styles'];
         /** 列元数据 */
         meta?: Record<string, unknown>;
         /** 其他列配置 */
@@ -1484,6 +1487,7 @@ function buildTableOverrides(
         config.table !== false && typeof config.table === 'object'
           ? (config.table.meta as Record<string, unknown> | undefined)
           : undefined;
+      const tableStyles = tableConfig?.styles;
       const fieldEnumMeta = tableOptions
         ? {
             options: tableOptions,
@@ -1546,7 +1550,13 @@ function buildTableOverrides(
       }
 
       // 始终合并 meta（无论 filter 状态如何）
-      if (fieldEnumMeta || fieldDataSourceMeta || tableMeta || filterMeta) {
+      if (
+        fieldEnumMeta ||
+        fieldDataSourceMeta ||
+        tableMeta ||
+        tableStyles !== undefined ||
+        filterMeta
+      ) {
         result[key] = {
           ...result[key],
           meta: {
@@ -1554,6 +1564,7 @@ function buildTableOverrides(
             ...(fieldEnumMeta ?? {}),
             ...(fieldDataSourceMeta ?? {}),
             ...(tableMeta ?? {}),
+            ...(tableStyles !== undefined ? { styles: tableStyles } : {}),
             ...(filterMeta ?? {}), // filter meta 优先级更高
           },
         };
@@ -1584,6 +1595,7 @@ function buildTableOverrides(
       // 处理 table 对象配置
       else if (config.table && typeof config.table === 'object') {
         const { meta, display, ...tableProps } = config.table;
+        delete tableProps.styles;
         delete tableProps.options;
         delete tableProps.dataSource;
         result[key] = {

@@ -90,7 +90,7 @@ export function DataTable<TData>({
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
                   {row.getVisibleCells().map((cell) => {
-                    const columnClassName = cell.column.columnDef.meta?.className;
+                    const columnClassName = cell.column.columnDef.meta?.styles?.td;
 
                     return (
                       <TableCell
