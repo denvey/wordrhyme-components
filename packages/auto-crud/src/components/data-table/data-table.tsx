@@ -13,9 +13,11 @@ import {
 import { getColumnPinningStyle } from '@/lib/data-table';
 import { useDateFormatterVersion } from '@/lib/format';
 import { cn } from '@/lib/utils';
+import type { DataTableClassNames } from '@/types/data-table';
 
 interface DataTableProps<TData> extends React.ComponentProps<'div'> {
   table: TanstackTable<TData>;
+  classNames?: DataTableClassNames;
   actionBar?: React.ReactNode;
 }
 
@@ -24,6 +26,7 @@ export function DataTable<TData>({
   actionBar,
   children,
   className,
+  classNames,
   ...props
 }: DataTableProps<TData>) {
   useDateFormatterVersion();
@@ -49,6 +52,7 @@ export function DataTable<TData>({
       {children}
       <div className="overflow-hidden rounded-md border">
         <Table
+          className={classNames?.table}
           style={
             hasWidthCap
               ? {
@@ -65,38 +69,51 @@ export function DataTable<TData>({
               ))}
             </colgroup>
           )}
-          <TableHeader>
+          <TableHeader className={classNames?.thead}>
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    colSpan={header.colSpan}
-                    className={hasWidthCap ? 'overflow-hidden text-ellipsis' : undefined}
-                    style={{
-                      ...getColumnPinningStyle({ column: header.column }),
-                    }}
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
+              <TableRow key={headerGroup.id} className={classNames?.tr}>
+                {headerGroup.headers.map((header) => {
+                  const columnClassName = header.column.columnDef.meta?.classNames?.th;
+
+                  return (
+                    <TableHead
+                      key={header.id}
+                      colSpan={header.colSpan}
+                      className={cn(
+                        hasWidthCap && 'overflow-hidden text-ellipsis',
+                        classNames?.th,
+                        typeof columnClassName === 'string' ? columnClassName : undefined,
+                      )}
+                      style={{
+                        ...getColumnPinningStyle({ column: header.column }),
+                      }}
+                    >
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
+                  );
+                })}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
+          <TableBody className={classNames?.tbody}>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow key={row.id} data-state={row.getIsSelected() && 'selected'}>
+                <TableRow
+                  key={row.id}
+                  className={classNames?.tr}
+                  data-state={row.getIsSelected() && 'selected'}
+                >
                   {row.getVisibleCells().map((cell) => {
-                    const columnClassName = cell.column.columnDef.meta?.styles?.td;
+                    const columnClassName = cell.column.columnDef.meta?.classNames?.td;
 
                     return (
                       <TableCell
                         key={cell.id}
                         className={cn(
                           hasWidthCap && 'overflow-hidden text-ellipsis',
+                          classNames?.td,
                           typeof columnClassName === 'string'
                             ? columnClassName
                             : undefined,
@@ -112,10 +129,10 @@ export function DataTable<TData>({
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className={classNames?.tr}>
                 <TableCell
                   colSpan={table.getAllColumns().length}
-                  className="h-24 text-center"
+                  className={cn('h-24 text-center', classNames?.td)}
                 >
                   No results.
                 </TableCell>
