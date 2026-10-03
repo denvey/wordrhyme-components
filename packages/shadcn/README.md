@@ -1,6 +1,4 @@
-# @internal/ui
-
-## Usage Add usage instructions here.
+# @pixpilot/ui
 
 ## Styles
 
