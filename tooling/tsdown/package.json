@@ -21,11 +21,11 @@
   },
   "dependencies": {
     "@pixpilot/tsdown-config": "^0.3.0",
-    "tsdown": "catalog:dev",
+    "@tailwindcss/postcss": "catalog:dev",
     "postcss": "catalog:dev",
     "tailwindcss": "catalog:dev",
-    "@tailwindcss/postcss": "catalog:dev",
-    "tailwindcss-animate": "catalog:dev"
+    "tailwindcss-animate": "catalog:dev",
+    "tsdown": "catalog:dev"
   },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
