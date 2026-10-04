@@ -1733,8 +1733,13 @@ describe('createCrudRouter', () => {
       ].map(({ type, value }) => ({
         name: `Host ${type} envelope with null refId and ${JSON.stringify(value)}`,
         projection: {
-          pluginId: 'example', field: 'owner', type, value,
-          refId: null, refEntity: null, display: 'Display label',
+          pluginId: 'example',
+          field: 'owner',
+          type,
+          value,
+          refId: null,
+          refEntity: null,
+          display: 'Display label',
         },
         expected: value,
       })),
@@ -1818,11 +1823,11 @@ describe('createCrudRouter', () => {
         },
       } as any) as CrudCaller;
 
-        const result = await caller.list({
-          page: 1,
-          perPage: 10,
-          joinOperator: 'and',
-        });
+      const result = await caller.list({
+        page: 1,
+        perPage: 10,
+        joinOperator: 'and',
+      });
 
       expect(readProjection).toHaveBeenCalledWith({
         id: 'com.example.tasks',
@@ -1839,70 +1844,173 @@ describe('createCrudRouter', () => {
       expect(getMetadata).not.toHaveBeenCalled();
     });
 
-    it.each(['and', 'or'] as const)('composes %s extension predicates before list counts and export limits', async (joinOperator) => {
-      const db = createListMockDb([]);
-      const buildConditions = vi.fn(async () => ({ filter: sql`exists (select 1 where ${'extension-owner'} = ${'user-1'})`,
-        search: sql`exists (select 1 where ${'extension-search'} = ${'needle'})` }));
-      const matchEntityIds = vi.fn(); const searchEntityIds = vi.fn();
-      const router = createCrudRouter({ id: 'com.example.tasks', table: mockTable,
-        schema: insertTaskSchema, updateSchema: updateTaskSchema, selectSchema: taskSchema,
-        filterableColumns: ['status'], searchColumns: ['title'] });
-      const caller = router.createCaller({ db, crudExtensions: { buildConditions, matchEntityIds, searchEntityIds } } as any) as CrudCaller;
-      const input = { search: 'needle', joinOperator, filters: [
-        { id: 'owner', value: 'user-1', operator: 'eq' as const, variant: 'select' as const, filterId: 'owner' },
-        { id: 'status', value: 'todo', operator: 'eq' as const, variant: 'select' as const, filterId: 'status' },
-      ] };
-      await caller.list({ ...input, page: 2, perPage: 10 });
-      await caller.export({ ...input, limit: 10 });
-      expect(buildConditions).toHaveBeenCalledTimes(2);
-      expect(buildConditions).toHaveBeenCalledWith({ id: 'com.example.tasks', entityId: mockTable.id,
-        filters: [input.filters[0]], search: 'needle', joinOperator });
-      expect(matchEntityIds).not.toHaveBeenCalled(); expect(searchEntityIds).not.toHaveBeenCalled();
-      const queries = listWhereQueries(db);
-      expect(queries).toHaveLength(4);
-      for (const query of queries) {
-        expect(query.params).toEqual(expect.arrayContaining(['todo', 'extension-owner', 'user-1', 'extension-search', 'needle', '%needle%']));
-        expect(query.sql.replaceAll('(', '')).toContain(`${joinOperator} exists`);
-        expect(query.sql.replaceAll('(', '')).toContain('or exists');
-        expect(query.params.some(Array.isArray)).toBe(false);
-      }
-      expect(queries.every(query => query.sql === queries[0]!.sql)).toBe(true);
-    });
+    it.each(['and', 'or'] as const)(
+      'composes %s extension predicates before list counts and export limits',
+      async (joinOperator) => {
+        const db = createListMockDb([]);
+        const buildConditions = vi.fn(async () => ({
+          filter: sql`exists (select 1 where ${'extension-owner'} = ${'user-1'})`,
+          search: sql`exists (select 1 where ${'extension-search'} = ${'needle'})`,
+        }));
+        const matchEntityIds = vi.fn();
+        const searchEntityIds = vi.fn();
+        const router = createCrudRouter({
+          id: 'com.example.tasks',
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          selectSchema: taskSchema,
+          filterableColumns: ['status'],
+          searchColumns: ['title'],
+        });
+        const caller = router.createCaller({
+          db,
+          crudExtensions: { buildConditions, matchEntityIds, searchEntityIds },
+        } as any) as CrudCaller;
+        const input = {
+          search: 'needle',
+          joinOperator,
+          filters: [
+            {
+              id: 'owner',
+              value: 'user-1',
+              operator: 'eq' as const,
+              variant: 'select' as const,
+              filterId: 'owner',
+            },
+            {
+              id: 'status',
+              value: 'todo',
+              operator: 'eq' as const,
+              variant: 'select' as const,
+              filterId: 'status',
+            },
+          ],
+        };
+        await caller.list({ ...input, page: 2, perPage: 10 });
+        await caller.export({ ...input, limit: 10 });
+        expect(buildConditions).toHaveBeenCalledTimes(2);
+        expect(buildConditions).toHaveBeenCalledWith({
+          id: 'com.example.tasks',
+          entityId: mockTable.id,
+          filters: [input.filters[0]],
+          search: 'needle',
+          joinOperator,
+        });
+        expect(matchEntityIds).not.toHaveBeenCalled();
+        expect(searchEntityIds).not.toHaveBeenCalled();
+        const queries = listWhereQueries(db);
+        expect(queries).toHaveLength(4);
+        for (const query of queries) {
+          expect(query.params).toEqual(
+            expect.arrayContaining([
+              'todo',
+              'extension-owner',
+              'user-1',
+              'extension-search',
+              'needle',
+              '%needle%',
+            ]),
+          );
+          expect(query.sql.replaceAll('(', '')).toContain(`${joinOperator} exists`);
+          expect(query.sql.replaceAll('(', '')).toContain('or exists');
+          expect(query.params.some(Array.isArray)).toBe(false);
+        }
+        expect(queries.every((query) => query.sql === queries[0]!.sql)).toBe(true);
+      },
+    );
 
-    it.each(['filter', 'search'] as const)('rejects legacy %s providers rather than accepting truncated IDs', async (mode) => {
-      const db = createListMockDb([]);
-      const legacy = vi.fn(async () => ['1']);
-      const router = createCrudRouter({ id: 'com.example.tasks', table: mockTable,
-        schema: insertTaskSchema, updateSchema: updateTaskSchema, selectSchema: taskSchema });
-      const caller = router.createCaller({ db, crudExtensions: { matchEntityIds: legacy, searchEntityIds: legacy } } as any) as CrudCaller;
-      const input = mode === 'filter' ? { filters: [{ id: 'owner', value: ['pending'], operator: 'eq' as const,
-        variant: 'multiSelect' as const, filterId: 'owner' }] } : { search: 'pending' };
-      await expect(caller.list({ ...input, page: 1, perPage: 10, joinOperator: 'and' }))
-        .rejects.toMatchObject({ code: 'PRECONDITION_FAILED', message: expect.stringContaining('buildConditions') });
-      await expect(caller.export({ ...input, limit: 10, joinOperator: 'and' }))
-        .rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
-      expect(legacy).not.toHaveBeenCalled();
-      expect(listWhereQueries(db)).toEqual([]);
-    });
+    it.each(['filter', 'search'] as const)(
+      'rejects legacy %s providers rather than accepting truncated IDs',
+      async (mode) => {
+        const db = createListMockDb([]);
+        const legacy = vi.fn(async () => ['1']);
+        const router = createCrudRouter({
+          id: 'com.example.tasks',
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          selectSchema: taskSchema,
+        });
+        const caller = router.createCaller({
+          db,
+          crudExtensions: { matchEntityIds: legacy, searchEntityIds: legacy },
+        } as any) as CrudCaller;
+        const input =
+          mode === 'filter'
+            ? {
+                filters: [
+                  {
+                    id: 'owner',
+                    value: ['pending'],
+                    operator: 'eq' as const,
+                    variant: 'multiSelect' as const,
+                    filterId: 'owner',
+                  },
+                ],
+              }
+            : { search: 'pending' };
+        await expect(
+          caller.list({ ...input, page: 1, perPage: 10, joinOperator: 'and' }),
+        ).rejects.toMatchObject({
+          code: 'PRECONDITION_FAILED',
+          message: expect.stringContaining('buildConditions'),
+        });
+        await expect(
+          caller.export({ ...input, limit: 10, joinOperator: 'and' }),
+        ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+        expect(legacy).not.toHaveBeenCalled();
+        expect(listWhereQueries(db)).toEqual([]);
+      },
+    );
 
     it('rejects providers that omit a requested extension filter condition', async () => {
       const db = createListMockDb([]);
-      const router = createCrudRouter({ id: 'com.example.tasks', table: mockTable,
-        schema: insertTaskSchema, updateSchema: updateTaskSchema, selectSchema: taskSchema });
-      const caller = router.createCaller({ db, crudExtensions: { buildConditions: async () => ({}) } } as any) as ListCaller;
-      await expect(caller.list({ page: 1, perPage: 10, joinOperator: 'and', filters: [
-        { id: 'owner', value: 'missing', operator: 'eq', variant: 'select', filterId: 'owner' },
-      ] })).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+      const router = createCrudRouter({
+        id: 'com.example.tasks',
+        table: mockTable,
+        schema: insertTaskSchema,
+        updateSchema: updateTaskSchema,
+        selectSchema: taskSchema,
+      });
+      const caller = router.createCaller({
+        db,
+        crudExtensions: { buildConditions: async () => ({}) },
+      } as any) as ListCaller;
+      await expect(
+        caller.list({
+          page: 1,
+          perPage: 10,
+          joinOperator: 'and',
+          filters: [
+            {
+              id: 'owner',
+              value: 'missing',
+              operator: 'eq',
+              variant: 'select',
+              filterId: 'owner',
+            },
+          ],
+        }),
+      ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
       expect(listWhereQueries(db)).toEqual([]);
     });
 
     it('keeps bigint base search when the extension search condition is false', async () => {
       const db = createListMockDb([]);
       const buildConditions = vi.fn(async () => ({ search: sql`false` }));
-      const router = createCrudRouter({ id: 'com.example.bigint-tasks', table: bigintTasks,
-        schema: bigintTaskSchema.omit({ id: true }), updateSchema: bigintTaskSchema.omit({ id: true }).partial(),
-        selectSchema: bigintTaskSchema, searchColumns: ['title'] });
-      const caller = router.createCaller({ db, crudExtensions: { buildConditions } } as any) as CrudCaller;
+      const router = createCrudRouter({
+        id: 'com.example.bigint-tasks',
+        table: bigintTasks,
+        schema: bigintTaskSchema.omit({ id: true }),
+        updateSchema: bigintTaskSchema.omit({ id: true }).partial(),
+        selectSchema: bigintTaskSchema,
+        searchColumns: ['title'],
+      });
+      const caller = router.createCaller({
+        db,
+        crudExtensions: { buildConditions },
+      } as any) as CrudCaller;
       await caller.list({ page: 1, perPage: 10, search: 'needle', joinOperator: 'and' });
       await caller.export({ limit: 10, search: 'needle', joinOperator: 'and' });
       for (const query of listWhereQueries(db)) {
@@ -1913,15 +2021,35 @@ describe('createCrudRouter', () => {
 
     it('uses a type-safe false predicate for empty bigint extension matches', async () => {
       const db = createListMockDb([]);
-      const router = createCrudRouter({ id: 'com.example.bigint-tasks', table: bigintTasks,
-        schema: bigintTaskSchema.omit({ id: true }), updateSchema: bigintTaskSchema.omit({ id: true }).partial(),
-        selectSchema: bigintTaskSchema, filterableColumns: ['id'] });
-      const caller = router.createCaller({ db, crudExtensions: { buildConditions: async () => ({ filter: sql`false` }) } } as any) as ListCaller;
-      await caller.list({ page: 1, perPage: 10, joinOperator: 'and', filters: [
-        { id: 'owner', value: 'missing', operator: 'eq', variant: 'select', filterId: 'owner' },
-      ] });
+      const router = createCrudRouter({
+        id: 'com.example.bigint-tasks',
+        table: bigintTasks,
+        schema: bigintTaskSchema.omit({ id: true }),
+        updateSchema: bigintTaskSchema.omit({ id: true }).partial(),
+        selectSchema: bigintTaskSchema,
+        filterableColumns: ['id'],
+      });
+      const caller = router.createCaller({
+        db,
+        crudExtensions: { buildConditions: async () => ({ filter: sql`false` }) },
+      } as any) as ListCaller;
+      await caller.list({
+        page: 1,
+        perPage: 10,
+        joinOperator: 'and',
+        filters: [
+          {
+            id: 'owner',
+            value: 'missing',
+            operator: 'eq',
+            variant: 'select',
+            filterId: 'owner',
+          },
+        ],
+      });
       for (const query of listWhereQueries(db)) {
-        expect(query.sql).toBe('false'); expect(query.params).toEqual([]);
+        expect(query.sql).toBe('false');
+        expect(query.params).toEqual([]);
       }
     });
 

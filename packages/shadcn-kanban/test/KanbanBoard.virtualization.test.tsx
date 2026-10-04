@@ -11,9 +11,11 @@ const dnd = vi.hoisted(() => ({
 }));
 
 /* Real dragging needs layout jsdom cannot provide, so dnd-kit is stubbed out. */
-vi.mock('@dnd-kit/core', () => {
+vi.mock('@dnd-kit/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/core')>();
   const mockDroppable = () => ({ setNodeRef: () => undefined, isOver: false });
   return {
+    ...actual,
     DndContext: (props: {
       children: React.ReactNode;
       onDragStart: (event: { active: { id: string } }) => void;
@@ -43,7 +45,8 @@ vi.mock('@dnd-kit/core', () => {
   };
 });
 
-vi.mock('@dnd-kit/sortable', () => {
+vi.mock('@dnd-kit/sortable', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/sortable')>();
   const mockSortable = () => ({
     attributes: {},
     listeners: {},
@@ -53,6 +56,7 @@ vi.mock('@dnd-kit/sortable', () => {
     isDragging: false,
   });
   return {
+    ...actual,
     SortableContext: ({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
     ),
@@ -64,7 +68,8 @@ vi.mock('@dnd-kit/sortable', () => {
   };
 });
 
-vi.mock('@dnd-kit/utilities', () => ({
+vi.mock('@dnd-kit/utilities', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@dnd-kit/utilities')>()),
   CSS: { Transform: { toString: () => undefined } },
 }));
 

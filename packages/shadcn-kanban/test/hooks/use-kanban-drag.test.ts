@@ -1,10 +1,10 @@
-import type { CollisionDetection } from '@dnd-kit/core';
+import type { CollisionDetection, PointerSensorOptions } from '@dnd-kit/core';
 import type { KanbanChangeEvent, KanbanItem } from '../../src';
 import type { UseKanbanDragResult } from '../../src/hooks/use-kanban-drag';
 
 import { MouseSensor, TouchSensor } from '@dnd-kit/core';
 import { act } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { assert, describe, expect, it, vi } from 'vitest';
 import {
   COLUMNS,
   dragEvent,
@@ -59,8 +59,13 @@ describe('useKanbanDrag', () => {
   });
 
   describe('sensors', () => {
-    const findSensor = (sensors: UseKanbanDragResult<never>['sensors'], type: unknown) =>
-      sensors.find((descriptor) => descriptor.sensor === type)?.options;
+    const findSensor = (
+      sensors: UseKanbanDragResult<never>['sensors'],
+      type: typeof MouseSensor | typeof TouchSensor,
+    ) =>
+      sensors.find((descriptor) => descriptor.sensor === type)?.options as
+        | PointerSensorOptions
+        | undefined;
 
     it('should arm a touch drag only after a hold, so a swipe still scrolls', () => {
       const { result } = setupDrag({ externalItems: ITEMS, columns: COLUMNS });
@@ -99,14 +104,24 @@ describe('useKanbanDrag', () => {
       handle.append(icon);
       document.body.append(handle);
 
-      const bypass = findSensor(
-        result.current.sensors,
-        TouchSensor,
-      )?.bypassActivationConstraint;
+      const options = findSensor(result.current.sensors, TouchSensor);
+      assert(options?.bypassActivationConstraint);
+      const bypass = options.bypassActivationConstraint;
+      const activeNode = {
+        id: 'todo-1',
+        key: 'todo-1',
+        node: { current: handle },
+        activatorNode: { current: handle },
+        data: { current: {} },
+      };
 
       /* An icon inside the handle counts — that is what a finger actually hits. */
-      expect(bypass?.({ event: { target: icon } })).toBe(true);
-      expect(bypass?.({ event: { target: document.body } })).toBe(false);
+      const handleEvent = new Event('touchstart');
+      icon.dispatchEvent(handleEvent);
+      expect(bypass({ activeNode, event: handleEvent, options })).toBe(true);
+      const bodyEvent = new Event('touchstart');
+      document.body.dispatchEvent(bodyEvent);
+      expect(bypass({ activeNode, event: bodyEvent, options })).toBe(false);
 
       handle.remove();
     });

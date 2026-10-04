@@ -39,6 +39,12 @@ export const meta: ComponentMeta<DrawerDocumentedProps> = {
     },
     forceMount:
       'Forces the content to render even when closed, so its mount can be controlled externally (e.g. for animations).',
+    deferPointerDownOutside: {
+      description:
+        'Inherited Radix option that waits for the click event before dispatching an outside pointer-down event, allowing later event handlers to cancel dismissal. Radix Dialog enables this internally for drawers.',
+      type: 'boolean',
+      defaultValue: 'true',
+    },
     onOpenAutoFocus:
       'Called when focus moves into the content on open; call preventDefault to opt out of autofocus.',
     onCloseAutoFocus:

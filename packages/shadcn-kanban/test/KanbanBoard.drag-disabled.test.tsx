@@ -11,7 +11,8 @@ const sortableCalls = vi.hoisted(
 );
 
 /* Real dragging needs layout jsdom cannot provide, so dnd-kit is stubbed out. */
-vi.mock('@dnd-kit/core', () => ({
+vi.mock('@dnd-kit/core', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@dnd-kit/core')>()),
   DndContext: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   DragOverlay: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   useDroppable: () => ({ setNodeRef: () => undefined, isOver: false }),
@@ -33,7 +34,8 @@ vi.mock('@dnd-kit/core', () => ({
   MeasuringStrategy: { Always: 'always' },
 }));
 
-vi.mock('@dnd-kit/sortable', () => ({
+vi.mock('@dnd-kit/sortable', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@dnd-kit/sortable')>()),
   SortableContext: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   useSortable: ({ id, disabled }: { id: string; disabled?: boolean }) => {
     sortableCalls.push({ id, disabled });
@@ -52,7 +54,8 @@ vi.mock('@dnd-kit/sortable', () => ({
   sortableKeyboardCoordinates: vi.fn(),
 }));
 
-vi.mock('@dnd-kit/utilities', () => ({
+vi.mock('@dnd-kit/utilities', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@dnd-kit/utilities')>()),
   CSS: { Transform: { toString: () => undefined } },
 }));
 

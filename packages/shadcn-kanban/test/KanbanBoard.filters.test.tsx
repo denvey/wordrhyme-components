@@ -11,9 +11,11 @@ import { describe, expect, it, vi } from 'vitest';
 import { KanbanBoard } from '../src';
 
 /* Drag-and-drop is irrelevant to filtering, so stub it out. */
-vi.mock('@dnd-kit/core', () => {
+vi.mock('@dnd-kit/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/core')>();
   const mockDroppable = () => ({ setNodeRef: () => undefined, isOver: false });
   return {
+    ...actual,
     DndContext: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     DragOverlay: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     useDroppable: mockDroppable,
@@ -37,7 +39,8 @@ vi.mock('@dnd-kit/core', () => {
   };
 });
 
-vi.mock('@dnd-kit/sortable', () => {
+vi.mock('@dnd-kit/sortable', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/sortable')>();
   const mockSortable = () => ({
     attributes: {},
     listeners: {},
@@ -47,6 +50,7 @@ vi.mock('@dnd-kit/sortable', () => {
     isDragging: false,
   });
   return {
+    ...actual,
     SortableContext: ({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
     ),
@@ -58,7 +62,8 @@ vi.mock('@dnd-kit/sortable', () => {
   };
 });
 
-vi.mock('@dnd-kit/utilities', () => ({
+vi.mock('@dnd-kit/utilities', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@dnd-kit/utilities')>()),
   CSS: { Transform: { toString: () => undefined } },
 }));
 
