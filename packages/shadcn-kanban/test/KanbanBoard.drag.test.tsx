@@ -12,9 +12,11 @@ const dndHandlers = vi.hoisted(() => ({
   onDragEnd: undefined as ((event: DragEndEvent) => void) | undefined,
 }));
 
-vi.mock('@dnd-kit/core', () => {
+vi.mock('@dnd-kit/core', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/core')>();
   const mockDroppable = () => ({ setNodeRef: vi.fn(), isOver: false });
   return {
+    ...actual,
     DndContext: ({
       children,
       ...handlers
@@ -43,7 +45,8 @@ vi.mock('@dnd-kit/core', () => {
   };
 });
 
-vi.mock('@dnd-kit/sortable', () => {
+vi.mock('@dnd-kit/sortable', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@dnd-kit/sortable')>();
   const mockSortable = () => ({
     attributes: {},
     listeners: {},
@@ -53,6 +56,7 @@ vi.mock('@dnd-kit/sortable', () => {
     isDragging: false,
   });
   return {
+    ...actual,
     SortableContext: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
     useSortable: mockSortable,
     arrayMove: <T,>(items: T[], from: number, to: number) => {
@@ -67,7 +71,8 @@ vi.mock('@dnd-kit/sortable', () => {
   };
 });
 
-vi.mock('@dnd-kit/utilities', () => ({
+vi.mock('@dnd-kit/utilities', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@dnd-kit/utilities')>()),
   CSS: { Transform: { toString: () => undefined } },
 }));
 
