@@ -1145,37 +1145,68 @@ async function applyCrudExtensionFilters<TTable extends PgTable, TContext>(
   const extensionSearch = search && !searchDisabled;
   if (!provider?.buildConditions) {
     if (extensionFilters.length > 0 || (extensionSearch && provider?.searchEntityIds)) {
-      throw new TRPCError({ code: 'PRECONDITION_FAILED',
-        message: 'CRUD extension queries require a provider with buildConditions; upgrade the Host/provider' });
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message:
+          'CRUD extension queries require a provider with buildConditions; upgrade the Host/provider',
+      });
     }
     if (extensionSearch && !buildCrudSearchCondition({ table, search, searchColumns })) {
-      throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'CRUD search is not available' });
+      throw new TRPCError({
+        code: 'PRECONDITION_FAILED',
+        message: 'CRUD search is not available',
+      });
     }
     return { ...input, filters: baseFilters };
   }
-  if (extensionFilters.length === 0 && !extensionSearch) return { ...input, filters: baseFilters };
+  if (extensionFilters.length === 0 && !extensionSearch)
+    return { ...input, filters: baseFilters };
   const entityId = getTableColumn(table, idField);
-  if (!entityId) throw new TRPCError({ code: 'INTERNAL_SERVER_ERROR', message: 'CRUD identity column is unavailable' });
+  if (!entityId)
+    throw new TRPCError({
+      code: 'INTERNAL_SERVER_ERROR',
+      message: 'CRUD identity column is unavailable',
+    });
   // Only a trusted in-process provider constructs these conditions. Input never carries SQL.
   const conditions = await provider.buildConditions({
-    id: target.id, entityId, filters: extensionFilters as CrudExtensionFilter[],
+    id: target.id,
+    entityId,
+    filters: extensionFilters as CrudExtensionFilter[],
     ...(input.joinOperator ? { joinOperator: input.joinOperator } : {}),
     ...(extensionSearch ? { search } : {}),
   });
   if (extensionFilters.length > 0 && !conditions.filter) {
-    throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'CRUD extension filter condition is unavailable' });
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'CRUD extension filter condition is unavailable',
+    });
   }
-  if (extensionSearch && !conditions.search && !buildCrudSearchCondition({ table, search, searchColumns })) {
-    throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'CRUD search is not available' });
+  if (
+    extensionSearch &&
+    !conditions.search &&
+    !buildCrudSearchCondition({ table, search, searchColumns })
+  ) {
+    throw new TRPCError({
+      code: 'PRECONDITION_FAILED',
+      message: 'CRUD search is not available',
+    });
   }
   return {
-    ...input, filters: baseFilters,
-    ...(extensionFilters.length > 0 && conditions.filter ? { [CRUD_EXTENSION_FILTER]: conditions.filter } : {}),
-    ...(extensionSearch && conditions.search ? { [CRUD_EXTENSION_SEARCH]: conditions.search } : {}),
+    ...input,
+    filters: baseFilters,
+    ...(extensionFilters.length > 0 && conditions.filter
+      ? { [CRUD_EXTENSION_FILTER]: conditions.filter }
+      : {}),
+    ...(extensionSearch && conditions.search
+      ? { [CRUD_EXTENSION_SEARCH]: conditions.search }
+      : {}),
   };
 }
 
-function combineExtensionFilter(base: SQL | undefined, input: CrudExtensionInput): SQL | undefined {
+function combineExtensionFilter(
+  base: SQL | undefined,
+  input: CrudExtensionInput,
+): SQL | undefined {
   const extension = input[CRUD_EXTENSION_FILTER];
   return input.joinOperator === 'or' ? or(base, extension) : and(base, extension);
 }
@@ -1593,9 +1624,8 @@ export function createCrudRouter<
             )) as ListInput;
             const offset = (effectiveInput.page - 1) * effectiveInput.perPage;
 
-            const validatedFilters = effectiveInput.filters?.filter(
-              (filter) =>
-                validateColumn(filter.id, filterableColumns),
+            const validatedFilters = effectiveInput.filters?.filter((filter) =>
+              validateColumn(filter.id, filterableColumns),
             );
 
             const filterCondition = validatedFilters?.length
@@ -1626,7 +1656,10 @@ export function createCrudRouter<
             const where = buildWhere(
               ctx,
               'list',
-              combineConditions(combineExtensionFilter(filterCondition, effectiveInput), searchCondition),
+              combineConditions(
+                combineExtensionFilter(filterCondition, effectiveInput),
+                searchCondition,
+              ),
             );
 
             let query = ctx.db.select().from(table).$dynamic();
@@ -2221,9 +2254,8 @@ export function createCrudRouter<
               maxExportSize,
             );
 
-            const validatedFilters = effectiveInput.filters?.filter(
-              (filter) =>
-                validateColumn(filter.id, filterableColumns),
+            const validatedFilters = effectiveInput.filters?.filter((filter) =>
+              validateColumn(filter.id, filterableColumns),
             );
 
             const filterCondition = validatedFilters?.length
@@ -2254,7 +2286,10 @@ export function createCrudRouter<
             const where = buildWhere(
               ctx,
               'export',
-              combineConditions(combineExtensionFilter(filterCondition, effectiveInput), searchCondition),
+              combineConditions(
+                combineExtensionFilter(filterCondition, effectiveInput),
+                searchCondition,
+              ),
             );
 
             let query = ctx.db.select().from(table).$dynamic();

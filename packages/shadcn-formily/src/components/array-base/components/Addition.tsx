@@ -18,13 +18,7 @@ export function ArrayAddition({
   ref,
   ...props
 }: IArrayBaseAdditionProps & { ref?: React.RefObject<HTMLButtonElement | null> }) {
-  const {
-    fullWidth = true,
-    defaultValue,
-    method,
-    icon,
-    ...buttonProps
-  } = props;
+  const { fullWidth = true, defaultValue, method, icon, ...buttonProps } = props;
   const self = useField();
   const array = useArray();
 
@@ -94,8 +88,7 @@ export function ArrayAddition({
         }
       }}
     >
-      {!isAtMax &&
-        (icon !== undefined ? icon : <PlusIcon className="mr-2 size-4" />)}
+      {!isAtMax && (icon !== undefined ? icon : <PlusIcon className="mr-2 size-4" />)}
       {buttonLabel}
     </ButtonExtended>
   );
