@@ -9,7 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   cn,
-} from '@wordrhyme/shadcn';
+} from '@wordrhyme/ui';
 import {
   calendarPresentation,
   parseCalendarDate,
