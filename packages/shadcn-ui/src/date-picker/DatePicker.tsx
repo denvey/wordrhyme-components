@@ -20,15 +20,16 @@ type CalendarProps = Omit<
 >;
 const defaultPrimitives = { Button, Calendar, Popover, PopoverContent, PopoverTrigger };
 
-type CommonProps = CalendarProps & {
-  id?: string;
-  placeholder?: string;
-  readOnly?: boolean;
-  showClearButton?: boolean;
-  formatValue?: (date: Date) => string;
-  /** Use the same UI primitives as the containing modal. */
-  primitives?: typeof defaultPrimitives;
-};
+type CommonProps = CalendarProps &
+  Pick<ComponentProps<typeof Button>, 'aria-invalid' | 'aria-describedby'> & {
+    id?: string;
+    placeholder?: string;
+    readOnly?: boolean;
+    showClearButton?: boolean;
+    formatValue?: (date: Date) => string;
+    /** Use the same UI primitives as the containing modal. */
+    primitives?: typeof defaultPrimitives;
+  };
 
 export type DatePickerProps = CommonProps &
   (
@@ -69,6 +70,8 @@ export function DatePicker(props: DatePickerProps) {
     showClearButton = true,
     formatValue,
     primitives = defaultPrimitives,
+    'aria-invalid': ariaInvalid,
+    'aria-describedby': ariaDescribedBy,
     ...calendarProps
   } = props;
   const [open, setOpen] = useState(false);
@@ -98,11 +101,13 @@ export function DatePicker(props: DatePickerProps) {
         <PopoverTrigger asChild>
           <Button
             id={id}
+            aria-invalid={ariaInvalid}
+            aria-describedby={ariaDescribedBy}
             type="button"
             variant="outline"
             disabled={readOnly || calendarProps.disabled === true}
             className={cn(
-              'w-full justify-start text-left font-normal',
+              'w-full justify-start text-left font-normal aria-invalid:border-destructive aria-invalid:ring-destructive/20',
               !selected && 'text-muted-foreground',
               showClearButton && selected && 'pr-8',
             )}

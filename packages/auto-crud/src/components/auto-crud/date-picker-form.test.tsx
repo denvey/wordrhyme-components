@@ -2,7 +2,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeAll, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { setDateFormatter } from '@/lib/format';
-import { AutoForm } from './auto-form';
+import { AutoForm, type AutoFormRef } from './auto-form';
+import { createRef } from 'react';
 
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -105,3 +106,33 @@ it.each(['2026-09-27T00:00:00.000Z', new Date('2026-09-27T00:00:00.000Z')])(
     expect(screen.getByText('2026-09-27')).toBeTruthy();
   },
 );
+
+it('marks the required date trigger invalid and clears its feedback after selecting', async () => {
+  setDateFormatter(undefined, { locale: 'en-US', timeZone: 'Asia/Shanghai' });
+  const ref = createRef<AutoFormRef>();
+  render(
+    <AutoForm
+      ref={ref}
+      schema={z.object({ inquiry: z.string() })}
+      overrides={{
+        inquiry: {
+          required: true,
+          'x-component': 'DatePicker',
+          'x-component-props': { valueFormat: 'date-only' },
+        },
+      }}
+      onSubmit={vi.fn()}
+    />,
+  );
+  await expect(ref.current!.submit()).rejects.toBeDefined();
+  const trigger = screen.getByText('Pick a date').closest('button')!;
+  await waitFor(() => expect(trigger.getAttribute('aria-invalid')).toBe('true'));
+  expect(trigger.getAttribute('aria-describedby')).toBeTruthy();
+  fireEvent.click(trigger);
+  const day = document.querySelector<HTMLButtonElement>(
+    '[data-slot="popover-content"] button[data-day]:not([disabled])',
+  )!;
+  fireEvent.click(day);
+  await waitFor(() => expect(trigger.getAttribute('aria-invalid')).not.toBe('true'));
+  expect(trigger.textContent).not.toContain('Pick a date');
+});

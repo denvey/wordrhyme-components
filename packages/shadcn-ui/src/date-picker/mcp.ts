@@ -22,6 +22,9 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
   description:
     'A single-date picker with a calendar popover trigger and an optional inline clear button.',
   props: defineProps<DatePickerDocumentedProps>({
+    'aria-invalid': 'Validation state applied to the date trigger.',
+    'aria-describedby':
+      'Description and validation message ids associated with the date trigger.',
     valueFormat:
       'Defaults to date (Date/undefined); date-only emits YYYY-MM-DD or an empty string when cleared. Ordinary Date inputs use local calendar fields.',
     readOnly: 'Prevents selection and clearing.',
