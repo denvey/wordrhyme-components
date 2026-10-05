@@ -22,13 +22,20 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
   description:
     'A single-date picker with a calendar popover trigger and an optional inline clear button.',
   props: defineProps<DatePickerDocumentedProps>({
+    valueFormat:
+      'Defaults to date (Date/undefined); date-only emits YYYY-MM-DD or an empty string when cleared. Ordinary Date inputs use local calendar fields.',
+    readOnly: 'Prevents selection and clearing.',
+    formatValue: 'Optional formatter for the selected-date trigger label.',
+    primitives:
+      'Optional UI primitives from the containing modal, ensuring shared popover and dialog behavior.',
     id: 'Optional id attribute applied to the trigger and calendar.',
     value: {
       description: 'Controlled selected date.',
-      type: 'Date',
+      type: 'Date | string | null',
     },
     onChange: {
-      description: 'Called with the selected Date, or undefined when cleared.',
+      description:
+        'Returns Date/undefined by default, or YYYY-MM-DD/empty string in date-only mode.',
       type: '(date: Date | undefined) => void',
     },
     placeholder: {

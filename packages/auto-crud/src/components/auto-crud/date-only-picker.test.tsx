@@ -9,7 +9,7 @@ afterEach(() => {
 });
 
 it('can navigate past December and select a date next year', () => {
-  setDateFormatter(undefined, { locale: 'en-US' });
+  setDateFormatter(undefined, { locale: 'en-US', timeZone: 'Asia/Shanghai' });
   const year = new Date().getFullYear();
   const onChange = vi.fn();
   render(<DateOnlyPicker value={`${year}-12-15`} onChange={onChange} />);
@@ -17,11 +17,16 @@ it('can navigate past December and select a date next year', () => {
   const next = screen.getByRole('button', { name: 'Go to the Next Month' });
   expect(next.getAttribute('aria-disabled')).not.toBe('true');
   fireEvent.click(next);
-  fireEvent.click(screen.getByRole('button', {
-    name: new Intl.DateTimeFormat('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
-    }).format(new Date(year + 1, 0, 15)),
-  }));
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: new Intl.DateTimeFormat('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        weekday: 'long',
+      }).format(new Date(year + 1, 0, 15)),
+    }),
+  );
   expect(onChange).toHaveBeenCalledWith(`${year + 1}-01-15`);
 });
 

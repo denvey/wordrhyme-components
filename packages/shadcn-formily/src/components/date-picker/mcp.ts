@@ -10,6 +10,11 @@ export const meta: ComponentMeta<DatePickerOwnProps> = {
   description: 'A Formily-connected date picker field for selecting a single date value.',
   htmlElement: 'button',
   props: defineProps<DatePickerOwnProps>({
+    valueFormat:
+      'Defaults to Date/undefined; date-only emits YYYY-MM-DD and clears to an empty string.',
+    readOnly: 'Prevents selection and clearing.',
+    formatValue: 'Optional selected-date label formatter.',
+    primitives: 'Optional primitives shared with the containing modal.',
     footer: 'Forwarded to the underlying UI component.',
     animate: 'Forwarded to the underlying UI component.',
     components: 'Forwarded to the underlying UI component.',
