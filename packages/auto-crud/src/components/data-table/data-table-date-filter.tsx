@@ -15,6 +15,7 @@ import { Separator } from '@wordrhyme/shadcn';
 import { useDateFormatterVersion } from '@/lib/format';
 import {
   calendarPresentation,
+  calendarMaxDate,
   parseCalendarDate,
   serializeCalendarDate,
 } from '@/lib/calendar-date';
@@ -61,6 +62,7 @@ export function DataTableDateFilter<TData>({
   title,
   multiple,
 }: DataTableDateFilterProps<TData>) {
+  const upperBound = calendarMaxDate(column.columnDef.meta?.maxDate);
   const formatterVersion = useDateFormatterVersion();
   const presentation = React.useMemo(() => calendarPresentation(), [formatterVersion]);
   const { formatDate } = presentation;
@@ -257,6 +259,7 @@ export function DataTableDateFilter<TData>({
       <PopoverContent className="w-auto p-0" align="start">
         {multiple ? (
           <Calendar
+            disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}
             formatters={presentation.formatters}
@@ -264,12 +267,14 @@ export function DataTableDateFilter<TData>({
             autoFocus
             captionLayout="dropdown"
             mode="range"
+            excludeDisabled={!!upperBound}
             defaultMonth={localRange.from}
             selected={localRange}
             onSelect={onSelect}
           />
         ) : (
           <Calendar
+            disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}
             formatters={presentation.formatters}

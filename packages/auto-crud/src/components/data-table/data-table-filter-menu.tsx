@@ -30,6 +30,7 @@ import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';
 import { useDateFormatterVersion } from '@/lib/format';
 import {
   calendarPresentation,
+  calendarMaxDate,
   parseCalendarDate,
   serializeCalendarDate,
 } from '@/lib/calendar-date';
@@ -536,6 +537,7 @@ function FilterValueSelector<TData>({
   value,
   onSelect,
 }: FilterValueSelectorProps<TData>) {
+  const upperBound = calendarMaxDate(column.columnDef.meta?.maxDate);
   useDateFormatterVersion();
   const variant = column.columnDef.meta?.variant ?? 'text';
 
@@ -576,6 +578,7 @@ function FilterValueSelector<TData>({
     case 'dateRange':
       return (
         <Calendar
+                disabled={upperBound ? { after: upperBound } : undefined}
           lang={calendarPresentation().locale}
           weekStartsOn={calendarPresentation().weekStartsOn}
           formatters={calendarPresentation().formatters}
@@ -630,6 +633,7 @@ function onFilterInputRender<TData>({
   showValueSelector: boolean;
   setShowValueSelector: (value: boolean) => void;
 }) {
+  const upperBound = calendarMaxDate(column.columnDef.meta?.maxDate);
   if (filter.operator === 'isEmpty' || filter.operator === 'isNotEmpty') {
     return (
       <div
@@ -862,6 +866,7 @@ function onFilterInputRender<TData>({
           <PopoverContent id={inputListboxId} align="start" className="w-auto p-0">
             {filter.operator === 'isBetween' ? (
               <Calendar
+                disabled={upperBound ? { after: upperBound } : undefined}
                 lang={calendarPresentation().locale}
                 weekStartsOn={calendarPresentation().weekStartsOn}
                 formatters={calendarPresentation().formatters}
@@ -869,6 +874,7 @@ function onFilterInputRender<TData>({
                 autoFocus
                 captionLayout="dropdown"
                 mode="range"
+                excludeDisabled={!!column.columnDef.meta?.maxDate}
                 selected={
                   dateValue.length === 2
                     ? {
@@ -893,6 +899,7 @@ function onFilterInputRender<TData>({
               />
             ) : (
               <Calendar
+                disabled={upperBound ? { after: upperBound } : undefined}
                 lang={calendarPresentation().locale}
                 weekStartsOn={calendarPresentation().weekStartsOn}
                 formatters={calendarPresentation().formatters}

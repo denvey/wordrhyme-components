@@ -29,6 +29,8 @@ declare module '@tanstack/react-table' {
     variant?: FilterVariant;
     options?: Option[];
     range?: [number, number];
+    /** Latest selectable calendar day (YYYY-MM-DD), or today in the Host time zone. */
+    maxDate?: string;
     unit?: string;
     icon?: React.FC<React.SVGProps<SVGSVGElement>>;
     /** 控制在哪些筛选模式下显示（未设置则在所有模式显示） */
