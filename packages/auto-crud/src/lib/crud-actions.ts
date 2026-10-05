@@ -138,13 +138,44 @@ function resolveActions<TAction extends CrudActionBase>(
   zone: CrudActionZone,
   ownerActions: readonly TAction[],
 ): TAction[] {
+  const registered = targetId ? crudActions.get<TAction>(targetId, zone) : [];
+  const hiddenCustomIds = new Set(
+    registered.flatMap(({ action }) =>
+      isCustomAction(action) && action.hidden && action.id ? [action.id] : [],
+    ),
+  );
+  const isMaskedCustom = (action: CrudActionBase) =>
+    isCustomAction(action) && Boolean(action.id && hiddenCustomIds.has(action.id));
+  // Resolve identity before stripping registry metadata. Anonymous custom actions
+  // retain their append behavior; named actions share one slot per target/zone.
+  const customOverrides = new Map<string, CrudActionEntry<TAction>>();
+  for (const entry of registered) {
+    const { action } = entry;
+    if (isCustomAction(action) && action.id && !isMaskedCustom(action)) {
+      customOverrides.set(action.id, entry);
+    }
+  }
+  const ownerCustomIds = new Set(
+    ownerActions.flatMap((action) =>
+      isCustomAction(action) && action.id ? [action.id] : [],
+    ),
+  );
   const baseActions = ownerActions
-    .filter((action) => !action.hidden)
-    .map((action) => withoutRegistryMeta(action));
+    .filter((action) => !action.hidden && !isMaskedCustom(action))
+    .map((action) =>
+      withoutRegistryMeta(
+        isCustomAction(action) && action.id
+          ? (customOverrides.get(action.id)?.action ?? action)
+          : action,
+      ),
+    );
+  const isReplacedCustom = ({ action, seq }: CrudActionEntry<TAction>) =>
+    isCustomAction(action) &&
+    Boolean(
+      action.id &&
+      (ownerCustomIds.has(action.id) || customOverrides.get(action.id)?.seq !== seq),
+    );
 
-  if (!targetId) return baseActions;
-
-  const registered = crudActions.get<TAction>(targetId, zone);
   if (registered.length === 0) return baseActions;
 
   const nextActions = [...baseActions];
@@ -153,6 +184,7 @@ function resolveActions<TAction extends CrudActionBase>(
   const groups = new Map<string, CrudActionEntry<TAction>[]>();
 
   for (const entry of registered) {
+    if (isMaskedCustom(entry.action)) continue;
     const group = groups.get(entry.ownerId) ?? [];
     group.push(entry);
     groups.set(entry.ownerId, group);
@@ -183,8 +215,9 @@ function resolveActions<TAction extends CrudActionBase>(
   for (const group of groups.values()) {
     const items = group
       .sort((left, right) => left.seq - right.seq)
-      .flatMap(({ action }) => {
-        if (action.hidden) return [];
+      .flatMap((entry) => {
+        const { action } = entry;
+        if (action.hidden || isReplacedCustom(entry)) return [];
         if (isCustomAction(action)) return [withoutRegistryMeta(action)];
         const builtin = nextActions.find((item) => item.type === action.type);
         return builtin ? [builtin] : [];

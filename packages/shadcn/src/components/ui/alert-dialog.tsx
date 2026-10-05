@@ -1,6 +1,6 @@
 'use client';
 
-import { buttonVariants } from '@wordrhyme/shadcn';
+import { buttonVariants } from './button';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 
 import * as React from 'react';

@@ -375,6 +375,7 @@ interface Field {
   /** 表格特定配置 */
   table?: {
     hidden?: boolean; // 仅表格隐藏
+    classNames?: { th?: string; td?: string }; // 该列的表头和正文类名
     meta?: Record<string, unknown>; // 筛选器配置
     [key: string]: unknown;
   };
@@ -390,6 +391,72 @@ interface Field {
 
 type Fields = Record<string, Field>;
 ```
+
+### 列宽与单元格样式
+
+`fields.xxx.table` 中的 `size`、`minSize` 和 `maxSize` 控制列宽。`fields.xxx.table.classNames` 按元素分组配置该列的 CSS 类名：`th` 应用于该列的表头单元格，`td` 应用于该列每一行的正文单元格。
+
+任一可见列设置有限的 `maxSize` 后，表格使用固定列宽布局，其他列采用各自的 `size` 或 TanStack 默认宽度。默认正文保持单行，超出列宽的文本省略；通过 `fields.xxx.table.classNames.td` 可以为该列配置换行展示。
+
+```typescript
+fields={{
+  primaryContactValue: {
+    table: {
+      size: 250,
+      minSize: 250,
+      maxSize: 250,
+      classNames: {
+        th: 'text-center',
+        td: 'whitespace-normal break-words',
+      },
+    },
+  },
+}}
+```
+
+### 全局表格类名
+
+组件顶层的 `table.classNames` 为整个表格设置类名，所有值均为 CSS 类名字符串。
+
+| 配置    | 作用范围                         |
+| ------- | -------------------------------- |
+| `table` | `<table>` 元素                   |
+| `thead` | `<thead>` 表头区域               |
+| `tbody` | `<tbody>` 正文区域               |
+| `tr`    | 所有表头行、正文行和空状态行     |
+| `th`    | 所有表头单元格                   |
+| `td`    | 所有正文单元格，包括空状态单元格 |
+
+单元格类名按默认类名、全局类名、列级类名的顺序合并；存在冲突的 Tailwind 类名由后者覆盖。空状态单元格跨越所有列，只应用全局 `td` 类名。
+
+```tsx
+<AutoCrudTable
+  schema={schema}
+  resource={resource}
+  table={{
+    classNames: {
+      table: 'text-xs',
+      thead: 'bg-muted',
+      tbody: 'text-foreground',
+      tr: 'hover:bg-accent/50',
+      th: 'h-12 text-left',
+      td: 'py-3 text-left',
+    },
+  }}
+  fields={{
+    primaryContactValue: {
+      table: {
+        classNames: {
+          th: 'text-center',
+          td: 'text-center whitespace-normal break-words',
+        },
+      },
+    },
+  }}
+/>
+```
+
+直接使用 `AutoTable` 或 `DataTable` 时，通过组件的 `classNames` prop 传入同一组全局类名。直接定义 TanStack 列时，通过 `columnDef.meta.classNames` 配置该列的 `th`、`td`。
 
 ### 基础配置
 
@@ -914,6 +981,7 @@ type RowCustomActionItem<T> = ActionMeta & {
 };
 
 interface AutoCrudRowActionContext<T> {
+  open: (options: AutoCrudRowOpenOptions<T>) => void;
   crudId: string;
   idKey: string;
   row: T;
@@ -924,6 +992,56 @@ interface AutoCrudRowActionContext<T> {
   openDelete?: (row: T) => void;
 }
 ```
+
+### 统一打开入口
+
+行操作上下文提供 `open(options)`，旧的 `openView`、`openEdit`、`copyRow`、
+`openDelete` 保持兼容：
+
+```tsx
+open({ type: 'view', row });
+open({ type: 'edit', row });
+open({ type: 'copy', row });
+open({ type: 'delete', row });
+open({
+  type: 'custom',
+  component: <TransferDialog customer={row} open={false} onOpenChange={() => {}} />,
+});
+```
+
+`AutoCrudRowOpenOptions<T>` 是判别联合：内置操作必须传 `row`，
+`custom` 必须传 `component`。内置操作复用旧方法的处理器，不可用的操作不执行；
+仍可通过旧的可选方法（如 `openEdit`）判断是否应显示对应菜单项。
+
+自定义 `component` 由开发者实现弹窗或抽屉，并接收 `open/onOpenChange` 控制。
+`AutoCrudTable` 只管理生命周期，不额外包裹内置弹窗，也不会把普通组件自动变成弹窗。
+
+### 自定义行操作弹窗
+
+在行操作配置的 `component` 中使用 `open` 打开自定义弹窗：
+
+```tsx
+{
+  type: 'custom',
+  component: ({ row, MenuItem, open }) => (
+    <MenuItem onSelect={() => open({
+      type: 'custom',
+      component: <TransferDialog customer={row} open={false} onOpenChange={() => {}} />,
+    })}>
+      交接
+    </MenuItem>
+  ),
+}
+```
+
+`TransferDialog` 由开发者实现并接收 `RowActionDialogProps`。`AutoCrudTable` 托管
+`open`、`onOpenChange` 和可选的 `onDismiss`（调用方传入的同名属性会被覆盖），
+但不额外包裹弹窗。调用 `onOpenChange(false)` 或 `onDismiss()` 会卸载弹窗并清理状态；
+每次 `open({ type: 'custom', component })` 都创建新会话并替换当前自定义弹窗。
+
+弹窗位于表格层，菜单关闭、列配置重建、翻页或筛选移除原行都不会卸载它。
+它继续使用打开时传入的记录，关闭后再次打开才获取新的记录。
+表格卸载时弹窗一起释放。弹窗自身负责 Portal、布局和业务提交。
 
 ## 🔄 批量操作
 
@@ -1540,3 +1658,44 @@ Publish that UI version before this AutoCrud change. The development dependency
 is pinned to the already-published alpha.19 for reproducible ESM tests and type
 checks until alpha.20 is published; it is not the supported CommonJS runtime.
 The CommonJS export/identity regression belongs to the UI provider repository.
+
+### 按 ID 隐藏或替换自定义操作
+
+拥有方为 custom 操作声明稳定 `id` 后，扩展可以在相同 CRUD target 和操作区域
+（`row`、`toolbar` 或 `batch`）使用同 ID 替换该操作；拥有方的原位置保留。
+替换使用扩展提供的完整操作，不继承原操作的组件或回调。
+
+```ts
+crudActions.register({
+  targetId: 'products',
+  zone: 'row',
+  ownerId: 'consumer',
+  actions: [{ type: 'custom', id: 'products.inspect', hidden: true }],
+});
+```
+
+- `hidden: true` 屏蔽同 target、同区域内所有匹配 ID 的 custom 操作，优先于替换。
+- 多个扩展提供同 ID 时，按已有 `order`、`ownerId`、注册序号排序，最后一个生效。
+- 未匹配拥有方的 ID 只追加一次；不带 ID 的 custom 操作继续独立追加。
+- 注销扩展后恢复拥有方操作；内置操作继续按 `type` 合并及执行权限检查。
+- custom 操作仍由业务方提供权限守卫；ID 不授予权限，也不影响后端鉴权。
+
+## Styles
+
+Choose one mode and import only the highest-level package you use.
+
+With Tailwind CSS v4, in your application stylesheet:
+
+```css
+@import 'tailwindcss';
+@import '@wordrhyme/auto-crud/tailwind.css';
+```
+
+Without Tailwind CSS, in your application entry:
+
+```ts
+import '@wordrhyme/auto-crud/styles.css';
+```
+
+See the [shared style guide](https://github.com/denvey/wordrhyme-components#styles)
+for theme setup, dark mode, and custom classes.

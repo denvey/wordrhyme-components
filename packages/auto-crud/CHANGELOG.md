@@ -1,5 +1,55 @@
 # @wordrhyme/auto-crud
 
+## 1.7.0
+
+### Minor Changes
+
+- 9c68dfb: 支持通过选项元数据配置状态徽标颜色和装饰圆点。
+- fa1b134: 为自定义行操作提供所属菜单组件；插件操作按声明数组的相对顺序增量合并，保留未提及的操作和现有权限过滤。同一插件内原先依赖 order 排列显示顺序的调用方需改为按所需顺序声明数组。
+- 6c83180: Allow custom row actions to open controlled dialogs hosted by AutoCrudTable. Dialogs survive menu dismissal, column updates, and source-row removal; closing releases the dialog, and each new opening starts a fresh session.
+
+  Add a typed `open(options)` row-action entry point for built-in operations and custom dialogs while preserving all existing action methods.
+
+### Patch Changes
+
+- 81c9c3b: Allow column metadata to customize header and body cell classes and apply configured column sizes.
+
+  Use fixed column tracks for tables with a finite maxSize so browser auto layout cannot stretch capped columns. Tables without a width cap keep their automatic layout.
+
+  Keep column tracks in pinned rendering order, contain overflowing cell content in fixed layouts, and let default text inherit configured cell wrapping.
+
+  Group column classes under `fields.xxx.table.classNames`, with `th` applied to headers and `td` to body cells. Add global `table.classNames` for `table`, `thead`, `tbody`, `tr`, `th`, and `td`, shared by AutoTable and DataTable. Merge cell classes in default, global, then column order.
+
+- d96982b: Resolve custom action overrides by ID within each CRUD target and zone, preserving anonymous append behavior and owner action positions. Hidden IDs mask matching actions.
+- 4d8f1b1: Align shared Radix UI and date-fns dependency ranges with the existing workspace versions so dependency installation passes workspace validation.
+
+  Document the inherited Radix outside-pointer deferral option in Drawer metadata.
+
+- 5d8fea8: Allow registered hidden custom actions to mask matching action IDs within their target and zone.
+- e7926b3: 保留字段配置显式关闭的筛选项，不让查询能力白名单重新启用它。
+- 4e1b38b: Use the shared @wordrhyme/ui entry for extensible row action menus. Consumers
+  must provide the new @wordrhyme/ui peer dependency and use its menu items for
+  custom actions, including Host resource permission entries.
+
+  Requires @wordrhyme/ui ^0.1.0-alpha.20 at runtime, including its CommonJS root
+  export. Publish the UI provider first; alpha.19 is only a development fixture.
+
+- 492c940: Publish the transitive Tailwind CSS source entries across the complete component dependency chain.
+
+  Generate both CSS entries in `dist` during the package build, keeping the public import paths unchanged. Component packages share one CSS build function; no per-package source stylesheet needs to be maintained.
+
+  Release all four packages together so workspace dependencies resolve to newly published versions that export `./tailwind.css`, rather than older registry packages without that entry. The Tailwind entries contain source declarations only and do not inject theme or reset rules.
+
+  Also publish an opt-in `./styles.css` entry for applications without a Tailwind build. Each package builds a self-contained stylesheet covering its own components and the transitive component dependencies, including the shared default theme, dark mode, and animation utilities. It does not include global Preflight or page background rules. CSS imports are marked as side effects so production bundlers preserve them.
+
+- Updated dependencies [4d8f1b1]
+- Updated dependencies [4b2ca4b]
+- Updated dependencies
+- Updated dependencies [492c940]
+  - @wordrhyme/shadcn-ui@2.0.0
+  - @wordrhyme/formily-shadcn@2.0.0
+  - @wordrhyme/shadcn@2.0.0
+
 ## 1.6.0
 
 ### Minor Changes

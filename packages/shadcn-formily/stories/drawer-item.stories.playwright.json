@@ -1,0 +1,113 @@
+{
+  "version": "0",
+  "stories": {
+    "formily-drawer-item--validation": {
+      "actionSets": [
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "#form-email"
+              },
+              "name": "click"
+            }
+          ],
+          "id": "yuDhCKjFcY8K",
+          "title": "click fild"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "x": 41,
+                "y": 155
+              },
+              "name": "mouse.click"
+            }
+          ],
+          "id": "ZXZfbvHV4E49",
+          "title": "mouse.click"
+        },
+        {
+          "actions": [
+            {
+              "args": {
+                "selector": "[data-slot=\"drawer-body\"]"
+              },
+              "name": "takeElementScreenshot"
+            }
+          ],
+          "id": "VlCF8HcXYw8p",
+          "title": "takeElementScreenshot"
+        }
+      ],
+      "screenshots": [
+        {
+          "actionSets": [
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "#form-email"
+                  },
+                  "id": "gzqkFRVu9KQ4",
+                  "name": "click"
+                }
+              ],
+              "id": "wLMfVWNegU1w",
+              "title": "click fild"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "x": 41,
+                    "y": 155
+                  },
+                  "id": "5vU1Yn7_N-7R",
+                  "name": "mouse.click"
+                }
+              ],
+              "id": "N76o8Xx8wvEw",
+              "title": "mouse.click"
+            },
+            {
+              "actions": [
+                {
+                  "args": {
+                    "selector": "[data-slot=\"drawer-body\"]"
+                  },
+                  "id": "MhftqIbtHRwC",
+                  "name": "takeElementScreenshot"
+                }
+              ],
+              "id": "bDMUWzk0jt1v",
+              "title": "takeElementScreenshot"
+            }
+          ],
+          "browserOptionsId": "-uJQMFDLYcjo",
+          "browserType": "chromium",
+          "id": "GhPh7BGTXxF5",
+          "index": 0,
+          "title": "should validate when click outside drawer"
+        }
+      ]
+    }
+  },
+  "browserOptions": {
+    "fEbbHv-g3PIg": {
+      "viewport": {
+        "height": 276,
+        "width": 565
+      },
+      "cursor": true
+    },
+    "-uJQMFDLYcjo": {
+      "viewport": {
+        "height": 295,
+        "width": 716
+      },
+      "cursor": true
+    }
+  }
+}

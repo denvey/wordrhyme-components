@@ -10,6 +10,10 @@ export type FormItemLabelProps = Omit<
   placement?: LabelPlacement;
 };
 
+export type FormItemDescriptionProps = React.HTMLAttributes<HTMLParagraphElement> & {
+  placement?: DescriptionPlacement;
+};
+
 export interface FormItemSlots {
   label?: FormItemLabelProps;
   description?: React.HTMLAttributes<HTMLParagraphElement>;
@@ -37,6 +41,10 @@ export interface FormItemProps extends React.ComponentProps<'div'> {
    * - `popover`: show a help icon before the label and render the description in a hover popover
    */
   descriptionPlacement?: DescriptionPlacement;
+  requiredMark?: boolean | React.ReactNode;
+  /**
+   * @deprecated Use `requiredMark` instead.
+   */
   asterisk?: boolean;
   addonAfter?: SyncReactNode;
   addonBefore?: SyncReactNode;
