@@ -63,7 +63,7 @@ it.each(['2026-09-27T00:00:00.000Z', new Date('2026-09-27T00:00:00.000Z')])(
       locale: 'zh-CN',
       timeZone: 'America/Los_Angeles',
     });
-    render(<DateOnlyPicker value={value} />);
+    render(<DateOnlyPicker value={value} dateInput="utc-projection" />);
     expect(screen.getByRole('button', { name: '2026-09-27' })).toBeTruthy();
   },
 );

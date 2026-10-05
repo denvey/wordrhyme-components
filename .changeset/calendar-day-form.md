@@ -1,5 +1,7 @@
 ---
 "@wordrhyme/auto-crud": minor
+"@wordrhyme/shadcn-ui": minor
+"@wordrhyme/formily-shadcn": minor
 ---
 
-Add a system-localized DateOnlyPicker form field that preserves calendar dates without timezone conversion.
+Reuse DatePicker for explicit date-only values (YYYY-MM-DD, empty string when cleared), retaining the default Date output and a deprecated DateOnlyPicker compatibility alias.

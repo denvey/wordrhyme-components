@@ -1,7 +1,7 @@
 'use client';
 
 import { z } from 'zod';
-import { DateOnlyPicker } from './date-only-picker';
+import { DatePicker, DateOnlyPicker } from './date-only-picker';
 import {
   useCallback,
   useEffect,
@@ -166,6 +166,7 @@ function AutoCrudMultiCombobox({
 }
 
 const defaultFieldComponents = {
+  DatePicker: { component: DatePicker, decorator: 'FormItem' },
   DateOnlyPicker: { component: DateOnlyPicker, decorator: 'FormItem' },
   Combobox: { component: FormilyCombobox, decorator: 'FormItem' },
   MultiCombobox: {
