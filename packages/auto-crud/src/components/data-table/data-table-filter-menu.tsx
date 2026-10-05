@@ -578,7 +578,7 @@ function FilterValueSelector<TData>({
     case 'dateRange':
       return (
         <Calendar
-                disabled={upperBound ? { after: upperBound } : undefined}
+          disabled={upperBound ? { after: upperBound } : undefined}
           lang={calendarPresentation().locale}
           weekStartsOn={calendarPresentation().weekStartsOn}
           formatters={calendarPresentation().formatters}
