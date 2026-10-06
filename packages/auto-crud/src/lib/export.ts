@@ -1,5 +1,17 @@
 import type { Table } from '@tanstack/react-table';
-import { dataToCSV } from './import';
+import { dataToCSV, type CsvColumn } from './import';
+
+/** Calendar dates are exported without locale formatting or timezone shifts. */
+export function formatExportDate(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '';
+  const match = typeof value === 'string' ? /^(\d{4}-\d{2}-\d{2})(?:$|T)/.exec(value) : null;
+  const calendarDate = match?.[1];
+  const date = calendarDate ? new Date(`${calendarDate}T00:00:00.000Z`)
+    : value instanceof Date ? value : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return '';
+  const text = date.toISOString().slice(0, 10);
+  return calendarDate && text !== calendarDate ? '' : text;
+}
 
 export function exportTableToCSV<TData>(
   table: Table<TData>,
@@ -45,6 +57,7 @@ export function exportAllToCSV<T extends Record<string, unknown>>(
     filename?: string;
     headers?: string[];
     excludeColumns?: string[];
+    columns?: CsvColumn[];
   } = {},
 ): void {
   const { filename = 'export', ...csvOpts } = opts;
@@ -70,7 +83,8 @@ export function downloadCSVTemplate(headers: string[], filename = 'template'): v
 }
 
 function downloadCSV(csvContent: string, filename: string): void {
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Excel needs a UTF-8 BOM when opening CSV files directly.
+  const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);

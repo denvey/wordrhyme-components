@@ -144,13 +144,29 @@ export function generateCSVTemplate(headers: string[]): string {
 /**
  * 将数据数组转换为 CSV 字符串
  */
+export type CsvColumn = {
+  key: string;
+  label: string;
+  formatValue?: (value: unknown, row: Record<string, unknown>) => unknown;
+};
+
 export function dataToCSV<T extends Record<string, unknown>>(
   data: T[],
   opts: {
     headers?: string[];
     excludeColumns?: string[];
+    columns?: CsvColumn[];
   } = {},
 ): string {
+  if (opts.columns) {
+    const columns = opts.columns.filter(({ key }) => !opts.excludeColumns?.includes(key));
+    const headerLine = columns.map(({ label }) => escapeCSVField(label)).join(',');
+    const rows = data.map((row) => columns.map(({ key, formatValue }) => {
+      const value = formatValue ? formatValue(row[key], row) : row[key];
+      return escapeCSVField(String(value ?? ''));
+    }).join(','));
+    return [headerLine, ...rows].join('\n');
+  }
   if (data.length === 0) return '';
 
   const allHeaders = Object.keys(data[0] as object);

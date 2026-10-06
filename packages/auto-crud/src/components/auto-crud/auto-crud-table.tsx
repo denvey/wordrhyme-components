@@ -44,7 +44,7 @@ import { Badge } from '@wordrhyme/shadcn';
 import { ImportDialog } from './import-dialog';
 import type { ExportMode } from './export-dialog';
 import { Download, Loader2, RefreshCw, Upload } from 'lucide-react';
-import { exportAllToCSV } from '@/lib/export';
+import { exportAllToCSV, formatExportDate } from '@/lib/export';
 import { getDefaultSortingForSchema } from '@/lib/default-sorting';
 import * as React from 'react';
 import { type LocaleProp, resolveLocale } from '@/i18n/locale';
@@ -116,6 +116,8 @@ export type FieldTableDisplay = 'auto' | 'text' | 'badge' | 'date' | 'datetime';
 export interface Field {
   /** 字段标签（表格和表单共用） */
   label?: string;
+  /** Localized labels supplied by extension metadata. */
+  labelI18n?: Record<string, string>;
   /** 字段级静态选项（表单、筛选、展示共用） */
   enum?: FieldOption[];
   /** 字段级动态选项源（表单、筛选、展示共用） */
@@ -516,6 +518,15 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
    * 支持共用配置（label, hidden）+ 表格/表单特定配置
    */
   fields?: Fields;
+  /** Opt into business columns and localized labels instead of raw records. */
+  export?: {
+    /** Current application locale for extension field labels. */
+    locale?: string;
+    /** Export-only columns, labels, ordering and visibility; denied fields stay excluded. */
+    fields?: Record<string, { label?: string; index?: number; hidden?: boolean }>;
+    /** Return undefined to use the field's options and standard formatting. */
+    formatValue?: (value: unknown, field: string, row: Record<string, unknown>) => unknown;
+  };
   /** Detail presentation shares field formatting by default. */
   view?: {
     /** Explicitly reuse custom list cells with a separate, single-row table context. */
@@ -2180,6 +2191,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   schema,
   resource,
   fields,
+  export: exportConfig,
   table: tableConfig,
   form: formConfig,
   view: viewConfig,
@@ -2320,6 +2332,46 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     return Object.keys(shape).filter((key) => !denySet.has(key));
   }, [resolvedSchema, denyFields]);
 
+  const exportColumns = React.useMemo(() => {
+    if (!exportConfig) return undefined;
+    const keys = [...new Set([...Object.keys(resolvedSchema.shape), ...Object.keys(exportConfig.fields ?? {})])];
+    return keys
+      .filter((key) => {
+        if (denyFields?.includes(key)) return false;
+        const visibility = exportConfig.fields?.[key]?.hidden;
+        return visibility === undefined ? !hiddenColumns.includes(key) : !visibility;
+      })
+      .map((key) => {
+        const fieldSchema = resolvedSchema.shape[key];
+        const config = resolvedFields[key] ?? {};
+        const table = getTableConfig(config);
+        const override = tableConfig?.overrides?.[key];
+        const exportField = exportConfig.fields?.[key];
+        const options = getTableOptions(config) ?? dynamicResolveOptions.optionsByField[key]
+          ?? dynamicFilterOptions.labelOptionsByField[key];
+        const type = fieldSchema ? parseZodField(fieldSchema as z.ZodType).type : 'unknown';
+        return {
+          key,
+          label: exportField?.label ?? table?.label ?? config.labelI18n?.[exportConfig.locale ?? '']
+            ?? config.label ?? override?.label ?? humanize(key),
+          index: exportField?.index ?? table?.index ?? override?.index ?? Infinity,
+          formatValue: (value: unknown, row: Record<string, unknown>) => {
+            const formatted = exportConfig.formatValue?.(value, key, row);
+            if (formatted !== undefined) return formatted;
+            if (value === null || value === undefined) return '';
+            if (table?.display === 'date') return formatExportDate(value);
+            if (table?.display === 'datetime') return formatDate(value as Date, {}, 'datetime');
+            if (type === 'date') return formatDate(value as Date, {}, 'datetime');
+            if (type === 'boolean') return value ? locale.boolean.true : locale.boolean.false;
+            return Array.isArray(value)
+              ? value.map((item) => getOptionLabel(item, options)).join(', ')
+              : getOptionLabel(value, options);
+          },
+        };
+      }).sort((left, right) => left.index - right.index);
+  }, [exportConfig, resolvedSchema, resolvedFields, hiddenColumns, denyFields, tableConfig?.overrides,
+    dynamicResolveOptions.optionsByField, dynamicFilterOptions.labelOptionsByField, locale.boolean]);
+
   // 导出处理（支持选中/筛选两种模式）
   const handleExport = React.useCallback(
     async (mode: ExportMode) => {
@@ -2333,6 +2385,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         exportAllToCSV(selectedRows as Record<string, unknown>[], {
           filename,
           excludeColumns,
+          ...(exportColumns ? { columns: exportColumns } : {}),
         });
       } else {
         // 导出筛选结果（通过服务端 export 接口获取）
@@ -2341,10 +2394,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         exportAllToCSV(data, {
           filename,
           excludeColumns,
+          ...(exportColumns ? { columns: exportColumns } : {}),
         });
       }
     },
-    [resource.handlers.export, title, denyFields],
+    [resource.handlers.export, title, denyFields, exportColumns],
   );
 
   // 导出按钮点击：根据选中状态智能判断导出模式
@@ -2357,6 +2411,10 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       setExporting(false);
     }
   }, [selectedCount, handleExport]);
+  const exportBatchActions = React.useMemo(() => registryBatchActions.map((action) =>
+    exportConfig && action.type === 'export' && !action.onClick && !action.component
+      ? { ...action, onClick: () => { void handleExportClick(); } }
+      : action), [exportConfig, registryBatchActions, handleExportClick]);
   const toolbarRefresh = React.useMemo<AutoCrudToolbarContext['refresh']>(() => {
     const refresh = ownerRefreshAction?.onClick ?? resource.handlers.refresh;
     if (!refresh) return undefined;
@@ -2694,7 +2752,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}
         batchUpdateFields={can.update ? batchFields : undefined}
-        actionBarActions={registryBatchActions}
+        actionBarActions={exportBatchActions}
         deleteConfirmation={locale.bulkDeleteModal}
         enableExport={canExport}
         showDefaultExport={false}
