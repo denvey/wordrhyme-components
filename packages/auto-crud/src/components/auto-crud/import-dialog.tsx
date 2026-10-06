@@ -126,7 +126,7 @@ export function ImportDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-h-[85vh] overflow-y-auto"
-        style={{ width: 'calc(100vw - 4rem)', maxWidth: '48rem' }}
+        style={{ width: 'calc(100vw - 4rem)', maxWidth: '52rem' }}
       >
         <DialogHeader>
           <DialogTitle>{title ?? locale.title}</DialogTitle>
