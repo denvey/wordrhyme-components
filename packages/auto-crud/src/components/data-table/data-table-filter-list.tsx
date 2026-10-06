@@ -785,6 +785,7 @@ function onFilterInputRender<TData>({
           <PopoverContent id={inputListboxId} align="start" className="w-auto p-0">
             {filter.operator === 'isBetween' ? (
               <Calendar
+                today={calendarMaxDate('today')}
                 disabled={upperBound ? { after: upperBound } : undefined}
                 lang={calendarPresentation().locale}
                 weekStartsOn={calendarPresentation().weekStartsOn}
@@ -819,6 +820,7 @@ function onFilterInputRender<TData>({
               />
             ) : (
               <Calendar
+                today={calendarMaxDate('today')}
                 disabled={upperBound ? { after: upperBound } : undefined}
                 lang={calendarPresentation().locale}
                 weekStartsOn={calendarPresentation().weekStartsOn}

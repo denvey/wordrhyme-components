@@ -17,10 +17,15 @@ export function parseCalendarDate(value: string | number | undefined): Date | un
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
-/** Resolve bounds in the same local calendar as the date picker. */
+/** Resolve bounds and the calendar's today marker in the Host's configured time zone. */
 export function calendarMaxDate(value: string | undefined): Date | undefined {
   if (value !== 'today') return parseCalendarDate(value);
-  return parseCalendarDate(serializeCalendarDate(new Date()));
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: getDateLocaleOptions()?.timeZone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+  }).formatToParts(new Date());
+  const date = Object.fromEntries(parts.map((part) => [part.type, part.value]));
+  return parseCalendarDate(`${date.year}-${date.month}-${date.day}`);
 }
 
 export function calendarPresentation() {

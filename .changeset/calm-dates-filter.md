@@ -4,4 +4,4 @@
 
 Add an optional calendar date upper bound to simple and advanced date filters.
 
-Resolve the today upper bound in the browser's local calendar so the current day remains selectable when the Host uses a different time zone.
+Use the Host's configured time zone for both the today upper bound and the calendar's today marker so default focus and selectable dates stay consistent.

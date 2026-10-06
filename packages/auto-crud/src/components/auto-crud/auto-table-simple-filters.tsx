@@ -791,6 +791,7 @@ export function SimpleDateFilter({
       <PopoverContent className="w-auto p-0" align="start">
         {multiple ? (
           <Calendar
+            today={calendarMaxDate('today')}
             disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}
@@ -866,6 +867,7 @@ export function SimpleDateFilter({
           />
         ) : (
           <Calendar
+            today={calendarMaxDate('today')}
             disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}
