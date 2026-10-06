@@ -7,7 +7,7 @@ export function formatExportDate(value: unknown): string {
   const match = typeof value === 'string' ? /^(\d{4}-\d{2}-\d{2})(?:$|T)/.exec(value) : null;
   const calendarDate = match?.[1];
   const date = calendarDate ? new Date(`${calendarDate}T00:00:00.000Z`)
-    : value instanceof Date ? value : new Date(String(value));
+    : value instanceof Date ? value : typeof value === 'number' ? new Date(value) : new Date(String(value));
   if (Number.isNaN(date.getTime())) return '';
   const text = date.toISOString().slice(0, 10);
   return calendarDate && text !== calendarDate ? '' : text;
