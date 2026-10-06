@@ -17,14 +17,10 @@ export function parseCalendarDate(value: string | number | undefined): Date | un
   return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
-/** Resolve bounds as calendar days, preserving the Host's configured time zone. */
+/** Resolve bounds in the same local calendar as the date picker. */
 export function calendarMaxDate(value: string | undefined): Date | undefined {
   if (value !== 'today') return parseCalendarDate(value);
-  const text = new Intl.DateTimeFormat('en-CA', {
-    timeZone: getDateLocaleOptions()?.timeZone,
-    year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date());
-  return parseCalendarDate(text);
+  return parseCalendarDate(serializeCalendarDate(new Date()));
 }
 
 export function calendarPresentation() {

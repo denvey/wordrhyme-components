@@ -29,7 +29,7 @@ declare module '@tanstack/react-table' {
     variant?: FilterVariant;
     options?: Option[];
     range?: [number, number];
-    /** Latest selectable calendar day (YYYY-MM-DD), or today in the Host time zone. */
+    /** Latest selectable calendar day (YYYY-MM-DD), or today in the browser's local calendar. */
     maxDate?: string;
     unit?: string;
     icon?: React.FC<React.SVGProps<SVGSVGElement>>;
