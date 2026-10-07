@@ -24,14 +24,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import { Separator } from '@wordrhyme/shadcn';
 import { Slider } from '@wordrhyme/shadcn';
 import { Select } from '@wordrhyme/shadcn-ui';
-import { getDefaultFilterOperator } from '@/lib/data-table';
-import { useDateFormatterVersion } from '@/lib/format';
 import {
-  calendarPresentation,
   calendarMaxDate,
+  calendarPresentation,
   parseCalendarDate,
   serializeCalendarDate,
+  useCalendarToday,
 } from '@/lib/calendar-date';
+import { getDefaultFilterOperator } from '@/lib/data-table';
+import { useDateFormatterVersion } from '@/lib/format';
 import { generateId } from '@/lib/id';
 import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { cn } from '@/lib/utils';
@@ -717,7 +718,8 @@ export function SimpleDateFilter({
   value,
   onChange,
 }: SimpleDateFilterProps) {
-  const upperBound = calendarMaxDate(maxDate);
+  const today = useCalendarToday();
+  const upperBound = maxDate === 'today' ? today : calendarMaxDate(maxDate);
   const [open, setOpen] = React.useState(false);
   const commit = (next: string | string[] | undefined) => {
     setOpen(false);
@@ -791,7 +793,7 @@ export function SimpleDateFilter({
       <PopoverContent className="w-auto p-0" align="start">
         {multiple ? (
           <Calendar
-            today={calendarMaxDate('today')}
+            today={today}
             disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}
@@ -867,7 +869,7 @@ export function SimpleDateFilter({
           />
         ) : (
           <Calendar
-            today={calendarMaxDate('today')}
+            today={today}
             disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}

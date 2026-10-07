@@ -26,14 +26,14 @@ import {
   SelectValue,
 } from '@wordrhyme/shadcn';
 import { useDebouncedCallback } from '@/hooks/use-debounced-callback';
-import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';
-import { useDateFormatterVersion } from '@/lib/format';
 import {
-  calendarPresentation,
   calendarMaxDate,
+  calendarPresentation,
   parseCalendarDate,
   serializeCalendarDate,
+  useCalendarToday,
 } from '@/lib/calendar-date';
+import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';
 import { generateId } from '@/lib/id';
 import { cn } from '@/lib/utils';
 import type { ExtendedColumnFilter, FilterOperator, Option } from '@/types/data-table';
@@ -374,7 +374,7 @@ function DataTableFilterItem<TData>({
   onFilterRemove,
 }: DataTableFilterItemProps<TData>) {
   {
-    useDateFormatterVersion();
+    const today = useCalendarToday();
     const [showFieldSelector, setShowFieldSelector] = React.useState(false);
     const [showOperatorSelector, setShowOperatorSelector] = React.useState(false);
     const [showValueSelector, setShowValueSelector] = React.useState(false);
@@ -505,6 +505,7 @@ function DataTableFilterItem<TData>({
           </SelectContent>
         </Select>
         {onFilterInputRender({
+          today,
           filter,
           column,
           inputId,
@@ -537,8 +538,9 @@ function FilterValueSelector<TData>({
   value,
   onSelect,
 }: FilterValueSelectorProps<TData>) {
-  const upperBound = calendarMaxDate(column.columnDef.meta?.maxDate);
-  useDateFormatterVersion();
+  const today = useCalendarToday();
+  const maxDate = column.columnDef.meta?.maxDate;
+  const upperBound = maxDate === 'today' ? today : calendarMaxDate(maxDate);
   const variant = column.columnDef.meta?.variant ?? 'text';
 
   switch (variant) {
@@ -578,7 +580,7 @@ function FilterValueSelector<TData>({
     case 'dateRange':
       return (
         <Calendar
-          today={calendarMaxDate('today')}
+          today={today}
           disabled={upperBound ? { after: upperBound } : undefined}
           lang={calendarPresentation().locale}
           weekStartsOn={calendarPresentation().weekStartsOn}
@@ -617,6 +619,7 @@ function FilterValueSelector<TData>({
 }
 
 function onFilterInputRender<TData>({
+  today,
   filter,
   column,
   inputId,
@@ -624,6 +627,7 @@ function onFilterInputRender<TData>({
   showValueSelector,
   setShowValueSelector,
 }: {
+  today: Date;
   filter: ExtendedColumnFilter<TData>;
   column: Column<TData>;
   inputId: string;
@@ -634,7 +638,8 @@ function onFilterInputRender<TData>({
   showValueSelector: boolean;
   setShowValueSelector: (value: boolean) => void;
 }) {
-  const upperBound = calendarMaxDate(column.columnDef.meta?.maxDate);
+  const maxDate = column.columnDef.meta?.maxDate;
+  const upperBound = maxDate === 'today' ? today : calendarMaxDate(maxDate);
   if (filter.operator === 'isEmpty' || filter.operator === 'isNotEmpty') {
     return (
       <div
@@ -867,7 +872,7 @@ function onFilterInputRender<TData>({
           <PopoverContent id={inputListboxId} align="start" className="w-auto p-0">
             {filter.operator === 'isBetween' ? (
               <Calendar
-                today={calendarMaxDate('today')}
+                today={today}
                 disabled={upperBound ? { after: upperBound } : undefined}
                 lang={calendarPresentation().locale}
                 weekStartsOn={calendarPresentation().weekStartsOn}
@@ -901,7 +906,7 @@ function onFilterInputRender<TData>({
               />
             ) : (
               <Calendar
-                today={calendarMaxDate('today')}
+                today={today}
                 disabled={upperBound ? { after: upperBound } : undefined}
                 lang={calendarPresentation().locale}
                 weekStartsOn={calendarPresentation().weekStartsOn}

@@ -14,16 +14,54 @@ import { DataTableDateFilter } from './data-table-date-filter';
 afterEach(() => {
   cleanup();
   setDateFormatter(undefined);
+  vi.useRealTimers();
 });
 
-function column(value: unknown) {
-  return { getFilterValue: () => value, setFilterValue: vi.fn() } as unknown as Column<
-    object,
-    unknown
-  >;
+function column(value: unknown, maxDate?: string) {
+  return {
+    columnDef: { meta: { maxDate } },
+    getFilterValue: () => value,
+    setFilterValue: vi.fn(),
+  } as unknown as Column<object, unknown>;
 }
 
 describe('localized calendar filters', () => {
+  it.each([false, true])(
+    'keeps the upper-bound day selectable with range=%s',
+    (multiple) => {
+      const field = column('2026-09-14', '2026-09-15');
+      render(<DataTableDateFilter column={field} title="Created" multiple={multiple} />);
+      fireEvent.click(screen.getByRole('button', { name: /Created.*September/u }));
+      expect(
+        screen.getByRole('button', { name: 'Tuesday, September 15, 2026' }),
+      ).toHaveProperty('disabled', false);
+      expect(
+        screen.getByRole('button', { name: 'Wednesday, September 16, 2026' }),
+      ).toHaveProperty('disabled', true);
+    },
+  );
+
+  it('updates the today bound after Host midnight before the popover is opened', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-14T15:59:59Z'));
+    setDateFormatter(() => '', { locale: 'en-US', timeZone: 'Asia/Shanghai' });
+    const field = column(undefined, 'today');
+    render(<DataTableDateFilter column={field} title="Created" />);
+    act(() => {
+      vi.advanceTimersByTime(2000);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Created' }));
+    const todayButton = screen.getByRole('button', {
+      name: 'Tuesday, September 15, 2026',
+    });
+    expect(todayButton).toHaveProperty('disabled', false);
+    expect(
+      screen.getByRole('button', { name: 'Wednesday, September 16, 2026' }),
+    ).toHaveProperty('disabled', true);
+    fireEvent.click(todayButton);
+    expect(field.setFilterValue).toHaveBeenCalledWith('2026-09-15');
+  });
+
   it('keeps September 14 in the label after selecting a same-day range', () => {
     setDateFormatter(() => '2026年9月13日', {
       locale: 'zh-CN',
@@ -32,6 +70,7 @@ describe('localized calendar filters', () => {
     function RangeFilter() {
       const [value, setValue] = useState<unknown>(['2026-09-14']);
       const field = {
+        columnDef: { meta: {} },
         getFilterValue: () => value,
         setFilterValue: setValue,
       } as unknown as Column<object, unknown>;

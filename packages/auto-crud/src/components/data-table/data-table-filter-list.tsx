@@ -54,14 +54,14 @@ import {
 } from '@wordrhyme/shadcn-ui';
 import { dataTableConfig } from '@/config/data-table';
 import { useDebouncedCallback } from '@/hooks/use-debounced-callback';
-import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';
-import { useDateFormatterVersion } from '@/lib/format';
 import {
-  calendarPresentation,
   calendarMaxDate,
+  calendarPresentation,
   parseCalendarDate,
   serializeCalendarDate,
+  useCalendarToday,
 } from '@/lib/calendar-date';
+import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';
 import { generateId } from '@/lib/id';
 import { cn } from '@/lib/utils';
 import type {
@@ -345,7 +345,7 @@ function DataTableFilterItem<TData>({
   onFilterUpdate,
   onFilterRemove,
 }: DataTableFilterItemProps<TData>) {
-  useDateFormatterVersion();
+  const today = useCalendarToday();
   const [showFieldSelector, setShowFieldSelector] = React.useState(false);
   const [showOperatorSelector, setShowOperatorSelector] = React.useState(false);
   const [showValueSelector, setShowValueSelector] = React.useState(false);
@@ -516,6 +516,7 @@ function DataTableFilterItem<TData>({
         </Select>
         <div className="min-w-36 max-w-60 flex-1">
           {onFilterInputRender({
+            today,
             filter,
             inputId,
             column,
@@ -545,6 +546,7 @@ function DataTableFilterItem<TData>({
 }
 
 function onFilterInputRender<TData>({
+  today,
   filter,
   inputId,
   column,
@@ -553,6 +555,7 @@ function onFilterInputRender<TData>({
   showValueSelector,
   setShowValueSelector,
 }: {
+  today: Date;
   filter: ExtendedColumnFilter<TData>;
   inputId: string;
   column: Column<TData>;
@@ -564,7 +567,8 @@ function onFilterInputRender<TData>({
   showValueSelector: boolean;
   setShowValueSelector: (value: boolean) => void;
 }) {
-  const upperBound = calendarMaxDate(column.columnDef.meta?.maxDate);
+  const maxDate = column.columnDef.meta?.maxDate;
+  const upperBound = maxDate === 'today' ? today : calendarMaxDate(maxDate);
   if (filter.operator === 'isEmpty' || filter.operator === 'isNotEmpty') {
     return (
       <div
@@ -785,7 +789,7 @@ function onFilterInputRender<TData>({
           <PopoverContent id={inputListboxId} align="start" className="w-auto p-0">
             {filter.operator === 'isBetween' ? (
               <Calendar
-                today={calendarMaxDate('today')}
+                today={today}
                 disabled={upperBound ? { after: upperBound } : undefined}
                 lang={calendarPresentation().locale}
                 weekStartsOn={calendarPresentation().weekStartsOn}
@@ -820,7 +824,7 @@ function onFilterInputRender<TData>({
               />
             ) : (
               <Calendar
-                today={calendarMaxDate('today')}
+                today={today}
                 disabled={upperBound ? { after: upperBound } : undefined}
                 lang={calendarPresentation().locale}
                 weekStartsOn={calendarPresentation().weekStartsOn}

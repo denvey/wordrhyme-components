@@ -12,13 +12,14 @@ import { Button } from '@wordrhyme/shadcn';
 import { Calendar } from '@wordrhyme/shadcn';
 import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import { Separator } from '@wordrhyme/shadcn';
-import { useDateFormatterVersion } from '@/lib/format';
 import {
-  calendarPresentation,
   calendarMaxDate,
+  calendarPresentation,
   parseCalendarDate,
   serializeCalendarDate,
+  useCalendarToday,
 } from '@/lib/calendar-date';
+import { useDateFormatterVersion } from '@/lib/format';
 
 type DateSelection = Date[] | DateRange;
 
@@ -62,7 +63,9 @@ export function DataTableDateFilter<TData>({
   title,
   multiple,
 }: DataTableDateFilterProps<TData>) {
-  const upperBound = calendarMaxDate(column.columnDef.meta?.maxDate);
+  const today = useCalendarToday();
+  const maxDate = column.columnDef.meta?.maxDate;
+  const upperBound = maxDate === 'today' ? today : calendarMaxDate(maxDate);
   const formatterVersion = useDateFormatterVersion();
   const presentation = React.useMemo(() => calendarPresentation(), [formatterVersion]);
   const { formatDate } = presentation;
@@ -259,7 +262,7 @@ export function DataTableDateFilter<TData>({
       <PopoverContent className="w-auto p-0" align="start">
         {multiple ? (
           <Calendar
-            today={calendarMaxDate('today')}
+            today={today}
             disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}
@@ -275,7 +278,7 @@ export function DataTableDateFilter<TData>({
           />
         ) : (
           <Calendar
-            today={calendarMaxDate('today')}
+            today={today}
             disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}
