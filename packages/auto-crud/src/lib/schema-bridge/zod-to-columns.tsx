@@ -181,7 +181,7 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
 /**
  * 渲染单元格内容
  */
-function renderCell(
+export function renderCell(
   value: unknown,
   type: FieldType,
   options?: Array<{ label: string; value: string }>,
