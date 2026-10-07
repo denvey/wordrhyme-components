@@ -796,10 +796,16 @@ function splitCrudExtensionWriteInput<TInput>(
     };
   }
 
+  const rawValues: Record<string, unknown> = { ...inputData };
+  delete rawValues.__crudExtensionProjection;
+  if (isObjectRecord(rawValues.ext)) {
+    rawValues.ext = { ...rawValues.ext };
+    delete (rawValues.ext as Record<string, unknown>).__crudExtensionProjection;
+  }
   const baseValues: Record<string, unknown> = {};
   const extraValues: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(inputData)) {
+  for (const [key, value] of Object.entries(rawValues)) {
     if (key === 'ext') {
       if (isObjectRecord(value)) {
         Object.assign(extraValues, value);
@@ -816,7 +822,7 @@ function splitCrudExtensionWriteInput<TInput>(
 
   return {
     data: baseValues as TInput,
-    rawValues: inputData,
+    rawValues,
     baseValues,
     extraValues: Object.keys(extraValues).length > 0 ? extraValues : null,
   };
@@ -1065,6 +1071,22 @@ async function enrichCrudRows<TContext, TRow extends Record<string, unknown>>(
 
     return {
       ...row,
+      __crudExtensionProjection: Object.fromEntries(
+        Object.entries(projected).flatMap(([field, value]) =>
+          isObjectRecord(value) &&
+          (value.type === 'ref' || (typeof value.type !== 'string' && 'refId' in value))
+            ? [
+                [
+                  field,
+                  {
+                    refId: readProjectionValue(value) ?? null,
+                    display: typeof value.display === 'string' ? value.display : null,
+                  },
+                ],
+              ]
+            : [],
+        ),
+      ),
       ...Object.fromEntries(
         Object.entries(projected).map(([field, value]) => [
           field,

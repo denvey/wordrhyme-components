@@ -1844,6 +1844,44 @@ describe('createCrudRouter', () => {
       expect(getMetadata).not.toHaveBeenCalled();
     });
 
+    it.each([
+      { refId: 'user-1', display: 'User One' },
+      { type: 'ref', refId: 'user-1', display: 'User One' },
+      { type: 'ref', value: 'user-1', display: 'User One' },
+    ])(
+      'preserves reference labels with the resolved raw ID for %j',
+      async (projection) => {
+        const db = createListMockDb([
+          { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
+        ]);
+        const router = createCrudRouter({
+          id: 'com.example.tasks',
+          table: mockTable,
+          schema: insertTaskSchema,
+          updateSchema: updateTaskSchema,
+          selectSchema: taskSchema,
+        });
+        const caller = router.createCaller({
+          db,
+          crudExtensions: {
+            readProjection: vi.fn().mockResolvedValue({ '1': { owner: projection } }),
+          },
+        } as any) as CrudCaller;
+        const expected = {
+          owner: 'user-1',
+          __crudExtensionProjection: {
+            owner: { refId: 'user-1', display: 'User One' },
+          },
+        };
+
+        const listed = await caller.list({ page: 1, perPage: 10, joinOperator: 'and' });
+        expect(listed.data[0]).toMatchObject(expected);
+        expect(await caller.get('1')).toMatchObject(expected);
+        const exported = await caller.export({});
+        expect(exported.data[0]).toMatchObject(expected);
+      },
+    );
+
     it.each(['and', 'or'] as const)(
       'composes %s extension predicates before list counts and export limits',
       async (joinOperator) => {
