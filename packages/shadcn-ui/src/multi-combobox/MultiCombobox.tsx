@@ -403,12 +403,11 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
           collisionBoundary={popoverBoundary ?? undefined}
           container={popoverContainer}
           hideWhenDetached
-          className={cn('w-full p-0', contentClassName)}
-          style={
-            matchTriggerWidth
-              ? { width: 'var(--radix-popover-trigger-width)' }
-              : undefined
-          }
+          className={cn('w-full overflow-hidden p-0', contentClassName)}
+          style={{
+            maxHeight: 'var(--radix-popover-content-available-height)',
+            ...(matchTriggerWidth ? { width: 'var(--radix-popover-trigger-width)' } : {}),
+          }}
         >
           <Command
             className={className}
@@ -427,6 +426,11 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
               <div
                 data-multi-combobox-viewport=""
                 className="max-h-[300px] overflow-x-hidden overflow-y-auto overscroll-contain"
+                style={{
+                  // Reserve space for the search row and borders, including inside dialogs.
+                  maxHeight:
+                    'min(300px, max(0px, calc(var(--radix-popover-content-available-height, 100vh) - 2.75rem)))',
+                }}
                 onScroll={handleOptionsScroll}
               >
                 <CommandEmpty>{emptyText}</CommandEmpty>
