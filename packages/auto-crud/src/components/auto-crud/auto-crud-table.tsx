@@ -57,6 +57,7 @@ import {
   type AutoCrudDataSourceEntry,
 } from '@/lib/registries';
 import { crudActions } from '@/lib/crud-actions';
+import { readCrudReferenceOption } from '@/lib/crud-reference-projection';
 import { buildFormOverrides } from '@/lib/field-config';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { createTableSchema } from '@/lib/schema-bridge/zod-to-columns';
@@ -1434,7 +1435,23 @@ function useDynamicResolveOptions(
     };
   }, [registryVersion, rows, sourceEntries]);
 
-  return { optionsByField };
+  const displayOptionsByField = { ...optionsByField };
+  for (const field of Object.keys(fields ?? {}).filter(
+    (key) => !hiddenColumns.includes(key),
+  )) {
+    const projectedOptions = rows.flatMap((row) => {
+      const option = readCrudReferenceOption(row, field, row[field]);
+      return option ? [option] : [];
+    });
+    if (projectedOptions.length > 0) {
+      displayOptionsByField[field] = mergeFilterOptions(
+        projectedOptions,
+        optionsByField[field] ?? [],
+      );
+    }
+  }
+
+  return { optionsByField: displayOptionsByField };
 }
 
 function getOptionLabel(value: unknown, options?: FieldOption[]) {

@@ -533,6 +533,34 @@ describe('AutoCrudTable resolve dataSource', () => {
     vi.clearAllMocks();
   });
 
+  it('keeps projected labels in cells and details when resolution is denied', async () => {
+    const loader = vi.fn().mockRejectedValue(new Error('Forbidden'));
+    dataSources.register('test.dynamic-regions', loader);
+    const row = {
+      id: '1',
+      region: 'west',
+      __crudExtensionProjection: {
+        region: { refId: 'west', display: 'Projected West' },
+      },
+    };
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          data: [row],
+          modal: { viewOpen: true, selected: row },
+        })}
+        fields={displayFields}
+      />,
+    );
+
+    await waitFor(() => expect(loader).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(screen.getAllByText('Projected West').length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   it('resolves current page labels once with deduped values', async () => {
     const rows: Row[] = [
       { id: '1', region: 'west' },

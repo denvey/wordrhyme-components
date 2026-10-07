@@ -1073,11 +1073,17 @@ async function enrichCrudRows<TContext, TRow extends Record<string, unknown>>(
       ...row,
       __crudExtensionProjection: Object.fromEntries(
         Object.entries(projected).flatMap(([field, value]) =>
-          isObjectRecord(value) && value.type === 'ref'
-            ? [[field, {
-                refId: value.refId ?? null,
-                display: typeof value.display === 'string' ? value.display : null,
-              }]]
+          isObjectRecord(value) &&
+          (value.type === 'ref' || (typeof value.type !== 'string' && 'refId' in value))
+            ? [
+                [
+                  field,
+                  {
+                    refId: readProjectionValue(value) ?? null,
+                    display: typeof value.display === 'string' ? value.display : null,
+                  },
+                ],
+              ]
             : [],
         ),
       ),
