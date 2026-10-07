@@ -24,13 +24,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import { Separator } from '@wordrhyme/shadcn';
 import { Slider } from '@wordrhyme/shadcn';
 import { Select } from '@wordrhyme/shadcn-ui';
-import { getDefaultFilterOperator } from '@/lib/data-table';
-import { useDateFormatterVersion } from '@/lib/format';
 import {
+  calendarMaxDate,
   calendarPresentation,
   parseCalendarDate,
   serializeCalendarDate,
+  useCalendarToday,
 } from '@/lib/calendar-date';
+import { getDefaultFilterOperator } from '@/lib/data-table';
+import { useDateFormatterVersion } from '@/lib/format';
 import { generateId } from '@/lib/id';
 import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { cn } from '@/lib/utils';
@@ -419,6 +421,7 @@ export function AutoTableSimpleFilters<TData>({
                 <SimpleDateFilter
                   title={meta.label ?? column.id}
                   multiple={meta.variant === 'dateRange'}
+                  maxDate={meta.maxDate}
                   value={value}
                   onChange={(v) => updateFilter(column.id, v)}
                 />
@@ -702,6 +705,7 @@ function SimpleSliderFilter({
 // 简单的日期过滤器
 interface SimpleDateFilterProps {
   title: string;
+  maxDate?: string;
   multiple?: boolean;
   value: string | string[] | undefined;
   onChange: (value: string | string[] | undefined) => void;
@@ -709,10 +713,13 @@ interface SimpleDateFilterProps {
 
 export function SimpleDateFilter({
   title,
+  maxDate,
   multiple,
   value,
   onChange,
 }: SimpleDateFilterProps) {
+  const today = useCalendarToday();
+  const upperBound = maxDate === 'today' ? today : calendarMaxDate(maxDate);
   const [open, setOpen] = React.useState(false);
   const commit = (next: string | string[] | undefined) => {
     setOpen(false);
@@ -786,6 +793,8 @@ export function SimpleDateFilter({
       <PopoverContent className="w-auto p-0" align="start">
         {multiple ? (
           <Calendar
+            today={today}
+            disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}
             formatters={presentation.formatters}
@@ -794,6 +803,7 @@ export function SimpleDateFilter({
             autoFocus
             captionLayout="dropdown"
             mode="range"
+            excludeDisabled={!!upperBound}
             selected={localRange}
             onSelect={(range) => {
               // react-day-picker v9 range mode behavior:
@@ -859,6 +869,8 @@ export function SimpleDateFilter({
           />
         ) : (
           <Calendar
+            today={today}
+            disabled={upperBound ? { after: upperBound } : undefined}
             lang={presentation.locale}
             weekStartsOn={presentation.weekStartsOn}
             formatters={presentation.formatters}

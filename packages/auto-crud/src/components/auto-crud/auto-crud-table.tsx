@@ -84,6 +84,8 @@ export interface FilterConfig {
   dataSource?: AutoCrudDataSourceConfig;
   /** range 的最小/最大值 */
   range?: [number, number];
+  /** Latest selectable calendar day (YYYY-MM-DD), or today in the Host time zone. */
+  maxDate?: string;
   /** number 的单位 */
   unit?: string;
   /** 过滤器占位符 */
