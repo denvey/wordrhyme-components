@@ -448,6 +448,8 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
                         keywords={getOptionKeywords(option)}
                         disabled={option.disabled}
                         onSelect={() => onItemSelect(option)}
+                        data-current={isSelected ? 'true' : undefined}
+                        className={cn(isSelected && 'bg-accent font-medium text-accent-foreground')}
                       >
                         {isMultiple && (
                           <div
@@ -472,6 +474,9 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
                           <span className="ml-auto font-mono text-xs">
                             {option.count}
                           </span>
+                        )}
+                        {!isMultiple && (
+                          <Check aria-hidden="true" className={cn('ml-auto size-4 shrink-0', isSelected ? 'opacity-100' : 'opacity-0')} />
                         )}
                       </CommandItem>
                     );
