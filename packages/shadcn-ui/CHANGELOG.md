@@ -1,5 +1,11 @@
 # @pixpilot/shadcn-ui
 
+## 2.0.1
+
+### Patch Changes
+
+- 4ba625e: Constrain the multi-select combobox popup to the available viewport height and keep long option lists scrollable inside dialogs.
+
 ## 2.0.0
 
 ### Major Changes

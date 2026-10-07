@@ -1,5 +1,21 @@
 # @wordrhyme/auto-crud
 
+## 1.7.1
+
+### Patch Changes
+
+- 5b729e2: Add an optional calendar date upper bound to simple and advanced date filters.
+
+  Use the Host's configured time zone for both the today upper bound and the calendar's today marker so default focus and selectable dates stay consistent.
+
+  Keep relative bounds and today markers current across Host midnight, time zone changes, and page resumes.
+
+- 01d9112: Constrain import dialog height and use a balanced desktop width while retaining scrollable previews.
+- 6948496: Use Host UI alert dialogs for deletion so row menus and confirmation dialogs share the same Radix interaction lock.
+- Updated dependencies [4ba625e]
+  - @wordrhyme/shadcn-ui@2.0.1
+  - @wordrhyme/formily-shadcn@2.0.1
+
 ## 1.7.0
 
 ### Minor Changes
