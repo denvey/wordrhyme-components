@@ -30,7 +30,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@wordrhyme/shadcn';
+} from '@wordrhyme/ui';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/shadcn';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/shadcn';
 import {
