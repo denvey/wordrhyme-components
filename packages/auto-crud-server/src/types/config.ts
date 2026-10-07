@@ -214,7 +214,9 @@ export interface CrudExtensionsProvider {
    * Otherwise list/get/export return a defined refId (including null), then
    * value when present. Providers should put editable values in value, including
    * ID arrays for multi-reference fields. display is a legacy fallback only when
-   * no raw value exists; consumers resolve labels through their data sources.
+   * no raw value exists. Reference envelopes also expose refId and display in
+   * __crudExtensionProjection on each row, allowing consumers to show the
+   * existing reference label without requiring access to the target's search API.
    */
   readProjection?: (input: {
     id: string;
