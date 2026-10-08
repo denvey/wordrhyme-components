@@ -31,8 +31,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@wordrhyme/ui';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/shadcn';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/shadcn';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/ui';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/ui';
 import {
   parseZodField,
   renderCell,
