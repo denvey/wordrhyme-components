@@ -55,10 +55,10 @@ it('supports empty values and disabled fields', () => {
   setDateFormatter(() => '', { locale: 'zh-CN', timeZone: 'Asia/Shanghai' });
   const { rerender } = render(<DateOnlyPicker value={null} disabled />);
   expect(
-    (screen.getByRole('button', { name: '选择日期' }) as HTMLButtonElement).disabled,
+    (screen.getByRole('button', { name: 'YYYY-MM-DD' }) as HTMLButtonElement).disabled,
   ).toBe(true);
   rerender(<DateOnlyPicker value="2026-02-30" />);
-  expect(screen.getByRole('button', { name: '选择日期' })).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'YYYY-MM-DD' })).toBeTruthy();
 });
 
 it.each(['2026-09-27T00:00:00.000Z', new Date('2026-09-27T00:00:00.000Z')])(

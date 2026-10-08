@@ -55,7 +55,9 @@ it.each(['date-only', 'date'] as const)(
     );
     fireEvent.click(screen.getByRole('button', { name: 'Clear date' }));
     expect(
-      screen.getByText('Pick a date').closest('button') as HTMLButtonElement,
+      screen
+        .getByText(valueFormat === 'date-only' ? 'YYYY-MM-DD' : 'Pick a date')
+        .closest('button') as HTMLButtonElement,
     ).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '创建' }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(2));
@@ -125,7 +127,7 @@ it('marks the required date trigger invalid and clears its feedback after select
     />,
   );
   await expect(ref.current!.submit()).rejects.toBeDefined();
-  const trigger = screen.getByText('Pick a date').closest('button')!;
+  const trigger = screen.getByText('YYYY-MM-DD').closest('button')!;
   await waitFor(() => expect(trigger.getAttribute('aria-invalid')).toBe('true'));
   expect(trigger.getAttribute('aria-describedby')).toBeTruthy();
   fireEvent.click(trigger);
@@ -134,5 +136,5 @@ it('marks the required date trigger invalid and clears its feedback after select
   )!;
   fireEvent.click(day);
   await waitFor(() => expect(trigger.getAttribute('aria-invalid')).not.toBe('true'));
-  expect(trigger.textContent).not.toContain('Pick a date');
+  expect(trigger.textContent).not.toContain('YYYY-MM-DD');
 });
