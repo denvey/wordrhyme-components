@@ -11,7 +11,7 @@ export const meta: ComponentMeta<DatePickerOwnProps> = {
   htmlElement: 'button',
   props: defineProps<DatePickerOwnProps>({
     valueFormat:
-      'Omit to emit Date/undefined; YYYY-MM-DD emits a calendar-date string and clears to an empty string. Use formatValue to customize the displayed label.',
+      'A non-empty Day.js format string for parsing and serializing values, e.g. YYYY-MM-DD, YYYY/MM/DD or DD-MM-YYYY. Omit to emit Date/undefined; formatted values clear to an empty string. Use formatValue to customize the displayed label.',
     readOnly: 'Prevents selection and clearing.',
     formatValue: 'Optional selected-date label formatter.',
     primitives: 'Optional primitives shared with the containing modal.',

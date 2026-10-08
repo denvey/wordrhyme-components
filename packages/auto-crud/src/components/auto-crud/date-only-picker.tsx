@@ -3,7 +3,7 @@
 import type { DatePickerProps } from '@wordrhyme/shadcn-ui';
 import { DatePicker as FormilyDatePicker } from '@wordrhyme/formily-shadcn';
 import { Button, Calendar, Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/ui';
-import { calendarPresentation } from '@/lib/calendar-date';
+import { calendarPresentation, parseCalendarDate } from '@/lib/calendar-date';
 import { useDateFormatterVersion } from '@/lib/format';
 
 const primitives = { Button, Calendar, Popover, PopoverContent, PopoverTrigger };
@@ -14,7 +14,7 @@ type FormDatePickerProps = DatePickerProps & {
 };
 
 export function DatePicker({ dateInput, ...props }: FormDatePickerProps) {
-  if (props.valueFormat === 'YYYY-MM-DD' && dateInput === 'utc-projection') {
+  if (props.valueFormat !== undefined && dateInput === 'utc-projection') {
     const value = props.value;
     props = {
       ...props,
@@ -22,11 +22,11 @@ export function DatePicker({ dateInput, ...props }: FormDatePickerProps) {
         value instanceof Date
           ? Number.isNaN(value.getTime())
             ? ''
-            : value.toISOString().slice(0, 10)
+            : parseCalendarDate(value.toISOString().slice(0, 10))
           : typeof value === 'string' &&
               /^\d{4}-\d{2}-\d{2}T/.test(value) &&
               !Number.isNaN(Date.parse(value))
-            ? value.slice(0, 10)
+            ? parseCalendarDate(value.slice(0, 10))
             : value,
     };
   }
@@ -35,13 +35,13 @@ export function DatePicker({ dateInput, ...props }: FormDatePickerProps) {
   return (
     <FormilyDatePicker
       primitives={primitives}
-      {...(props.valueFormat === 'YYYY-MM-DD'
+      {...(props.valueFormat !== undefined
         ? {
             captionLayout: 'dropdown-months' as const,
             formatters: presentation.formatters,
             labels: presentation.labels,
             weekStartsOn: presentation.weekStartsOn,
-            placeholder: 'YYYY-MM-DD',
+            placeholder: props.valueFormat,
           }
         : {})}
       {...props}
@@ -52,7 +52,7 @@ export function DatePicker({ dateInput, ...props }: FormDatePickerProps) {
 /** @deprecated Use DatePicker with valueFormat="YYYY-MM-DD". */
 export function DateOnlyPicker(
   props: Omit<
-    Extract<DatePickerProps, { valueFormat: 'YYYY-MM-DD' }> &
+    Extract<DatePickerProps, { valueFormat: string }> &
       Pick<FormDatePickerProps, 'dateInput'>,
     'valueFormat'
   >,

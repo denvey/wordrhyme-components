@@ -1868,6 +1868,9 @@ importers:
       class-variance-authority:
         specifier: catalog:prod
         version: 0.7.1
+      dayjs:
+        specifier: ^1.11.21
+        version: 1.11.21
       lucide-react:
         specifier: catalog:prod
         version: 0.553.0(react@19.2.4)

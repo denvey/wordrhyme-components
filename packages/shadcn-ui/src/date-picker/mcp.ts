@@ -26,7 +26,7 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
     'aria-describedby':
       'Description and validation message ids associated with the date trigger.',
     valueFormat:
-      'Omit to emit Date/undefined; YYYY-MM-DD emits a calendar-date string or an empty string when cleared. Ordinary Date inputs use local calendar fields. Use formatValue to customize the displayed label.',
+      'A non-empty Day.js format string used to parse and serialize values, e.g. YYYY-MM-DD, YYYY/MM/DD, DD-MM-YYYY or YYYY-MM-DD HH:mm:ss. Omit to emit Date/undefined; formatted values clear to an empty string. Ordinary Date inputs use local calendar fields. Use formatValue to customize the displayed label.',
     readOnly: 'Prevents selection and clearing.',
     formatValue: 'Optional formatter for the selected-date trigger label.',
     primitives:
@@ -38,7 +38,7 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
     },
     onChange: {
       description:
-        'Returns Date/undefined by default, or a calendar-date string/empty string with valueFormat="YYYY-MM-DD".',
+        'Returns Date/undefined when valueFormat is omitted, or a string in the configured format/empty string when valueFormat is provided.',
       type: '((date: Date | undefined) => void) | ((date: string) => void)',
     },
     placeholder: {
@@ -63,6 +63,10 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
     {
       title: 'Calendar-date string',
       code: '<DatePicker valueFormat="YYYY-MM-DD" value={dateString} onChange={setDateString} />',
+    },
+    {
+      title: 'Custom date format',
+      code: '<DatePicker valueFormat="DD/MM/YYYY" value={dateString} onChange={setDateString} />',
     },
   ],
   keywords: ['date', 'calendar', 'picker', 'form'],

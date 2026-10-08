@@ -4,4 +4,4 @@
 "@wordrhyme/formily-shadcn": minor
 ---
 
-Reuse DatePicker with valueFormat="YYYY-MM-DD" for calendar-date strings (empty string when cleared), retaining the default Date output when valueFormat is omitted and a deprecated DateOnlyPicker compatibility alias.
+Reuse DatePicker with Day.js valueFormat strings for parsing and serializing dates (empty string when cleared), retaining the default Date output when valueFormat is omitted and a deprecated DateOnlyPicker compatibility alias.

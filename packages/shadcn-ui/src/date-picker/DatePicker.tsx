@@ -11,8 +11,26 @@ import {
 } from '@wordrhyme/shadcn';
 
 import { CalendarIcon, XIcon } from 'lucide-react';
+import dayjs from 'dayjs';
+import advancedFormat from 'dayjs/plugin/advancedFormat.js';
+import customParseFormat from 'dayjs/plugin/customParseFormat.js';
+import isoWeek from 'dayjs/plugin/isoWeek.js';
+import localizedFormat from 'dayjs/plugin/localizedFormat.js';
+import timezone from 'dayjs/plugin/timezone.js';
+import utc from 'dayjs/plugin/utc.js';
+import weekOfYear from 'dayjs/plugin/weekOfYear.js';
+import weekYear from 'dayjs/plugin/weekYear.js';
 
 import React, { useState } from 'react';
+
+dayjs.extend(customParseFormat);
+dayjs.extend(localizedFormat);
+dayjs.extend(weekOfYear);
+dayjs.extend(weekYear);
+dayjs.extend(isoWeek);
+dayjs.extend(utc);
+dayjs.extend(timezone);
+dayjs.extend(advancedFormat);
 
 type CalendarProps = Omit<
   ComponentProps<typeof Calendar>,
@@ -39,24 +57,43 @@ export type DatePickerProps = CommonProps &
         onChange?: (date: Date | undefined) => void;
       }
     | {
-        valueFormat: 'YYYY-MM-DD';
+        /** Day.js format used for parsing and serializing the controlled value. */
+        valueFormat: string;
         value?: string | Date | null;
         onChange?: (date: string) => void;
       }
   );
 
-function dateOnly(value: string | Date | null | undefined): Date | undefined {
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value;
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
-  const [year, month, day] = value.split('-').map(Number);
-  const date = new Date(0);
-  date.setFullYear(year!, month! - 1, day!);
-  date.setHours(0, 0, 0, 0);
-  return serialize(date) === value ? date : undefined;
+function formatDate(date: Date, format: string): string {
+  // DayPicker can return TZDate: retain its calendar fields when Day.js clones it.
+  return dayjs(date).utcOffset(-date.getTimezoneOffset()).format(format);
 }
 
-function serialize(date: Date): string {
-  return `${String(date.getFullYear()).padStart(4, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+function parseValue(
+  value: DatePickerProps['value'],
+  valueFormat?: string,
+): Date | undefined {
+  if (value == null || value === '') return undefined;
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? undefined : value;
+  const format =
+    valueFormat ??
+    (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
+      ? 'YYYY-MM-DD'
+      : undefined);
+  if (format !== undefined) {
+    if (typeof value !== 'string') return undefined;
+    if (format === 'YYYY-MM-DD' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      // Native ISO parsing also retains years 0000–0099 without mapping them to 1900.
+      const date = new Date(`${value}T00:00:00`);
+      return !Number.isNaN(date.getTime()) && formatDate(date, format) === value
+        ? date
+        : undefined;
+    }
+    const date = dayjs(value, format, true);
+    return date.isValid() ? date.toDate() : undefined;
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
 export function DatePicker(props: DatePickerProps) {
@@ -75,24 +112,15 @@ export function DatePicker(props: DatePickerProps) {
     ...calendarProps
   } = props;
   const [open, setOpen] = useState(false);
-  const selected =
-    valueFormat === 'YYYY-MM-DD'
-      ? dateOnly(value as string | Date | null | undefined)
-      : value == null || value === ''
-        ? undefined
-        : value instanceof Date
-          ? Number.isNaN(value.getTime())
-            ? undefined
-            : value
-          : typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)
-            ? dateOnly(value)
-            : Number.isNaN(new Date(value).getTime())
-              ? undefined
-              : new Date(value);
+  if (valueFormat !== undefined && valueFormat.trim() === '') {
+    throw new TypeError('valueFormat must be a non-empty Day.js format string.');
+  }
+  const selected = parseValue(value, valueFormat);
   const { Button, Calendar, Popover, PopoverContent, PopoverTrigger } = primitives;
   const change = (date: Date | undefined) => {
-    if (props.valueFormat === 'YYYY-MM-DD') props.onChange?.(date ? serialize(date) : '');
-    else props.onChange?.(date);
+    if (props.valueFormat !== undefined) {
+      props.onChange?.(date ? formatDate(date, props.valueFormat) : '');
+    } else props.onChange?.(date);
     setOpen(false);
   };
   return (
@@ -115,8 +143,8 @@ export function DatePicker(props: DatePickerProps) {
             <CalendarIcon className="mr-2 h-4 w-4" />
             {selected ? (
               (formatValue?.(selected) ??
-              (valueFormat === 'YYYY-MM-DD'
-                ? serialize(selected)
+              (valueFormat !== undefined
+                ? formatDate(selected, valueFormat)
                 : selected.toLocaleDateString()))
             ) : (
               <span>{placeholder}</span>
