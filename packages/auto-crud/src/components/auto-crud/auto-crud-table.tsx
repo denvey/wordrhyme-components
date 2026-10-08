@@ -2,7 +2,7 @@
 
 import type { TablePaginationOptions } from '@/types/data-table';
 
-import type { ColumnMeta } from '@tanstack/react-table';
+import type { CellContext, ColumnMeta } from '@tanstack/react-table';
 import type { z } from 'zod';
 import type {
   AutoCrudQueryCapabilities,
@@ -33,10 +33,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@wordrhyme/ui';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/shadcn';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/shadcn';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/ui';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/ui';
 import {
   parseZodField,
+  renderCell,
   type ResolvedActionItem,
 } from '@/lib/schema-bridge/zod-to-columns';
 import { useRowActionDialog, type RowActionDialogProps } from '@/lib/row-action-dialog';
@@ -122,6 +123,11 @@ export type FieldTableDisplay = 'auto' | 'text' | 'badge' | 'date' | 'datetime';
 export interface Field {
   /** 字段标签（表格和表单共用） */
   label?: string;
+  /** Format default table/detail text and CSV values; undefined keeps the default. */
+  format?: (
+    value: unknown,
+    context: { row: Record<string, unknown>; target: 'display' | 'export' },
+  ) => string | undefined;
   /** 字段级静态选项（表单、筛选、展示共用） */
   enum?: FieldOption[];
   /** 字段级动态选项源（表单、筛选、展示共用） */
@@ -1466,6 +1472,19 @@ function getOptionLabel(value: unknown, options?: FieldOption[]) {
   return options?.find((option) => option.value === stringValue)?.label ?? stringValue;
 }
 
+function formatExportRow(
+  row: Record<string, unknown>,
+  fields: Fields,
+  values: Record<string, unknown> = row,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(values).map(([key, value]) => [
+      key,
+      fields[key]?.format?.(value, { row, target: 'export' }) ?? value,
+    ]),
+  );
+}
+
 /**
  * 从统一配置生成表格 overrides
  * 当 filter 配置存在时，合并到 meta 中（不影响列隐藏）
@@ -1638,14 +1657,22 @@ function buildTableOverrides(
             : (presentationOptions ?? mergedSharedDynamicOptions);
           result[key] = {
             ...result[key],
-            cell: ({ row }: { row: { getValue: (field: string) => unknown } }) =>
-              renderFieldValue(
-                row.getValue(key),
-                'string',
-                { true: 'true', false: 'false' },
-                options,
-                display ?? 'auto',
-              ),
+            cell: ({
+              row,
+              getValue,
+            }: CellContext<Record<string, unknown>, unknown>): React.ReactNode => {
+              const value = getValue();
+              return (
+                config.format?.(value, { row: row.original, target: 'display' }) ??
+                renderFieldValue(
+                  value,
+                  'string',
+                  { true: 'true', false: 'false' },
+                  options,
+                  display ?? 'auto',
+                )
+              );
+            },
           };
         }
       }
@@ -2029,15 +2056,23 @@ function ViewModalContent<TSchema extends z.ZodObject<z.ZodRawShape>>({
       overrides[key] = {
         label: tableConfig?.label ?? config.label ?? listOverride?.label ?? humanize(key),
         index: tableConfig?.index ?? listOverride?.index,
-        cell: ({ getValue }: { getValue: () => unknown }): React.ReactNode =>
-          renderFieldValue(
-            getValue(),
-            parseZodField(fieldSchema as z.ZodType).type,
-            locale.boolean,
-            options,
-            tableConfig?.display ?? 'auto',
-            Infinity,
-          ),
+        cell: ({
+          getValue,
+          row,
+        }: CellContext<z.output<TSchema>, unknown>): React.ReactNode => {
+          const value = getValue();
+          return (
+            config.format?.(value, { row: row.original, target: 'display' }) ??
+            renderFieldValue(
+              value,
+              parseZodField(fieldSchema as z.ZodType).type,
+              locale.boolean,
+              options,
+              tableConfig?.display ?? 'auto',
+              Infinity,
+            )
+          );
+        },
         ...(view?.presentation === 'table' ? listOverride : undefined),
         // List visibility does not govern details. Shared hidden/deny are excluded above.
         hidden: false,
@@ -2357,21 +2392,21 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         // 导出选中行（纯客户端，不需要 exportFetcher）
         const selectedRows = getSelectedRowsRef.current?.();
         if (!selectedRows || selectedRows.length === 0) return;
-        exportAllToCSV(selectedRows as Record<string, unknown>[], {
-          filename,
-          excludeColumns,
-        });
+        exportAllToCSV(
+          selectedRows.map((row) => formatExportRow(row, resolvedFields)),
+          { filename, excludeColumns },
+        );
       } else {
         // 导出筛选结果（通过服务端 export 接口获取）
         if (!resource.handlers.export) return;
         const data = await resource.handlers.export();
-        exportAllToCSV(data, {
-          filename,
-          excludeColumns,
-        });
+        exportAllToCSV(
+          data.map((row) => formatExportRow(row, resolvedFields)),
+          { filename, excludeColumns },
+        );
       }
     },
-    [resource.handlers.export, title, denyFields],
+    [resource.handlers.export, title, denyFields, resolvedFields],
   );
 
   // 导出按钮点击：根据选中状态智能判断导出模式
@@ -2384,6 +2419,41 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       setExporting(false);
     }
   }, [selectedCount, handleExport]);
+  const exportBatchActions = React.useMemo(() => {
+    if (!Object.values(resolvedFields).some((field) => field.format)) {
+      return registryBatchActions;
+    }
+    return registryBatchActions.map((action) => {
+      if (
+        action.type !== 'export' ||
+        action.onClick !== undefined ||
+        Boolean(action.component)
+      )
+        return action;
+      return {
+        ...action,
+        onClick: (_rows, { table }) => {
+          const headers = table
+            .getAllLeafColumns()
+            .map((column) => column.id)
+            .filter(
+              (key) =>
+                key !== 'select' && key !== 'actions' && !denyFields?.includes(key),
+            );
+          const data = table
+            .getFilteredSelectedRowModel()
+            .rows.map((row) =>
+              formatExportRow(
+                row.original,
+                resolvedFields,
+                Object.fromEntries(headers.map((key) => [key, row.getValue(key)])),
+              ),
+            );
+          exportAllToCSV(data, { filename: 'table', headers });
+        },
+      } satisfies BatchActionItem<z.output<TSchema>>;
+    });
+  }, [registryBatchActions, resolvedFields, denyFields]);
   const toolbarRefresh = React.useMemo<AutoCrudToolbarContext['refresh']>(() => {
     const refresh = ownerRefreshAction?.onClick ?? resource.handlers.refresh;
     if (!refresh) return undefined;
@@ -2438,26 +2508,48 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   );
 
   // 构建表格和表单的 overrides（memoized）
-  const tableOverrides = React.useMemo(
-    () =>
-      mergeTableOverrides(
-        buildTableOverrides(
-          resolvedFields,
-          tableConfig?.overrides,
-          dynamicFilterOptions,
-          dynamicResolveOptions,
-        ),
-        buildCapabilityTableOverrides(resolvedSchema, resource.capabilities),
+  const { tableOverrides, detailTableOverrides } = React.useMemo(() => {
+    const presentationOverrides = mergeTableOverrides(
+      buildTableOverrides(
+        resolvedFields,
+        tableConfig?.overrides,
+        dynamicFilterOptions,
+        dynamicResolveOptions,
       ),
-    [
-      resolvedFields,
-      tableConfig?.overrides,
-      dynamicFilterOptions,
-      dynamicResolveOptions,
-      resolvedSchema,
-      resource.capabilities,
-    ],
-  );
+      buildCapabilityTableOverrides(resolvedSchema, resource.capabilities),
+    );
+    const formattedOverrides: ColumnOverrides<Record<string, unknown>> = {
+      ...presentationOverrides,
+    };
+    for (const [key, config] of Object.entries(resolvedFields)) {
+      const override = formattedOverrides[key];
+      // Custom cells own their rendering. Keep detail defaults separate from list defaults.
+      if (config.format && override?.cell === undefined && resolvedSchema.shape[key]) {
+        const { type } = parseZodField(resolvedSchema.shape[key] as z.ZodType);
+        formattedOverrides[key] = {
+          ...override,
+          cell: (context): React.ReactNode => {
+            const value = context.getValue();
+            return (
+              config.format?.(value, { row: context.row.original, target: 'display' }) ??
+              renderCell(value, type, context.column.columnDef.meta?.options)
+            );
+          },
+        };
+      }
+    }
+    return {
+      tableOverrides: formattedOverrides,
+      detailTableOverrides: presentationOverrides,
+    };
+  }, [
+    resolvedFields,
+    tableConfig?.overrides,
+    dynamicFilterOptions,
+    dynamicResolveOptions,
+    resolvedSchema,
+    resource.capabilities,
+  ]);
   const defaultSort = React.useMemo(
     () =>
       resource.defaultSort ??
@@ -2722,7 +2814,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}
         batchUpdateFields={can.update ? batchFields : undefined}
-        actionBarActions={registryBatchActions}
+        actionBarActions={exportBatchActions}
         deleteConfirmation={locale.bulkDeleteModal}
         enableExport={canExport}
         showDefaultExport={false}
@@ -2769,7 +2861,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         dynamicOptions={dynamicFilterOptions.labelOptionsByField}
         denyFields={denyFields}
         locale={locale}
-        tableOverrides={tableOverrides as ColumnOverrides<z.output<TSchema>>}
+        tableOverrides={detailTableOverrides as ColumnOverrides<z.output<TSchema>>}
         view={viewConfig}
       />
 
