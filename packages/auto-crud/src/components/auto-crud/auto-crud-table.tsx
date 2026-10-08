@@ -2250,8 +2250,15 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   onCreate,
 }: AutoCrudTableProps<TSchema>) {
   const locale = resolveLocale(localeProp);
-  const getPagination = React.useCallback(() => id ? tablePagination.get(id) : undefined, [id]);
-  const registeredPagination = React.useSyncExternalStore(tablePagination.subscribe, getPagination, getPagination);
+  const getPagination = React.useCallback(
+    () => (id ? tablePagination.get(id) : undefined),
+    [id],
+  );
+  const registeredPagination = React.useSyncExternalStore(
+    tablePagination.subscribe,
+    getPagination,
+    getPagination,
+  );
   const pagination = tableConfig?.pagination ?? registeredPagination;
   const resolvedSchema = resource.schema ?? schema;
   const resolvedFields = React.useMemo<Fields>(
@@ -2801,7 +2808,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.tableData.data}
         schema={resolvedSchema as TSchema}
         pageCount={resource.tableData.pageCount}
-        pagination={pagination ? { pageJumpLabel: locale.pagination?.pageJump, ...pagination } : undefined}
+        pagination={
+          pagination
+            ? { pageJumpLabel: locale.pagination?.pageJump, ...pagination }
+            : undefined
+        }
         {...(resource.tableData.total !== undefined
           ? { total: resource.tableData.total }
           : {})}
