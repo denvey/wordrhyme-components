@@ -1270,15 +1270,15 @@ DATABASE_URL = 'postgresql://user:password@localhost:5432/dbname';
 
 ## 📄 许可证
 
-MIT © [wordrhyme](https://github.com/pixpilot/shadcn-components)
+MIT © [wordrhyme](https://github.com/denvey/wordrhyme-components)
 
 ---
 
 ## 🔗 相关链接
 
-- [GitHub](https://github.com/pixpilot/shadcn-components)
-- [文档](https://github.com/pixpilot/shadcn-components/tree/main/packages/auto-crud-server)
-- [@wordrhyme/auto-crud](https://github.com/pixpilot/shadcn-components/tree/main/packages/auto-crud) - 前端组件库
+- [GitHub](https://github.com/denvey/wordrhyme-components)
+- [文档](https://github.com/denvey/wordrhyme-components/tree/main/packages/auto-crud-server)
+- [@wordrhyme/auto-crud](https://github.com/denvey/wordrhyme-components/tree/main/packages/auto-crud) - 前端组件库
 - [Changelog](./CHANGELOG.md)
 
 ---
