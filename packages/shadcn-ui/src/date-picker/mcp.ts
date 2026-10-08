@@ -22,14 +22,24 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
   description:
     'A single-date picker with a calendar popover trigger and an optional inline clear button.',
   props: defineProps<DatePickerDocumentedProps>({
+    'aria-invalid': 'Validation state applied to the date trigger.',
+    'aria-describedby':
+      'Description and validation message ids associated with the date trigger.',
+    valueFormat:
+      'A non-empty Day.js format string used to parse and serialize values, e.g. YYYY-MM-DD, YYYY/MM/DD, DD-MM-YYYY or YYYY-MM-DD HH:mm:ss. Omit to emit Date/undefined; formatted values clear to an empty string. Ordinary Date inputs use local calendar fields. Use formatValue to customize the displayed label.',
+    readOnly: 'Prevents selection and clearing.',
+    formatValue: 'Optional formatter for the selected-date trigger label.',
+    primitives:
+      'Optional UI primitives from the containing modal, ensuring shared popover and dialog behavior.',
     id: 'Optional id attribute applied to the trigger and calendar.',
     value: {
       description: 'Controlled selected date.',
-      type: 'Date',
+      type: 'Date | string | number | null',
     },
     onChange: {
-      description: 'Called with the selected Date, or undefined when cleared.',
-      type: '(date: Date | undefined) => void',
+      description:
+        'Returns Date/undefined when valueFormat is omitted, or a string in the configured format/empty string when valueFormat is provided.',
+      type: '((date: Date | undefined) => void) | ((date: string) => void)',
     },
     placeholder: {
       description: 'Text shown on the trigger before a date is selected.',
@@ -49,6 +59,14 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
     {
       title: 'Date picker',
       code: '<DatePicker value={date} onChange={setDate} />',
+    },
+    {
+      title: 'Calendar-date string',
+      code: '<DatePicker valueFormat="YYYY-MM-DD" value={dateString} onChange={setDateString} />',
+    },
+    {
+      title: 'Custom date format',
+      code: '<DatePicker valueFormat="DD/MM/YYYY" value={dateString} onChange={setDateString} />',
     },
   ],
   keywords: ['date', 'calendar', 'picker', 'form'],

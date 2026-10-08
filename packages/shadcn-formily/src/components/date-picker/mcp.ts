@@ -10,6 +10,11 @@ export const meta: ComponentMeta<DatePickerOwnProps> = {
   description: 'A Formily-connected date picker field for selecting a single date value.',
   htmlElement: 'button',
   props: defineProps<DatePickerOwnProps>({
+    valueFormat:
+      'A non-empty Day.js format string for parsing and serializing values, e.g. YYYY-MM-DD, YYYY/MM/DD or DD-MM-YYYY. Omit to emit Date/undefined; formatted values clear to an empty string. Use formatValue to customize the displayed label.',
+    readOnly: 'Prevents selection and clearing.',
+    formatValue: 'Optional selected-date label formatter.',
+    primitives: 'Optional primitives shared with the containing modal.',
     footer: 'Forwarded to the underlying UI component.',
     animate: 'Forwarded to the underlying UI component.',
     components: 'Forwarded to the underlying UI component.',
@@ -82,6 +87,10 @@ export const meta: ComponentMeta<DatePickerOwnProps> = {
     {
       title: 'Declarative schema field',
       code: `<SchemaField.String name="datePicker" title="DatePicker" x-decorator="FormItem" x-component="DatePicker" />`,
+    },
+    {
+      title: 'Calendar-date string',
+      code: `<SchemaField.String name="datePicker" title="DatePicker" x-decorator="FormItem" x-component="DatePicker" x-component-props={{ valueFormat: 'YYYY-MM-DD' }} />`,
     },
     {
       title: 'JSON schema for form renderer',
