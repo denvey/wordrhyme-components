@@ -2,7 +2,7 @@ import type { Table } from '@tanstack/react-table';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
 import { Button, Input } from '@wordrhyme/shadcn';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { TablePaginationOptions } from '@/types/data-table';
 import {
   Select,
@@ -22,12 +22,20 @@ export function DataTablePagination<TData>({
   table,
   pageSizeOptions = [10, 20, 30, 40, 50],
   alwaysShowFirstLast = false,
+  responsive = false,
   showPageJump = false,
   pageJumpLabel = 'Go to page',
   className,
   ...props
 }: DataTablePaginationProps<TData>) {
   const pageInput = useRef<HTMLInputElement>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const summary = useRef<HTMLDivElement>(null);
+  const controls = useRef<HTMLDivElement>(null);
+  const navigation = useRef<HTMLDivElement>(null);
+  const [hasSpace, setHasSpace] = useState(false);
+  const hideExtras = responsive && !hasSpace;
+  const hiddenClass = hideExtras ? 'absolute invisible pointer-events-none left-0 top-0' : undefined;
   const pageIndex = table.getState().pagination.pageIndex;
   const pageCount = table.getPageCount();
   const canJump = Number.isFinite(pageCount) && pageCount > 0;
@@ -35,22 +43,57 @@ export function DataTablePagination<TData>({
     table.options.rowCount ??
     (table.options.manualPagination ? undefined : table.getRowCount());
 
+  useEffect(() => {
+    if (!responsive || !container.current || !summary.current || !controls.current || !navigation.current) return;
+    if (typeof ResizeObserver === 'undefined') return;
+    const root = container.current;
+    const info = summary.current;
+    const group = controls.current;
+    const nav = navigation.current;
+    const gap = (node: HTMLElement) => parseFloat(getComputedStyle(node).columnGap) || 0;
+    const width = (node: HTMLElement): number => {
+      const children = Array.from(node.children) as HTMLElement[];
+      return children.reduce((sum, child) => {
+        const style = getComputedStyle(child);
+        return sum + (child === nav ? width(nav) : child.getBoundingClientRect().width)
+          + (parseFloat(style.marginLeft) || 0) + (parseFloat(style.marginRight) || 0);
+      }, 0) + Math.max(0, children.length - 1) * gap(node);
+    };
+    const measure = () => {
+      const style = getComputedStyle(root);
+      const available = root.clientWidth - (parseFloat(style.paddingLeft) || 0) - (parseFloat(style.paddingRight) || 0);
+      const required = style.flexDirection.startsWith('column')
+        ? Math.max(width(info), width(group))
+        : width(info) + width(group) + gap(root);
+      setHasSpace(available + 0.5 >= required);
+    };
+    const observer = new ResizeObserver(measure);
+    for (const node of [root, info, group, nav, ...info.children, ...group.children, ...nav.children]) observer.observe(node);
+    measure();
+    return () => observer.disconnect();
+  }, [responsive, showPageJump, alwaysShowFirstLast, total !== undefined]);
+
   return (
     <div
+      ref={container}
       className={cn(
         'flex w-full flex-col-reverse items-center justify-between gap-4 overflow-auto p-1 sm:flex-row sm:gap-8',
+        responsive && 'relative',
         className,
       )}
       {...props}
     >
-      <div className="flex flex-1 items-center gap-6 whitespace-nowrap text-muted-foreground text-sm">
+      <div ref={summary} className="flex flex-1 items-center gap-6 whitespace-nowrap text-muted-foreground text-sm">
         <span>
           {table.getFilteredSelectedRowModel().rows.length} of{' '}
           {table.getFilteredRowModel().rows.length} row(s) selected.
         </span>
         {total !== undefined && <span>Total: {total}</span>}
       </div>
-      <div className="flex flex-col-reverse items-center gap-4 sm:flex-row sm:gap-6 lg:gap-8">
+      <div ref={controls} className={cn(
+        'flex items-center gap-4 sm:gap-6 lg:gap-8',
+        responsive ? 'flex-row flex-wrap justify-center whitespace-nowrap [&>*]:shrink-0' : 'flex-col-reverse sm:flex-row',
+      )}>
         <div className="flex items-center space-x-2">
           <p className="whitespace-nowrap font-medium text-sm">Rows per page</p>
           <Select
@@ -76,7 +119,8 @@ export function DataTablePagination<TData>({
         </div>
         {showPageJump && (
           <form
-            className="flex items-center gap-2"
+            className={cn('flex w-max items-center gap-2', hiddenClass)}
+            aria-hidden={hideExtras || undefined}
             onSubmit={(event) => {
               event.preventDefault();
               const page = pageInput.current?.valueAsNumber;
@@ -105,12 +149,12 @@ export function DataTablePagination<TData>({
             </Button>
           </form>
         )}
-        <div className="flex items-center space-x-2">
+        <div ref={navigation} className="flex items-center space-x-2">
           <Button
             aria-label="Go to first page"
             variant="outline"
             size="icon"
-            className={cn('size-8', alwaysShowFirstLast ? 'flex' : 'hidden lg:flex')}
+            className={cn('size-8', alwaysShowFirstLast ? 'flex' : 'hidden lg:flex', hiddenClass)}
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
@@ -140,7 +184,7 @@ export function DataTablePagination<TData>({
             aria-label="Go to last page"
             variant="outline"
             size="icon"
-            className={cn('size-8', alwaysShowFirstLast ? 'flex' : 'hidden lg:flex')}
+            className={cn('size-8', alwaysShowFirstLast ? 'flex' : 'hidden lg:flex', hiddenClass)}
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage() || (alwaysShowFirstLast && !canJump)}
           >

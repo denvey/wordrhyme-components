@@ -1723,3 +1723,7 @@ over registration. Page jumps accept only integer pages in the known page range;
 the control is disabled when the page count is unavailable.
 
 In `AutoCrudTable`, the jump label follows the existing `locale` unless explicitly overridden.
+
+Set `responsive: true` alongside these options to hide the extra controls when
+their measured content does not fit the pagination container. This responds to
+container resizing and translated text widths, without changing other tables.

@@ -16,6 +16,8 @@ export interface DataTableClassNames {
 export interface TablePaginationOptions {
   /** Show first/last page buttons at every viewport width; default remains lg-only. */
   alwaysShowFirstLast?: boolean;
+  /** Hide optional controls when their measured content does not fit the container. */
+  responsive?: boolean;
   /** Show an input to jump to a known page; defaults to false. */
   showPageJump?: boolean;
   pageJumpLabel?: string;
