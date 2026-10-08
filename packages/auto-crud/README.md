@@ -370,6 +370,11 @@ interface UseAutoCrudResourceReturn<TSchema, TData> {
 interface Field {
   /** 字段标签（表格和表单共用） */
   label?: string;
+  /** 默认表格/详情文本和 CSV 值格式化；undefined 使用原来的默认行为 */
+  format?: (
+    value: unknown,
+    context: { row: Record<string, unknown>; target: 'display' | 'export' },
+  ) => string | undefined;
   /** 是否隐藏（表格和表单都隐藏） */
   hidden?: boolean;
   /** 表格特定配置 */
@@ -391,6 +396,31 @@ interface Field {
 
 type Fields = Record<string, Field>;
 ```
+
+### 值格式化
+
+在字段上配置 `format`，表格和详情使用 `target: 'display'`，顶部工具栏的选中/筛选导出及内置批量导出使用 `target: 'export'`。`value` 是格式化前的值，`row` 是原始记录。
+
+```tsx
+fields={{
+  discount: {
+    format: (value) => `${value}%`,
+  },
+  createdAt: {
+    label: t('fields.createdAt'),
+    format: (value, { target }) => {
+      if (target !== 'export') return undefined;
+      if (value === null || value === undefined) return '';
+      const date = value instanceof Date ? value : new Date(String(value));
+      return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+    },
+  },
+}}
+```
+
+返回字符串（包括空字符串）时使用该结果；返回 `undefined` 时保留原有默认展示或原始 CSV 值。格式化只影响输出，不改变排序、筛选、表单或保存的数据。显式自定义 `cell` 仍负责自己的界面渲染；声明式 `table.display` / `table.options` / `table.dataSource` 按已有优先级接管单元格时也会应用 `format`。
+
+导出保留已有的列、字段名表头和权限排除规则。翻译继续在现有 `label`、选项和 `format` 中使用应用的 `t()`；无需另配导出列或语言。
 
 ### 列宽与单元格样式
 
