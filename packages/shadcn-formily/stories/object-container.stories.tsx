@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type { ISchema } from '../src';
 import { createForm, defaultComponentRegistry, JsonSchemaFormRenderer } from '../src';
-import { ObjectContainer } from '../src/components/ObjectContainer';
+import { ObjectContainer } from '../src/components/object-container';
 
 const meta: Meta<typeof ObjectContainer> = {
   title: 'Formily/Object Container',
@@ -617,6 +617,52 @@ export const WithTitleChildren: Story = {
               ),
             },
           },
+        }}
+        schema={schema}
+      ></JsonSchemaFormRenderer>
+    );
+  },
+};
+
+export const WithNestedObjects: Story = {
+  render: () => {
+    const form = createForm();
+    const schema: ISchema = {
+      type: 'object',
+      properties: {
+        userInfo: {
+          type: 'object',
+          title: 'User Information',
+          properties: {
+            firstName: {
+              type: 'string',
+              title: 'First Name',
+            },
+            lastName: {
+              type: 'string',
+              title: 'Last Name',
+            },
+          },
+        },
+        address: {
+          type: 'object',
+          title: 'Address',
+          properties: {
+            street: {
+              type: 'string',
+              title: 'Street',
+            },
+          },
+        },
+      },
+    };
+
+    return (
+      <JsonSchemaFormRenderer
+        form={form}
+        id="object-container-nested"
+        components={{
+          fields: defaultComponentRegistry,
         }}
         schema={schema}
       ></JsonSchemaFormRenderer>

@@ -1,5 +1,47 @@
 # @pixpilot/formily-shadcn
 
+## 2.0.1
+
+### Patch Changes
+
+- Updated dependencies [4ba625e]
+  - @wordrhyme/shadcn-ui@2.0.1
+
+## 2.0.0
+
+### Major Changes
+
+- Sync pixpilot/shadcn-components through 1ef005a5387331a697bc04decbd2652487846da6.
+
+  Introduce OverlayProvider and drawer/dialog registries, component MCP servers,
+  date clearing, richer editor and loading interactions, and Formily overlay
+  decorators. Preserve WordRhyme searchable Select, MultiCombobox scrolling,
+  Formily compatibility props and array DOM filtering. DialogProvider remains a
+  deprecated alias for OverlayProvider.
+
+  Replace the unused authentication package with the upstream provider, magic
+  link, email OTP and profile components. Introduce the controlled Kanban package
+  with drag-and-drop, filtering, paging, virtualization and touch support.
+
+  See docs/upstream-upgrade.md for migration details.
+
+### Patch Changes
+
+- 4b2ca4b: Keep array component props out of rendered DOM elements.
+- 492c940: Publish the transitive Tailwind CSS source entries across the complete component dependency chain.
+
+  Generate both CSS entries in `dist` during the package build, keeping the public import paths unchanged. Component packages share one CSS build function; no per-package source stylesheet needs to be maintained.
+
+  Release all four packages together so workspace dependencies resolve to newly published versions that export `./tailwind.css`, rather than older registry packages without that entry. The Tailwind entries contain source declarations only and do not inject theme or reset rules.
+
+  Also publish an opt-in `./styles.css` entry for applications without a Tailwind build. Each package builds a self-contained stylesheet covering its own components and the transitive component dependencies, including the shared default theme, dark mode, and animation utilities. It does not include global Preflight or page background rules. CSS imports are marked as side effects so production bundlers preserve them.
+
+- Updated dependencies [4d8f1b1]
+- Updated dependencies
+- Updated dependencies [492c940]
+  - @wordrhyme/shadcn-ui@2.0.0
+  - @wordrhyme/shadcn@2.0.0
+
 ## 1.13.4
 
 ### Patch Changes

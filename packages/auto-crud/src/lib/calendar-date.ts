@@ -1,4 +1,9 @@
-import { formatDate as formatLegacyDate, getDateLocaleOptions } from './format';
+import { useEffect, useState } from 'react';
+import {
+  formatDate as formatLegacyDate,
+  getDateLocaleOptions,
+  useDateFormatterVersion,
+} from './format';
 
 /** Calendar days are wall dates, never instants in the host's time zone. */
 export function serializeCalendarDate(date: Date): string {
@@ -15,6 +20,73 @@ export function parseCalendarDate(value: string | number | undefined): Date | un
   }
   const date = new Date(Number(value));
   return Number.isNaN(date.getTime()) ? undefined : date;
+}
+
+/** Resolve bounds and the calendar's today marker in the Host's configured time zone. */
+export function calendarMaxDate(value: string | undefined): Date | undefined {
+  if (value !== 'today') return parseCalendarDate(value);
+  return parseCalendarDate(calendarDay(new Date(), calendarDayFormatter()));
+}
+
+function calendarDayFormatter() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: getDateLocaleOptions()?.timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  });
+}
+
+function calendarDay(date: Date, formatter: Intl.DateTimeFormat): string {
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+/** Keep both the today marker and relative bounds current while a filter stays mounted. */
+export function useCalendarToday(): Date {
+  useDateFormatterVersion();
+  const timeZone = getDateLocaleOptions()?.timeZone;
+  const [today, setToday] = useState(() => calendarMaxDate('today')!);
+
+  useEffect(() => {
+    const formatter = calendarDayFormatter();
+    let timer: ReturnType<typeof setTimeout>;
+
+    const refresh = () => {
+      clearTimeout(timer);
+      const now = Date.now();
+      const day = calendarDay(new Date(now), formatter);
+      setToday((previous) =>
+        serializeCalendarDate(previous) === day ? previous : parseCalendarDate(day)!,
+      );
+
+      // Locate the next Host midnight without assuming a day is 24 hours (DST).
+      let before = now;
+      let after = now + 48 * 60 * 60 * 1000;
+      while (after - before > 1) {
+        const middle = Math.floor((before + after) / 2);
+        if (calendarDay(new Date(middle), formatter) === day) before = middle;
+        else after = middle;
+      }
+      timer = setTimeout(refresh, Math.max(1, after - Date.now()));
+    };
+    const onVisibilityChange = () => {
+      if (!document.hidden) refresh();
+    };
+
+    refresh();
+    window.addEventListener('focus', refresh);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', refresh);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [timeZone]);
+
+  return today;
 }
 
 export function calendarPresentation() {

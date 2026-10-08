@@ -1,5 +1,22 @@
 # @wordrhyme/design-engine
 
+## 0.2.6
+
+### Patch Changes
+
+- @wordrhyme/designable-formily-shadcn@0.2.6
+- @wordrhyme/formily-shadcn@2.0.1
+
+## 0.2.5
+
+### Patch Changes
+
+- Updated dependencies [4b2ca4b]
+- Updated dependencies
+- Updated dependencies [492c940]
+  - @wordrhyme/formily-shadcn@2.0.0
+  - @wordrhyme/designable-formily-shadcn@0.2.5
+
 ## 0.2.4
 
 ### Patch Changes

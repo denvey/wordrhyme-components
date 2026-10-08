@@ -202,6 +202,84 @@ describe('AutoForm MultiCombobox', () => {
 });
 
 describe('AutoForm dynamic dataSource', () => {
+  it.each(['empty', 'forbidden'] as const)(
+    'preserves the selected reference label and ID when loading is %s',
+    async (result) => {
+      const loader = vi.fn(async () => {
+        if (result === 'forbidden') throw new Error('Forbidden');
+        return [];
+      });
+      dataSources.register('test.dynamic-regions', loader);
+      const onSubmit = vi.fn();
+      const initialValues = {
+        country: 'CN',
+        __crudExtensionProjection: {
+          country: { refId: 'CN', display: 'Projected China' },
+        },
+      };
+
+      render(
+        <AutoForm
+          schema={schema}
+          initialValues={initialValues}
+          onSubmit={onSubmit}
+          fields={{
+            country: {
+              dataSource: 'test.dynamic-regions',
+              form: { 'x-component': 'Combobox' },
+            },
+          }}
+        />,
+      );
+
+      await screen.findByText('Projected China');
+      await waitFor(() => expect(loader).toHaveBeenCalled());
+      fireEvent.click(screen.getByText('创建'));
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ country: 'CN' }));
+      });
+      expect(screen.getByText('Projected China')).toBeTruthy();
+    },
+  );
+
+  it('removes the projected fallback when another reference is selected', async () => {
+    dataSources.register('test.dynamic-regions', () => [{ value: 'US', label: 'USA' }]);
+    const initialValues = {
+      country: 'CN',
+      __crudExtensionProjection: {
+        country: { refId: 'CN', display: 'Projected China' },
+      },
+    };
+    const onSubmit = vi.fn();
+    render(
+      <AutoForm
+        schema={schema}
+        initialValues={initialValues}
+        onSubmit={onSubmit}
+        fields={{
+          country: {
+            dataSource: 'test.dynamic-regions',
+            form: { 'x-component': 'Combobox' },
+          },
+        }}
+      />,
+    );
+
+    await screen.findByText('Projected China');
+    await waitFor(() => {
+      expect(screen.getByText('Projected China').closest('button')!.disabled).toBe(false);
+    });
+    fireEvent.click(screen.getByText('Projected China').closest('button')!);
+    fireEvent.click(await screen.findByText('USA'));
+    await waitFor(() => expect(screen.queryByText('Projected China')).toBeNull());
+    fireEvent.click(screen.getByText('USA').closest('button')!);
+    expect(screen.queryByText('Projected China')).toBeNull();
+    fireEvent.click(screen.getByText('创建'));
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ country: 'US' }));
+    });
+  });
+
   it('uses fields config for labels, form props, and dynamic dataSource', async () => {
     const loader = vi.fn(({ values }) => [
       {

@@ -70,7 +70,8 @@ export function downloadCSVTemplate(headers: string[], filename = 'template'): v
 }
 
 function downloadCSV(csvContent: string, filename: string): void {
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  // Excel needs a UTF-8 BOM when opening CSV files directly.
+  const blob = new Blob(['\uFEFF', csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.setAttribute('href', url);

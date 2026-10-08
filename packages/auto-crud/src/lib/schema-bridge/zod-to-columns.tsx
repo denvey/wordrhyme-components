@@ -181,7 +181,7 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
 /**
  * 渲染单元格内容
  */
-function renderCell(
+export function renderCell(
   value: unknown,
   type: FieldType,
   options?: Array<{ label: string; value: string }>,
@@ -245,7 +245,7 @@ function renderCell(
     case 'number':
       return <span className="tabular-nums">{String(value)}</span>;
     default:
-      return <span className="truncate max-w-48">{String(value)}</span>;
+      return <span>{String(value)}</span>;
   }
 }
 

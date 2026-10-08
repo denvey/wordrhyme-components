@@ -22,6 +22,7 @@ it.each([
   const value =
     encoding === 'calendar' ? '2026-09-14' : String(new Date(2026, 8, 14).getTime());
   const column = {
+    columnDef: { meta: {} },
     getFilterValue: () => value,
     setFilterValue: vi.fn(),
   } as unknown as Column<object, unknown>;
@@ -39,6 +40,7 @@ it('updates mounted labels when opting into and cleaning up calendar presentatio
   const formatter = vi.fn(() => 'Custom host date');
   const disposeLegacy = setDateFormatter(formatter);
   const column = {
+    columnDef: { meta: {} },
     getFilterValue: () => '2026-09-14',
     setFilterValue: vi.fn(),
   } as unknown as Column<object, unknown>;

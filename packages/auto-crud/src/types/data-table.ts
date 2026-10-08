@@ -2,6 +2,16 @@ import type { ColumnSort, Row, RowData } from '@tanstack/react-table';
 import type { DataTableConfig } from '@/config/data-table';
 import type { FilterItemSchema } from '@/lib/parsers';
 
+export interface DataTableClassNames {
+  table?: string;
+  thead?: string;
+  tbody?: string;
+  /** 应用于表头行、正文行和空状态行 */
+  tr?: string;
+  th?: string;
+  td?: string;
+}
+
 declare module '@tanstack/react-table' {
   // biome-ignore lint/correctness/noUnusedVariables: TData is used in the TableMeta interface
   interface TableMeta<TData extends RowData> {
@@ -13,10 +23,14 @@ declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string;
     index?: number;
+    /** 按元素分组的列类名，优先于全局单元格类名 */
+    classNames?: Pick<DataTableClassNames, 'th' | 'td'>;
     placeholder?: string;
     variant?: FilterVariant;
     options?: Option[];
     range?: [number, number];
+    /** Latest selectable calendar day (YYYY-MM-DD), or today in the Host time zone. */
+    maxDate?: string;
     unit?: string;
     icon?: React.FC<React.SVGProps<SVGSVGElement>>;
     /** 控制在哪些筛选模式下显示（未设置则在所有模式显示） */

@@ -1,5 +1,19 @@
 # @wordrhyme/auto-crud-server
 
+## 2.0.0
+
+### Major Changes
+
+- 2333d62: Return raw extension values by default from list, get, and export. A defined refId (including null) takes precedence over value; display is only a fallback for legacy projections without a raw value. No field opt-in or metadata read is needed.
+
+  Migration: consumers that relied on display labels in CRUD rows must resolve labels through field data sources or their presentation layer. Providers should supply editable values in value, including ID arrays for multi-reference fields. Exports now contain raw values when available; human-readable reports must resolve labels explicitly.
+
+### Patch Changes
+
+- 4d8f1b1: Align shared Radix UI and date-fns dependency ranges with the existing workspace versions so dependency installation passes workspace validation.
+
+  Document the inherited Radix outside-pointer deferral option in Drawer metadata.
+
 ## 1.5.1
 
 ### Patch Changes
