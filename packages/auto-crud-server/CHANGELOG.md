@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 2.0.1
+
+### Patch Changes
+
+- 82eb4a2: Preserve reference IDs and display labels in CRUD row projection metadata for list and edit presentation.
+
 ## 2.0.0
 
 ### Major Changes

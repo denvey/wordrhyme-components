@@ -1,5 +1,16 @@
 # @internal/storybook
 
+## 0.0.230
+
+### Patch Changes
+
+- Updated dependencies [b8045ed]
+- Updated dependencies [d2b58fc]
+  - @wordrhyme/shadcn-ui@2.1.0
+  - @wordrhyme/formily-shadcn@2.1.0
+  - @wordrhyme/designable-formily-shadcn@0.2.7
+  - @wordrhyme/shadcn-auth@2.0.2
+
 ## 0.0.229
 
 ### Patch Changes

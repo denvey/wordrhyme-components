@@ -1,5 +1,15 @@
 # @pixpilot/shadcn-ui
 
+## 2.1.0
+
+### Minor Changes
+
+- b8045ed: Reuse DatePicker with Day.js valueFormat strings for parsing and serializing dates (empty string when cleared), retaining the default Date output when valueFormat is omitted and a deprecated DateOnlyPicker compatibility alias.
+
+### Patch Changes
+
+- d2b58fc: Show a checkmark for the current single Combobox option and highlight selected options in the popup.
+
 ## 2.0.1
 
 ### Patch Changes

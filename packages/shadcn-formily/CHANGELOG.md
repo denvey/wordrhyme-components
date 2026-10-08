@@ -1,5 +1,17 @@
 # @pixpilot/formily-shadcn
 
+## 2.1.0
+
+### Minor Changes
+
+- b8045ed: Reuse DatePicker with Day.js valueFormat strings for parsing and serializing dates (empty string when cleared), retaining the default Date output when valueFormat is omitted and a deprecated DateOnlyPicker compatibility alias.
+
+### Patch Changes
+
+- Updated dependencies [b8045ed]
+- Updated dependencies [d2b58fc]
+  - @wordrhyme/shadcn-ui@2.1.0
+
 ## 2.0.1
 
 ### Patch Changes

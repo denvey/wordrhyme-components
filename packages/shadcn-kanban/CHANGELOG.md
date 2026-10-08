@@ -1,5 +1,13 @@
 # @wordrhyme/shadcn-kanban
 
+## 1.1.2
+
+### Patch Changes
+
+- Updated dependencies [b8045ed]
+- Updated dependencies [d2b58fc]
+  - @wordrhyme/shadcn-ui@2.1.0
+
 ## 1.1.1
 
 ### Patch Changes
