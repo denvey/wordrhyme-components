@@ -1,6 +1,7 @@
 'use client';
 
 import { z } from 'zod';
+import type { TablePaginationOptions } from '@/types/data-table';
 import { useCallback, useEffect, useMemo } from 'react';
 import { CommandIcon, FileSpreadsheetIcon, ListFilterIcon } from 'lucide-react';
 import { DataTable } from '@/components/data-table/data-table';
@@ -71,6 +72,7 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
   schema: T;
   data: z.infer<T>[];
   pageCount?: number;
+  pagination?: TablePaginationOptions;
   /** Total rows matching the current search and filters. */
   total?: number;
   overrides?: ColumnOverrides<z.infer<T>>;
@@ -127,6 +129,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   schema,
   data,
   pageCount = 1,
+  pagination,
   total,
   overrides,
   classNames,
@@ -336,7 +339,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           <DataTableViewOptions table={table} align="end" />
         </div>
       </div>
-      <DataTable table={table} classNames={classNames} />
+      <DataTable pagination={pagination} table={table} classNames={classNames} />
       {enableRowSelection && (
         <AutoTableActionBar
           table={table}

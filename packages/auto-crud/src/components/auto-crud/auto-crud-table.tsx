@@ -1,5 +1,7 @@
 'use client';
 
+import type { TablePaginationOptions } from '@/types/data-table';
+
 import type { CellContext, ColumnMeta } from '@tanstack/react-table';
 import type { z } from 'zod';
 import type {
@@ -51,6 +53,7 @@ import * as React from 'react';
 import { type LocaleProp, resolveLocale } from '@/i18n/locale';
 import {
   dataSources,
+  tablePagination,
   normalizeHasMore,
   normalizeDataSourceConfig,
   normalizeOptions,
@@ -536,6 +539,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   };
   /** 表格配置 */
   table?: {
+    /** Optional controls; overrides the application registration for this CRUD id. */
+    pagination?: TablePaginationOptions;
     /** 按元素分组的全局表格类名；列级 th/td 类名优先 */
     classNames?: DataTableClassNames;
     /** 隐藏的列 */
@@ -2245,6 +2250,16 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   onCreate,
 }: AutoCrudTableProps<TSchema>) {
   const locale = resolveLocale(localeProp);
+  const getPagination = React.useCallback(
+    () => (id ? tablePagination.get(id) : undefined),
+    [id],
+  );
+  const registeredPagination = React.useSyncExternalStore(
+    tablePagination.subscribe,
+    getPagination,
+    getPagination,
+  );
+  const pagination = tableConfig?.pagination ?? registeredPagination;
   const resolvedSchema = resource.schema ?? schema;
   const resolvedFields = React.useMemo<Fields>(
     () =>
@@ -2793,6 +2808,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.tableData.data}
         schema={resolvedSchema as TSchema}
         pageCount={resource.tableData.pageCount}
+        pagination={
+          pagination
+            ? { pageJumpLabel: locale.pagination?.pageJump, ...pagination }
+            : undefined
+        }
         {...(resource.tableData.total !== undefined
           ? { total: resource.tableData.total }
           : {})}

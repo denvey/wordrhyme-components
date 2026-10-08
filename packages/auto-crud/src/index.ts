@@ -80,6 +80,7 @@ export {
   components,
   dataSources,
   formComponents,
+  tablePagination,
   normalizeDataSourceConfig,
   normalizeOptions,
 } from './lib/registries';
@@ -188,3 +189,5 @@ export { exportTableToCSV, exportAllToCSV, downloadCSVTemplate } from './lib/exp
 // Types
 export type * from './types/data-table';
 export type { CrudPermissions, CrudOperationPermissions } from './types/permissions';
+
+export type { TablePaginationOptions } from './types/data-table';

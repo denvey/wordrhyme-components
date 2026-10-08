@@ -1729,3 +1729,31 @@ import '@wordrhyme/auto-crud/styles.css';
 
 See the [shared style guide](https://github.com/denvey/wordrhyme-components#styles)
 for theme setup, dark mode, and custom classes.
+
+### Optional pagination controls
+
+Existing pagination defaults are preserved. Set `table.pagination` on `AutoCrudTable`
+(or `pagination` on `AutoTable` / `DataTable`) to opt in. Applications can also
+register options for a public CRUD id without changing the owning page:
+
+```ts
+import { tablePagination } from '@wordrhyme/auto-crud';
+
+tablePagination.register('example.stores', {
+  alwaysShowFirstLast: true,
+  showPageJump: true,
+  pageJumpLabel: 'Go to page',
+});
+// Remove the application override when no longer needed.
+// tablePagination.unregister('example.stores');
+```
+
+Registrations notify mounted tables. Explicit `table.pagination` takes precedence
+over registration. Page jumps accept only integer pages in the known page range;
+the control is disabled when the page count is unavailable.
+
+In `AutoCrudTable`, the jump label follows the existing `locale` unless explicitly overridden.
+
+Set `responsive: true` alongside these options to hide the extra controls when
+their measured content does not fit the pagination container. This responds to
+container resizing and translated text widths, without changing other tables.
