@@ -41,9 +41,7 @@ export function DatePicker({ dateInput, ...props }: FormDatePickerProps) {
             formatters: presentation.formatters,
             labels: presentation.labels,
             weekStartsOn: presentation.weekStartsOn,
-            placeholder: presentation.locale.toLowerCase().startsWith('zh')
-              ? '选择日期'
-              : 'Pick a date',
+            placeholder: 'YYYY-MM-DD',
           }
         : {})}
       {...props}
