@@ -1,10 +1,10 @@
-import type React from 'react';
+import type { InputProps } from '@wordrhyme/shadcn-ui';
 import { connect, mapProps } from '@formily/react';
 import { Input } from '@wordrhyme/shadcn-ui';
 
 import { mapNumberInputProps } from './number-input-map-props';
 
-type NumberInputProps = React.ComponentProps<typeof Input> & {
+export type NumberInputProps = InputProps & {
   bordered?: boolean;
   decimalSeparator?: string;
   formatter?: (value: number | string | undefined) => string;

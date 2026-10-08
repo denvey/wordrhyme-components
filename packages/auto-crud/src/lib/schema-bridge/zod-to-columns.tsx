@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { ColumnDef, Row } from '@tanstack/react-table';
+import type { CellContext, ColumnDef, RowData } from '@tanstack/react-table';
 import { z } from 'zod';
 import { DataTableColumnHeader } from '@/components/data-table/data-table-column-header';
 import { Badge } from '@wordrhyme/shadcn';
@@ -181,7 +181,7 @@ export function parseZodField(schema: z.ZodType): ParsedZodField {
 /**
  * 渲染单元格内容
  */
-function renderCell(
+export function renderCell(
   value: unknown,
   type: FieldType,
   options?: Array<{ label: string; value: string }>,
@@ -245,7 +245,7 @@ function renderCell(
     case 'number':
       return <span className="tabular-nums">{String(value)}</span>;
     default:
-      return <span className="truncate max-w-48">{String(value)}</span>;
+      return <span>{String(value)}</span>;
   }
 }
 
@@ -398,11 +398,15 @@ export interface ResolvedActionItem<T, TContext = any> {
  */
 export type ActionsColumnConfig<T> = ResolvedActionItem<T, any>[];
 
-/**
- * 创建操作列
- */
-export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef<T> {
-  const renderActionComponent = (item: ResolvedActionItem<T>, row: Row<T>) => {
+declare module '@tanstack/react-table' {
+  interface ColumnMeta<TData extends RowData, TValue> {
+    rowActions?: ActionsColumnConfig<TData>;
+  }
+}
+
+function ActionsCell<T>({ row, column }: CellContext<T, unknown>) {
+  const items = column.columnDef.meta?.rowActions ?? [];
+  const renderActionComponent = (item: ResolvedActionItem<T>) => {
     if (!item.component) return null;
 
     return typeof item.component === 'function'
@@ -410,38 +414,46 @@ export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef
       : item.component;
   };
 
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          aria-label="Open menu"
+          variant="ghost"
+          className="flex size-8 p-0 data-[state=open]:bg-muted"
+        >
+          <Ellipsis className="size-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40">
+        {items.map((item, i) => (
+          <React.Fragment key={i}>
+            {item.separator && <DropdownMenuSeparator />}
+            {item.component ? (
+              renderActionComponent(item)
+            ) : item.label && item.onClick ? (
+              <DropdownMenuItem
+                className={item.variant === 'destructive' ? 'text-destructive' : ''}
+                onClick={() => item.onClick?.(row.original)}
+              >
+                {item.label}
+              </DropdownMenuItem>
+            ) : null}
+          </React.Fragment>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * 创建操作列
+ */
+export function createActionsColumn<T>(items: ActionsColumnConfig<T>): ColumnDef<T> {
   return {
     id: 'actions',
-    cell: ({ row }) => (
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            aria-label="Open menu"
-            variant="ghost"
-            className="flex size-8 p-0 data-[state=open]:bg-muted"
-          >
-            <Ellipsis className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40">
-          {items.map((item, i) => (
-            <React.Fragment key={i}>
-              {item.separator && <DropdownMenuSeparator />}
-              {item.component ? (
-                renderActionComponent(item, row)
-              ) : item.label && item.onClick ? (
-                <DropdownMenuItem
-                  className={item.variant === 'destructive' ? 'text-destructive' : ''}
-                  onClick={() => item.onClick?.(row.original)}
-                >
-                  {item.label}
-                </DropdownMenuItem>
-              ) : null}
-            </React.Fragment>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    ),
+    cell: ActionsCell,
+    meta: { rowActions: items },
     size: 40,
   };
 }

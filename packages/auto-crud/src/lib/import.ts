@@ -155,7 +155,7 @@ export function dataToCSV<T extends Record<string, unknown>>(
 
   const allHeaders = Object.keys(data[0] as object);
   const headers = (opts.headers ?? allHeaders).filter(
-    (h) => !opts.excludeColumns?.includes(h),
+    (h) => h !== '__crudExtensionProjection' && !opts.excludeColumns?.includes(h),
   );
 
   const headerLine = headers.map((h) => escapeCSVField(h)).join(',');

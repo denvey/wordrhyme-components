@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type { ComponentProps } from 'react';
 import { useState } from 'react';
-import { Combobox } from '../src/Combobox';
+import { Combobox } from '../src/combobox';
 
 /**
  * A searchable combobox component with dropdown options.
@@ -68,8 +68,7 @@ export const Default: Story = {
 
     const handleChange = (newValue: string) => setValue(newValue);
 
-    // eslint-disable-next-line ts/no-unsafe-assignment
-    return <Combobox {...args} value={value} onChange={handleChange as any} />;
+    return <Combobox {...args} value={value} onChange={handleChange} />;
   },
 };
 
@@ -94,7 +93,6 @@ export const WithValue: Story = {
 
     const handleChange = (newValue: string) => setValue(newValue);
 
-    // eslint-disable-next-line ts/no-unsafe-assignment
-    return <Combobox {...args} value={value} onChange={handleChange as any} />;
+    return <Combobox {...args} value={value} onChange={handleChange} />;
   },
 };

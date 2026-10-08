@@ -23,6 +23,7 @@ import {
 import { Button, cn, Switch as UiSwitch } from '@wordrhyme/shadcn';
 import { createEditFormSchema } from '@/lib/schema-bridge/zod-to-formily';
 import type { FormSchemaOverrides } from '@/lib/schema-bridge/types';
+import { readCrudReferenceOption } from '@/lib/crud-reference-projection';
 import { buildFormOverrides, type Fields } from '@/lib/field-config';
 import {
   Select,
@@ -307,6 +308,20 @@ function mergeDataSourceOptions(
   return Array.from(optionsByValue.values());
 }
 
+function setAutoCrudDataSourceOptions(field: Field, options: AutoCrudComboboxOption[]) {
+  const projectedOption = readCrudReferenceOption(
+    field.form.initialValues,
+    field.path.toString(),
+    field.value,
+  );
+  // Projection labels describe the existing selection; loaded options define choices.
+  field.setDataSource(
+    projectedOption
+      ? mergeDataSourceOptions([{ ...projectedOption, disabled: true }], options)
+      : options,
+  );
+}
+
 function isNearPopupScrollBottom(target: HTMLElement) {
   return (
     target.scrollHeight - target.scrollTop - target.clientHeight <=
@@ -348,6 +363,8 @@ function loadAutoCrudDataSource({
     values,
     search: searchValue,
   });
+
+  setAutoCrudDataSourceOptions(field, state.options);
 
   if (!append && state.loadKey === loadKey && state.registryVersion === registryVersion) {
     return;
@@ -416,7 +433,7 @@ function loadAutoCrudDataSource({
       state.page = page ?? 0;
       state.hasMore = entry.loadMore ? normalizeHasMore(result) : false;
       state.appendLoading = false;
-      field.setDataSource(nextOptions);
+      setAutoCrudDataSourceOptions(field, nextOptions);
       field.setLoading(false);
       field.setComponentProps({
         loading: false,
@@ -435,7 +452,7 @@ function loadAutoCrudDataSource({
       if (!append) {
         state.options = [];
         state.hasMore = false;
-        field.setDataSource([]);
+        setAutoCrudDataSourceOptions(field, []);
       }
       state.appendLoading = false;
       field.setLoading(false);
@@ -479,7 +496,7 @@ function applySearchComponentProps({
         const currentEntry = dataSources.get(sourceKey);
         if (!currentEntry) {
           state.controller?.abort();
-          field.setDataSource([]);
+          setAutoCrudDataSourceOptions(field, []);
           field.setLoading(false);
           field.setComponentProps({ loading: false });
           return;
@@ -525,7 +542,7 @@ function applyLoadMoreComponentProps({
         state.controller?.abort();
         state.hasMore = false;
         state.appendLoading = false;
-        field.setDataSource([]);
+        setAutoCrudDataSourceOptions(field, []);
         field.setLoading(false);
         field.setComponentProps({ hasMore: false, loading: false });
         return;
@@ -562,7 +579,7 @@ function createAutoCrudDataSourceReaction(
     }
 
     if (!source) {
-      field.setDataSource([]);
+      setAutoCrudDataSourceOptions(field, []);
       field.setLoading(false);
       return;
     }
@@ -570,7 +587,7 @@ function createAutoCrudDataSourceReaction(
     const entry = dataSources.get(source.key);
     if (!entry) {
       state.controller?.abort();
-      field.setDataSource([]);
+      setAutoCrudDataSourceOptions(field, []);
       field.setLoading(false);
       return;
     }

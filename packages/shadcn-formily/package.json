@@ -1,7 +1,7 @@
 {
   "name": "@wordrhyme/formily-shadcn",
   "type": "module",
-  "version": "1.13.4",
+  "version": "2.0.1",
   "packageManager": "pnpm@10.33.0",
   "description": "Formily integration for shadcn/ui components",
   "author": "m.doaie <m.doaie@hotmail.com>",
@@ -11,27 +11,35 @@
     "url": "https://github.com/denvey/wordrhyme-components",
     "directory": "packages/shadcn-formily"
   },
+  "bugs": {
+    "url": "https://github.com/pixpilot/shadcn-components/issues"
+  },
+  "sideEffects": false,
   "exports": {
+    "./tailwind.css": "./dist/tailwind.css",
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
-    }
+    },
+    "./styles.css": "./dist/styles.css"
   },
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "bin": {
+    "formily-shadcn-mcp": "./dist/mcp-server.js"
+  },
   "files": [
     "dist"
   ],
   "publishConfig": {
     "access": "public",
     "exports": {
+      "./tailwind.css": "./dist/tailwind.css",
       ".": {
         "types": "./dist/index.d.ts",
         "import": "./dist/index.js",
         "require": "./dist/index.cjs"
-      }
+      },
+      "./styles.css": "./dist/styles.css"
     },
     "main": "./dist/index.cjs",
     "module": "./dist/index.js",
@@ -41,7 +49,7 @@
     "prepublishOnly": "pnpm run clean && pnpm run build",
     "clean": "git clean -xdf .cache .turbo dist",
     "clean:all": "git clean -xdf .cache .turbo dist node_modules",
-    "build": "tsdown",
+    "build": "pnpm run mcp:generate && tsdown",
     "build:watch": "tsdown --watch",
     "test": "vitest --run --passWithNoTests",
     "test:watch": "vitest --watch",
@@ -49,7 +57,8 @@
     "test:coverage": "vitest --coverage",
     "typecheck": "tsc --noEmit",
     "lint": "eslint",
-    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore"
+    "format": "prettier --check . --ignore-path ../../.gitignore --ignore-path ../../.prettierignore",
+    "mcp:generate": "tsx ../mcp/src/generate-mcp-registry-cli.ts"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
@@ -67,22 +76,26 @@
     "@iconify-json/fa": "catalog:prod",
     "@iconify-json/mdi": "catalog:prod",
     "@iconify/react": "catalog:prod",
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "@pixpilot/env": "catalog:prod",
     "@pixpilot/string": "catalog:prod",
     "@wordrhyme/shadcn": "workspace:*",
     "@wordrhyme/shadcn-ui": "workspace:*",
     "json-schema-traverse": "^1.0.0",
     "lucide-react": "^0.562.0",
-    "pretty-bytes": "catalog:prod"
+    "pretty-bytes": "catalog:prod",
+    "zod": "catalog:prod"
   },
   "devDependencies": {
     "@internal/eslint-config": "workspace:*",
+    "@internal/mcp": "workspace:*",
     "@internal/prettier-config": "workspace:*",
     "@internal/tsconfig": "workspace:*",
     "@internal/tsdown-config": "workspace:*",
     "@internal/vitest-config": "workspace:*",
     "@storybook/react": "catalog:dev",
     "@testing-library/react": "catalog:dev",
+    "@tiptap/core": "^3.22.3",
     "@types/node": "catalog:dev",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -90,7 +103,11 @@
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
     "tsdown": "catalog:dev",
+    "tsx": "catalog:dev",
     "typescript": "catalog:dev"
   },
-  "prettier": "@internal/prettier-config"
+  "prettier": "@internal/prettier-config",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }

@@ -10,6 +10,7 @@ export * from './checkbox';
 export * from './color-picker';
 export * from './command';
 export * from './dialog';
+export * from './drawer';
 export * from './dropdown-menu';
 export * from './file-upload';
 // INTENTIONALLY NOT EXPORTED: `form`
@@ -26,6 +27,7 @@ export * from './label';
 export * from './OrContinueWithSeparator';
 export * from './pagination';
 export * from './popover';
+export * from './portal-container';
 export * from './radio-group';
 export * from './select';
 export * from './separator';

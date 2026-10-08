@@ -38,6 +38,7 @@ import {
   type ActionsColumnConfig,
 } from '@/lib/schema-bridge/zod-to-columns';
 import type { ColumnOverrides } from '@/lib/schema-bridge/types';
+import type { DataTableClassNames } from '@/types/data-table';
 
 /** 过滤模式类型 */
 export type FilterMode = 'simple' | 'advanced' | 'command';
@@ -73,6 +74,8 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
   /** Total rows matching the current search and filters. */
   total?: number;
   overrides?: ColumnOverrides<z.infer<T>>;
+  /** 按元素分组的全局表格类名 */
+  classNames?: DataTableClassNames;
   enableRowSelection?: boolean;
   exclude?: (keyof z.infer<T>)[];
   filterOnly?: string[];
@@ -127,6 +130,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   pageCount = 1,
   total,
   overrides,
+  classNames,
   enableRowSelection = true,
   exclude,
   filterOnly,
@@ -353,7 +357,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           <DataTableViewOptions table={table} align="end" />
         </div>
       </div>
-      <DataTable table={table} />
+      <DataTable table={table} classNames={classNames} />
       {enableRowSelection && (
         <AutoTableActionBar
           table={table}

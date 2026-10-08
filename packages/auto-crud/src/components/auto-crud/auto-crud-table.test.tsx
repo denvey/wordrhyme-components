@@ -554,6 +554,34 @@ describe('AutoCrudTable resolve dataSource', () => {
     vi.clearAllMocks();
   });
 
+  it('keeps projected labels in cells and details when resolution is denied', async () => {
+    const loader = vi.fn().mockRejectedValue(new Error('Forbidden'));
+    dataSources.register('test.dynamic-regions', loader);
+    const row = {
+      id: '1',
+      region: 'west',
+      __crudExtensionProjection: {
+        region: { refId: 'west', display: 'Projected West' },
+      },
+    };
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          data: [row],
+          modal: { viewOpen: true, selected: row },
+        })}
+        fields={displayFields}
+      />,
+    );
+
+    await waitFor(() => expect(loader).toHaveBeenCalled());
+    await waitFor(() => {
+      expect(screen.getAllByText('Projected West').length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   it('resolves current page labels once with deduped values', async () => {
     const rows: Row[] = [
       { id: '1', region: 'west' },
@@ -1111,29 +1139,32 @@ describe('auto-crud table toolbar resolver', () => {
     ['success', 'bg-emerald-50', 'dark:text-emerald-300'],
     ['warning', 'bg-amber-50', 'dark:text-amber-300'],
     ['info', 'bg-blue-50', 'dark:text-blue-300'],
-  ] as const)('renders a theme-aware %s status badge', (badgeTone, background, foreground) => {
-    render(
-      <AutoCrudTable
-        schema={schema}
-        resource={createResource({
-          fields: {
-            region: {
-              table: {
-                display: 'badge',
-                options: [{ label: 'Imported', value: 'west', badgeTone }],
+  ] as const)(
+    'renders a theme-aware %s status badge',
+    (badgeTone, background, foreground) => {
+      render(
+        <AutoCrudTable
+          schema={schema}
+          resource={createResource({
+            fields: {
+              region: {
+                table: {
+                  display: 'badge',
+                  options: [{ label: 'Imported', value: 'west', badgeTone }],
+                },
               },
             },
-          },
-        })}
-      />,
-    );
-    const badge = screen.getByText('Imported');
-    expect(badge.getAttribute('data-slot')).toBe('badge');
-    expect(badge.style.backgroundColor).toBe('');
-    expect(badge.className).toContain(background);
-    expect(badge.className).toContain(foreground);
-    expect(badge.querySelector('[aria-hidden="true"]')).not.toBeNull();
-  });
+          })}
+        />,
+      );
+      const badge = screen.getByText('Imported');
+      expect(badge.getAttribute('data-slot')).toBe('badge');
+      expect(badge.style.backgroundColor).toBe('');
+      expect(badge.className).toContain(background);
+      expect(badge.className).toContain(foreground);
+      expect(badge.querySelector('[aria-hidden="true"]')).not.toBeNull();
+    },
+  );
 
   it('renders resolved option labels as plain text when requested by metadata', () => {
     render(

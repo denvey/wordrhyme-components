@@ -18,6 +18,32 @@ Formily integration for shadcn/ui components. Build powerful, schema-driven form
 pnpm add @wordrhyme/formily-shadcn @formily/core @formily/react
 ```
 
+## MCP Server
+
+This package ships a local stdio MCP server so coding assistants can discover its
+components and props. Add it to your MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "formily-shadcn": {
+      "command": "npx",
+      "args": ["-y", "@wordrhyme/formily-shadcn"]
+    }
+  }
+}
+```
+
+This works with Claude Code, Claude Desktop, GitHub Copilot, Cursor, Codex, and
+any MCP-compatible client. The client launches and stops the server
+automatically — you do not need to start it manually.
+
+The server exposes generated component metadata through these tools:
+
+- `list_components`
+- `search_components`
+- `get_component_details`
+
 ## Quick Start
 
 ### Basic Form
@@ -262,3 +288,23 @@ The label resolution priority is:
 2. Schema `title` field
 3. Field `name` capitalized (only if `useFieldNameAsLabel: true`)
 4. No label
+
+## Styles
+
+Choose one mode and import only the highest-level package you use.
+
+With Tailwind CSS v4, in your application stylesheet:
+
+```css
+@import 'tailwindcss';
+@import '@wordrhyme/formily-shadcn/tailwind.css';
+```
+
+Without Tailwind CSS, in your application entry:
+
+```ts
+import '@wordrhyme/formily-shadcn/styles.css';
+```
+
+See the [shared style guide](https://github.com/denvey/wordrhyme-components#styles)
+for theme setup, dark mode, and custom classes.

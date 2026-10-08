@@ -1,17 +1,27 @@
 {
   "name": "@wordrhyme/shadcn-auth",
   "type": "module",
-  "version": "1.0.65",
+  "version": "2.0.1",
   "packageManager": "pnpm@10.33.0",
   "description": "Authentication forms and components built with shadcn/ui.",
   "author": "m.doaie <m.doaie@hotmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pixpilot/shadcn-components.git",
+    "url": "https://github.com/denvey/wordrhyme-components",
     "directory": "packages/shadcn-auth"
   },
-  "exports": "./src/index.ts",
+  "bugs": {
+    "url": "https://github.com/denvey/wordrhyme-components/issues"
+  },
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "files": [
     "dist"
   ],
@@ -58,9 +68,12 @@
     "@internal/tsdown-config": "workspace:*",
     "@internal/vitest-config": "workspace:*",
     "@storybook/react": "catalog:dev",
+    "@testing-library/jest-dom": "catalog:dev",
+    "@testing-library/react": "catalog:dev",
     "@types/node": "catalog:dev",
     "@types/react": "catalog:dev",
     "eslint": "catalog:dev",
+    "jsdom": "catalog:dev",
     "react": "catalog:prod",
     "react-dom": "catalog:prod",
     "tailwindcss": "^4.2.2",
@@ -68,5 +81,8 @@
     "typescript": "catalog:dev",
     "typescript-eslint": "catalog:dev"
   },
-  "prettier": "@internal/prettier-config"
+  "prettier": "@internal/prettier-config",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }
