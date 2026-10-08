@@ -48,7 +48,7 @@ jobs:
 
       - name: Release
         # Some packages are not configured as npm Trusted Publishers yet. Let the
-        # token-authenticated, idempotent recovery publishers below finish those
+        # token-authenticated, idempotent recovery publisher below finish those
         # releases when the Changesets OIDC publish attempt fails.
         continue-on-error: true
         uses: pixpilot/changesets-autopilot@v1
@@ -59,90 +59,16 @@ jobs:
           # Release only the explicit .changeset entries committed with a change.
           AUTO_CHANGESET: false
 
-      - name: Ensure shadcn release is published
+      - name: Build release packages
+        run: pnpm build
+
+      - name: Ensure workspace releases are published
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          PACKAGE_VERSION=$(node -p "require('./packages/shadcn/package.json').version")
-
-          if npm view "@wordrhyme/shadcn@$PACKAGE_VERSION" version >/dev/null 2>&1; then
-            echo "@wordrhyme/shadcn@$PACKAGE_VERSION is already published"
-            exit 0
-          fi
-
-          pnpm --filter @wordrhyme/shadcn... build
-          pnpm --dir packages/shadcn pack --pack-destination "$RUNNER_TEMP"
-          npm publish "$RUNNER_TEMP/wordrhyme-shadcn-$PACKAGE_VERSION.tgz" \
-            --access public \
-            --provenance
-
-      - name: Ensure shadcn-ui release is published
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          PACKAGE_VERSION=$(node -p "require('./packages/shadcn-ui/package.json').version")
-
-          if npm view "@wordrhyme/shadcn-ui@$PACKAGE_VERSION" version >/dev/null 2>&1; then
-            echo "@wordrhyme/shadcn-ui@$PACKAGE_VERSION is already published"
-            exit 0
-          fi
-
-          pnpm --filter @wordrhyme/shadcn-ui... build
-          pnpm --dir packages/shadcn-ui pack --pack-destination "$RUNNER_TEMP"
-          npm publish "$RUNNER_TEMP/wordrhyme-shadcn-ui-$PACKAGE_VERSION.tgz" \
-            --access public \
-            --provenance
-
-      - name: Ensure formily-shadcn release is published
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          PACKAGE_VERSION=$(node -p "require('./packages/shadcn-formily/package.json').version")
-
-          if npm view "@wordrhyme/formily-shadcn@$PACKAGE_VERSION" version >/dev/null 2>&1; then
-            echo "@wordrhyme/formily-shadcn@$PACKAGE_VERSION is already published"
-            exit 0
-          fi
-
-          pnpm --filter @wordrhyme/formily-shadcn... build
-          pnpm --dir packages/shadcn-formily pack --pack-destination "$RUNNER_TEMP"
-          npm publish "$RUNNER_TEMP/wordrhyme-formily-shadcn-$PACKAGE_VERSION.tgz" \
-            --access public \
-            --provenance
-
-      - name: Ensure auto-crud-server release is published
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          PACKAGE_VERSION=$(node -p "require('./packages/auto-crud-server/package.json').version")
-
-          if npm view "@wordrhyme/auto-crud-server@$PACKAGE_VERSION" version >/dev/null 2>&1; then
-            echo "@wordrhyme/auto-crud-server@$PACKAGE_VERSION is already published"
-            exit 0
-          fi
-
-          pnpm --filter @wordrhyme/auto-crud-server... build
-          pnpm --dir packages/auto-crud-server pack --pack-destination "$RUNNER_TEMP"
-          npm publish "$RUNNER_TEMP/wordrhyme-auto-crud-server-$PACKAGE_VERSION.tgz" \
-            --access public \
-            --provenance
-
-      - name: Ensure auto-crud release is published
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          PACKAGE_VERSION=$(node -p "require('./packages/auto-crud/package.json').version")
-
-          if npm view "@wordrhyme/auto-crud@$PACKAGE_VERSION" version >/dev/null 2>&1; then
-            echo "@wordrhyme/auto-crud@$PACKAGE_VERSION is already published"
-            exit 0
-          fi
-
-          pnpm --filter @wordrhyme/auto-crud... build
-          pnpm --dir packages/auto-crud pack --pack-destination "$RUNNER_TEMP"
-          npm publish "$RUNNER_TEMP/wordrhyme-auto-crud-$PACKAGE_VERSION.tgz" \
-            --access public \
-            --provenance
+          NPM_CONFIG_PROVENANCE: 'true'
+          # Dependencies are built above; concurrent prepublish hooks can remove them.
+          npm_config_ignore_scripts: 'true'
+        run: pnpm changeset publish
 
       - name: Verify published AutoCrud dependency closure
         run: |
@@ -151,13 +77,13 @@ jobs:
           cd "$VERIFY_DIR"
           npm init --yes
           # npm may acknowledge publication before the version is installable.
-          for attempt in $(seq 1 10); do
+          for attempt in $(seq 1 20); do
             if npm install "@wordrhyme/auto-crud@$PACKAGE_VERSION" \
-              --package-lock-only --ignore-scripts --legacy-peer-deps \
+              --package-lock-only --ignore-scripts --legacy-peer-deps --prefer-online \
               --registry=https://registry.npmjs.org; then
               exit 0
             fi
-            if [ "$attempt" -lt 10 ]; then
+            if [ "$attempt" -lt 20 ]; then
               sleep 30
             fi
           done
