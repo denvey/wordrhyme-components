@@ -88,12 +88,12 @@
     "@tiptap/starter-kit": "^3.22.3",
     "@wordrhyme/shadcn": "workspace:*",
     "class-variance-authority": "catalog:prod",
-    "dayjs": "^1.11.21",
+    "dayjs": "^1.11.23",
     "lucide-react": "catalog:prod",
     "next-themes": "catalog:prod",
     "pretty-bytes": "^7.1.0",
     "react-responsive": "^10.0.1",
-    "sonner": "2.0.7",
+    "sonner": "2.0.8",
     "zod": "catalog:prod"
   },
   "devDependencies": {
