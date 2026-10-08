@@ -1,5 +1,6 @@
 import { flexRender, type Table as TanstackTable } from '@tanstack/react-table';
 import type * as React from 'react';
+import type { TablePaginationOptions } from '@/types/data-table';
 
 import { DataTablePagination } from '@/components/data-table/data-table-pagination';
 import {
@@ -17,6 +18,7 @@ import type { DataTableClassNames } from '@/types/data-table';
 
 interface DataTableProps<TData> extends React.ComponentProps<'div'> {
   table: TanstackTable<TData>;
+  pagination?: TablePaginationOptions;
   classNames?: DataTableClassNames;
   actionBar?: React.ReactNode;
 }
@@ -24,6 +26,7 @@ interface DataTableProps<TData> extends React.ComponentProps<'div'> {
 export function DataTable<TData>({
   table,
   actionBar,
+  pagination,
   children,
   className,
   classNames,
@@ -142,7 +145,7 @@ export function DataTable<TData>({
         </Table>
       </div>
       <div className="flex flex-col gap-2.5">
-        <DataTablePagination table={table} />
+        <DataTablePagination table={table} {...pagination} />
         {actionBar && table.getFilteredSelectedRowModel().rows.length > 0 && actionBar}
       </div>
     </div>

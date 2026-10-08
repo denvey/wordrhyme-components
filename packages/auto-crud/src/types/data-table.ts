@@ -12,6 +12,15 @@ export interface DataTableClassNames {
   td?: string;
 }
 
+/** Optional pagination controls. Omitted options preserve the existing layout. */
+export interface TablePaginationOptions {
+  /** Show first/last page buttons at every viewport width; default remains lg-only. */
+  alwaysShowFirstLast?: boolean;
+  /** Show an input to jump to a known page; defaults to false. */
+  showPageJump?: boolean;
+  pageJumpLabel?: string;
+}
+
 declare module '@tanstack/react-table' {
   // biome-ignore lint/correctness/noUnusedVariables: TData is used in the TableMeta interface
   interface TableMeta<TData extends RowData> {
