@@ -4,13 +4,13 @@
   "packageManager": "pnpm@10.33.0",
   "author": "m.doaie <m.doaie@hotmail.com>",
   "license": "MIT",
-  "homepage": "https://github.com/pixpilot/shadcn-components",
+  "homepage": "https://github.com/denvey/wordrhyme-components",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pixpilot/shadcn-components.git"
+    "url": "https://github.com/denvey/wordrhyme-components.git"
   },
   "bugs": {
-    "url": "https://github.com/pixpilot/shadcn-components/issues"
+    "url": "https://github.com/denvey/wordrhyme-components/issues"
   },
   "engines": {
     "node": ">=22.14.0",

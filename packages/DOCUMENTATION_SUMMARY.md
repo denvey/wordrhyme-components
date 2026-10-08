@@ -183,11 +183,11 @@
    {
      "repository": {
        "type": "git",
-       "url": "https://github.com/pixpilot/shadcn-components.git"
+       "url": "https://github.com/denvey/wordrhyme-components.git"
      },
-     "homepage": "https://github.com/pixpilot/shadcn-components#readme",
+     "homepage": "https://github.com/denvey/wordrhyme-components#readme",
      "bugs": {
-       "url": "https://github.com/pixpilot/shadcn-components/issues"
+       "url": "https://github.com/denvey/wordrhyme-components/issues"
      }
    }
    ```
