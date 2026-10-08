@@ -1,5 +1,11 @@
 # @pixpilot/shadcn
 
+## 2.0.1
+
+### Patch Changes
+
+- f564a13: Correct repository links in published package metadata and READMEs.
+
 ## 2.0.0
 
 ### Major Changes

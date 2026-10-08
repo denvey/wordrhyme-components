@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 2.0.2
+
+### Patch Changes
+
+- f564a13: Correct repository links in published package metadata and READMEs.
+
 ## 2.0.1
 
 ### Patch Changes

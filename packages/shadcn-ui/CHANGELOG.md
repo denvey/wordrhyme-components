@@ -1,5 +1,13 @@
 # @pixpilot/shadcn-ui
 
+## 2.1.1
+
+### Patch Changes
+
+- f564a13: Correct repository links in published package metadata and READMEs.
+- Updated dependencies [f564a13]
+  - @wordrhyme/shadcn@2.0.1
+
 ## 2.1.0
 
 ### Minor Changes

@@ -1,5 +1,15 @@
 # @wordrhyme/auto-crud
 
+## 1.8.1
+
+### Patch Changes
+
+- f564a13: Correct repository links in published package metadata and READMEs.
+- Updated dependencies [f564a13]
+  - @wordrhyme/shadcn@2.0.1
+  - @wordrhyme/shadcn-ui@2.1.1
+  - @wordrhyme/formily-shadcn@2.1.1
+
 ## 1.8.0
 
 ### Minor Changes

@@ -1,5 +1,19 @@
 # @wordrhyme/designable-formily-shadcn
 
+## 0.2.8
+
+### Patch Changes
+
+- f564a13: Correct repository links in published package metadata and READMEs.
+- Updated dependencies [f564a13]
+  - @wordrhyme/designable-core@0.1.0
+  - @wordrhyme/designable-shared@0.1.0
+  - @wordrhyme/designable-formily-setters@0.1.0
+  - @wordrhyme/designable-react@0.1.0
+  - @wordrhyme/shadcn@2.0.1
+  - @wordrhyme/shadcn-ui@2.1.1
+  - @wordrhyme/formily-shadcn@2.1.1
+
 ## 0.2.7
 
 ### Patch Changes
