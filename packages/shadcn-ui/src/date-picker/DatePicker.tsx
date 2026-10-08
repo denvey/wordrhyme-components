@@ -34,12 +34,12 @@ type CommonProps = CalendarProps &
 export type DatePickerProps = CommonProps &
   (
     | {
-        valueFormat?: 'date';
+        valueFormat?: undefined;
         value?: Date | string | number | null;
         onChange?: (date: Date | undefined) => void;
       }
     | {
-        valueFormat: 'date-only';
+        valueFormat: 'YYYY-MM-DD';
         value?: string | Date | null;
         onChange?: (date: string) => void;
       }
@@ -76,7 +76,7 @@ export function DatePicker(props: DatePickerProps) {
   } = props;
   const [open, setOpen] = useState(false);
   const selected =
-    valueFormat === 'date-only'
+    valueFormat === 'YYYY-MM-DD'
       ? dateOnly(value as string | Date | null | undefined)
       : value == null || value === ''
         ? undefined
@@ -91,7 +91,7 @@ export function DatePicker(props: DatePickerProps) {
               : new Date(value);
   const { Button, Calendar, Popover, PopoverContent, PopoverTrigger } = primitives;
   const change = (date: Date | undefined) => {
-    if (props.valueFormat === 'date-only') props.onChange?.(date ? serialize(date) : '');
+    if (props.valueFormat === 'YYYY-MM-DD') props.onChange?.(date ? serialize(date) : '');
     else props.onChange?.(date);
     setOpen(false);
   };
@@ -115,7 +115,7 @@ export function DatePicker(props: DatePickerProps) {
             <CalendarIcon className="mr-2 h-4 w-4" />
             {selected ? (
               (formatValue?.(selected) ??
-              (valueFormat === 'date-only'
+              (valueFormat === 'YYYY-MM-DD'
                 ? serialize(selected)
                 : selected.toLocaleDateString()))
             ) : (

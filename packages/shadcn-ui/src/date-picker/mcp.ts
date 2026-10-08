@@ -26,7 +26,7 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
     'aria-describedby':
       'Description and validation message ids associated with the date trigger.',
     valueFormat:
-      'Defaults to date (Date/undefined); date-only emits YYYY-MM-DD or an empty string when cleared. Ordinary Date inputs use local calendar fields.',
+      'Omit to emit Date/undefined; YYYY-MM-DD emits a calendar-date string or an empty string when cleared. Ordinary Date inputs use local calendar fields. Use formatValue to customize the displayed label.',
     readOnly: 'Prevents selection and clearing.',
     formatValue: 'Optional formatter for the selected-date trigger label.',
     primitives:
@@ -34,12 +34,12 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
     id: 'Optional id attribute applied to the trigger and calendar.',
     value: {
       description: 'Controlled selected date.',
-      type: 'Date | string | null',
+      type: 'Date | string | number | null',
     },
     onChange: {
       description:
-        'Returns Date/undefined by default, or YYYY-MM-DD/empty string in date-only mode.',
-      type: '(date: Date | undefined) => void',
+        'Returns Date/undefined by default, or a calendar-date string/empty string with valueFormat="YYYY-MM-DD".',
+      type: '((date: Date | undefined) => void) | ((date: string) => void)',
     },
     placeholder: {
       description: 'Text shown on the trigger before a date is selected.',
@@ -59,6 +59,10 @@ export const meta: ComponentMeta<DatePickerDocumentedProps> = {
     {
       title: 'Date picker',
       code: '<DatePicker value={date} onChange={setDate} />',
+    },
+    {
+      title: 'Calendar-date string',
+      code: '<DatePicker valueFormat="YYYY-MM-DD" value={dateString} onChange={setDateString} />',
     },
   ],
   keywords: ['date', 'calendar', 'picker', 'form'],

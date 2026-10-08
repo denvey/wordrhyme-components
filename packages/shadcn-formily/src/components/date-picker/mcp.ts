@@ -11,7 +11,7 @@ export const meta: ComponentMeta<DatePickerOwnProps> = {
   htmlElement: 'button',
   props: defineProps<DatePickerOwnProps>({
     valueFormat:
-      'Defaults to Date/undefined; date-only emits YYYY-MM-DD and clears to an empty string.',
+      'Omit to emit Date/undefined; YYYY-MM-DD emits a calendar-date string and clears to an empty string. Use formatValue to customize the displayed label.',
     readOnly: 'Prevents selection and clearing.',
     formatValue: 'Optional selected-date label formatter.',
     primitives: 'Optional primitives shared with the containing modal.',
@@ -87,6 +87,10 @@ export const meta: ComponentMeta<DatePickerOwnProps> = {
     {
       title: 'Declarative schema field',
       code: `<SchemaField.String name="datePicker" title="DatePicker" x-decorator="FormItem" x-component="DatePicker" />`,
+    },
+    {
+      title: 'Calendar-date string',
+      code: `<SchemaField.String name="datePicker" title="DatePicker" x-decorator="FormItem" x-component="DatePicker" x-component-props={{ valueFormat: 'YYYY-MM-DD' }} />`,
     },
     {
       title: 'JSON schema for form renderer',

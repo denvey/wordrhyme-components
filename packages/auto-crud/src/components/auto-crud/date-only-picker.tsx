@@ -14,7 +14,7 @@ type FormDatePickerProps = DatePickerProps & {
 };
 
 export function DatePicker({ dateInput, ...props }: FormDatePickerProps) {
-  if (props.valueFormat === 'date-only' && dateInput === 'utc-projection') {
+  if (props.valueFormat === 'YYYY-MM-DD' && dateInput === 'utc-projection') {
     const value = props.value;
     props = {
       ...props,
@@ -35,7 +35,7 @@ export function DatePicker({ dateInput, ...props }: FormDatePickerProps) {
   return (
     <FormilyDatePicker
       primitives={primitives}
-      {...(props.valueFormat === 'date-only'
+      {...(props.valueFormat === 'YYYY-MM-DD'
         ? {
             captionLayout: 'dropdown-months' as const,
             formatters: presentation.formatters,
@@ -49,13 +49,13 @@ export function DatePicker({ dateInput, ...props }: FormDatePickerProps) {
   );
 }
 
-/** @deprecated Use DatePicker with valueFormat="date-only". */
+/** @deprecated Use DatePicker with valueFormat="YYYY-MM-DD". */
 export function DateOnlyPicker(
   props: Omit<
-    Extract<DatePickerProps, { valueFormat: 'date-only' }> &
+    Extract<DatePickerProps, { valueFormat: 'YYYY-MM-DD' }> &
       Pick<FormDatePickerProps, 'dateInput'>,
     'valueFormat'
   >,
 ) {
-  return <DatePicker {...props} valueFormat="date-only" />;
+  return <DatePicker {...props} valueFormat="YYYY-MM-DD" />;
 }
