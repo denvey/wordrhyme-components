@@ -61,6 +61,7 @@ import {
   type AutoCrudDataSourceEntry,
 } from '@/lib/registries';
 import { crudActions } from '@/lib/crud-actions';
+import { matchesPosition, type ActionPosition } from '@/position';
 import { readCrudReferenceOption } from '@/lib/crud-reference-projection';
 import { buildFormOverrides } from '@/lib/field-config';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
@@ -280,7 +281,7 @@ export type RowCustomActionItem<T> = ActionMeta & {
   label?: string;
   onClick?: (row: T) => void;
   component?: ActionComponent<AutoCrudRowActionContext<T>>;
-  position?: 'start' | 'end';
+  position?: ActionPosition;
   separator?: boolean;
   variant?: 'default' | 'destructive';
 };
@@ -333,8 +334,8 @@ export type ToolbarCustomActionItem = ActionMeta & {
   type: 'custom';
   /** 渲染自定义内容 */
   component: ActionComponent<AutoCrudToolbarContext>;
-  /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
-  position?: 'start' | 'end';
+  /** start/end 仅在无内置项时生效（默认 end）；也可指定锚点的 before/after。 */
+  position?: ActionPosition;
 };
 
 export type ToolbarActionItem = ToolbarBuiltinActionItem | ToolbarCustomActionItem;
@@ -391,7 +392,7 @@ function isCustomAction(action: { type: string }): boolean {
 }
 
 function resolveOwnerActions<
-  TAction extends { type: string; position?: 'start' | 'end' },
+  TAction extends { type: string; position?: ActionPosition },
   TDefault extends TAction,
 >(
   config: readonly TAction[] | ((defaults: TDefault[]) => readonly TAction[]) | undefined,
@@ -410,10 +411,10 @@ function resolveOwnerActions<
   }
 
   const startItems = items.filter(
-    (item) => isCustomAction(item) && item.position === 'start',
+    (item) => isCustomAction(item) && matchesPosition(item.position, 'start'),
   );
   const endItems = items.filter(
-    (item) => isCustomAction(item) && item.position !== 'start',
+    (item) => isCustomAction(item) && !matchesPosition(item.position, 'start'),
   );
 
   return [...startItems, ...defaults, ...endItems];

@@ -1,7 +1,7 @@
 {
   "name": "@wordrhyme/auto-crud",
   "type": "module",
-  "version": "1.8.1",
+  "version": "1.8.2",
   "packageManager": "pnpm@10.25.0",
   "description": "Schema-first CRUD components with auto-generated tables and forms",
   "author": "wordrhyme",
@@ -21,7 +21,12 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./position": {
+      "types": "./dist/position.d.ts",
+      "import": "./dist/position.js",
+      "require": "./dist/position.cjs"
+    }
   },
   "files": [
     "dist"

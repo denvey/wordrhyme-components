@@ -27,6 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@wordrhyme/shadcn';
 import { exportTableToCSV } from '@/lib/export';
+import { matchesPosition, positionActions, type ActionPosition } from '@/position';
 
 /** 批量更新字段配置 */
 export interface BatchUpdateField {
@@ -81,8 +82,8 @@ export type BatchCustomActionItem<TData> = BatchActionMeta & {
   ) => void;
   /** 渲染自定义内容 */
   component?: React.ReactNode | ((context: BatchActionContext<TData>) => React.ReactNode);
-  /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
-  position?: 'start' | 'end';
+  /** start/end 仅在无内置项时生效（默认 end）；也可指定锚点的 before/after。 */
+  position?: ActionPosition;
   variant?: 'default' | 'destructive';
 };
 
@@ -384,7 +385,7 @@ export function AutoTableActionBar<TData>({
       { type: 'delete' },
     ];
     const configuredActions = typeof actions === 'function' ? actions(defaults) : actions;
-    const resolvedActions = configuredActions?.filter((action) => !action.hidden);
+    let resolvedActions = configuredActions?.filter((action) => !action.hidden);
 
     if (configuredActions === undefined) {
       return (
@@ -401,7 +402,33 @@ export function AutoTableActionBar<TData>({
       return null;
     }
 
-    const hasBuiltin = resolvedActions.some((action) => action.type !== 'custom');
+    let hasBuiltin = resolvedActions.some((action) => action.type !== 'custom');
+
+    if (
+      resolvedActions.some(
+        (action) => 'position' in action && typeof action.position === 'object',
+      )
+    ) {
+      if (!hasBuiltin) {
+        const start = resolvedActions.filter(
+          (action) => 'position' in action && matchesPosition(action.position, 'start'),
+        );
+        const end = resolvedActions.filter(
+          (action) =>
+            !('position' in action) || !matchesPosition(action.position, 'start'),
+        );
+        resolvedActions = [
+          ...start,
+          { type: 'batchUpdate' },
+          ...(extraActions ? [{ type: 'custom' as const, component: extraActions }] : []),
+          ...(showDefaultExport ? [{ type: 'export' as const }] : []),
+          { type: 'delete' },
+          ...end,
+        ];
+        hasBuiltin = true;
+      }
+      resolvedActions = positionActions(resolvedActions);
+    }
 
     if (!hasBuiltin) {
       const startNodes = resolvedActions
