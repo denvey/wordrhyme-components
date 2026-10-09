@@ -46,12 +46,16 @@ jobs:
           echo "$RUNNER_TEMP/npm-global/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/npm-global/bin/npm" --version
 
+      - name: Build release packages
+        run: pnpm build
+
       - name: Release
-        # Some packages are not configured as npm Trusted Publishers yet. Let the
-        # token-authenticated, idempotent recovery publisher below finish those
-        # releases when the Changesets OIDC publish attempt fails.
+        # Recover already-versioned releases below when no changesets remain.
         continue-on-error: true
         uses: pixpilot/changesets-autopilot@v1
+        env:
+          # The dependency closure is already built; avoid destructive parallel hooks.
+          npm_config_ignore_scripts: 'true'
         with:
           GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
           # No NPM_TOKEN: npm Trusted Publishing authenticates this job via OIDC.
@@ -59,10 +63,18 @@ jobs:
           # Release only the explicit .changeset entries committed with a change.
           AUTO_CHANGESET: false
 
-      - name: Build release packages
-        run: pnpm build
+      - name: Ensure workspace releases are published with OIDC
+        id: publish_oidc
+        continue-on-error: true
+        env:
+          NODE_AUTH_TOKEN: ''
+          NPM_TOKEN: ''
+          NPM_CONFIG_PROVENANCE: 'true'
+          npm_config_ignore_scripts: 'true'
+        run: pnpm changeset publish
 
       - name: Ensure workspace releases are published
+        if: steps.publish_oidc.outcome == 'failure'
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: 'true'
