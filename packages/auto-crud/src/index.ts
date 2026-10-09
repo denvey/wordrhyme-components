@@ -94,6 +94,13 @@ export type {
   AutoCrudOption,
 } from './lib/registries';
 export { crudActions } from './lib/crud-actions';
+export {
+  actionPositionSchema,
+  matchesPosition,
+  compareOrder,
+  positionActions,
+} from './position';
+export type { ActionPosition } from './position';
 export type {
   CrudActionBase,
   CrudActionEntry,

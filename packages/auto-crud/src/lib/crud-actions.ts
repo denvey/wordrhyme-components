@@ -1,3 +1,10 @@
+import {
+  compareOrder,
+  matchesPosition,
+  positionActions,
+  type ActionPosition,
+} from '../position';
+
 export type CrudActionZone = 'toolbar' | 'row' | 'batch';
 
 export type CrudActionBase = {
@@ -5,7 +12,7 @@ export type CrudActionBase = {
   id?: string;
   order?: number;
   hidden?: boolean;
-  position?: 'start' | 'end';
+  position?: ActionPosition;
 };
 
 export type CrudActionEntry<TAction extends CrudActionBase = CrudActionBase> = {
@@ -115,7 +122,7 @@ function sortEntries<TAction extends CrudActionBase>(
   left: CrudActionEntry<TAction>,
   right: CrudActionEntry<TAction>,
 ): number {
-  const orderDiff = left.order - right.order;
+  const orderDiff = compareOrder(left, right);
   if (orderDiff !== 0) return orderDiff;
 
   const ownerDiff = left.ownerId.localeCompare(right.ownerId);
@@ -125,8 +132,8 @@ function sortEntries<TAction extends CrudActionBase>(
 }
 
 function withoutRegistryMeta<TAction extends CrudActionBase>(action: TAction): TAction {
-  const { id, order, ...rest } = action;
-  return rest as TAction;
+  const { id, order, position, ...rest } = action;
+  return { ...rest, ...(typeof position === 'string' ? { position } : {}) } as TAction;
 }
 
 function isCustomAction(action: CrudActionBase): boolean {
@@ -162,13 +169,11 @@ function resolveActions<TAction extends CrudActionBase>(
   );
   const baseActions = ownerActions
     .filter((action) => !action.hidden && !isMaskedCustom(action))
-    .map((action) =>
-      withoutRegistryMeta(
-        isCustomAction(action) && action.id
-          ? (customOverrides.get(action.id)?.action ?? action)
-          : action,
-      ),
-    );
+    .map((action) => ({
+      ...(isCustomAction(action) && action.id
+        ? (customOverrides.get(action.id)?.action ?? action)
+        : action),
+    }));
   const isReplacedCustom = ({ action, seq }: CrudActionEntry<TAction>) =>
     isCustomAction(action) &&
     Boolean(
@@ -176,7 +181,8 @@ function resolveActions<TAction extends CrudActionBase>(
       (ownerCustomIds.has(action.id) || customOverrides.get(action.id)?.seq !== seq),
     );
 
-  if (registered.length === 0) return baseActions;
+  if (registered.length === 0)
+    return positionActions(baseActions).map(withoutRegistryMeta);
 
   const nextActions = [...baseActions];
   const startCustomActions: TAction[] = [];
@@ -199,7 +205,7 @@ function resolveActions<TAction extends CrudActionBase>(
       continue;
     }
 
-    const builtin = withoutRegistryMeta(action);
+    const builtin = action;
     if (existingIndex >= 0) {
       nextActions[existingIndex] = {
         ...nextActions[existingIndex],
@@ -218,7 +224,7 @@ function resolveActions<TAction extends CrudActionBase>(
       .flatMap((entry) => {
         const { action } = entry;
         if (action.hidden || isReplacedCustom(entry)) return [];
-        if (isCustomAction(action)) return [withoutRegistryMeta(action)];
+        if (isCustomAction(action)) return [{ ...action }];
         const builtin = nextActions.find((item) => item.type === action.type);
         return builtin ? [builtin] : [];
       });
@@ -242,14 +248,19 @@ function resolveActions<TAction extends CrudActionBase>(
       }
     } else {
       for (const custom of items) {
-        (custom.position === 'start' ? startCustomActions : endCustomActions).push(
-          custom,
-        );
+        (matchesPosition(custom.position, 'start')
+          ? startCustomActions
+          : endCustomActions
+        ).push(custom);
       }
     }
   }
 
-  return [...startCustomActions, ...nextActions, ...endCustomActions];
+  return positionActions([
+    ...startCustomActions,
+    ...nextActions,
+    ...endCustomActions,
+  ]).map(withoutRegistryMeta);
 }
 
 export const crudActions = {

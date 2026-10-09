@@ -125,6 +125,50 @@ describe('crudActions', () => {
 
     unsubscribe();
   });
+
+  it.each(['toolbar', 'row', 'batch'] as const)(
+    'places extensions around owner action IDs in %s',
+    (zone) => {
+      crudActions.register({
+        targetId: 'target',
+        zone,
+        ownerId: 'plugin',
+        actions: [
+          {
+            type: 'custom',
+            label: 'Last',
+            order: 30,
+            position: { anchor: 'preview', side: 'after' },
+          },
+          {
+            type: 'custom',
+            label: 'First',
+            order: 10,
+            position: { anchor: 'preview', side: 'after' },
+          },
+          {
+            type: 'custom',
+            label: 'Before delete',
+            position: { anchor: 'delete', side: 'before' },
+          },
+        ],
+      });
+      const owner = [
+        { type: 'custom', id: 'preview', label: 'Preview' },
+        { type: 'delete' },
+      ];
+      expect(
+        crudActions
+          .resolve('target', zone, owner)
+          .map((item) => ('label' in item ? item.label : item.type)),
+      ).toEqual(['Preview', 'First', 'Last', 'Before delete', 'delete']);
+      crudActions.unregister('plugin');
+      expect(crudActions.resolve('target', zone, owner)).toEqual([
+        { type: 'custom', label: 'Preview' },
+        { type: 'delete' },
+      ]);
+    },
+  );
 });
 
 describe('registered action array order', () => {
