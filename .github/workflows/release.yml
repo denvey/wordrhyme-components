@@ -79,6 +79,17 @@ jobs:
           pnpm --filter @wordrhyme/auto-crud pack --pack-destination "$RUNNER_TEMP"
           "$RUNNER_TEMP/npm-global/bin/npm" publish "$RUNNER_TEMP/wordrhyme-auto-crud-$PACKAGE_VERSION.tgz" \
             --access public --provenance --ignore-scripts --registry=https://registry.npmjs.org
+          # Wait for registry visibility before the recovery publisher checks versions.
+          for attempt in $(seq 1 20); do
+            if npm view "@wordrhyme/auto-crud@$PACKAGE_VERSION" version --registry=https://registry.npmjs.org; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 20 ]; then
+              sleep 30
+            fi
+          done
+          echo "Published AutoCrud version is not visible in the registry"
+          exit 1
 
       - name: Ensure workspace releases are published
         env:
