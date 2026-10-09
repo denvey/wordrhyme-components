@@ -46,12 +46,16 @@ jobs:
           echo "$RUNNER_TEMP/npm-global/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/npm-global/bin/npm" --version
 
+      - name: Build release packages
+        run: pnpm build
+
       - name: Release
-        # Some packages are not configured as npm Trusted Publishers yet. Let the
-        # token-authenticated, idempotent recovery publisher below finish those
-        # releases when the Changesets OIDC publish attempt fails.
+        # Recover already-versioned releases below when no changesets remain.
         continue-on-error: true
         uses: pixpilot/changesets-autopilot@v1
+        env:
+          # The dependency closure is already built; avoid destructive parallel hooks.
+          npm_config_ignore_scripts: 'true'
         with:
           GITHUB_TOKEN: ${{ steps.app_token.outputs.token }}
           # No NPM_TOKEN: npm Trusted Publishing authenticates this job via OIDC.
@@ -59,8 +63,33 @@ jobs:
           # Release only the explicit .changeset entries committed with a change.
           AUTO_CHANGESET: false
 
-      - name: Build release packages
-        run: pnpm build
+      - name: Ensure AutoCrud is published with OIDC
+        continue-on-error: true
+        env:
+          NODE_AUTH_TOKEN: ''
+          NPM_TOKEN: ''
+          NPM_CONFIG_PROVENANCE: 'true'
+          npm_config_ignore_scripts: 'true'
+        run: |
+          PACKAGE_VERSION=$(node -p "require('./packages/auto-crud/package.json').version")
+          if npm view "@wordrhyme/auto-crud@$PACKAGE_VERSION" version --registry=https://registry.npmjs.org; then
+            exit 0
+          fi
+          # pnpm rewrites workspace dependencies; npm 11 provides OIDC publishing.
+          pnpm --filter @wordrhyme/auto-crud pack --pack-destination "$RUNNER_TEMP"
+          "$RUNNER_TEMP/npm-global/bin/npm" publish "$RUNNER_TEMP/wordrhyme-auto-crud-$PACKAGE_VERSION.tgz" \
+            --access public --provenance --ignore-scripts --registry=https://registry.npmjs.org
+          # Wait for registry visibility before the recovery publisher checks versions.
+          for attempt in $(seq 1 20); do
+            if npm view "@wordrhyme/auto-crud@$PACKAGE_VERSION" version --registry=https://registry.npmjs.org; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 20 ]; then
+              sleep 30
+            fi
+          done
+          echo "Published AutoCrud version is not visible in the registry"
+          exit 1
 
       - name: Ensure workspace releases are published
         env:
