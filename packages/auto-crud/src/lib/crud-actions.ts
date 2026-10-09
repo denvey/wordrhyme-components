@@ -1,9 +1,4 @@
-import {
-  compareOrder,
-  matchesPosition,
-  positionActions,
-  type ActionPosition,
-} from '../position';
+import { compareOrder, positionActions, type ActionPosition } from '../position';
 
 export type CrudActionZone = 'toolbar' | 'row' | 'batch';
 
@@ -185,8 +180,7 @@ function resolveActions<TAction extends CrudActionBase>(
     return positionActions(baseActions).map(withoutRegistryMeta);
 
   const nextActions = [...baseActions];
-  const startCustomActions: TAction[] = [];
-  const endCustomActions: TAction[] = [];
+  const extraActions: TAction[] = [];
   const groups = new Map<string, CrudActionEntry<TAction>[]>();
 
   for (const entry of registered) {
@@ -247,20 +241,11 @@ function resolveActions<TAction extends CrudActionBase>(
         }
       }
     } else {
-      for (const custom of items) {
-        (matchesPosition(custom.position, 'start')
-          ? startCustomActions
-          : endCustomActions
-        ).push(custom);
-      }
+      extraActions.push(...items);
     }
   }
 
-  return positionActions([
-    ...startCustomActions,
-    ...nextActions,
-    ...endCustomActions,
-  ]).map(withoutRegistryMeta);
+  return positionActions(nextActions, extraActions).map(withoutRegistryMeta);
 }
 
 export const crudActions = {

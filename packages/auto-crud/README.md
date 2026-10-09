@@ -915,7 +915,7 @@ crudActions.register({
 
 AutoCrud action 和 WordRhyme PluginSlot 共用 `ActionPosition`：`"start"`、`"end"`，或 `{ anchor, side: "before" | "after" }`。类型、schema、位置匹配和锚点排序从不依赖 React 的 `@wordrhyme/auto-crud/position` 导出。
 
-原有 action 数组及 start/end 排列规则保持不变。指定锚点时，在原有合并、覆盖和隐藏之后定位，`order` 按升序排列同一锚点的 fills。AutoCrud 使用合并后基础 action 的 `id` 作为锚点；原生按钮未设置 `id` 时使用 `type`。合并后的动作列表不存在锚点时，不显示依赖它的扩展；最终权限过滤继续沿用已有行为。
+`positionActions(ownerActions, fills)` 合并拥有方按钮和扩展数组：`start` fills 放在数组前，`end` 或未指定位置的 fills 放在数组后，相对位置按基础按钮锚点插入。AutoCrud 和 PluginSlot 共用此解析器。原有 action 数组及 start/end 排列规则保持不变。指定锚点时，在原有合并、覆盖和隐藏之后定位，`order` 按升序排列同一锚点的 fills。AutoCrud 使用合并后基础 action 的 `id` 作为锚点；原生按钮未设置 `id` 时使用 `type`。合并后的动作列表不存在锚点时，不显示依赖它的扩展；最终权限过滤继续沿用已有行为。
 
 ```tsx
 crudActions.register({

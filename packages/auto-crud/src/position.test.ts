@@ -1,7 +1,43 @@
 import { describe, expect, it, vi } from 'vitest';
-import { actionPositionSchema, matchesPosition, positionActions } from './position';
+import {
+  actionPositionSchema,
+  matchesPosition,
+  positionActions,
+  type ActionPosition,
+} from './position';
 
 describe('action positions', () => {
+  it('merges fill arrays at the start, end and named anchors without moving owner actions', () => {
+    const positioned = positionActions<{
+      type: string;
+      id: string;
+      position?: ActionPosition;
+    }>(
+      [
+        { type: 'custom', id: 'preview' },
+        { type: 'custom', id: 'save' },
+      ],
+      [
+        { type: 'custom', id: 'end', position: 'end' },
+        {
+          type: 'custom',
+          id: 'after-preview',
+          position: { anchor: 'preview', side: 'after' },
+        },
+        { type: 'custom', id: 'start', position: 'start' },
+        { type: 'custom', id: 'default' },
+      ],
+    );
+    expect(positioned.map((action) => action.id)).toEqual([
+      'start',
+      'preview',
+      'after-preview',
+      'save',
+      'end',
+      'default',
+    ]);
+  });
+
   it('shares start/end and relative position validation and matching', () => {
     for (const position of ['start', 'end', { anchor: 'save', side: 'before' }]) {
       expect(actionPositionSchema.safeParse(position).success).toBe(true);

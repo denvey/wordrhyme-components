@@ -1,11 +1,5 @@
 # @wordrhyme/auto-crud
 
-## 1.8.2
-
-### Patch Changes
-
-- Share the action position contract through a React-free position entry point and support before/after anchors while preserving existing action ordering.
-
 ## 1.8.1
 
 ### Patch Changes

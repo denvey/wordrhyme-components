@@ -27,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from '@wordrhyme/shadcn';
 import { exportTableToCSV } from '@/lib/export';
-import { matchesPosition, positionActions, type ActionPosition } from '@/position';
+import { positionActions, type ActionPosition } from '@/position';
 
 /** 批量更新字段配置 */
 export interface BatchUpdateField {
@@ -410,24 +410,21 @@ export function AutoTableActionBar<TData>({
       )
     ) {
       if (!hasBuiltin) {
-        const start = resolvedActions.filter(
-          (action) => 'position' in action && matchesPosition(action.position, 'start'),
+        resolvedActions = positionActions<BatchActionItem<TData>>(
+          [
+            { type: 'batchUpdate' },
+            ...(extraActions
+              ? [{ type: 'custom' as const, component: extraActions }]
+              : []),
+            ...(showDefaultExport ? [{ type: 'export' as const }] : []),
+            { type: 'delete' },
+          ],
+          resolvedActions,
         );
-        const end = resolvedActions.filter(
-          (action) =>
-            !('position' in action) || !matchesPosition(action.position, 'start'),
-        );
-        resolvedActions = [
-          ...start,
-          { type: 'batchUpdate' },
-          ...(extraActions ? [{ type: 'custom' as const, component: extraActions }] : []),
-          ...(showDefaultExport ? [{ type: 'export' as const }] : []),
-          { type: 'delete' },
-          ...end,
-        ];
         hasBuiltin = true;
+      } else {
+        resolvedActions = positionActions(resolvedActions);
       }
-      resolvedActions = positionActions(resolvedActions);
     }
 
     if (!hasBuiltin) {

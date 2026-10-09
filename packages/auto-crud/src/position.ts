@@ -35,10 +35,14 @@ export function positionActions<
     order?: number;
     position?: ActionPosition;
   },
->(items: readonly T[]): T[] {
+>(items: readonly T[], fills: readonly T[] = []): T[] {
   const anchored = new Map<string, T[]>();
   const base: T[] = [];
-  for (const item of items) {
+  for (const item of [
+    ...fills.filter((fill) => matchesPosition(fill.position, 'start')),
+    ...items,
+    ...fills.filter((fill) => !matchesPosition(fill.position, 'start')),
+  ]) {
     if (item.position !== undefined) actionPositionSchema.parse(item.position);
     if (typeof item.position !== 'object') {
       base.push(item);
