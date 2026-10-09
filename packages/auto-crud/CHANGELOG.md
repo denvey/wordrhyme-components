@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.8.2
+
+### Patch Changes
+
+- e3ab9a5: Share the React-free action position contract and merge owner and extension action arrays at start/end or before/after named anchors, preserving existing action ordering and overrides.
+
 ## 1.8.1
 
 ### Patch Changes
