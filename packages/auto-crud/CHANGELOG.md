@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.9.0
+
+### Minor Changes
+
+- 4536454: Support filter-only fields through the standard filter bar and share field filter configuration between tables and resource queries. Preserve custom action hiding, replacement, and fallback behavior when positioning before builtin actions.
+
 ## 1.8.2
 
 ### Patch Changes
