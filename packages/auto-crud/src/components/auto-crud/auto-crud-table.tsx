@@ -63,7 +63,7 @@ import {
 import { crudActions } from '@/lib/crud-actions';
 import { matchesPosition, type ActionPosition } from '@/position';
 import { readCrudReferenceOption } from '@/lib/crud-reference-projection';
-import { buildFormOverrides } from '@/lib/field-config';
+import { buildFormOverrides, mergeFieldPart, mergeFields } from '@/lib/field-config';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { createTableSchema } from '@/lib/schema-bridge/zod-to-columns';
 
@@ -282,6 +282,8 @@ export type RowCustomActionItem<T> = ActionMeta & {
   onClick?: (row: T) => void;
   component?: ActionComponent<AutoCrudRowActionContext<T>>;
   position?: ActionPosition;
+  /** Place a registered custom action before the named builtin, when present. */
+  before?: RowBuiltinActionType;
   separator?: boolean;
   variant?: 'default' | 'destructive';
 };
@@ -636,51 +638,6 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
    * 如果提供，将覆盖默认的打开新建弹窗行为
    */
   onCreate?: () => void;
-}
-
-function mergeFieldPart<T>(
-  base: T | false | undefined,
-  override: T | false | undefined,
-): T | false | undefined {
-  if (override === undefined) return base;
-  if (
-    override === false ||
-    base === false ||
-    typeof base !== 'object' ||
-    typeof override !== 'object' ||
-    base === null ||
-    override === null ||
-    Array.isArray(base) ||
-    Array.isArray(override)
-  ) {
-    return override;
-  }
-
-  return { ...base, ...override };
-}
-
-function mergeFieldConfig(base: Field | undefined, override: Field | undefined): Field {
-  return {
-    ...base,
-    ...override,
-    enum: override?.enum ?? base?.enum,
-    dataSource: override?.dataSource ?? base?.dataSource,
-    table: mergeFieldPart(base?.table, override?.table),
-    filter: mergeFieldPart(base?.filter, override?.filter),
-    form: mergeFieldPart(base?.form, override?.form),
-  };
-}
-
-function mergeFields(
-  base: Fields | undefined,
-  override: Fields | undefined,
-): Fields | undefined {
-  if (!base && !override) return undefined;
-
-  const keys = new Set([...Object.keys(base ?? {}), ...Object.keys(override ?? {})]);
-  return Object.fromEntries(
-    Array.from(keys).map((key) => [key, mergeFieldConfig(base?.[key], override?.[key])]),
-  );
 }
 
 function applyResourceTablePresentation(
@@ -2292,6 +2249,21 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const [exporting, setExporting] = React.useState(false);
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
   const dynamicFilterOptions = useDynamicFilterOptions(resolvedFields);
+  const filterOnly = React.useMemo(
+    () =>
+      Object.entries(resolvedFields)
+        .filter(
+          ([key, config]) =>
+            config.table === false &&
+            config.filter &&
+            config.hidden !== true &&
+            !denyFields?.includes(key) &&
+            !tableConfig?.hidden?.includes(key) &&
+            tableConfig?.overrides?.[key]?.hidden !== true,
+        )
+        .map(([key]) => key),
+    [resolvedFields, denyFields, tableConfig?.hidden, tableConfig?.overrides],
+  );
   const hiddenColumns = React.useMemo(
     () =>
       buildHiddenColumns(
@@ -2819,7 +2791,8 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           : {})}
         overrides={tableOverrides as any}
         classNames={tableConfig?.classNames}
-        exclude={hiddenColumns as any}
+        exclude={hiddenColumns.filter((key) => !filterOnly.includes(key)) as any}
+        filterOnly={filterOnly}
         filterMode={tableConfig?.filterModes}
         search={searchConfig}
         actions={tableRowActions}

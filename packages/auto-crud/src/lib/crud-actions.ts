@@ -8,6 +8,8 @@ export type CrudActionBase = {
   order?: number;
   hidden?: boolean;
   position?: ActionPosition;
+  /** Insert a custom action before a builtin action type, if present. */
+  before?: string;
 };
 
 export type CrudActionEntry<TAction extends CrudActionBase = CrudActionBase> = {
@@ -176,9 +178,6 @@ function resolveActions<TAction extends CrudActionBase>(
       (ownerCustomIds.has(action.id) || customOverrides.get(action.id)?.seq !== seq),
     );
 
-  if (registered.length === 0)
-    return positionActions(baseActions).map(withoutRegistryMeta);
-
   const nextActions = [...baseActions];
   const extraActions: TAction[] = [];
   const groups = new Map<string, CrudActionEntry<TAction>[]>();
@@ -218,7 +217,13 @@ function resolveActions<TAction extends CrudActionBase>(
       .flatMap((entry) => {
         const { action } = entry;
         if (action.hidden || isReplacedCustom(entry)) return [];
-        if (isCustomAction(action)) return [{ ...action }];
+        if (isCustomAction(action)) {
+          if (action.before) {
+            extraActions.push({ ...action });
+            return [];
+          }
+          return [{ ...action }];
+        }
         const builtin = nextActions.find((item) => item.type === action.type);
         return builtin ? [builtin] : [];
       });
@@ -242,6 +247,18 @@ function resolveActions<TAction extends CrudActionBase>(
       }
     } else {
       extraActions.push(...items);
+    }
+  }
+
+  for (const action of [...nextActions, ...extraActions]) {
+    if (!isCustomAction(action) || !action.before) continue;
+    const anchor = nextActions.find(
+      (item) => !isCustomAction(item) && item.type === action.before,
+    );
+    if (anchor) {
+      action.position = { anchor: anchor.id ?? anchor.type, side: 'before' };
+    } else if (typeof action.position === 'object') {
+      action.position = 'end';
     }
   }
 
