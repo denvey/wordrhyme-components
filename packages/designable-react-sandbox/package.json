@@ -1,14 +1,14 @@
 {
   "name": "@wordrhyme/designable-react-sandbox",
   "type": "module",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0",
   "packageManager": "pnpm@10.33.0",
   "description": "Forked Designable React sandbox for WordRhyme.",
   "author": "wordrhyme",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pixpilot/shadcn-components.git",
+    "url": "https://github.com/denvey/wordrhyme-components.git",
     "directory": "packages/designable-react-sandbox"
   },
   "main": "./dist/index.cjs",

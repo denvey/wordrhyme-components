@@ -1,4 +1,5 @@
 import type * as React from 'react';
+import type { TablePaginationOptions } from '@/types/data-table';
 
 export type AutoCrudFormComponentConfig = {
   component: React.ComponentType<any>;
@@ -115,6 +116,9 @@ function createRegistry<T>(label: string) {
     },
   };
 }
+
+// Application-owned options keyed by the public CRUD id.
+export const tablePagination = createRegistry<TablePaginationOptions>('table pagination');
 
 export const formComponents =
   createRegistry<AutoCrudFormComponentConfig>('form component');

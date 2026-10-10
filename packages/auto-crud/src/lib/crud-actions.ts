@@ -1,3 +1,5 @@
+import { compareOrder, positionActions, type ActionPosition } from '../position';
+
 export type CrudActionZone = 'toolbar' | 'row' | 'batch';
 
 export type CrudActionBase = {
@@ -5,7 +7,7 @@ export type CrudActionBase = {
   id?: string;
   order?: number;
   hidden?: boolean;
-  position?: 'start' | 'end';
+  position?: ActionPosition;
   /** Insert a custom action before a builtin action type, if present. */
   before?: string;
 };
@@ -117,7 +119,7 @@ function sortEntries<TAction extends CrudActionBase>(
   left: CrudActionEntry<TAction>,
   right: CrudActionEntry<TAction>,
 ): number {
-  const orderDiff = left.order - right.order;
+  const orderDiff = compareOrder(left, right);
   if (orderDiff !== 0) return orderDiff;
 
   const ownerDiff = left.ownerId.localeCompare(right.ownerId);
@@ -127,8 +129,8 @@ function sortEntries<TAction extends CrudActionBase>(
 }
 
 function withoutRegistryMeta<TAction extends CrudActionBase>(action: TAction): TAction {
-  const { id, order, ...rest } = action;
-  return rest as TAction;
+  const { id, order, position, ...rest } = action;
+  return { ...rest, ...(typeof position === 'string' ? { position } : {}) } as TAction;
 }
 
 function isCustomAction(action: CrudActionBase): boolean {
@@ -164,13 +166,11 @@ function resolveActions<TAction extends CrudActionBase>(
   );
   const baseActions = ownerActions
     .filter((action) => !action.hidden && !isMaskedCustom(action))
-    .map((action) =>
-      withoutRegistryMeta(
-        isCustomAction(action) && action.id
-          ? (customOverrides.get(action.id)?.action ?? action)
-          : action,
-      ),
-    );
+    .map((action) => ({
+      ...(isCustomAction(action) && action.id
+        ? (customOverrides.get(action.id)?.action ?? action)
+        : action),
+    }));
   const isReplacedCustom = ({ action, seq }: CrudActionEntry<TAction>) =>
     isCustomAction(action) &&
     Boolean(
@@ -178,17 +178,14 @@ function resolveActions<TAction extends CrudActionBase>(
       (ownerCustomIds.has(action.id) || customOverrides.get(action.id)?.seq !== seq),
     );
 
-  if (registered.length === 0) return baseActions;
-
   const nextActions = [...baseActions];
-  const startCustomActions: TAction[] = [];
-  const endCustomActions: TAction[] = [];
+  const extraActions: TAction[] = [];
   const groups = new Map<string, CrudActionEntry<TAction>[]>();
 
   for (const entry of registered) {
     if (isMaskedCustom(entry.action)) continue;
     const group = groups.get(entry.ownerId) ?? [];
-    if (!(isCustomAction(entry.action) && entry.action.before)) group.push(entry);
+    group.push(entry);
     groups.set(entry.ownerId, group);
     const action = entry.action;
     if (isCustomAction(action)) continue;
@@ -201,7 +198,7 @@ function resolveActions<TAction extends CrudActionBase>(
       continue;
     }
 
-    const builtin = withoutRegistryMeta(action);
+    const builtin = action;
     if (existingIndex >= 0) {
       nextActions[existingIndex] = {
         ...nextActions[existingIndex],
@@ -220,7 +217,13 @@ function resolveActions<TAction extends CrudActionBase>(
       .flatMap((entry) => {
         const { action } = entry;
         if (action.hidden || isReplacedCustom(entry)) return [];
-        if (isCustomAction(action)) return [withoutRegistryMeta(action)];
+        if (isCustomAction(action)) {
+          if (action.before) {
+            extraActions.push({ ...action });
+            return [];
+          }
+          return [{ ...action }];
+        }
         const builtin = nextActions.find((item) => item.type === action.type);
         return builtin ? [builtin] : [];
       });
@@ -243,24 +246,23 @@ function resolveActions<TAction extends CrudActionBase>(
         }
       }
     } else {
-      for (const custom of items) {
-        (custom.position === 'start' ? startCustomActions : endCustomActions).push(
-          custom,
-        );
-      }
+      extraActions.push(...items);
     }
   }
 
-  // Preserve explicit anchors from local consumers alongside array-based ordering.
-  for (const { action } of registered) {
-    if (!isCustomAction(action) || !action.before || action.hidden) continue;
-    const custom = withoutRegistryMeta(action);
-    const anchor = nextActions.findIndex((item) => !isCustomAction(item) && item.type === action.before);
-    if (anchor >= 0) nextActions.splice(anchor, 0, custom);
-    else (custom.position === 'start' ? startCustomActions : endCustomActions).push(custom);
+  for (const action of [...nextActions, ...extraActions]) {
+    if (!isCustomAction(action) || !action.before) continue;
+    const anchor = nextActions.find(
+      (item) => !isCustomAction(item) && item.type === action.before,
+    );
+    if (anchor) {
+      action.position = { anchor: anchor.id ?? anchor.type, side: 'before' };
+    } else if (typeof action.position === 'object') {
+      action.position = 'end';
+    }
   }
 
-  return [...startCustomActions, ...nextActions, ...endCustomActions];
+  return positionActions(nextActions, extraActions).map(withoutRegistryMeta);
 }
 
 export const crudActions = {

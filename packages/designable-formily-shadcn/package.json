@@ -1,14 +1,14 @@
 {
   "name": "@wordrhyme/designable-formily-shadcn",
   "type": "module",
-  "version": "0.2.6",
+  "version": "0.2.8",
   "packageManager": "pnpm@10.33.0",
   "description": "Designable Formily shadcn materials for WordRhyme.",
   "author": "wordrhyme",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pixpilot/shadcn-components.git",
+    "url": "https://github.com/denvey/wordrhyme-components",
     "directory": "packages/designable-formily-shadcn"
   },
   "main": "./dist/index.cjs",

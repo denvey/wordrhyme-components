@@ -193,7 +193,7 @@ export const AsChild: Story = {
   render: (args) => (
     <div data-testid="as-child-wrapper" className="p-10">
       <ButtonExtended {...args} asChild>
-        <a href="https://github.com/pixpilot/shadcn-components">Open repository</a>
+        <a href="https://github.com/denvey/wordrhyme-components">Open repository</a>
       </ButtonExtended>
     </div>
   ),

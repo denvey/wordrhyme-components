@@ -13,6 +13,7 @@ import { createTableSchema } from '@/lib/schema-bridge/zod-to-columns';
 import { getSortingStateParser } from '@/lib/parsers';
 import { coerceRowValues } from '@/lib/import';
 import { getDefaultSortingForSchema, type AutoCrudSorting } from '@/lib/default-sorting';
+import { mergeFields } from '@/lib/field-config';
 import type { Fields } from '@/components/auto-crud/auto-crud-table';
 
 /**
@@ -508,12 +509,14 @@ export function useAutoCrudResource<
     () =>
       createTableSchema(resolvedSchema as any, {
         overrides: Object.fromEntries(
-          Object.entries({ ...fields, ...metadataFields }).flatMap(([key, field]) => {
-            const filter = field.filter;
-            return filter && typeof filter === 'object' && filter.variant
-              ? [[key, { meta: { variant: filter.variant } }]]
-              : [];
-          }),
+          Object.entries(mergeFields(metadataFields, fields) ?? {}).flatMap(
+            ([key, field]) => {
+              const filter = field.filter;
+              return filter && typeof filter === 'object' && filter.variant
+                ? [[key, { meta: { variant: filter.variant } }]]
+                : [];
+            },
+          ),
         ),
       }),
     [resolvedSchema, fields, metadataFields],

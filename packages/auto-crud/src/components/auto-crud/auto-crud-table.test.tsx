@@ -250,22 +250,51 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
 
   it('keeps filter-only fields searchable and resettable without showing data columns', async () => {
     window.history.replaceState(null, '', '/stores?region=east&page=4');
-    dataSources.register('test.dynamic-regions', () => [{ value: 'east', label: 'East Dynamic' }]);
-    render(<AutoCrudTable schema={schema} resource={createResource()} fields={{ region: {
-      label: 'Customer', table: false, form: false,
-      filter: { variant: 'select', dataSource: 'test.dynamic-regions' },
-    } }} table={{ filterModes: ['simple'] }} />);
-    expect(await screen.findByRole('button', { name: /Customer.*East Dynamic/ })).toBeTruthy();
+    dataSources.register('test.dynamic-regions', () => [
+      { value: 'east', label: 'East Dynamic' },
+    ]);
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource()}
+        fields={{
+          region: {
+            label: 'Customer',
+            table: false,
+            form: false,
+            filter: { variant: 'select', dataSource: 'test.dynamic-regions', index: 0 },
+          },
+        }}
+        table={{ filterModes: ['simple'] }}
+      />,
+    );
+    expect(
+      await screen.findByRole('button', { name: /Customer.*East Dynamic/ }),
+    ).toBeTruthy();
     expect(screen.queryByRole('columnheader', { name: /Customer/ })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
-    await waitFor(() => expect(new URLSearchParams(window.location.search).has('region')).toBe(false));
+    await waitFor(() =>
+      expect(new URLSearchParams(window.location.search).has('region')).toBe(false),
+    );
     expect(new URLSearchParams(window.location.search).has('page')).toBe(false);
   });
 
   it('does not reveal denied filter-only fields', () => {
-    render(<AutoCrudTable schema={schema} resource={createResource()} permissions={{ deny: ['region'] }}
-      fields={{ region: { label: 'Private Customer', table: false, filter: { variant: 'select' } } }}
-      table={{ filterModes: ['simple'] }} />);
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource()}
+        permissions={{ deny: ['region'] }}
+        fields={{
+          region: {
+            label: 'Private Customer',
+            table: false,
+            filter: { variant: 'select' },
+          },
+        }}
+        table={{ filterModes: ['simple'] }}
+      />,
+    );
     expect(screen.queryByRole('button', { name: /Private Customer/ })).toBeNull();
   });
 

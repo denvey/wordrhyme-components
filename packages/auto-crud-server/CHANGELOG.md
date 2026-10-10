@@ -1,5 +1,17 @@
 # @wordrhyme/auto-crud-server
 
+## 2.0.2
+
+### Patch Changes
+
+- f564a13: Correct repository links in published package metadata and READMEs.
+
+## 2.0.1
+
+### Patch Changes
+
+- 82eb4a2: Preserve reference IDs and display labels in CRUD row projection metadata for list and edit presentation.
+
 ## 2.0.0
 
 ### Major Changes

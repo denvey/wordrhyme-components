@@ -125,6 +125,50 @@ describe('crudActions', () => {
 
     unsubscribe();
   });
+
+  it.each(['toolbar', 'row', 'batch'] as const)(
+    'places extensions around owner action IDs in %s',
+    (zone) => {
+      crudActions.register({
+        targetId: 'target',
+        zone,
+        ownerId: 'plugin',
+        actions: [
+          {
+            type: 'custom',
+            label: 'Last',
+            order: 30,
+            position: { anchor: 'preview', side: 'after' },
+          },
+          {
+            type: 'custom',
+            label: 'First',
+            order: 10,
+            position: { anchor: 'preview', side: 'after' },
+          },
+          {
+            type: 'custom',
+            label: 'Before delete',
+            position: { anchor: 'delete', side: 'before' },
+          },
+        ],
+      });
+      const owner = [
+        { type: 'custom', id: 'preview', label: 'Preview' },
+        { type: 'delete' },
+      ];
+      expect(
+        crudActions
+          .resolve('target', zone, owner)
+          .map((item) => ('label' in item ? item.label : item.type)),
+      ).toEqual(['Preview', 'First', 'Last', 'Before delete', 'delete']);
+      crudActions.unregister('plugin');
+      expect(crudActions.resolve('target', zone, owner)).toEqual([
+        { type: 'custom', label: 'Preview' },
+        { type: 'delete' },
+      ]);
+    },
+  );
 });
 
 describe('registered action array order', () => {
@@ -397,22 +441,89 @@ describe('registered action array order', () => {
   );
 });
 
-it.each(['start', 'end'] as const)('falls back to %s when a later entry hides the anchor', (position) => {
+it('deduplicates and masks named before actions before positioning', () => {
   crudActions.clear();
+  for (const ownerId of ['plugin-b', 'plugin-a']) {
+    crudActions.register({
+      targetId: 'target',
+      zone: 'row',
+      ownerId,
+      actions: [{ type: 'custom', id: 'sync', before: 'delete', label: ownerId }],
+    });
+  }
+  const owner: TestAction[] = [{ type: 'view' }, { type: 'delete' }];
+  const labels = (actions: TestAction[]) =>
+    actions.map((item) => item.label ?? item.type);
+  expect(labels(crudActions.resolve('target', 'row', owner))).toEqual([
+    'view',
+    'plugin-b',
+    'delete',
+  ]);
+  const ownerWithSync: TestAction[] = [
+    { type: 'custom', id: 'sync', label: 'Owner' },
+    ...owner,
+  ];
+  expect(labels(crudActions.resolve('target', 'row', ownerWithSync))).toEqual([
+    'view',
+    'plugin-b',
+    'delete',
+  ]);
   crudActions.register({
-    targetId: 'target', zone: 'row', ownerId: 'plugin',
-    actions: [
-      { type: 'custom', before: 'delete', position, order: 10 },
-      { type: 'delete', hidden: true, order: 20 },
-    ],
+    targetId: 'target',
+    zone: 'row',
+    ownerId: 'mask',
+    actions: [{ type: 'custom', id: 'sync', hidden: true }],
   });
-  const result = crudActions.resolve('target', 'row', [
-    { type: 'view' }, { type: 'delete' }, { type: 'edit' },
-  ]).map((item) => item.type);
-  expect(result).toEqual(position === 'start'
-    ? ['custom', 'view', 'edit'] : ['view', 'edit', 'custom']);
+  expect(labels(crudActions.resolve('target', 'row', owner))).toEqual(['view', 'delete']);
+  expect(labels(crudActions.resolve('target', 'row', ownerWithSync))).toEqual([
+    'view',
+    'delete',
+  ]);
   crudActions.clear();
 });
+
+it.each(['start', 'end'] as const)(
+  'keeps the %s fallback when another builtin is listed',
+  (position) => {
+    crudActions.clear();
+    crudActions.register({
+      targetId: 'target',
+      zone: 'row',
+      ownerId: 'plugin',
+      actions: [{ type: 'custom', before: 'delete', position }, { type: 'view' }],
+    });
+    const result = crudActions
+      .resolve('target', 'row', [{ type: 'view' }, { type: 'edit' }])
+      .map((item) => item.type);
+    expect(result).toEqual(
+      position === 'start' ? ['custom', 'view', 'edit'] : ['view', 'edit', 'custom'],
+    );
+    crudActions.clear();
+  },
+);
+
+it.each(['start', 'end'] as const)(
+  'falls back to %s when a later entry hides the anchor',
+  (position) => {
+    crudActions.clear();
+    crudActions.register({
+      targetId: 'target',
+      zone: 'row',
+      ownerId: 'plugin',
+      actions: [
+        { type: 'custom', before: 'delete', position, order: 10 },
+        { type: 'delete', hidden: true, order: 20 },
+      ],
+    });
+    const result = crudActions
+      .resolve('target', 'row', [{ type: 'view' }, { type: 'delete' }, { type: 'edit' }])
+      .map((item) => item.type);
+    expect(result).toEqual(
+      position === 'start' ? ['custom', 'view', 'edit'] : ['view', 'edit', 'custom'],
+    );
+    crudActions.clear();
+  },
+);
 
 it('inserts a custom row action before delete and falls back when delete is absent', () => {
   crudActions.clear();

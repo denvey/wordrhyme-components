@@ -1,5 +1,37 @@
 # @wordrhyme/auto-crud
 
+## 1.8.2
+
+### Patch Changes
+
+- e3ab9a5: Share the React-free action position contract and merge owner and extension action arrays at start/end or before/after named anchors, preserving existing action ordering and overrides.
+
+## 1.8.1
+
+### Patch Changes
+
+- f564a13: Correct repository links in published package metadata and READMEs.
+- Updated dependencies [f564a13]
+  - @wordrhyme/shadcn@2.0.1
+  - @wordrhyme/shadcn-ui@2.1.1
+  - @wordrhyme/formily-shadcn@2.1.1
+
+## 1.8.0
+
+### Minor Changes
+
+- b8045ed: Reuse DatePicker with Day.js valueFormat strings for parsing and serializing dates (empty string when cleared), retaining the default Date output when valueFormat is omitted and a deprecated DateOnlyPicker compatibility alias.
+- 1081129: Add opt-in page jump and always-visible first/last buttons, configurable per table or registered public CRUD id. Optional responsive mode measures available container space and hides extra controls when they do not fit. Existing pagination defaults remain unchanged.
+
+### Patch Changes
+
+- 91102c1: Add field-level `format(value, { row, target })` for default table/detail text and CSV values. Returning `undefined` preserves existing formatting. Keep existing export columns, headers and permission exclusions, and add a UTF-8 BOM for CSV downloads.
+- 82eb4a2: Preserve reference IDs and display labels in CRUD row projection metadata for list and edit presentation.
+- Updated dependencies [b8045ed]
+- Updated dependencies [d2b58fc]
+  - @wordrhyme/shadcn-ui@2.1.0
+  - @wordrhyme/formily-shadcn@2.1.0
+
 ## 1.7.1
 
 ### Patch Changes

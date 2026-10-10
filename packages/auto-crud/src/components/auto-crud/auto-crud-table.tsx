@@ -1,5 +1,7 @@
 'use client';
 
+import type { TablePaginationOptions } from '@/types/data-table';
+
 import type { CellContext, ColumnMeta } from '@tanstack/react-table';
 import type { z } from 'zod';
 import type {
@@ -51,6 +53,7 @@ import * as React from 'react';
 import { type LocaleProp, resolveLocale } from '@/i18n/locale';
 import {
   dataSources,
+  tablePagination,
   normalizeHasMore,
   normalizeDataSourceConfig,
   normalizeOptions,
@@ -58,8 +61,9 @@ import {
   type AutoCrudDataSourceEntry,
 } from '@/lib/registries';
 import { crudActions } from '@/lib/crud-actions';
+import { matchesPosition, type ActionPosition } from '@/position';
 import { readCrudReferenceOption } from '@/lib/crud-reference-projection';
-import { buildFormOverrides } from '@/lib/field-config';
+import { buildFormOverrides, mergeFieldPart, mergeFields } from '@/lib/field-config';
 import { flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { createTableSchema } from '@/lib/schema-bridge/zod-to-columns';
 
@@ -277,7 +281,7 @@ export type RowCustomActionItem<T> = ActionMeta & {
   label?: string;
   onClick?: (row: T) => void;
   component?: ActionComponent<AutoCrudRowActionContext<T>>;
-  position?: 'start' | 'end';
+  position?: ActionPosition;
   /** Place a registered custom action before the named builtin, when present. */
   before?: RowBuiltinActionType;
   separator?: boolean;
@@ -332,8 +336,8 @@ export type ToolbarCustomActionItem = ActionMeta & {
   type: 'custom';
   /** 渲染自定义内容 */
   component: ActionComponent<AutoCrudToolbarContext>;
-  /** 仅在无内置项时生效：插入到首部还是尾部（默认 end） */
-  position?: 'start' | 'end';
+  /** start/end 仅在无内置项时生效（默认 end）；也可指定锚点的 before/after。 */
+  position?: ActionPosition;
 };
 
 export type ToolbarActionItem = ToolbarBuiltinActionItem | ToolbarCustomActionItem;
@@ -390,7 +394,7 @@ function isCustomAction(action: { type: string }): boolean {
 }
 
 function resolveOwnerActions<
-  TAction extends { type: string; position?: 'start' | 'end' },
+  TAction extends { type: string; position?: ActionPosition },
   TDefault extends TAction,
 >(
   config: readonly TAction[] | ((defaults: TDefault[]) => readonly TAction[]) | undefined,
@@ -409,10 +413,10 @@ function resolveOwnerActions<
   }
 
   const startItems = items.filter(
-    (item) => isCustomAction(item) && item.position === 'start',
+    (item) => isCustomAction(item) && matchesPosition(item.position, 'start'),
   );
   const endItems = items.filter(
-    (item) => isCustomAction(item) && item.position !== 'start',
+    (item) => isCustomAction(item) && !matchesPosition(item.position, 'start'),
   );
 
   return [...startItems, ...defaults, ...endItems];
@@ -538,6 +542,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   };
   /** 表格配置 */
   table?: {
+    /** Optional controls; overrides the application registration for this CRUD id. */
+    pagination?: TablePaginationOptions;
     /** 按元素分组的全局表格类名；列级 th/td 类名优先 */
     classNames?: DataTableClassNames;
     /** 隐藏的列 */
@@ -632,51 +638,6 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
    * 如果提供，将覆盖默认的打开新建弹窗行为
    */
   onCreate?: () => void;
-}
-
-function mergeFieldPart<T>(
-  base: T | false | undefined,
-  override: T | false | undefined,
-): T | false | undefined {
-  if (override === undefined) return base;
-  if (
-    override === false ||
-    base === false ||
-    typeof base !== 'object' ||
-    typeof override !== 'object' ||
-    base === null ||
-    override === null ||
-    Array.isArray(base) ||
-    Array.isArray(override)
-  ) {
-    return override;
-  }
-
-  return { ...base, ...override };
-}
-
-function mergeFieldConfig(base: Field | undefined, override: Field | undefined): Field {
-  return {
-    ...base,
-    ...override,
-    enum: override?.enum ?? base?.enum,
-    dataSource: override?.dataSource ?? base?.dataSource,
-    table: mergeFieldPart(base?.table, override?.table),
-    filter: mergeFieldPart(base?.filter, override?.filter),
-    form: mergeFieldPart(base?.form, override?.form),
-  };
-}
-
-function mergeFields(
-  base: Fields | undefined,
-  override: Fields | undefined,
-): Fields | undefined {
-  if (!base && !override) return undefined;
-
-  const keys = new Set([...Object.keys(base ?? {}), ...Object.keys(override ?? {})]);
-  return Object.fromEntries(
-    Array.from(keys).map((key) => [key, mergeFieldConfig(base?.[key], override?.[key])]),
-  );
 }
 
 function applyResourceTablePresentation(
@@ -2247,6 +2208,16 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   onCreate,
 }: AutoCrudTableProps<TSchema>) {
   const locale = resolveLocale(localeProp);
+  const getPagination = React.useCallback(
+    () => (id ? tablePagination.get(id) : undefined),
+    [id],
+  );
+  const registeredPagination = React.useSyncExternalStore(
+    tablePagination.subscribe,
+    getPagination,
+    getPagination,
+  );
+  const pagination = tableConfig?.pagination ?? registeredPagination;
   const resolvedSchema = resource.schema ?? schema;
   const resolvedFields = React.useMemo<Fields>(
     () =>
@@ -2278,11 +2249,21 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const [exporting, setExporting] = React.useState(false);
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
   const dynamicFilterOptions = useDynamicFilterOptions(resolvedFields);
-  const filterOnly = React.useMemo(() => Object.entries(resolvedFields)
-    .filter(([key, config]) => config.table === false && config.filter && config.hidden !== true
-      && !denyFields?.includes(key) && !tableConfig?.hidden?.includes(key)
-      && tableConfig?.overrides?.[key]?.hidden !== true)
-    .map(([key]) => key), [resolvedFields, denyFields, tableConfig?.hidden, tableConfig?.overrides]);
+  const filterOnly = React.useMemo(
+    () =>
+      Object.entries(resolvedFields)
+        .filter(
+          ([key, config]) =>
+            config.table === false &&
+            config.filter &&
+            config.hidden !== true &&
+            !denyFields?.includes(key) &&
+            !tableConfig?.hidden?.includes(key) &&
+            tableConfig?.overrides?.[key]?.hidden !== true,
+        )
+        .map(([key]) => key),
+    [resolvedFields, denyFields, tableConfig?.hidden, tableConfig?.overrides],
+  );
   const hiddenColumns = React.useMemo(
     () =>
       buildHiddenColumns(
@@ -2800,12 +2781,17 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.tableData.data}
         schema={resolvedSchema as TSchema}
         pageCount={resource.tableData.pageCount}
+        pagination={
+          pagination
+            ? { pageJumpLabel: locale.pagination?.pageJump, ...pagination }
+            : undefined
+        }
         {...(resource.tableData.total !== undefined
           ? { total: resource.tableData.total }
           : {})}
         overrides={tableOverrides as any}
         classNames={tableConfig?.classNames}
-        exclude={hiddenColumns.filter(key => !filterOnly.includes(key)) as any}
+        exclude={hiddenColumns.filter((key) => !filterOnly.includes(key)) as any}
         filterOnly={filterOnly}
         filterMode={tableConfig?.filterModes}
         search={searchConfig}

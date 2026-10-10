@@ -1,7 +1,7 @@
 {
   "name": "@wordrhyme/shadcn-ui",
   "type": "module",
-  "version": "2.0.1",
+  "version": "2.1.1",
   "packageManager": "pnpm@10.33.0",
   "description": "Custom UI components and utilities built with shadcn/ui.",
   "author": "m.doaie <m.doaie@hotmail.com>",
@@ -12,7 +12,7 @@
     "directory": "packages/shadcn-ui"
   },
   "bugs": {
-    "url": "https://github.com/pixpilot/shadcn-components/issues"
+    "url": "https://github.com/denvey/wordrhyme-components/issues"
   },
   "sideEffects": false,
   "exports": {
@@ -88,6 +88,7 @@
     "@tiptap/starter-kit": "^3.22.3",
     "@wordrhyme/shadcn": "workspace:*",
     "class-variance-authority": "catalog:prod",
+    "dayjs": "^1.11.21",
     "lucide-react": "catalog:prod",
     "next-themes": "catalog:prod",
     "pretty-bytes": "^7.1.0",

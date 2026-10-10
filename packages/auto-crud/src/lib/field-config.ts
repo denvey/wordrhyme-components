@@ -8,6 +8,51 @@ import { normalizeDataSourceConfig } from './registries';
 
 export type { Field, FieldOption, Fields, FilterConfig };
 
+export function mergeFieldPart<T>(
+  base: T | false | undefined,
+  override: T | false | undefined,
+): T | false | undefined {
+  if (override === undefined) return base;
+  if (
+    override === false ||
+    base === false ||
+    typeof base !== 'object' ||
+    typeof override !== 'object' ||
+    base === null ||
+    override === null ||
+    Array.isArray(base) ||
+    Array.isArray(override)
+  ) {
+    return override;
+  }
+
+  return { ...base, ...override };
+}
+
+function mergeFieldConfig(base: Field | undefined, override: Field | undefined): Field {
+  return {
+    ...base,
+    ...override,
+    enum: override?.enum ?? base?.enum,
+    dataSource: override?.dataSource ?? base?.dataSource,
+    table: mergeFieldPart(base?.table, override?.table),
+    filter: mergeFieldPart(base?.filter, override?.filter),
+    form: mergeFieldPart(base?.form, override?.form),
+  };
+}
+
+export function mergeFields(
+  base: Fields | undefined,
+  override: Fields | undefined,
+): Fields | undefined {
+  if (!base && !override) return undefined;
+
+  const keys = new Set([...Object.keys(base ?? {}), ...Object.keys(override ?? {})]);
+  return Object.fromEntries(
+    Array.from(keys).map((key) => [key, mergeFieldConfig(base?.[key], override?.[key])]),
+  );
+}
+
 function normalizeFieldOptions(options?: FieldOption[]): FieldOption[] | undefined {
   if (!options || options.length === 0) return undefined;
 

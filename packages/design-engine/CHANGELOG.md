@@ -1,5 +1,26 @@
 # @wordrhyme/design-engine
 
+## 0.2.8
+
+### Patch Changes
+
+- f564a13: Correct repository links in published package metadata and READMEs.
+- Updated dependencies [f564a13]
+  - @wordrhyme/designable-core@0.1.0
+  - @wordrhyme/designable-formily-shadcn@0.2.8
+  - @wordrhyme/designable-formily-transformer@0.1.0
+  - @wordrhyme/designable-react-settings-form@0.1.0
+  - @wordrhyme/designable-react@0.1.0
+  - @wordrhyme/formily-shadcn@2.1.1
+
+## 0.2.7
+
+### Patch Changes
+
+- Updated dependencies [b8045ed]
+  - @wordrhyme/formily-shadcn@2.1.0
+  - @wordrhyme/designable-formily-shadcn@0.2.7
+
 ## 0.2.6
 
 ### Patch Changes

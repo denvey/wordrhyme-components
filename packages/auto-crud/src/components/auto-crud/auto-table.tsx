@@ -1,6 +1,7 @@
 'use client';
 
 import { z } from 'zod';
+import type { TablePaginationOptions } from '@/types/data-table';
 import { useCallback, useEffect, useMemo } from 'react';
 import { CommandIcon, FileSpreadsheetIcon, ListFilterIcon } from 'lucide-react';
 import { DataTable } from '@/components/data-table/data-table';
@@ -71,6 +72,7 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
   schema: T;
   data: z.infer<T>[];
   pageCount?: number;
+  pagination?: TablePaginationOptions;
   /** Total rows matching the current search and filters. */
   total?: number;
   overrides?: ColumnOverrides<z.infer<T>>;
@@ -128,6 +130,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   schema,
   data,
   pageCount = 1,
+  pagination,
   total,
   overrides,
   classNames,
@@ -183,14 +186,19 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     const columnOverrides = Object.assign({}, overrides);
     for (const key of filterOnly ?? []) {
       const field = key as keyof z.infer<T>;
-      Object.assign(columnOverrides, { [field]: { ...columnOverrides[field], hidden: false } });
+      Object.assign(columnOverrides, {
+        [field]: { ...columnOverrides[field], hidden: false },
+      });
     }
     const dataColumns = createTableSchema(schema, {
       overrides: columnOverrides,
       exclude,
-    }).map(column => {
-      const key = column.id ?? ('accessorKey' in column ? String(column.accessorKey) : '');
-      return filterOnly?.includes(key) ? { ...column, enableHiding: false, enableSorting: false } : column;
+    }).map((column) => {
+      const key =
+        column.id ?? ('accessorKey' in column ? String(column.accessorKey) : '');
+      return filterOnly?.includes(key)
+        ? { ...column, enableHiding: false, enableSorting: false }
+        : column;
     });
     const result = enableRowSelection
       ? [createSelectColumn<z.infer<T>>(), ...dataColumns]
@@ -228,9 +236,12 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
 
   useEffect(() => {
     if (!filterOnly?.length) return;
-    table.setColumnVisibility(previous => {
-      if (filterOnly.every(key => previous[key] === false)) return previous;
-      return { ...previous, ...Object.fromEntries(filterOnly.map(key => [key, false])) };
+    table.setColumnVisibility((previous) => {
+      if (filterOnly.every((key) => previous[key] === false)) return previous;
+      return {
+        ...previous,
+        ...Object.fromEntries(filterOnly.map((key) => [key, false])),
+      };
     });
   }, [table, filterOnly]);
 
@@ -357,7 +368,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           <DataTableViewOptions table={table} align="end" />
         </div>
       </div>
-      <DataTable table={table} classNames={classNames} />
+      <DataTable pagination={pagination} table={table} classNames={classNames} />
       {enableRowSelection && (
         <AutoTableActionBar
           table={table}

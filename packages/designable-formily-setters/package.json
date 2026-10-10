@@ -1,14 +1,14 @@
 {
   "name": "@wordrhyme/designable-formily-setters",
   "type": "module",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0",
   "packageManager": "pnpm@10.33.0",
   "description": "Forked Designable Formily setters for WordRhyme.",
   "author": "wordrhyme",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pixpilot/shadcn-components.git",
+    "url": "https://github.com/denvey/wordrhyme-components.git",
     "directory": "packages/designable-formily-setters"
   },
   "main": "./dist/index.cjs",

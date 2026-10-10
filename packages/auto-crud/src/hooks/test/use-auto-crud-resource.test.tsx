@@ -281,3 +281,64 @@ it('uses field filter variants for query values and operators', () => {
   );
   unmount();
 });
+
+it.each([
+  {
+    name: 'label-only metadata',
+    metadataFilter: undefined,
+    filter: { variant: 'multiSelect' as const },
+  },
+  {
+    name: 'a local variant override',
+    metadataFilter: { variant: 'select' as const },
+    filter: { variant: 'multiSelect' as const },
+  },
+  {
+    name: 'an inherited metadata variant',
+    metadataFilter: { variant: 'multiSelect' as const },
+    filter: { index: 20 },
+  },
+])(
+  'merges resource and table filter configuration with $name',
+  ({ metadataFilter, filter }) => {
+    window.history.replaceState(null, '', '/orders?customerId=c1,c2&page=4');
+    const router = {
+      ...createRouter(),
+      meta: {
+        useQuery: vi.fn(() => ({
+          data: {
+            fields: {
+              customerId: {
+                label: 'Customer',
+                filter: metadataFilter,
+              },
+            },
+          },
+        })),
+      },
+    };
+    const orderSchema = z.object({ customerId: z.string().optional() });
+    const { unmount } = renderHook(() =>
+      useAutoCrudResource({
+        router,
+        schema: orderSchema,
+        fields: { customerId: { filter } },
+      }),
+    );
+    expect(router.list.useQuery).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        page: 4,
+        filters: [
+          expect.objectContaining({
+            id: 'customerId',
+            value: ['c1', 'c2'],
+            operator: 'inArray',
+            variant: 'multiSelect',
+          }),
+        ],
+      }),
+      expect.any(Object),
+    );
+    unmount();
+  },
+);

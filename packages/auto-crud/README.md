@@ -803,7 +803,7 @@ type ToolbarBuiltinActionItem = ActionMeta & {
 type ToolbarCustomActionItem = ActionMeta & {
   type: 'custom';
   component: React.ReactNode | ((context: AutoCrudToolbarContext) => React.ReactNode);
-  position?: 'start' | 'end'; // 仅在无内置项时生效，默认 "end"
+  position?: ActionPosition; // start/end 仅无内置项时生效；也支持 { anchor, side }
 };
 
 interface AutoCrudToolbarContext {
@@ -911,6 +911,28 @@ crudActions.register({
 `order` 不再重排同一插件数组内的显示顺序。内置属性覆盖仍沿用原有的 action `order`、`ownerId`、注册序优先级，最后一个配置生效。
 使用 `order` 排列同一插件操作的旧调用方，应把数组调整为所需顺序。最终权限过滤只移除不可用的内置操作，不改变其余操作顺序或授予权限。
 
+### 统一位置契约
+
+AutoCrud action 和 WordRhyme PluginSlot 共用 `ActionPosition`：`"start"`、`"end"`，或 `{ anchor, side: "before" | "after" }`。类型、schema、位置匹配和锚点排序从不依赖 React 的 `@wordrhyme/auto-crud/position` 导出。
+
+`positionActions(ownerActions, fills)` 合并拥有方按钮和扩展数组：`start` fills 放在数组前，`end` 或未指定位置的 fills 放在数组后，相对位置按基础按钮锚点插入。AutoCrud 和 PluginSlot 共用此解析器。原有 action 数组及 start/end 排列规则保持不变。指定锚点时，在原有合并、覆盖和隐藏之后定位，`order` 按升序排列同一锚点的 fills。AutoCrud 使用合并后基础 action 的 `id` 作为锚点；原生按钮未设置 `id` 时使用 `type`。合并后的动作列表不存在锚点时，不显示依赖它的扩展；最终权限过滤继续沿用已有行为。
+
+```tsx
+crudActions.register({
+  targetId: 'com.wordrhyme.shop.products',
+  zone: 'toolbar',
+  ownerId: 'com.wordrhyme.sync',
+  actions: [
+    {
+      type: 'custom',
+      component: SyncButton,
+      position: { anchor: 'create', side: 'before' },
+      order: 30,
+    },
+  ],
+});
+```
+
 ---
 
 ## 🎬 行操作配置
@@ -1005,7 +1027,7 @@ type RowCustomActionItem<T> = ActionMeta & {
   component?:
     | React.ReactNode
     | ((context: AutoCrudRowActionContext<T>) => React.ReactNode);
-  position?: 'start' | 'end'; // 仅无内置项时生效，默认 end
+  position?: ActionPosition; // start/end 仅无内置项时生效；也支持 { anchor, side }
   separator?: boolean;
   variant?: 'default' | 'destructive';
 };
@@ -1608,15 +1630,15 @@ export { humanize } from './lib/humanize';
 
 ## 📄 许可证
 
-MIT © [wordrhyme](https://github.com/pixpilot/shadcn-components)
+MIT © [wordrhyme](https://github.com/denvey/wordrhyme-components)
 
 ---
 
 ## 🔗 相关链接
 
-- [GitHub](https://github.com/pixpilot/shadcn-components)
-- [文档](https://github.com/pixpilot/shadcn-components/tree/main/packages/auto-crud)
-- [示例](https://github.com/pixpilot/shadcn-components/tree/main/examples)
+- [GitHub](https://github.com/denvey/wordrhyme-components)
+- [文档](https://github.com/denvey/wordrhyme-components/tree/main/packages/auto-crud)
+- [示例](https://github.com/denvey/wordrhyme-components/tree/main/examples)
 - [Changelog](./CHANGELOG.md)
 
 ---
@@ -1762,3 +1784,31 @@ import '@wordrhyme/auto-crud/styles.css';
 
 See the [shared style guide](https://github.com/denvey/wordrhyme-components#styles)
 for theme setup, dark mode, and custom classes.
+
+### Optional pagination controls
+
+Existing pagination defaults are preserved. Set `table.pagination` on `AutoCrudTable`
+(or `pagination` on `AutoTable` / `DataTable`) to opt in. Applications can also
+register options for a public CRUD id without changing the owning page:
+
+```ts
+import { tablePagination } from '@wordrhyme/auto-crud';
+
+tablePagination.register('example.stores', {
+  alwaysShowFirstLast: true,
+  showPageJump: true,
+  pageJumpLabel: 'Go to page',
+});
+// Remove the application override when no longer needed.
+// tablePagination.unregister('example.stores');
+```
+
+Registrations notify mounted tables. Explicit `table.pagination` takes precedence
+over registration. Page jumps accept only integer pages in the known page range;
+the control is disabled when the page count is unavailable.
+
+In `AutoCrudTable`, the jump label follows the existing `locale` unless explicitly overridden.
+
+Set `responsive: true` alongside these options to hide the extra controls when
+their measured content does not fit the pagination container. This responds to
+container resizing and translated text widths, without changing other tables.

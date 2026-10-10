@@ -46,7 +46,7 @@ describe('multi-combobox', () => {
     expect(badge.className).toContain('text-sm');
   });
 
-  it('keeps only one option active while pointing in single-selection mode', () => {
+  it('moves focus while keeping the selected single option highlighted', () => {
     render(
       <MultiCombobox
         options={[
@@ -71,7 +71,15 @@ describe('multi-combobox', () => {
 
     expect(adminOption.getAttribute('data-selected')).toBe('true');
     expect(editorOption.getAttribute('data-selected')).toBe('false');
-    expect(editorOption.className.split(/\s+/u)).not.toContain('bg-accent');
+    expect(editorOption.className.split(/\s+/u)).toContain('bg-accent');
+    expect(editorOption.getAttribute('data-current')).toBe('true');
+    expect(adminOption.getAttribute('data-current')).toBeNull();
+    expect(editorOption.querySelector('svg')?.getAttribute('class')).toContain(
+      'opacity-100',
+    );
+    expect(adminOption.querySelector('svg')?.getAttribute('class')).toContain(
+      'opacity-0',
+    );
   });
 
   it('keeps full labels available for truncated selected and option values', () => {

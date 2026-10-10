@@ -12,6 +12,7 @@
 // ─── Locale Interface ────────────────────────────────────────────────────────
 
 export interface AutoCrudLocale {
+  pagination?: { pageJump?: string };
   toolbar: {
     refresh: string;
     create: string;
@@ -89,6 +90,7 @@ export interface AutoCrudLocale {
 // ─── Built-in Locales ────────────────────────────────────────────────────────
 
 export const zhCN: AutoCrudLocale = {
+  pagination: { pageJump: '跳转到页' },
   toolbar: {
     refresh: '刷新',
     create: '新建',
@@ -160,6 +162,7 @@ export const zhCN: AutoCrudLocale = {
 };
 
 export const enUS: AutoCrudLocale = {
+  pagination: { pageJump: 'Go to page' },
   toolbar: {
     refresh: 'Refresh',
     create: 'New',
@@ -233,6 +236,7 @@ export const enUS: AutoCrudLocale = {
 };
 
 export const jaJP: AutoCrudLocale = {
+  pagination: { pageJump: 'ページへ移動' },
   toolbar: {
     refresh: '更新',
     create: '新規作成',
@@ -301,6 +305,7 @@ export const jaJP: AutoCrudLocale = {
 };
 
 export const koKR: AutoCrudLocale = {
+  pagination: { pageJump: '페이지로 이동' },
   toolbar: {
     refresh: '새로고침',
     create: '새로 만들기',
@@ -369,6 +374,7 @@ export const koKR: AutoCrudLocale = {
 };
 
 export const frFR: AutoCrudLocale = {
+  pagination: { pageJump: 'Aller à la page' },
   toolbar: {
     refresh: 'Actualiser',
     create: 'Nouveau',
@@ -438,6 +444,7 @@ export const frFR: AutoCrudLocale = {
 };
 
 export const deDE: AutoCrudLocale = {
+  pagination: { pageJump: 'Zur Seite springen' },
   toolbar: {
     refresh: 'Aktualisieren',
     create: 'Neu',
@@ -508,6 +515,7 @@ export const deDE: AutoCrudLocale = {
 };
 
 export const esES: AutoCrudLocale = {
+  pagination: { pageJump: 'Ir a la página' },
   toolbar: {
     refresh: 'Actualizar',
     create: 'Nuevo',
