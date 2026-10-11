@@ -200,7 +200,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   // 所有模式都使用高级过滤的数据流（filters 数组同步到 URL）
   // 区别只在于 UI 展示方式
   const enableAdvancedFilter = true;
-  const columns = useMemo(() => {
+  const { columns, expandColumnId } = useMemo(() => {
     const columnOverrides = Object.assign({}, overrides);
     for (const key of filterOnly ?? []) {
       const field = key as keyof z.infer<T>;
@@ -222,9 +222,16 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       ? [createSelectColumn<z.infer<T>>(), ...dataColumns]
       : dataColumns;
 
+    let expandColumnId = 'expand';
     if (enableExpansion) {
+      while (
+        expandColumnId in schema.shape ||
+        result.some((column) => column.id === expandColumnId)
+      ) {
+        expandColumnId = `_${expandColumnId}`;
+      }
       result.unshift({
-        id: 'expand',
+        id: expandColumnId,
         header: () => <span className="sr-only">Row details</span>,
         cell: ({ row }) => (
           <Button
@@ -251,7 +258,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       result.push(createActionsColumn<z.infer<T>>(actions));
     }
 
-    return result;
+    return { columns: result, expandColumnId };
   }, [
     schema,
     overrides,
@@ -267,13 +274,20 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       sorting: initialSorting,
       columnPinning: pinnedColumns ?? {
         left: [
-          ...(enableExpansion ? ['expand'] : []),
+          ...(enableExpansion ? [expandColumnId] : []),
           ...(enableRowSelection ? ['select'] : []),
         ],
         right: actions ? ['actions'] : [],
       },
     }),
-    [initialSorting, pinnedColumns, enableRowSelection, enableExpansion, actions],
+    [
+      initialSorting,
+      pinnedColumns,
+      enableRowSelection,
+      enableExpansion,
+      expandColumnId,
+      actions,
+    ],
   );
 
   const expandedRowModel = useMemo(() => getExpandedRowModel<z.infer<T>>(), []);

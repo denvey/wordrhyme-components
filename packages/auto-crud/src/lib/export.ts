@@ -1,6 +1,13 @@
 import type { Table } from '@tanstack/react-table';
 import { dataToCSV } from './import';
 
+export function getExportColumnIds<TData>(table: Table<TData>): string[] {
+  return table
+    .getAllLeafColumns()
+    .filter((column) => column.accessorFn)
+    .map((column) => column.id);
+}
+
 export function exportTableToCSV<TData>(
   table: Table<TData>,
   opts: {
@@ -11,10 +18,9 @@ export function exportTableToCSV<TData>(
 ): void {
   const { filename = 'table', excludeColumns = [], onlySelected = false } = opts;
 
-  const headers = table
-    .getAllLeafColumns()
-    .map((column) => column.id)
-    .filter((id) => !excludeColumns.includes(id as keyof TData | 'select' | 'actions'));
+  const headers = getExportColumnIds(table).filter(
+    (id) => !excludeColumns.includes(id as keyof TData | 'select' | 'actions'),
+  );
 
   const csvContent = [
     headers.join(','),

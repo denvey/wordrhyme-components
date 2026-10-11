@@ -47,7 +47,7 @@ import { Badge } from '@wordrhyme/shadcn';
 import { ImportDialog } from './import-dialog';
 import type { ExportMode } from './export-dialog';
 import { Download, Loader2, RefreshCw, Upload } from 'lucide-react';
-import { exportAllToCSV } from '@/lib/export';
+import { exportAllToCSV, getExportColumnIds } from '@/lib/export';
 import { getDefaultSortingForSchema } from '@/lib/default-sorting';
 import * as React from 'react';
 import { type LocaleProp, resolveLocale } from '@/i18n/locale';
@@ -2413,13 +2413,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       return {
         ...action,
         onClick: (_rows, { table }) => {
-          const headers = table
-            .getAllLeafColumns()
-            .map((column) => column.id)
-            .filter(
-              (key) =>
-                key !== 'select' && key !== 'actions' && !denyFields?.includes(key),
-            );
+          const headers = getExportColumnIds(table).filter(
+            (key) => key !== 'select' && key !== 'actions' && !denyFields?.includes(key),
+          );
           const data = table
             .getFilteredSelectedRowModel()
             .rows.map((row) =>
