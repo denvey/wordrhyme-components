@@ -13,7 +13,7 @@ import type { JsonSchemaFormScope } from '@wordrhyme/formily-shadcn';
 import type { ModalVariant } from './form-modal';
 import type { CrudPermissions } from '@/types/permissions';
 import type { DataTableClassNames } from '@/types/data-table';
-import { AutoTable, type FilterMode } from './auto-table';
+import { AutoTable, type AutoTableProps, type FilterMode } from './auto-table';
 import type {
   BatchActionConfig,
   BatchActionItem,
@@ -577,7 +577,7 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     batchActions?: BatchActionConfig<z.output<TSchema>>;
     /** 默认排序 */
     defaultSort?: any[];
-  };
+  } & Pick<AutoTableProps<TSchema>, 'getRowId' | 'expandedRow'>;
   /** 表单配置 */
   form?: {
     /** 表单覆盖配置（兼容旧 API，优先级低于 fieldOverrides） */
@@ -2789,6 +2789,8 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         {...(resource.tableData.total !== undefined
           ? { total: resource.tableData.total }
           : {})}
+        getRowId={tableConfig?.getRowId}
+        expandedRow={tableConfig?.expandedRow}
         overrides={tableOverrides as any}
         classNames={tableConfig?.classNames}
         exclude={hiddenColumns.filter((key) => !filterOnly.includes(key)) as any}

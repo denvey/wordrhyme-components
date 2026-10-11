@@ -33,7 +33,7 @@ export { setToolbarResolver } from './components/auto-crud/auto-crud-table';
 export { zhCN, enUS, jaJP, koKR, frFR, deDE, esES, resolveLocale } from './i18n/locale';
 export type { AutoCrudLocale, LocaleProp } from './i18n/locale';
 export { AutoForm, type AutoFormProps } from './components/auto-crud/auto-form';
-export { AutoTable } from './components/auto-crud/auto-table';
+export { AutoTable, type AutoTableProps } from './components/auto-crud/auto-table';
 export { AutoTableActionBar } from './components/auto-crud/auto-table-action-bar';
 export type {
   BatchActionConfig,
@@ -52,7 +52,7 @@ export { ExportDialog } from './components/auto-crud/export-dialog';
 export type { ExportDialogProps, ExportMode } from './components/auto-crud/export-dialog';
 
 // Data Table Components
-export { DataTable } from './components/data-table/data-table';
+export { DataTable, type DataTableProps } from './components/data-table/data-table';
 export { DataTableAdvancedToolbar } from './components/data-table/data-table-advanced-toolbar';
 export { DataTableColumnHeader } from './components/data-table/data-table-column-header';
 export { DataTableFacetedFilter } from './components/data-table/data-table-faceted-filter';

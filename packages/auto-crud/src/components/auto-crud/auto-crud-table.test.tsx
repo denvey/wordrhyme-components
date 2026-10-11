@@ -2404,3 +2404,52 @@ describe('default details share list presentation labels', () => {
     },
   );
 });
+
+describe('AutoCrudTable expandedRow', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/stores');
+  });
+  afterEach(cleanup);
+
+  it('mounts details on expansion without adding selectable records', () => {
+    const rows: Row[] = [
+      { id: 'order-001', region: 'west' },
+      { id: 'order-002', region: 'east' },
+    ];
+    const expandedRow = vi.fn((row: Row) => (
+      <div data-testid={`details-${row.id}`}>{row.region}</div>
+    ));
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({ data: rows })}
+        table={{
+          hidden: ['spuId', 'region'],
+          getRowId: (row) => row.id,
+          expandedRow,
+        }}
+      />,
+    );
+
+    expect(expandedRow).not.toHaveBeenCalled();
+    const buttons = screen.getAllByRole('button', { name: 'Expand row' });
+    const checkboxCount = screen.getAllByRole('checkbox').length;
+    fireEvent.click(buttons[0]!);
+    expect(expandedRow).toHaveBeenCalledWith(rows[0]);
+    expect(buttons[0]!.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByTestId('details-order-001').closest('td')?.colSpan).toBe(
+      screen.getAllByRole('columnheader').length,
+    );
+
+    fireEvent.click(buttons[1]!);
+    expect(screen.getByTestId('details-order-001')).toBeTruthy();
+    expect(screen.getByTestId('details-order-002')).toBeTruthy();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(checkboxCount);
+    expect(screen.getByText('0 of 2 row(s) selected.')).toBeTruthy();
+
+    fireEvent.click(buttons[0]!);
+    expect(screen.queryByTestId('details-order-001')).toBeNull();
+    expect(screen.getByTestId('details-order-002')).toBeTruthy();
+    expect(buttons[0]!.getAttribute('aria-expanded')).toBe('false');
+  });
+});
