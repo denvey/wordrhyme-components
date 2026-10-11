@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.10.0
+
+### Minor Changes
+
+- df76440: Add expandedRow rendering to AutoCrudTable and AutoTable with stable row IDs and on-demand detail mounting.
+
 ## 1.9.0
 
 ### Minor Changes
