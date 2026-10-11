@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import type {
   AutoCrudDataSourceContext,
   AutoCrudQueryCapabilities,
+  AutoCrudTableProps,
   UseAutoCrudResourceReturn,
 } from '../src';
 import { expect, fn, userEvent, waitFor, within } from '@storybook/test';
@@ -175,6 +176,9 @@ interface AutoCrudTableStoryProps {
   fieldSearch?: boolean;
   nameFilter?: boolean;
   tableSearch?: false | { placeholder?: string };
+  expandedRow?: NonNullable<
+    AutoCrudTableProps<typeof storeTableSchema>['table']
+  >['expandedRow'];
 }
 
 function AutoCrudTableStory({
@@ -186,6 +190,7 @@ function AutoCrudTableStory({
   tableSearch = {
     placeholder: 'Search stores...',
   },
+  expandedRow,
 }: AutoCrudTableStoryProps) {
   const search = useLocationSearch();
   const [allRows, setAllRows] = useState(tableRows);
@@ -413,6 +418,8 @@ function AutoCrudTableStory({
       }}
       table={{
         search: tableSearch,
+        getRowId: (row) => row.storeId,
+        expandedRow,
       }}
       toolbar={[
         {
@@ -560,5 +567,23 @@ export const QueryCapabilities: Story = {
       await expect(sortList).not.toHaveTextContent('Status');
       await expect(sortList).not.toHaveTextContent('Region');
     });
+  },
+};
+
+export const ExpandedRows: Story = {
+  args: {
+    expandedRow: (store) => (
+      <div className="space-y-2 p-4">
+        <h3 className="font-medium">{store.name} details</h3>
+        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+          <dt className="text-muted-foreground">Store ID</dt>
+          <dd>{store.storeId}</dd>
+          <dt className="text-muted-foreground">Region</dt>
+          <dd>{regionLabels[store.region] ?? store.region}</dd>
+          <dt className="text-muted-foreground">Status</dt>
+          <dd>{store.status}</dd>
+        </dl>
+      </div>
+    ),
   },
 };

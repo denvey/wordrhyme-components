@@ -1,5 +1,5 @@
 import { flexRender, type Table as TanstackTable } from '@tanstack/react-table';
-import type * as React from 'react';
+import { Fragment, type ComponentProps, type ReactNode } from 'react';
 import type { TablePaginationOptions } from '@/types/data-table';
 
 import { DataTablePagination } from '@/components/data-table/data-table-pagination';
@@ -16,17 +16,20 @@ import { useDateFormatterVersion } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import type { DataTableClassNames } from '@/types/data-table';
 
-interface DataTableProps<TData> extends React.ComponentProps<'div'> {
+export interface DataTableProps<TData> extends ComponentProps<'div'> {
   table: TanstackTable<TData>;
   pagination?: TablePaginationOptions;
   classNames?: DataTableClassNames;
-  actionBar?: React.ReactNode;
+  actionBar?: ReactNode;
+  /** Content mounted below an expanded row. */
+  expandedRow?: (record: TData) => ReactNode;
 }
 
 export function DataTable<TData>({
   table,
   actionBar,
   pagination,
+  expandedRow,
   children,
   className,
   classNames,
@@ -103,33 +106,44 @@ export function DataTable<TData>({
           <TableBody className={classNames?.tbody}>
             {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className={classNames?.tr}
-                  data-state={row.getIsSelected() && 'selected'}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const columnClassName = cell.column.columnDef.meta?.classNames?.td;
+                <Fragment key={row.id}>
+                  <TableRow
+                    className={classNames?.tr}
+                    data-state={row.getIsSelected() && 'selected'}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const columnClassName = cell.column.columnDef.meta?.classNames?.td;
 
-                    return (
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            hasWidthCap && 'overflow-hidden text-ellipsis',
+                            classNames?.td,
+                            typeof columnClassName === 'string'
+                              ? columnClassName
+                              : undefined,
+                          )}
+                          style={{
+                            ...getColumnPinningStyle({ column: cell.column }),
+                          }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                  {expandedRow && row.getCanExpand() && row.getIsExpanded() && (
+                    <TableRow className={classNames?.tr}>
                       <TableCell
-                        key={cell.id}
-                        className={cn(
-                          hasWidthCap && 'overflow-hidden text-ellipsis',
-                          classNames?.td,
-                          typeof columnClassName === 'string'
-                            ? columnClassName
-                            : undefined,
-                        )}
-                        style={{
-                          ...getColumnPinningStyle({ column: cell.column }),
-                        }}
+                        colSpan={row.getVisibleCells().length}
+                        className={classNames?.td}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {expandedRow(row.original)}
                       </TableCell>
-                    );
-                  })}
-                </TableRow>
+                    </TableRow>
+                  )}
+                </Fragment>
               ))
             ) : (
               <TableRow className={classNames?.tr}>

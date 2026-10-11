@@ -3,8 +3,14 @@
 import { z } from 'zod';
 import type { TablePaginationOptions } from '@/types/data-table';
 import { useCallback, useEffect, useMemo } from 'react';
-import { CommandIcon, FileSpreadsheetIcon, ListFilterIcon } from 'lucide-react';
-import { DataTable } from '@/components/data-table/data-table';
+import {
+  ChevronRightIcon,
+  CommandIcon,
+  FileSpreadsheetIcon,
+  ListFilterIcon,
+} from 'lucide-react';
+import { getExpandedRowModel, type TableOptions } from '@tanstack/react-table';
+import { DataTable, type DataTableProps } from '@/components/data-table/data-table';
 import { DataTableFilterList } from '@/components/data-table/data-table-filter-list';
 import { DataTableFilterMenu } from '@/components/data-table/data-table-filter-menu';
 import { DataTableSortList } from '@/components/data-table/data-table-sort-list';
@@ -68,9 +74,14 @@ const filterModeConfig: Record<
   },
 };
 
-interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
+export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pick<
+  DataTableProps<z.infer<T>>,
+  'expandedRow'
+> {
   schema: T;
   data: z.infer<T>[];
+  /** Stable row identity; required when expandedRow is provided. */
+  getRowId?: TableOptions<z.infer<T>>['getRowId'];
   pageCount?: number;
   pagination?: TablePaginationOptions;
   /** Total rows matching the current search and filters. */
@@ -129,6 +140,8 @@ interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> {
 export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   schema,
   data,
+  getRowId,
+  expandedRow,
   pageCount = 1,
   pagination,
   total,
@@ -154,6 +167,11 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   onSelectedRowsChange,
   getSelectedRows,
 }: AutoTableProps<T>) {
+  if (expandedRow && !getRowId) {
+    throw new Error('AutoTable requires getRowId when expandedRow is provided.');
+  }
+  const enableExpansion = !!expandedRow;
+
   // 解析过滤模式配置，默认显示全部 3 个模式
   const modes = filterMode
     ? Array.isArray(filterMode)
@@ -182,7 +200,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   // 所有模式都使用高级过滤的数据流（filters 数组同步到 URL）
   // 区别只在于 UI 展示方式
   const enableAdvancedFilter = true;
-  const columns = useMemo(() => {
+  const { columns, expandColumnId } = useMemo(() => {
     const columnOverrides = Object.assign({}, overrides);
     for (const key of filterOnly ?? []) {
       const field = key as keyof z.infer<T>;
@@ -204,28 +222,82 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       ? [createSelectColumn<z.infer<T>>(), ...dataColumns]
       : dataColumns;
 
+    let expandColumnId = 'expand';
+    if (enableExpansion) {
+      while (
+        expandColumnId in schema.shape ||
+        result.some((column) => column.id === expandColumnId)
+      ) {
+        expandColumnId = `_${expandColumnId}`;
+      }
+      result.unshift({
+        id: expandColumnId,
+        header: () => <span className="sr-only">Row details</span>,
+        cell: ({ row }) => (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label={row.getIsExpanded() ? 'Collapse row' : 'Expand row'}
+            aria-expanded={row.getIsExpanded()}
+            onClick={row.getToggleExpandedHandler()}
+          >
+            <ChevronRightIcon
+              className={row.getIsExpanded() ? 'size-4 rotate-90' : 'size-4'}
+            />
+          </Button>
+        ),
+        enableHiding: false,
+        enableSorting: false,
+        size: 40,
+      });
+    }
+
     // 如果有 actions 配置，添加操作列到表格末尾
     if (actions) {
       result.push(createActionsColumn<z.infer<T>>(actions));
     }
 
-    return result;
-  }, [schema, overrides, enableRowSelection, exclude, actions, filterOnly]);
+    return { columns: result, expandColumnId };
+  }, [
+    schema,
+    overrides,
+    enableRowSelection,
+    enableExpansion,
+    exclude,
+    actions,
+    filterOnly,
+  ]);
 
   const stableInitialState = useMemo(
     () => ({
       sorting: initialSorting,
       columnPinning: pinnedColumns ?? {
-        left: enableRowSelection ? ['select'] : [],
+        left: [
+          ...(enableExpansion ? [expandColumnId] : []),
+          ...(enableRowSelection ? ['select'] : []),
+        ],
         right: actions ? ['actions'] : [],
       },
     }),
-    [initialSorting, pinnedColumns, enableRowSelection, actions],
+    [
+      initialSorting,
+      pinnedColumns,
+      enableRowSelection,
+      enableExpansion,
+      expandColumnId,
+      actions,
+    ],
   );
+
+  const expandedRowModel = useMemo(() => getExpandedRowModel<z.infer<T>>(), []);
 
   const { table, shallow, debounceMs, throttleMs } = useDataTable({
     data,
     columns,
+    getRowId,
+    getRowCanExpand: () => enableExpansion,
+    getExpandedRowModel: enableExpansion ? expandedRowModel : undefined,
     pageCount,
     ...(total !== undefined ? { rowCount: total } : {}),
     enableAdvancedFilter,
@@ -368,7 +440,12 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           <DataTableViewOptions table={table} align="end" />
         </div>
       </div>
-      <DataTable pagination={pagination} table={table} classNames={classNames} />
+      <DataTable
+        pagination={pagination}
+        table={table}
+        classNames={classNames}
+        expandedRow={expandedRow}
+      />
       {enableRowSelection && (
         <AutoTableActionBar
           table={table}
