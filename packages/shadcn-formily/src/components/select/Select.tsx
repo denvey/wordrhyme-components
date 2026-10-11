@@ -85,8 +85,9 @@ const SelectComponent: FC<SelectProps> = ({ mapOption, options, ...props }) => {
       )}
       clearable={restProps.clearable ?? allowClear}
       contentProps={resolvedContentProps}
-      emptyText={notFoundContent}
-      matchTriggerWidth={matchTriggerWidth}
+      {...(resolvedMode === 'searchable'
+        ? { emptyText: notFoundContent, matchTriggerWidth }
+        : {})}
       mode={resolvedMode}
       multiple={restProps.multiple ?? isAntdMultipleMode(mode)}
       options={transformedOptions}
