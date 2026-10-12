@@ -2469,7 +2469,10 @@ describe('AutoCrudTable expandedRow', () => {
     const buttons = screen.getAllByRole('button', { name: 'Expand row' });
     const checkboxCount = screen.getAllByRole('checkbox').length;
     fireEvent.click(buttons[0]!);
-    expect(expandedRow).toHaveBeenCalledWith(rows[0]);
+    expect(expandedRow).toHaveBeenCalledWith(
+      rows[0],
+      expect.objectContaining({ id: rows[0]!.id, original: rows[0] }),
+    );
     expect(buttons[0]!.getAttribute('aria-expanded')).toBe('true');
     expect(screen.getByTestId('details-order-001').closest('td')?.colSpan).toBe(
       screen.getAllByRole('columnheader').length,
