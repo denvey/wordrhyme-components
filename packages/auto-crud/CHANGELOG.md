@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.11.0
+
+### Minor Changes
+
+- a3902a0: Support initially expanded rows and pass resolved table row contexts to expanded content.
+
 ## 1.10.0
 
 ### Minor Changes
