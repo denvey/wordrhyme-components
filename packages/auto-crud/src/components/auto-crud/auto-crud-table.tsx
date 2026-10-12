@@ -577,7 +577,7 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     batchActions?: BatchActionConfig<z.output<TSchema>>;
     /** 默认排序 */
     defaultSort?: any[];
-  } & Pick<AutoTableProps<TSchema>, 'getRowId' | 'expandedRow'>;
+  } & Pick<AutoTableProps<TSchema>, 'getRowId' | 'expandedRow' | 'defaultExpanded'>;
   /** 表单配置 */
   form?: {
     /** 表单覆盖配置（兼容旧 API，优先级低于 fieldOverrides） */
@@ -2787,6 +2787,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           : {})}
         getRowId={tableConfig?.getRowId}
         expandedRow={tableConfig?.expandedRow}
+        defaultExpanded={tableConfig?.defaultExpanded}
         overrides={tableOverrides as any}
         classNames={tableConfig?.classNames}
         exclude={hiddenColumns.filter((key) => !filterOnly.includes(key)) as any}

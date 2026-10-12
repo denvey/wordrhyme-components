@@ -1,4 +1,4 @@
-import { flexRender, type Table as TanstackTable } from '@tanstack/react-table';
+import { flexRender, type Row, type Table as TanstackTable } from '@tanstack/react-table';
 import { Fragment, type ComponentProps, type ReactNode } from 'react';
 import type { TablePaginationOptions } from '@/types/data-table';
 
@@ -21,8 +21,8 @@ export interface DataTableProps<TData> extends ComponentProps<'div'> {
   pagination?: TablePaginationOptions;
   classNames?: DataTableClassNames;
   actionBar?: ReactNode;
-  /** Content mounted below an expanded row. */
-  expandedRow?: (record: TData) => ReactNode;
+  /** Content mounted below an expanded row; row provides resolved cell contexts. */
+  expandedRow?: (record: TData, row: Row<TData>) => ReactNode;
 }
 
 export function DataTable<TData>({
@@ -56,7 +56,10 @@ export function DataTable<TData>({
       {...props}
     >
       {children}
-      <div className="overflow-hidden rounded-md border">
+      <div
+        className="overflow-hidden rounded-md border"
+        style={expandedRow ? { containerType: 'inline-size' } : undefined}
+      >
         <Table
           className={classNames?.table}
           style={
@@ -139,7 +142,7 @@ export function DataTable<TData>({
                         colSpan={row.getVisibleCells().length}
                         className={classNames?.td}
                       >
-                        {expandedRow(row.original)}
+                        {expandedRow(row.original, row)}
                       </TableCell>
                     </TableRow>
                   )}

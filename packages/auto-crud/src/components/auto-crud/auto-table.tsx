@@ -82,6 +82,8 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
   data: z.infer<T>[];
   /** Stable row identity; required when expandedRow is provided. */
   getRowId?: TableOptions<z.infer<T>>['getRowId'];
+  /** Initially expand all rows. Defaults to false; only applies with expandedRow. */
+  defaultExpanded?: boolean;
   pageCount?: number;
   pagination?: TablePaginationOptions;
   /** Total rows matching the current search and filters. */
@@ -142,6 +144,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   data,
   getRowId,
   expandedRow,
+  defaultExpanded = false,
   pageCount = 1,
   pagination,
   total,
@@ -272,6 +275,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   const stableInitialState = useMemo(
     () => ({
       sorting: initialSorting,
+      expanded: enableExpansion && defaultExpanded ? (true as const) : {},
       columnPinning: pinnedColumns ?? {
         left: [
           ...(enableExpansion ? [expandColumnId] : []),
@@ -285,6 +289,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       pinnedColumns,
       enableRowSelection,
       enableExpansion,
+      defaultExpanded,
       expandColumnId,
       actions,
     ],
@@ -298,6 +303,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     getRowId,
     getRowCanExpand: () => enableExpansion,
     getExpandedRowModel: enableExpansion ? expandedRowModel : undefined,
+    autoResetExpanded: defaultExpanded ? false : undefined,
     pageCount,
     ...(total !== undefined ? { rowCount: total } : {}),
     enableAdvancedFilter,
