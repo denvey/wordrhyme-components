@@ -2411,6 +2411,40 @@ describe('AutoCrudTable expandedRow', () => {
   });
   afterEach(cleanup);
 
+  it('starts expanded and keeps a collapsed order collapsed after data refresh', () => {
+    const rows: Row[] = [
+      { id: 'order-001', region: 'west' },
+      { id: 'order-002', region: 'east' },
+    ];
+    const table = {
+      getRowId: (row: Row) => row.id,
+      expandedRow: (row: Row) => (
+        <div data-testid={`details-${row.id}`}>{row.region}</div>
+      ),
+      defaultExpanded: true,
+    };
+    const view = render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({ data: rows })}
+        table={table}
+      />,
+    );
+    expect(screen.getByTestId('details-order-001')).toBeTruthy();
+    expect(screen.getByTestId('details-order-002')).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Collapse row' })[0]!);
+    view.rerender(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({ data: [...rows].reverse() })}
+        table={table}
+      />,
+    );
+    expect(screen.queryByTestId('details-order-001')).toBeNull();
+    expect(screen.getByTestId('details-order-002')).toBeTruthy();
+    expect(screen.getByText('0 of 2 row(s) selected.')).toBeTruthy();
+  });
+
   it('mounts details on expansion without adding selectable records', () => {
     const rows: Row[] = [
       { id: 'order-001', region: 'west' },

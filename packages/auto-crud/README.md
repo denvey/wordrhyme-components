@@ -265,7 +265,10 @@ interface AutoCrudTableProps<TSchema> {
     hidden?: string[]; // 隐藏的列
     overrides?: Record<string, any>; // 列覆盖配置
     getRowId?: (record: z.output<TSchema>) => string; // 稳定行标识；展开时必填
-    expandedRow?: (record: z.output<TSchema>) => React.ReactNode; // 展开行内容
+    expandedRow?: (
+      record: z.output<TSchema>,
+      row: Row<z.output<TSchema>>,
+    ) => React.ReactNode; // 展开行内容，row 提供已解析的单元格上下文
     filterModes?: FilterMode | FilterMode[]; // 过滤模式
     batchFields?: (string | BatchUpdateField)[]; // 批量更新字段
     /** @deprecated 新代码请使用 actions.batch */
@@ -298,8 +301,9 @@ interface AutoCrudTableProps<TSchema> {
 
 #### 展开行详情
 
-配置 `table.expandedRow` 后，表格自动添加展开箭头。默认全部收起，允许同时展开多行。
+配置 `table.expandedRow` 后，表格自动添加展开箭头。默认全部收起，允许同时展开多行。设置 `table.defaultExpanded: true` 可在首次展示时展开全部行；刷新保留用户的展开选择。该选项仅用于初始化，不控制当前展开状态。
 必须提供 TanStack Table 的 `getRowId`，使用稳定且唯一的业务主键，避免分页、排序后展开错位。
+展开内容可使用 `cqw` 单位，以表格可视区域的宽度为基准，避免宽表中的详情被横向裁切。
 
 ```tsx
 <AutoCrudTable
@@ -317,8 +321,10 @@ interface AutoCrudTableProps<TSchema> {
 明细数据及其字段权限由业务组件和现有服务负责。
 
 详情区域跨全部可见列，不计入分页条数，也不参与主表选择或导出。
-数据更新时，展开状态遵循 TanStack Table 默认重置行为。
+未启用 `defaultExpanded` 时，数据更新后的展开状态遵循 TanStack Table 默认重置行为。
 `AutoTable` 同样支持 `getRowId` 和 `expandedRow`；直接使用 `DataTable` 时，需自行配置 TanStack 展开能力及触发按钮。
+
+`expandedRow` 的第二个参数是当前 TanStack `Row`，可通过 `row.getAllCells()` 读取已解析的列和单元格上下文，复用字段渲染器及数据源标签。只接收订单数据的单参数回调仍可使用。
 
 ### `useAutoCrudResource()`
 
