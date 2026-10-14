@@ -1,5 +1,15 @@
 # @wordrhyme/auto-crud
 
+## 1.11.2
+
+### Patch Changes
+
+- 73c9763: Localize sorting and column visibility controls in all seven AutoCrud languages, including keyboard drag instructions and announcements. Preserve English defaults for standalone controls and support partial locale overrides. Export PopoverContentProps for reusable control props.
+- Updated dependencies [73c9763]
+  - @wordrhyme/shadcn@2.0.2
+  - @wordrhyme/formily-shadcn@2.1.2
+  - @wordrhyme/shadcn-ui@2.1.2
+
 ## 1.11.1
 
 ### Patch Changes
