@@ -2599,6 +2599,129 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     ],
   );
 
+  const normalizedToolbarActions =
+    resolvedToolbarActions.length > 0
+      ? resolveOwnerToolbarActions(resolvedToolbarActions)
+      : [];
+
+  const renderBuiltinButton = (
+    type: ToolbarBuiltinActionType,
+    overrides?: { onClick?: () => void; label?: string },
+  ): React.ReactNode => {
+    if (type === 'refresh') {
+      const onRefresh = overrides?.onClick ?? toolbarRefresh;
+      const label = overrides?.label ?? locale.toolbar.refresh;
+      if (!onRefresh) return null;
+      return (
+        <Button
+          key="refresh"
+          variant="outline"
+          size="icon-sm"
+          aria-label={label}
+          title={label}
+          onClick={onRefresh}
+          disabled={resource.tableData.isFetching}
+        >
+          <RefreshCw
+            className={resource.tableData.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'}
+          />
+        </Button>
+      );
+    }
+    if (type === 'import' && canImport) {
+      return (
+        <Button
+          key="import"
+          variant="outline"
+          size="sm"
+          onClick={overrides?.onClick ?? toolbarOpenImport}
+        >
+          <Download className="mr-2 h-4 w-4" />
+          {overrides?.label ?? locale.toolbar.import}
+        </Button>
+      );
+    }
+    if (type === 'export' && canExport) {
+      return (
+        <Button
+          key="export"
+          variant="outline"
+          size="sm"
+          onClick={overrides?.onClick ?? toolbarExportData}
+          disabled={exporting || (selectedCount === 0 && !resource.handlers.export)}
+        >
+          {exporting ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <Upload className="mr-2 h-4 w-4" />
+          )}
+          {overrides?.label ??
+            (selectedCount > 0
+              ? locale.toolbar.exportSelected(selectedCount)
+              : locale.toolbar.export)}
+        </Button>
+      );
+    }
+    if (type === 'create' && can.create) {
+      return (
+        <Button key="create" onClick={overrides?.onClick ?? toolbarOpenCreate}>
+          {overrides?.label ?? locale.toolbar.create}
+        </Button>
+      );
+    }
+    return null;
+  };
+  const renderToolbarComponent = (component: ActionComponent<AutoCrudToolbarContext>) =>
+    typeof component === 'function' ? component(toolbarContext) : component;
+
+  const renderToolbarAction = (
+    action: ToolbarActionItem,
+    index: number,
+  ): React.ReactNode => {
+    if (action.type === 'custom') {
+      return (
+        <React.Fragment key={`custom-${index}`}>
+          {renderToolbarComponent(action.component)}
+        </React.Fragment>
+      );
+    }
+    const builtinVisible = (() => {
+      switch (action.type) {
+        case 'refresh':
+          return !!(resource.handlers.refresh || action.onClick || action.component);
+        case 'import':
+          return canImport;
+        case 'export':
+          return canExport;
+        case 'create':
+          return can.create;
+      }
+    })();
+    if (!builtinVisible) {
+      return null;
+    }
+    // 内置项：支持完全替换组件
+    if (action.component) {
+      return (
+        <React.Fragment key={action.type}>
+          {renderToolbarComponent(action.component)}
+        </React.Fragment>
+      );
+    }
+    // 内置项：复用工厂函数，传入用户覆盖
+    return renderBuiltinButton(action.type, {
+      onClick: action.onClick,
+      label: action.label,
+    });
+  };
+  const toolbarNodes = normalizedToolbarActions
+    .filter((action) => action.type !== 'refresh')
+    .map(renderToolbarAction)
+    .filter((node) => node !== null);
+  const refreshNodes = normalizedToolbarActions
+    .filter((action) => action.type === 'refresh')
+    .map(renderToolbarAction);
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -2610,167 +2733,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       )}
 
       {/* Toolbar */}
-      <div className="flex items-center justify-end gap-4">
-        {(() => {
-          // --- 内置按钮工厂 ---
-          const renderBuiltinButton = (
-            type: ToolbarBuiltinActionType,
-            overrides?: { onClick?: () => void; label?: string },
-          ): React.ReactNode => {
-            if (type === 'refresh') {
-              const onRefresh = overrides?.onClick ?? toolbarRefresh;
-              const label = overrides?.label ?? locale.toolbar.refresh;
-              if (!onRefresh) return null;
-              return (
-                <Button
-                  key="refresh"
-                  variant="outline"
-                  size="icon-sm"
-                  aria-label={label}
-                  title={label}
-                  onClick={onRefresh}
-                  disabled={resource.tableData.isFetching}
-                >
-                  <RefreshCw
-                    className={
-                      resource.tableData.isFetching ? 'h-4 w-4 animate-spin' : 'h-4 w-4'
-                    }
-                  />
-                </Button>
-              );
-            }
-            if (type === 'import' && canImport) {
-              return (
-                <Button
-                  key="import"
-                  variant="outline"
-                  size="sm"
-                  onClick={overrides?.onClick ?? toolbarOpenImport}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  {overrides?.label ?? locale.toolbar.import}
-                </Button>
-              );
-            }
-            if (type === 'export' && canExport) {
-              return (
-                <Button
-                  key="export"
-                  variant="outline"
-                  size="sm"
-                  onClick={overrides?.onClick ?? toolbarExportData}
-                  disabled={
-                    exporting || (selectedCount === 0 && !resource.handlers.export)
-                  }
-                >
-                  {exporting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Upload className="mr-2 h-4 w-4" />
-                  )}
-                  {overrides?.label ??
-                    (selectedCount > 0
-                      ? locale.toolbar.exportSelected(selectedCount)
-                      : locale.toolbar.export)}
-                </Button>
-              );
-            }
-            if (type === 'create' && can.create) {
-              return (
-                <Button key="create" onClick={overrides?.onClick ?? toolbarOpenCreate}>
-                  {overrides?.label ?? locale.toolbar.create}
-                </Button>
-              );
-            }
-            return null;
-          };
-          const renderToolbarComponent = (
-            component: ActionComponent<AutoCrudToolbarContext>,
-          ) => (typeof component === 'function' ? component(toolbarContext) : component);
-
-          // Empty means the owner, resolver, or action registry explicitly hid every item.
-          if (!resolvedToolbarActions || resolvedToolbarActions.length === 0) {
-            return <div className="flex items-center gap-2" />;
-          }
-
-          const hasBuiltin = resolvedToolbarActions.some((i) => i.type !== 'custom');
-
-          // 2. 只有 custom 项 → 保留所有内置，custom 按 position 首尾拼接
-          if (!hasBuiltin) {
-            const startNodes = resolvedToolbarActions
-              .filter((i) => i.type === 'custom' && i.position === 'start')
-              .map((a, i) => (
-                <React.Fragment key={`start-${i}`}>
-                  {renderToolbarComponent(a.component)}
-                </React.Fragment>
-              ));
-            const endNodes = resolvedToolbarActions
-              .filter((i) => i.type === 'custom' && i.position !== 'start')
-              .map((a, i) => (
-                <React.Fragment key={`end-${i}`}>
-                  {renderToolbarComponent(a.component)}
-                </React.Fragment>
-              ));
-            return (
-              <div className="flex items-center gap-2">
-                {startNodes}
-                {renderBuiltinButton('refresh')}
-                {renderBuiltinButton('import')}
-                {renderBuiltinButton('export')}
-                {renderBuiltinButton('create')}
-                {endNodes}
-              </div>
-            );
-          }
-
-          // 3. 包含内置项 → 完全接管：未列出的内置不渲染，顺序严格按数组
-          return (
-            <div className="flex items-center gap-2">
-              {resolvedToolbarActions.map((action, index) => {
-                if (action.type === 'custom') {
-                  return (
-                    <React.Fragment key={`custom-${index}`}>
-                      {renderToolbarComponent(action.component)}
-                    </React.Fragment>
-                  );
-                }
-                const builtinVisible = (() => {
-                  switch (action.type) {
-                    case 'refresh':
-                      return !!(
-                        resource.handlers.refresh ||
-                        action.onClick ||
-                        action.component
-                      );
-                    case 'import':
-                      return canImport;
-                    case 'export':
-                      return canExport;
-                    case 'create':
-                      return can.create;
-                  }
-                })();
-                if (!builtinVisible) {
-                  return null;
-                }
-                // 内置项：支持完全替换组件
-                if (action.component) {
-                  return (
-                    <React.Fragment key={action.type}>
-                      {renderToolbarComponent(action.component)}
-                    </React.Fragment>
-                  );
-                }
-                // 内置项：复用工厂函数，传入用户覆盖
-                return renderBuiltinButton(action.type, {
-                  onClick: action.onClick,
-                  label: action.label,
-                });
-              })}
-            </div>
-          );
-        })()}
-      </div>
+      {toolbarNodes.length > 0 && (
+        <div className="flex items-center justify-end gap-4">
+          <div className="flex items-center gap-2">{toolbarNodes}</div>
+        </div>
+      )}
 
       {/* Table */}
       <AutoTable
@@ -2794,6 +2761,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         filterOnly={filterOnly}
         filterMode={tableConfig?.filterModes}
         search={searchConfig}
+        toolbarExtra={refreshNodes}
         actions={tableRowActions}
         onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}

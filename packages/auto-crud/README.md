@@ -673,9 +673,21 @@ table={{
 
 ## 🔧 工具栏操作配置
 
-`toolbar` 数组控制页面顶部右侧工具栏的按钮，设计思路完全对齐行操作 `actions`。旧 prop `toolbarActions` 仍兼容读取，但新代码请使用 `toolbar`。
+`toolbar` 数组控制工具栏操作，设计思路完全对齐行操作 `actions`。旧 prop `toolbarActions` 仍兼容读取，但新代码请使用 `toolbar`。
 
 内置操作类型：`refresh`（刷新）、`create`（新建）、`import`（导入）、`export`（导出）。
+
+刷新固定显示在搜索筛选行右侧，顺序为 `[排序] [刷新] [列设置]`；其 `label`、`onClick`、`component` 和隐藏配置仍由 `toolbar` 控制。其余操作保留在上方工具栏，没有可见操作时不占空行。
+
+直接使用 `AutoTable` 时，可通过 `toolbarExtra` 插入排序与列设置之间的控件：
+
+```tsx
+<AutoTable
+  schema={schema}
+  data={rows}
+  toolbarExtra={<Button onClick={refresh}>刷新</Button>}
+/>
+```
 
 ### 只添加自定义按钮（内置保持默认）
 
@@ -692,12 +704,13 @@ table={{
     { type: 'custom', component: <Button variant="outline">批量标签</Button> }, // 默认 position: "end"
   ]}
 />
-// 渲染顺序: 分类管理 · [刷新] · [导入] · [导出] · [新建] · 批量标签
+// 上方工具栏: 分类管理 · [导入] · [导出] · [新建] · 批量标签
+// 搜索筛选行右侧: [排序] · [刷新] · [列设置]
 ```
 
 ### 调整内置按钮顺序
 
-数组中只要包含任意内置 `type`，就会**完全接管工具栏** —— 未列出的内置按钮**直接隐藏**，渲染顺序**严格按数组**。
+数组中只要包含任意内置 `type`，就会**完全接管工具栏** —— 未列出的内置按钮**直接隐藏**。刷新保持在搜索筛选行，其他按钮的渲染顺序**严格按数组**。
 
 ```tsx
 <AutoCrudTable

@@ -994,14 +994,106 @@ describe('auto-crud table toolbar resolver', () => {
       name: 'Switch filter mode, current: Simple',
     });
     const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+    const refreshButton = screen.getByRole('button', { name: '刷新' });
     const viewButton = screen.getByRole('combobox', { name: 'Toggle columns' });
 
-    expect(
-      modeButton.compareDocumentPosition(sortButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-    expect(
-      sortButton.compareDocumentPosition(viewButton) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
+    expect(modeButton.compareDocumentPosition(sortButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(sortButton.compareDocumentPosition(refreshButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(refreshButton.compareDocumentPosition(viewButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(refreshButton.parentElement).toBe(sortButton.parentElement);
+    expect(refreshButton.parentElement).toBe(viewButton.parentElement);
+  });
+
+  it.each(['simple', 'advanced', 'command'] as const)(
+    'places refresh beside sorting and column visibility in %s mode without an empty top toolbar',
+    (mode) => {
+      const { container } = render(
+        <AutoCrudTable
+          schema={schema}
+          resource={createResource()}
+          toolbar={[{ type: 'refresh' }]}
+          table={{ filterModes: mode, search: true }}
+        />,
+      );
+
+      const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+      const refreshButton = screen.getByRole('button', { name: '刷新' });
+      const viewButton = screen.getByRole('combobox', { name: 'Toggle columns' });
+
+      expect(refreshButton.parentElement).toBe(sortButton.parentElement);
+      expect(refreshButton.parentElement).toBe(viewButton.parentElement);
+      expect(sortButton.compareDocumentPosition(refreshButton)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(refreshButton.compareDocumentPosition(viewButton)).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING,
+      );
+      expect(
+        screen.getByPlaceholderText('搜索').closest('[data-filter-parent]')
+          ?.parentElement,
+      ).toBe(refreshButton.parentElement?.parentElement);
+      expect(
+        container.firstElementChild?.firstElementChild?.contains(refreshButton),
+      ).toBe(true);
+      expect(screen.queryByRole('button', { name: '新建' })).toBeNull();
+      expect(screen.queryByRole('button', { name: '导出' })).toBeNull();
+    },
+  );
+
+  it('keeps refresh label and click overrides in the table controls', () => {
+    const ownerRefresh = vi.fn();
+    const resourceRefresh = vi.fn();
+
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({ refresh: resourceRefresh })}
+        toolbar={[{ type: 'refresh', label: '重新加载', onClick: ownerRefresh }]}
+      />,
+    );
+
+    const refreshButton = screen.getByRole('button', { name: '重新加载' });
+    expect(refreshButton.parentElement).toBe(
+      screen.getByRole('button', { name: 'Sort rows' }).parentElement,
+    );
+    fireEvent.click(refreshButton);
+    expect(ownerRefresh).toHaveBeenCalledTimes(1);
+    expect(resourceRefresh).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: '刷新' })).toBeNull();
+  });
+
+  it('places a replacement refresh component between sorting and column visibility', () => {
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({ refresh: null })}
+        toolbar={[
+          { type: 'refresh', component: <button type="button">Custom refresh</button> },
+          { type: 'create' },
+        ]}
+      />,
+    );
+
+    const refreshButton = screen.getByRole('button', { name: 'Custom refresh' });
+    const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+    const viewButton = screen.getByRole('combobox', { name: 'Toggle columns' });
+    expect(refreshButton.parentElement).toBe(sortButton.parentElement);
+    expect(refreshButton.parentElement).toBe(viewButton.parentElement);
+    expect(sortButton.compareDocumentPosition(refreshButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(refreshButton.compareDocumentPosition(viewButton)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    expect(screen.getByRole('button', { name: '新建' }).parentElement).not.toBe(
+      refreshButton.parentElement,
+    );
   });
 
   it('omits the default refresh action when a manual resource has no refresh handler', () => {
