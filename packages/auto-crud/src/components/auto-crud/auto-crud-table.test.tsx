@@ -14,6 +14,8 @@ import type {
   AutoCrudQueryCapabilities,
   UseAutoCrudResourceReturn,
 } from '@/hooks/use-auto-crud-resource';
+import type { LocaleProp } from '@/i18n/locale';
+import { BUILTIN_LOCALES, resolveLocale } from '@/i18n/locale';
 import { crudActions } from '@/lib/crud-actions';
 import { setDateFormatter } from '@/lib/format';
 import { dataSources } from '@/lib/registries';
@@ -24,6 +26,7 @@ import type {
   RowActionItem,
 } from './auto-crud-table';
 import { AutoCrudTable, setToolbarResolver } from './auto-crud-table';
+import { AutoTable } from './auto-table';
 
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -970,10 +973,10 @@ describe('auto-crud table toolbar resolver', () => {
     expect(screen.queryByPlaceholderText('SPU')).toBeNull();
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Sort rows' }));
+      fireEvent.click(screen.getByRole('button', { name: '排序' }));
     });
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Add sort' }));
+      fireEvent.click(screen.getByRole('button', { name: '添加排序' }));
     });
 
     const sortList = screen.getByRole('list');
@@ -993,9 +996,9 @@ describe('auto-crud table toolbar resolver', () => {
     const modeButton = screen.getByRole('button', {
       name: 'Switch filter mode, current: Simple',
     });
-    const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+    const sortButton = screen.getByRole('button', { name: '排序' });
     const refreshButton = screen.getByRole('button', { name: '刷新' });
-    const viewButton = screen.getByRole('combobox', { name: 'Toggle columns' });
+    const viewButton = screen.getByRole('combobox', { name: '列设置' });
 
     expect(modeButton.compareDocumentPosition(sortButton)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
@@ -1022,9 +1025,9 @@ describe('auto-crud table toolbar resolver', () => {
         />,
       );
 
-      const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+      const sortButton = screen.getByRole('button', { name: '排序' });
       const refreshButton = screen.getByRole('button', { name: '刷新' });
-      const viewButton = screen.getByRole('combobox', { name: 'Toggle columns' });
+      const viewButton = screen.getByRole('combobox', { name: '列设置' });
 
       expect(refreshButton.parentElement).toBe(sortButton.parentElement);
       expect(refreshButton.parentElement).toBe(viewButton.parentElement);
@@ -1060,7 +1063,7 @@ describe('auto-crud table toolbar resolver', () => {
 
     const refreshButton = screen.getByRole('button', { name: '重新加载' });
     expect(refreshButton.parentElement).toBe(
-      screen.getByRole('button', { name: 'Sort rows' }).parentElement,
+      screen.getByRole('button', { name: '排序' }).parentElement,
     );
     fireEvent.click(refreshButton);
     expect(ownerRefresh).toHaveBeenCalledTimes(1);
@@ -1081,8 +1084,8 @@ describe('auto-crud table toolbar resolver', () => {
     );
 
     const refreshButton = screen.getByRole('button', { name: 'Custom refresh' });
-    const sortButton = screen.getByRole('button', { name: 'Sort rows' });
-    const viewButton = screen.getByRole('combobox', { name: 'Toggle columns' });
+    const sortButton = screen.getByRole('button', { name: '排序' });
+    const viewButton = screen.getByRole('combobox', { name: '列设置' });
     expect(refreshButton.parentElement).toBe(sortButton.parentElement);
     expect(refreshButton.parentElement).toBe(viewButton.parentElement);
     expect(sortButton.compareDocumentPosition(refreshButton)).toBe(
@@ -1094,6 +1097,130 @@ describe('auto-crud table toolbar resolver', () => {
     expect(screen.getByRole('button', { name: '新建' }).parentElement).not.toBe(
       refreshButton.parentElement,
     );
+  });
+
+  it.each(Object.entries(BUILTIN_LOCALES))(
+    'localizes sorting and column settings for %s',
+    async (language, languagePack) => {
+      const controls = languagePack.tableControls!;
+      render(
+        <AutoCrudTable
+          schema={schema}
+          resource={createResource()}
+          locale={language}
+          table={{ defaultSort: [] }}
+        />,
+      );
+
+      const sortButton = screen.getByRole('button', { name: controls.sort.label });
+      const columnsButton = screen.getByRole('combobox', {
+        name: controls.columns.label,
+      });
+      expect(sortButton.getAttribute('title')).toBe(controls.sort.label);
+      expect(columnsButton.getAttribute('title')).toBe(controls.columns.label);
+      expect(
+        screen.getByRole('button', { name: languagePack.toolbar.refresh }),
+      ).toBeTruthy();
+
+      fireEvent.click(sortButton);
+      expect(screen.getByText(controls.sort.empty)).toBeTruthy();
+      expect(screen.getByText(controls.sort.emptyDescription)).toBeTruthy();
+      fireEvent.click(screen.getByRole('button', { name: controls.sort.add }));
+      expect(screen.getByText(controls.sort.title)).toBeTruthy();
+      expect(screen.getByText(controls.sort.description)).toBeTruthy();
+      expect(screen.getByRole('button', { name: controls.sort.reset })).toBeTruthy();
+      const direction = screen.getByRole('combobox', { name: controls.sort.direction });
+      expect(direction.textContent).toContain(controls.sort.ascending);
+      expect(screen.getByRole('button', { name: controls.sort.remove })).toBeTruthy();
+      const move = screen.getByRole('button', { name: controls.sort.move });
+      const instructionId = move.getAttribute('aria-describedby');
+      expect(document.getElementById(instructionId!)?.textContent).toBe(
+        controls.sort.dragInstructions,
+      );
+
+      fireEvent.keyDown(direction, { key: 'Enter' });
+      fireEvent.click(
+        await screen.findByRole('option', { name: controls.sort.descending }),
+      );
+      expect(direction.textContent).toContain(controls.sort.descending);
+
+      const sortList = screen.getByRole('list');
+      fireEvent.click(within(sortList).getByRole('button', { name: 'Id' }));
+      const fieldSearch = screen.getByPlaceholderText(controls.sort.searchFields);
+      fireEvent.change(fieldSearch, { target: { value: 'missing-field' } });
+      expect(await screen.findByText(controls.sort.noFields)).toBeTruthy();
+      fireEvent.click(sortButton);
+
+      fireEvent.click(columnsButton);
+      const columnSearch = screen.getByPlaceholderText(controls.columns.search);
+      fireEvent.change(columnSearch, { target: { value: 'missing-column' } });
+      expect(await screen.findByText(controls.columns.empty)).toBeTruthy();
+    },
+  );
+
+  it('updates an open sorting panel when the locale changes', () => {
+    const resource = createResource();
+    const { rerender } = render(
+      <AutoCrudTable schema={schema} resource={resource} locale="zh-CN" />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '排序' }));
+    fireEvent.click(screen.getByRole('button', { name: '添加排序' }));
+    expect(screen.getByRole('combobox', { name: '排序方向' }).textContent).toContain(
+      '升序',
+    );
+
+    rerender(<AutoCrudTable schema={schema} resource={resource} locale="en-US" />);
+    expect(screen.getByRole('button', { name: 'Sort rows' })).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: 'Toggle columns' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Refresh' })).toBeTruthy();
+    expect(screen.getByText('Sort by')).toBeTruthy();
+    expect(
+      screen.getByRole('combobox', { name: 'Sort direction' }).textContent,
+    ).toContain('Asc');
+    expect(screen.queryByText('排序依据')).toBeNull();
+  });
+
+  it('merges partial table control locale overrides with Chinese defaults', async () => {
+    const locale: LocaleProp = {
+      tableControls: {
+        sort: {
+          label: 'Custom sort',
+          dragStarted: (label, position, total) =>
+            `${label}: ${position.toFixed(0)}/${total}`,
+        },
+        columns: { label: 'Custom columns' },
+      },
+    };
+    const resolved = resolveLocale(locale);
+    expect(resolved.tableControls?.sort.dragStarted('Id', 1, 2)).toBe('Id: 1/2');
+    render(<AutoCrudTable schema={schema} resource={createResource()} locale={locale} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Custom sort' }));
+    expect(screen.getByText('尚未设置排序')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '添加排序' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('combobox', { name: 'Custom columns' }));
+    expect(await screen.findByPlaceholderText('搜索列...')).toBeTruthy();
+  });
+
+  it('keeps standalone table control labels in English', () => {
+    render(<AutoTable schema={schema} data={[{ id: '1' }]} />);
+    expect(screen.getByRole('button', { name: 'Sort rows' })).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: 'Toggle columns' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Sort rows' }));
+    expect(screen.getByRole('button', { name: 'Add sort' })).toBeTruthy();
+  });
+
+  it('localizes keyboard sort drag announcements', async () => {
+    render(<AutoCrudTable schema={schema} resource={createResource()} locale="zh-CN" />);
+    fireEvent.click(screen.getByRole('button', { name: '排序' }));
+    fireEvent.click(screen.getByRole('button', { name: '添加排序' }));
+    const move = screen.getByRole('button', { name: '移动排序' });
+    move.focus();
+    fireEvent.keyDown(move, { key: ' ', code: 'Space' });
+    await waitFor(() => {
+      expect(screen.getByRole('status').textContent).toMatch(/已(?:拾起|将)Id/u);
+    });
+    fireEvent.keyDown(document, { key: 'Escape', code: 'Escape' });
+    expect(await screen.findByText('已取消Id的排序拖动。')).toBeTruthy();
   });
 
   it('omits the default refresh action when a manual resource has no refresh handler', () => {
@@ -1150,13 +1277,13 @@ describe('auto-crud table toolbar resolver', () => {
       />,
     );
 
-    const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+    const sortButton = screen.getByRole('button', { name: '排序' });
     expect(sortButton.textContent).toContain('1');
 
     fireEvent.click(sortButton);
     const sortList = screen.getByRole('list');
     expect(sortList.textContent).toContain('Created At');
-    expect(sortList.textContent).toContain('Desc');
+    expect(sortList.textContent).toContain('降序');
   });
 
   it('uses resource default sorting ahead of table defaultSort', () => {
@@ -1173,11 +1300,11 @@ describe('auto-crud table toolbar resolver', () => {
       />,
     );
 
-    const sortButton = screen.getByRole('button', { name: 'Sort rows' });
+    const sortButton = screen.getByRole('button', { name: '排序' });
     fireEvent.click(sortButton);
     const sortList = screen.getByRole('list');
     expect(sortList.textContent).toContain('Name');
-    expect(sortList.textContent).toContain('Asc');
+    expect(sortList.textContent).toContain('升序');
     expect(sortList.textContent).not.toContain('Created At');
   });
 

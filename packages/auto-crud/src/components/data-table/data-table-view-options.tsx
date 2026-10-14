@@ -1,6 +1,9 @@
 'use client';
 
 import type { Table } from '@tanstack/react-table';
+import type { PopoverContentProps } from '@wordrhyme/shadcn';
+import type { TableControlsLocale } from '@/i18n/locale';
+
 import { Check, Settings2 } from 'lucide-react';
 import * as React from 'react';
 import { Button } from '@wordrhyme/shadcn';
@@ -13,18 +16,19 @@ import {
   CommandList,
 } from '@wordrhyme/shadcn';
 import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
+import { enUSTableControls } from '@/i18n/locale';
 import { cn } from '@/lib/utils';
 
-interface DataTableViewOptionsProps<TData> extends React.ComponentProps<
-  typeof PopoverContent
-> {
+export interface DataTableViewOptionsProps<TData> extends PopoverContentProps {
   table: Table<TData>;
   disabled?: boolean;
+  locale?: TableControlsLocale['columns'];
 }
 
 export function DataTableViewOptions<TData>({
   table,
   disabled,
+  locale = enUSTableControls.columns,
   ...props
 }: DataTableViewOptionsProps<TData>) {
   const columns = React.useMemo(
@@ -41,8 +45,8 @@ export function DataTableViewOptions<TData>({
     <Popover>
       <PopoverTrigger asChild>
         <Button
-          aria-label="Toggle columns"
-          title="Toggle columns"
+          aria-label={locale.label}
+          title={locale.label}
           role="combobox"
           variant="outline"
           size="icon-sm"
@@ -54,9 +58,9 @@ export function DataTableViewOptions<TData>({
       </PopoverTrigger>
       <PopoverContent className="w-44 p-0" {...props}>
         <Command>
-          <CommandInput placeholder="Search columns..." />
+          <CommandInput placeholder={locale.search} />
           <CommandList>
-            <CommandEmpty>No columns found.</CommandEmpty>
+            <CommandEmpty>{locale.empty}</CommandEmpty>
             <CommandGroup>
               {columns.map((column) => (
                 <CommandItem

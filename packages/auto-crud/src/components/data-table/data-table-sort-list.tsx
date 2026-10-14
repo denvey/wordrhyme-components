@@ -1,6 +1,9 @@
 'use client';
 
 import type { ColumnSort, SortDirection, Table } from '@tanstack/react-table';
+import type { PopoverContentProps } from '@wordrhyme/shadcn';
+import type { TableControlsLocale } from '@/i18n/locale';
+
 import { ArrowDownUp, ChevronsUpDown, GripVertical, Trash2 } from 'lucide-react';
 import * as React from 'react';
 
@@ -30,21 +33,22 @@ import {
   SortableOverlay,
 } from '@wordrhyme/shadcn-ui';
 import { dataTableConfig } from '@/config/data-table';
+import { enUSTableControls } from '@/i18n/locale';
 import { cn } from '@/lib/utils';
 
 const SORT_SHORTCUT_KEY = 's';
 const REMOVE_SORT_SHORTCUTS = ['backspace', 'delete'];
 
-interface DataTableSortListProps<TData> extends React.ComponentProps<
-  typeof PopoverContent
-> {
+interface DataTableSortListProps<TData> extends PopoverContentProps {
   table: Table<TData>;
   disabled?: boolean;
+  locale?: TableControlsLocale['sort'];
 }
 
 export function DataTableSortList<TData>({
   table,
   disabled,
+  locale = enUSTableControls.sort,
   ...props
 }: DataTableSortListProps<TData>) {
   const id = React.useId();
@@ -151,14 +155,55 @@ export function DataTableSortList<TData>({
       value={sorting}
       onValueChange={onSortingChange}
       getItemValue={(item) => item.id}
+      accessibility={{
+        screenReaderInstructions: { draggable: locale.dragInstructions },
+        announcements: {
+          onDragStart: ({ active }) =>
+            locale.dragStarted(
+              columnLabels.get(String(active.id)) ?? String(active.id),
+              sorting.findIndex((sort) => sort.id === active.id) + 1,
+              sorting.length,
+            ),
+          onDragOver: ({ active, over }) =>
+            over
+              ? locale.dragMoved(
+                  columnLabels.get(String(active.id)) ?? String(active.id),
+                  sorting.findIndex((sort) => sort.id === over.id) + 1,
+                  sorting.length,
+                )
+              : locale.dragOutside,
+          onDragMove: ({ active, over }) =>
+            over
+              ? locale.dragMoved(
+                  columnLabels.get(String(active.id)) ?? String(active.id),
+                  sorting.findIndex((sort) => sort.id === over.id) + 1,
+                  sorting.length,
+                )
+              : locale.dragOutside,
+          onDragEnd: ({ active, over }) =>
+            over
+              ? locale.dragDropped(
+                  columnLabels.get(String(active.id)) ?? String(active.id),
+                  sorting.findIndex((sort) => sort.id === over.id) + 1,
+                  sorting.length,
+                )
+              : locale.dragCancelled(
+                  columnLabels.get(String(active.id)) ?? String(active.id),
+                ),
+          onDragCancel: ({ active }) =>
+            locale.dragCancelled(
+              columnLabels.get(String(active.id)) ?? String(active.id),
+            ),
+        },
+      }}
     >
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
             variant="outline"
             size="icon-sm"
-            aria-label="Sort rows"
-            title="Sort rows"
+            aria-label={locale.label}
+            title={locale.label}
             className={cn(sorting.length > 0 && 'w-auto gap-1 px-2')}
             onKeyDown={onTriggerKeyDown}
             disabled={disabled}
@@ -182,7 +227,7 @@ export function DataTableSortList<TData>({
         >
           <div className="flex flex-col gap-1">
             <h4 id={labelId} className="font-medium leading-none">
-              {sorting.length > 0 ? 'Sort by' : 'No sorting applied'}
+              {sorting.length > 0 ? locale.title : locale.empty}
             </h4>
             <p
               id={descriptionId}
@@ -191,9 +236,7 @@ export function DataTableSortList<TData>({
                 sorting.length > 0 && 'sr-only',
               )}
             >
-              {sorting.length > 0
-                ? 'Modify sorting to organize your rows.'
-                : 'Add sorting to organize your rows.'}
+              {sorting.length > 0 ? locale.description : locale.emptyDescription}
             </p>
           </div>
           {sorting.length > 0 && (
@@ -211,6 +254,7 @@ export function DataTableSortList<TData>({
                     columnLabels={columnLabels}
                     onSortUpdate={onSortUpdate}
                     onSortRemove={onSortRemove}
+                    locale={locale}
                   />
                 ))}
               </div>
@@ -224,7 +268,7 @@ export function DataTableSortList<TData>({
               onClick={onSortAdd}
               disabled={columns.length === 0}
             >
-              Add sort
+              {locale.add}
             </Button>
             {sorting.length > 0 && (
               <Button
@@ -233,7 +277,7 @@ export function DataTableSortList<TData>({
                 className="rounded"
                 onClick={onSortingReset}
               >
-                Reset sorting
+                {locale.reset}
               </Button>
             )}
           </div>
@@ -258,6 +302,7 @@ interface DataTableSortItemProps {
   columnLabels: Map<string, string>;
   onSortUpdate: (sortId: string, updates: Partial<ColumnSort>) => void;
   onSortRemove: (sortId: string) => void;
+  locale: TableControlsLocale['sort'];
 }
 
 function DataTableSortItem({
@@ -267,6 +312,7 @@ function DataTableSortItem({
   columnLabels,
   onSortUpdate,
   onSortRemove,
+  locale,
 }: DataTableSortItemProps) {
   const fieldListboxId = `${sortItemId}-field-listbox`;
   const fieldTriggerId = `${sortItemId}-field-trigger`;
@@ -323,9 +369,9 @@ function DataTableSortItem({
             className="w-(--radix-popover-trigger-width) p-0"
           >
             <Command>
-              <CommandInput placeholder="Search fields..." />
+              <CommandInput placeholder={locale.searchFields} />
               <CommandList>
-                <CommandEmpty>No fields found.</CommandEmpty>
+                <CommandEmpty>{locale.noFields}</CommandEmpty>
                 <CommandGroup>
                   {columns.map((column) => (
                     <CommandItem
@@ -350,6 +396,7 @@ function DataTableSortItem({
           }
         >
           <SelectTrigger
+            aria-label={locale.direction}
             aria-controls={directionListboxId}
             size="sm"
             className="w-24 rounded"
@@ -362,12 +409,13 @@ function DataTableSortItem({
           >
             {dataTableConfig.sortOrders.map((order) => (
               <SelectItem key={order.value} value={order.value}>
-                {order.label}
+                {order.value === 'asc' ? locale.ascending : locale.descending}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
         <Button
+          aria-label={locale.remove}
           aria-controls={sortItemId}
           variant="outline"
           size="icon"
@@ -377,7 +425,13 @@ function DataTableSortItem({
           <Trash2 />
         </Button>
         <SortableItemHandle asChild>
-          <Button variant="outline" size="icon" className="size-8 shrink-0 rounded">
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-8 shrink-0 rounded"
+            aria-label={locale.move}
+            aria-roledescription={locale.move}
+          >
             <GripVertical />
           </Button>
         </SortableItemHandle>

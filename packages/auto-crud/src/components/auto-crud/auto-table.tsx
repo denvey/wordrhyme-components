@@ -30,6 +30,7 @@ import {
   useQueryState,
   useUrlState,
 } from '@/hooks/use-url-state';
+import { enUSTableControls } from '@/i18n/locale';
 import { AutoTableSimpleFilters } from './auto-table-simple-filters';
 import {
   AutoTableActionBar,
@@ -44,6 +45,7 @@ import {
   createActionsColumn,
   type ActionsColumnConfig,
 } from '@/lib/schema-bridge/zod-to-columns';
+import type { TableControlsLocale } from '@/i18n/locale';
 import type { ColumnOverrides } from '@/lib/schema-bridge/types';
 import type { DataTableClassNames } from '@/types/data-table';
 
@@ -115,6 +117,8 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
       };
   /** Extra table controls rendered between sorting and column visibility. */
   toolbarExtra?: React.ReactNode;
+  /** Sorting and column visibility strings. Defaults to English for standalone use. */
+  locale?: TableControlsLocale;
   /** 批量删除回调 */
   onDeleteSelected?: (rows: z.infer<T>[]) => void;
   /** 批量更新回调 */
@@ -160,6 +164,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   filterMode,
   search = false,
   toolbarExtra,
+  locale = enUSTableControls,
   onDeleteSelected,
   onUpdateSelected,
   batchUpdateFields,
@@ -445,9 +450,9 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
         </div>
         <div className="flex items-center gap-2">
           {FilterModeSelect}
-          <DataTableSortList table={table} align="end" />
+          <DataTableSortList table={table} align="end" locale={locale.sort} />
           {toolbarExtra}
-          <DataTableViewOptions table={table} align="end" />
+          <DataTableViewOptions table={table} align="end" locale={locale.columns} />
         </div>
       </div>
       <DataTable

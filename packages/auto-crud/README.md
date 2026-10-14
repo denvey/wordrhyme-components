@@ -673,6 +673,29 @@ table={{
 
 ## 🔧 工具栏操作配置
 
+### 排序与列设置的语言
+
+`AutoCrudTable` 的 `locale` 同时控制刷新、排序和列设置。支持 `zh-CN`（默认）、`en-US`、`ja-JP`、`ko-KR`、`fr-FR`、`de-DE`、`es-ES`。排序与列设置的按钮提示、弹层、字段搜索、排序方向、空状态及排序拖动的无障碍说明和播报均随语言切换。
+
+```tsx
+<AutoCrudTable schema={schema} resource={resource} locale="en-US" />
+
+<AutoCrudTable
+  schema={schema}
+  resource={resource}
+  locale={{
+    tableControls: {
+      sort: { label: '排序规则' },
+      columns: { label: '显示列' },
+    },
+  }}
+/>
+```
+
+对象形式按现有规则与中文语言包深合并；未覆盖的词条保留中文。`tableControls` 在 `AutoCrudLocale` 中为可选字段，已有自定义语言包无需补全字段。
+
+独立使用 `AutoTable` 或 `DataTableViewOptions` 时，排序和列设置保留原有英文默认值，可分别传入 `resolveLocale('ja-JP').tableControls` 或其 `columns` 词条组。业务字段和列名仍由调用方的 `fields` / 列配置提供。
+
 `toolbar` 数组控制工具栏操作，设计思路完全对齐行操作 `actions`。旧 prop `toolbarActions` 仍兼容读取，但新代码请使用 `toolbar`。
 
 内置操作类型：`refresh`（刷新）、`create`（新建）、`import`（导入）、`export`（导出）。

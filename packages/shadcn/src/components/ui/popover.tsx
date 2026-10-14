@@ -13,15 +13,18 @@ function PopoverTrigger({
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
+export type PopoverContentProps = PopoverPrimitive.PopoverContentProps &
+  React.RefAttributes<HTMLDivElement> & {
+    container?: HTMLElement | null;
+  };
+
 function PopoverContent({
   className,
   align = 'center',
   sideOffset = 4,
   container,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content> & {
-  container?: HTMLElement | null;
-}) {
+}: PopoverContentProps) {
   return (
     <PopoverPrimitive.Portal container={container ?? undefined}>
       <PopoverPrimitive.Content
