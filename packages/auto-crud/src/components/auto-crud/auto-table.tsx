@@ -113,6 +113,8 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
     | {
         placeholder?: string;
       };
+  /** Extra table controls rendered between sorting and column visibility. */
+  toolbarExtra?: React.ReactNode;
   /** 批量删除回调 */
   onDeleteSelected?: (rows: z.infer<T>[]) => void;
   /** 批量更新回调 */
@@ -157,6 +159,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   pinnedColumns,
   filterMode,
   search = false,
+  toolbarExtra,
   onDeleteSelected,
   onUpdateSelected,
   batchUpdateFields,
@@ -443,6 +446,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
         <div className="flex items-center gap-2">
           {FilterModeSelect}
           <DataTableSortList table={table} align="end" />
+          {toolbarExtra}
           <DataTableViewOptions table={table} align="end" />
         </div>
       </div>
