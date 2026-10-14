@@ -11,7 +11,39 @@
 
 // ─── Locale Interface ────────────────────────────────────────────────────────
 
+export interface TableControlsLocale {
+  sort: {
+    label: string;
+    title: string;
+    empty: string;
+    description: string;
+    emptyDescription: string;
+    add: string;
+    reset: string;
+    searchFields: string;
+    noFields: string;
+    ascending: string;
+    descending: string;
+    direction: string;
+    remove: string;
+    move: string;
+    dragInstructions: string;
+    dragOutside: string;
+    dragStarted: (label: string, position: number, total: number) => string;
+    dragMoved: (label: string, position: number, total: number) => string;
+    dragDropped: (label: string, position: number, total: number) => string;
+    dragCancelled: (label: string) => string;
+  };
+  columns: {
+    label: string;
+    search: string;
+    empty: string;
+  };
+}
+
 export interface AutoCrudLocale {
+  /** Sorting and column visibility controls. Optional for existing custom locales. */
+  tableControls?: TableControlsLocale;
   pagination?: { pageJump?: string };
   toolbar: {
     refresh: string;
@@ -89,7 +121,74 @@ export interface AutoCrudLocale {
 
 // ─── Built-in Locales ────────────────────────────────────────────────────────
 
+export const enUSTableControls: TableControlsLocale = {
+  sort: {
+    label: 'Sort rows',
+    title: 'Sort by',
+    empty: 'No sorting applied',
+    description: 'Modify sorting to organize your rows.',
+    emptyDescription: 'Add sorting to organize your rows.',
+    add: 'Add sort',
+    reset: 'Reset sorting',
+    searchFields: 'Search fields...',
+    noFields: 'No fields found.',
+    ascending: 'Asc',
+    descending: 'Desc',
+    direction: 'Sort direction',
+    remove: 'Remove sort',
+    move: 'Move sort',
+    dragInstructions:
+      'To pick up a sort, press space or enter. Use the up and down arrow keys to move it. Press space or enter to drop, or escape to cancel.',
+    dragOutside: 'The sort is outside the drop area. Press escape to cancel.',
+    dragStarted: (label, position, total) =>
+      `Picked up ${label}, position ${position} of ${total}.`,
+    dragMoved: (label, position, total) =>
+      `Moved ${label} to position ${position} of ${total}.`,
+    dragDropped: (label, position, total) =>
+      `Dropped ${label} at position ${position} of ${total}.`,
+    dragCancelled: (label) => `Sorting cancelled for ${label}.`,
+  },
+  columns: {
+    label: 'Toggle columns',
+    search: 'Search columns...',
+    empty: 'No columns found.',
+  },
+};
+
 export const zhCN: AutoCrudLocale = {
+  tableControls: {
+    sort: {
+      label: '排序',
+      title: '排序依据',
+      empty: '尚未设置排序',
+      description: '调整排序以组织表格数据。',
+      emptyDescription: '添加排序以组织表格数据。',
+      add: '添加排序',
+      reset: '重置排序',
+      searchFields: '搜索字段...',
+      noFields: '未找到字段。',
+      ascending: '升序',
+      descending: '降序',
+      direction: '排序方向',
+      remove: '移除排序',
+      move: '移动排序',
+      dragInstructions:
+        '按空格或回车键拾起排序项，使用上下方向键移动，再按空格或回车键放下，按 Esc 键取消。',
+      dragOutside: '排序项已移出放置区域，按 Esc 键取消。',
+      dragStarted: (label, position, total) =>
+        `已拾起${label}，位于第 ${position} 项，共 ${total} 项。`,
+      dragMoved: (label, position, total) =>
+        `已将${label}移至第 ${position} 项，共 ${total} 项。`,
+      dragDropped: (label, position, total) =>
+        `已将${label}放置在第 ${position} 项，共 ${total} 项。`,
+      dragCancelled: (label) => `已取消${label}的排序拖动。`,
+    },
+    columns: {
+      label: '列设置',
+      search: '搜索列...',
+      empty: '未找到列。',
+    },
+  },
   pagination: { pageJump: '跳转到页' },
   toolbar: {
     refresh: '刷新',
@@ -162,6 +261,7 @@ export const zhCN: AutoCrudLocale = {
 };
 
 export const enUS: AutoCrudLocale = {
+  tableControls: enUSTableControls,
   pagination: { pageJump: 'Go to page' },
   toolbar: {
     refresh: 'Refresh',
@@ -236,6 +336,39 @@ export const enUS: AutoCrudLocale = {
 };
 
 export const jaJP: AutoCrudLocale = {
+  tableControls: {
+    sort: {
+      label: '並べ替え',
+      title: '並べ替え条件',
+      empty: '並べ替えは未設定です',
+      description: '並べ替えを変更して行を整理します。',
+      emptyDescription: '並べ替えを追加して行を整理します。',
+      add: '並べ替えを追加',
+      reset: '並べ替えをリセット',
+      searchFields: 'フィールドを検索...',
+      noFields: 'フィールドが見つかりません。',
+      ascending: '昇順',
+      descending: '降順',
+      direction: '並べ替え方向',
+      remove: '並べ替えを削除',
+      move: '並べ替えを移動',
+      dragInstructions:
+        'スペースまたは Enter キーで並べ替え項目をつかみ、上下の矢印キーで移動します。スペースまたは Enter キーで配置し、Esc キーでキャンセルします。',
+      dragOutside: '項目が配置領域の外にあります。Esc キーでキャンセルします。',
+      dragStarted: (label, position, total) =>
+        `${label}をつかみました。${total} 項目中 ${position} 番目です。`,
+      dragMoved: (label, position, total) =>
+        `${label}を ${total} 項目中 ${position} 番目に移動しました。`,
+      dragDropped: (label, position, total) =>
+        `${label}を ${total} 項目中 ${position} 番目に配置しました。`,
+      dragCancelled: (label) => `${label}の移動をキャンセルしました。`,
+    },
+    columns: {
+      label: '列の表示設定',
+      search: '列を検索...',
+      empty: '列が見つかりません。',
+    },
+  },
   pagination: { pageJump: 'ページへ移動' },
   toolbar: {
     refresh: '更新',
@@ -305,6 +438,39 @@ export const jaJP: AutoCrudLocale = {
 };
 
 export const koKR: AutoCrudLocale = {
+  tableControls: {
+    sort: {
+      label: '정렬',
+      title: '정렬 기준',
+      empty: '설정된 정렬이 없습니다',
+      description: '정렬을 변경하여 행을 정리하세요.',
+      emptyDescription: '정렬을 추가하여 행을 정리하세요.',
+      add: '정렬 추가',
+      reset: '정렬 초기화',
+      searchFields: '필드 검색...',
+      noFields: '필드를 찾을 수 없습니다.',
+      ascending: '오름차순',
+      descending: '내림차순',
+      direction: '정렬 방향',
+      remove: '정렬 삭제',
+      move: '정렬 이동',
+      dragInstructions:
+        '스페이스 또는 Enter 키로 정렬 항목을 선택하고 위아래 화살표 키로 이동하세요. 스페이스 또는 Enter 키로 놓고 Esc 키로 취소하세요.',
+      dragOutside: '항목이 놓기 영역 밖에 있습니다. Esc 키로 취소하세요.',
+      dragStarted: (label, position, total) =>
+        `${label} 항목을 선택했습니다. 총 ${total}개 중 ${position}번째입니다.`,
+      dragMoved: (label, position, total) =>
+        `${label} 항목을 총 ${total}개 중 ${position}번째로 이동했습니다.`,
+      dragDropped: (label, position, total) =>
+        `${label} 항목을 총 ${total}개 중 ${position}번째에 놓았습니다.`,
+      dragCancelled: (label) => `${label} 항목의 이동을 취소했습니다.`,
+    },
+    columns: {
+      label: '열 표시 설정',
+      search: '열 검색...',
+      empty: '열을 찾을 수 없습니다.',
+    },
+  },
   pagination: { pageJump: '페이지로 이동' },
   toolbar: {
     refresh: '새로고침',
@@ -374,6 +540,40 @@ export const koKR: AutoCrudLocale = {
 };
 
 export const frFR: AutoCrudLocale = {
+  tableControls: {
+    sort: {
+      label: 'Trier les lignes',
+      title: 'Trier par',
+      empty: 'Aucun tri appliqué',
+      description: 'Modifiez le tri pour organiser les lignes.',
+      emptyDescription: 'Ajoutez un tri pour organiser les lignes.',
+      add: 'Ajouter un tri',
+      reset: 'Réinitialiser le tri',
+      searchFields: 'Rechercher des champs...',
+      noFields: 'Aucun champ trouvé.',
+      ascending: 'Croissant',
+      descending: 'Décroissant',
+      direction: 'Sens du tri',
+      remove: 'Supprimer le tri',
+      move: 'Déplacer le tri',
+      dragInstructions:
+        'Appuyez sur Espace ou Entrée pour saisir un critère de tri. Déplacez-le avec les flèches haut et bas. Appuyez sur Espace ou Entrée pour le déposer, ou sur Échap pour annuler.',
+      dragOutside:
+        'Le critère est hors de la zone de dépôt. Appuyez sur Échap pour annuler.',
+      dragStarted: (label, position, total) =>
+        `${label} saisi, position ${position} sur ${total}.`,
+      dragMoved: (label, position, total) =>
+        `${label} déplacé à la position ${position} sur ${total}.`,
+      dragDropped: (label, position, total) =>
+        `${label} déposé à la position ${position} sur ${total}.`,
+      dragCancelled: (label) => `Déplacement de ${label} annulé.`,
+    },
+    columns: {
+      label: 'Afficher les colonnes',
+      search: 'Rechercher des colonnes...',
+      empty: 'Aucune colonne trouvée.',
+    },
+  },
   pagination: { pageJump: 'Aller à la page' },
   toolbar: {
     refresh: 'Actualiser',
@@ -444,6 +644,40 @@ export const frFR: AutoCrudLocale = {
 };
 
 export const deDE: AutoCrudLocale = {
+  tableControls: {
+    sort: {
+      label: 'Zeilen sortieren',
+      title: 'Sortieren nach',
+      empty: 'Keine Sortierung angewendet',
+      description: 'Ändern Sie die Sortierung, um die Zeilen anzuordnen.',
+      emptyDescription: 'Fügen Sie eine Sortierung hinzu, um die Zeilen anzuordnen.',
+      add: 'Sortierung hinzufügen',
+      reset: 'Sortierung zurücksetzen',
+      searchFields: 'Felder suchen...',
+      noFields: 'Keine Felder gefunden.',
+      ascending: 'Aufsteigend',
+      descending: 'Absteigend',
+      direction: 'Sortierrichtung',
+      remove: 'Sortierung entfernen',
+      move: 'Sortierung verschieben',
+      dragInstructions:
+        'Drücken Sie die Leertaste oder Eingabetaste, um eine Sortierung aufzunehmen. Verschieben Sie sie mit den Pfeiltasten nach oben und unten. Drücken Sie die Leertaste oder Eingabetaste zum Ablegen oder Esc zum Abbrechen.',
+      dragOutside:
+        'Die Sortierung befindet sich außerhalb des Ablagebereichs. Drücken Sie Esc zum Abbrechen.',
+      dragStarted: (label, position, total) =>
+        `${label} aufgenommen, Position ${position} von ${total}.`,
+      dragMoved: (label, position, total) =>
+        `${label} auf Position ${position} von ${total} verschoben.`,
+      dragDropped: (label, position, total) =>
+        `${label} auf Position ${position} von ${total} abgelegt.`,
+      dragCancelled: (label) => `Verschieben von ${label} abgebrochen.`,
+    },
+    columns: {
+      label: 'Spalten anzeigen',
+      search: 'Spalten suchen...',
+      empty: 'Keine Spalten gefunden.',
+    },
+  },
   pagination: { pageJump: 'Zur Seite springen' },
   toolbar: {
     refresh: 'Aktualisieren',
@@ -515,6 +749,40 @@ export const deDE: AutoCrudLocale = {
 };
 
 export const esES: AutoCrudLocale = {
+  tableControls: {
+    sort: {
+      label: 'Ordenar filas',
+      title: 'Ordenar por',
+      empty: 'No se ha aplicado ningún orden',
+      description: 'Modifica el orden para organizar las filas.',
+      emptyDescription: 'Añade un criterio de ordenación para organizar las filas.',
+      add: 'Añadir orden',
+      reset: 'Restablecer orden',
+      searchFields: 'Buscar campos...',
+      noFields: 'No se encontraron campos.',
+      ascending: 'Ascendente',
+      descending: 'Descendente',
+      direction: 'Dirección del orden',
+      remove: 'Eliminar orden',
+      move: 'Mover orden',
+      dragInstructions:
+        'Pulsa Espacio o Intro para recoger un criterio de ordenación. Usa las flechas arriba y abajo para moverlo. Pulsa Espacio o Intro para soltarlo, o Escape para cancelar.',
+      dragOutside:
+        'El criterio está fuera del área de destino. Pulsa Escape para cancelar.',
+      dragStarted: (label, position, total) =>
+        `Se ha recogido ${label}, posición ${position} de ${total}.`,
+      dragMoved: (label, position, total) =>
+        `Se ha movido ${label} a la posición ${position} de ${total}.`,
+      dragDropped: (label, position, total) =>
+        `Se ha soltado ${label} en la posición ${position} de ${total}.`,
+      dragCancelled: (label) => `Se ha cancelado el movimiento de ${label}.`,
+    },
+    columns: {
+      label: 'Mostrar columnas',
+      search: 'Buscar columnas...',
+      empty: 'No se encontraron columnas.',
+    },
+  },
   pagination: { pageJump: 'Ir a la página' },
   toolbar: {
     refresh: 'Actualizar',
@@ -597,10 +865,10 @@ export const BUILTIN_LOCALES: Record<string, AutoCrudLocale> = {
 // ─── Prop Type ───────────────────────────────────────────────────────────────
 
 type DeepPartial<T> = {
-  [P in keyof T]?: T[P] extends (...args: unknown[]) => unknown
+  [P in keyof T]?: NonNullable<T[P]> extends (...args: never[]) => unknown
     ? T[P]
-    : T[P] extends object
-      ? DeepPartial<T[P]>
+    : NonNullable<T[P]> extends object
+      ? DeepPartial<NonNullable<T[P]>>
       : T[P];
 };
 

@@ -2762,6 +2762,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         filterMode={tableConfig?.filterModes}
         search={searchConfig}
         toolbarExtra={refreshNodes}
+        locale={locale.tableControls}
         actions={tableRowActions}
         onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}

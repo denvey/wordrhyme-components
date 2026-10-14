@@ -176,6 +176,7 @@ interface AutoCrudTableStoryProps {
   fieldSearch?: boolean;
   nameFilter?: boolean;
   tableSearch?: false | { placeholder?: string };
+  locale?: AutoCrudTableProps<typeof storeTableSchema>['locale'];
   expandedRow?: NonNullable<
     AutoCrudTableProps<typeof storeTableSchema>['table']
   >['expandedRow'];
@@ -191,6 +192,7 @@ function AutoCrudTableStory({
     placeholder: 'Search stores...',
   },
   expandedRow,
+  locale = 'en-US',
 }: AutoCrudTableStoryProps) {
   const search = useLocationSearch();
   const [allRows, setAllRows] = useState(tableRows);
@@ -432,7 +434,7 @@ function AutoCrudTableStory({
           ),
         },
       ]}
-      locale="en-US"
+      locale={locale}
     />
   );
 }
@@ -510,6 +512,21 @@ export const Basic: Story = {
       await expect(await page.findByRole('dialog')).toHaveTextContent('Edit');
       await expect(page.getByDisplayValue('North Store')).toBeInTheDocument();
       await userEvent.click(page.getByRole('button', { name: 'Cancel' }));
+    });
+  },
+};
+
+export const LocalizedControls: Story = {
+  args: { locale: 'zh-CN' },
+  play: async ({ canvasElement, step }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+
+    await step('localizes sorting and column visibility', async () => {
+      await userEvent.click(canvas.getByRole('button', { name: '排序' }));
+      await expect(page.getByRole('button', { name: '添加排序' })).toBeInTheDocument();
+      await userEvent.click(canvas.getByRole('combobox', { name: '列设置' }));
+      await expect(page.getByPlaceholderText('搜索列...')).toBeInTheDocument();
     });
   },
 };
