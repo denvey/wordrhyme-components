@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.11.1
+
+### Patch Changes
+
+- 65fe0bf: Move the refresh action between sorting and column visibility in the table controls, preserve toolbar overrides, and omit empty top toolbars. Add an AutoTable toolbarExtra slot for controls in the same position.
+
 ## 1.11.0
 
 ### Minor Changes
