@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 2.0.3
+
+### Patch Changes
+
+- Publish a patch release to validate npm Trusted Publisher connections after repairing the workspace release workflow.
+
 ## 2.0.2
 
 ### Patch Changes
