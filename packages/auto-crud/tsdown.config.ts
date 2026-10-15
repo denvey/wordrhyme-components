@@ -41,6 +41,7 @@ export default defineConfig({
     '@tanstack/react-virtual',
     'lucide-react',
     'sonner',
+    'exceljs',
     'vaul',
     'cmdk',
     'date-fns',
