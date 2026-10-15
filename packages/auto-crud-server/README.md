@@ -1308,3 +1308,10 @@ const t = initTRPC
   .meta<Partial<CrudResourceMetadata> & { permission?: string }>()
   .create();
 ```
+
+
+## Optional batch counts
+
+Set `counts: true` on `createCrudRouter` to expose `counts({ queries })`. Each query has a unique `key` and the ordinary list `filters`, `joinOperator`, and optional `search`. A batch accepts 1–100 queries and returns `{ counts: { [key]: number } }` from one conditional aggregate SQL query.
+
+This route uses the list procedure, guard, scope, soft deletion and extension conditions. It does not load or enrich rows. Keep the supplied database scoped to the caller. Counts are disabled by default. If list middleware transforms filters or enforces additional visibility restrictions, supply the equivalent transformation through `middleware.counts({ ctx, input, next })` before opting in; row enrichment middleware is deliberately not executed.
