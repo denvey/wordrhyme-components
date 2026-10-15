@@ -63,16 +63,17 @@ jobs:
           # Release only the explicit .changeset entries committed with a change.
           AUTO_CHANGESET: false
 
-      - name: Ensure AutoCrud and its UI dependencies are published with OIDC
+      - name: Ensure all workspace releases are published with OIDC
         env:
           NODE_AUTH_TOKEN: ''
           NPM_TOKEN: ''
           NPM_CONFIG_PROVENANCE: 'true'
           npm_config_ignore_scripts: 'true'
         run: |
-          for PACKAGE_DIR in packages/shadcn packages/shadcn-ui packages/shadcn-formily packages/auto-crud; do
-            PACKAGE_NAME=$(node -p "require('./$PACKAGE_DIR/package.json').name")
-            PACKAGE_VERSION=$(node -p "require('./$PACKAGE_DIR/package.json').version")
+          PACKAGE_DIRS=$(pnpm -r --workspace-concurrency=1 --sort exec node -e 'const p=require("./package.json"); if(!p.private) console.log(process.cwd())')
+          while IFS= read -r PACKAGE_DIR; do
+            PACKAGE_NAME=$(node -p 'require(process.argv[1]).name' "$PACKAGE_DIR/package.json")
+            PACKAGE_VERSION=$(node -p 'require(process.argv[1]).version' "$PACKAGE_DIR/package.json")
             if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version --registry=https://registry.npmjs.org; then
               continue
             fi
@@ -92,7 +93,7 @@ jobs:
               fi
               sleep 30
             done
-          done
+          done <<< "$PACKAGE_DIRS"
 
       - name: Verify published AutoCrud dependency closure
         run: |
@@ -113,11 +114,3 @@ jobs:
           done
           echo "Published AutoCrud dependencies could not be resolved"
           exit 1
-
-      - name: Ensure workspace releases are published
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
-          # Dependencies are built above; concurrent prepublish hooks can remove them.
-          npm_config_ignore_scripts: 'true'
-        run: pnpm changeset publish
