@@ -29,7 +29,20 @@ function fixture(overrides: Record<string, unknown> = {}) {
   const execute = vi.fn(async (_query: string, _params: unknown[]) => ({
     rows: [[4, 2]],
   }));
-  const db = drizzle(execute);
+  const raw = drizzle(execute);
+  const db = Object.assign(raw, {
+    $counts: async (table: typeof tasks, filters: Record<string, unknown>) => {
+      const entries = Object.entries(filters);
+      const selection = Object.fromEntries(
+        entries.map(([, where], i) => [
+          `c${i}`,
+          sql<number>`count(*) filter (where ${where ?? sql`true`})::int`,
+        ]),
+      );
+      const [row] = await raw.select(selection).from(table);
+      return Object.fromEntries(entries.map(([key], i) => [key, row![`c${i}`]]));
+    },
+  });
   const guard = vi.fn(() => true);
   const enrichRows = vi.fn();
   const router = createCrudRouter({
@@ -47,7 +60,7 @@ function fixture(overrides: Record<string, unknown> = {}) {
   const caller = router.createCaller(ctx) as unknown as {
     counts(input: CountsInput): Promise<CountsResult>;
   };
-  return { caller, router, execute, guard, enrichRows };
+  return { caller, router, execute, guard, enrichRows, db };
 }
 
 describe('opt-in batch counts', () => {
@@ -74,6 +87,25 @@ describe('opt-in batch counts', () => {
     expect(f.guard).toHaveBeenCalledWith(expect.anything(), 'list');
     expect(f.enrichRows).not.toHaveBeenCalled();
     expect(f.router._def.procedures.counts.meta?.__crudOperation).toBe('list');
+  });
+
+  it('requires scoped batch support and never falls back to raw aggregation', async () => {
+    const f = fixture();
+    Reflect.deleteProperty(f.db, '$counts');
+    await expect(
+      f.caller.counts({ queries: [{ key: 'all', joinOperator: 'and' }] }),
+    ).rejects.toMatchObject({ code: 'PRECONDITION_FAILED' });
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it('rejects reserved object keys before querying', async () => {
+    const f = fixture();
+    for (const key of ['__proto__', 'constructor', 'prototype']) {
+      await expect(
+        f.caller.counts({ queries: [{ key, joinOperator: 'and' }] }),
+      ).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    }
+    expect(f.execute).not.toHaveBeenCalled();
   });
 
   it('requires opt-in and rejects duplicate keys or excessive batches', () => {

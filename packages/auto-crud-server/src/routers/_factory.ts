@@ -1313,7 +1313,16 @@ export const baseCountsInputSchema = z
       .array(
         baseListInputSchema
           .pick({ filters: true, search: true, joinOperator: true })
-          .extend({ key: z.string().trim().min(1).max(100) })
+          .extend({
+            key: z
+              .string()
+              .trim()
+              .min(1)
+              .max(100)
+              .refine((key) => !['__proto__', 'constructor', 'prototype'].includes(key), {
+                message: 'Count query key is reserved',
+              }),
+          })
           .strict(),
       )
       .min(1)
@@ -1714,23 +1723,23 @@ export function createCrudRouter<
               }) => {
                 await withGuard(ctx, 'list');
                 const count = async (batch: CountsInput): Promise<CountsResult> => {
-                  const selection: Record<string, SQL<number>> = {};
-                  for (const [index, query] of batch.queries.entries()) {
+                  if (typeof ctx.db.$counts !== 'function') {
+                    throw new TRPCError({
+                      code: 'PRECONDITION_FAILED',
+                      message:
+                        'Batch counts require a database provider with scoped $counts support',
+                    });
+                  }
+                  const conditions: Record<string, SQL | undefined> = Object.create(null);
+                  for (const query of batch.queries) {
                     const { where } = await queryWhere(ctx, {
                       ...query,
                       page: 1,
                       perPage: 1,
                     });
-                    selection[`c${index}`] =
-                      sql<number>`count(*) filter (where ${where ?? sql`true`})::int`;
+                    conditions[query.key] = where;
                   }
-                  // One database aggregate, no list rows, sorting, pagination or enrichment.
-                  const [row] = await ctx.db.select(selection).from(table);
-                  return {
-                    counts: Object.fromEntries(
-                      batch.queries.map((query, index) => [query.key, row[`c${index}`]]),
-                    ),
-                  };
+                  return { counts: await ctx.db.$counts(table, conditions) };
                 };
                 return m.counts
                   ? m.counts({
