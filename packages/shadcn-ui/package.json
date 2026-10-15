@@ -73,7 +73,7 @@
     "@iconify-json/fa": "catalog:prod",
     "@iconify-json/mdi": "catalog:prod",
     "@iconify/react": "catalog:prod",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@pixpilot/hash": "catalog:prod",
     "@pixpilot/string": "catalog:prod",
     "@radix-ui/react-direction": "^1.1.4",
@@ -88,12 +88,12 @@
     "@tiptap/starter-kit": "^3.22.3",
     "@wordrhyme/shadcn": "workspace:*",
     "class-variance-authority": "catalog:prod",
-    "dayjs": "^1.11.21",
+    "dayjs": "^1.11.23",
     "lucide-react": "catalog:prod",
     "next-themes": "catalog:prod",
     "pretty-bytes": "^7.1.0",
     "react-responsive": "^10.0.1",
-    "sonner": "2.0.7",
+    "sonner": "2.0.8",
     "zod": "catalog:prod"
   },
   "devDependencies": {
