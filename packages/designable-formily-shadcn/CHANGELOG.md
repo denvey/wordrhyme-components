@@ -1,5 +1,15 @@
 # @wordrhyme/designable-formily-shadcn
 
+## 0.2.10
+
+### Patch Changes
+
+- Updated dependencies
+  - @wordrhyme/designable-core@0.1.1
+  - @wordrhyme/designable-shared@0.1.1
+  - @wordrhyme/designable-formily-setters@0.1.1
+  - @wordrhyme/designable-react@0.1.1
+
 ## 0.2.9
 
 ### Patch Changes

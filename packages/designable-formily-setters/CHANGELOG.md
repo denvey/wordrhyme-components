@@ -1,5 +1,16 @@
 # @wordrhyme/designable-formily-setters
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies
+  - @wordrhyme/designable-core@0.1.1
+  - @wordrhyme/designable-react-settings-form@0.1.1
+  - @wordrhyme/designable-shared@0.1.1
+  - @wordrhyme/designable-formily-transformer@0.1.1
+  - @wordrhyme/designable-react@0.1.1
+
 ## 0.1.0
 
 ### Patch Changes

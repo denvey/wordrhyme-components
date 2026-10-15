@@ -1,5 +1,13 @@
 # @wordrhyme/designable-core
 
+## 0.1.1
+
+### Patch Changes
+
+- Publish a patch release to validate npm Trusted Publisher connections after repairing the workspace release workflow.
+- Updated dependencies
+  - @wordrhyme/designable-shared@0.1.1
+
 ## 0.1.0
 
 ### Patch Changes
