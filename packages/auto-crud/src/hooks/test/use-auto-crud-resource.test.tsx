@@ -1,4 +1,4 @@
-import { renderHook } from '@testing-library/react';
+import { cleanup, renderHook } from '@testing-library/react';
 import { keepPreviousData } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -105,6 +105,81 @@ function renderCreatedAtResourceHook(
     container.remove();
   };
 }
+
+describe('export results', () => {
+  const rows = [{ id: '1', status: 'draft' }];
+  const complete = { data: rows, total: 1, hasMore: false };
+
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/products?page=3&perPage=20&search=widget');
+  });
+
+  afterEach(cleanup);
+
+  it.each([undefined, complete])(
+    'rejects query errors even with cached data %j and allows retry',
+    async (cached) => {
+      const error = new Error('Export request failed');
+      const refetch = vi.fn().mockResolvedValueOnce({ data: cached, error });
+      const router = {
+        ...createRouter(),
+        export: { useQuery: vi.fn(() => ({ refetch })) },
+      };
+      const { result } = renderHook(() => useAutoCrudResource({ router, schema }));
+
+      await expect(result.current.handlers.export!()).rejects.toBe(error);
+      refetch.mockResolvedValueOnce({ data: complete, error: null });
+      await expect(result.current.handlers.export!()).resolves.toEqual(rows);
+    },
+  );
+
+  it.each(['query', 'fetcher'] as const)(
+    'validates completeness for the %s source',
+    async (source) => {
+      const refetch = vi.fn();
+      const exportFetcher = vi.fn();
+      const router = {
+        ...createRouter(),
+        export: { useQuery: vi.fn(() => ({ refetch })) },
+      };
+      const { result } = renderHook(() =>
+        useAutoCrudResource({
+          router,
+          schema,
+          options: source === 'fetcher' ? { exportFetcher } : undefined,
+        }),
+      );
+      const deliver = (data: unknown) => {
+        if (source === 'fetcher') exportFetcher.mockResolvedValueOnce(data);
+        else refetch.mockResolvedValueOnce({ data, error: null });
+      };
+
+      for (const incomplete of [
+        { data: rows, total: 2, hasMore: true },
+        { data: rows, total: 2, hasMore: false },
+        { data: rows, total: 1 },
+      ]) {
+        deliver(incomplete);
+        await expect(result.current.handlers.export!()).rejects.toThrow('incomplete');
+      }
+      deliver(undefined);
+      await expect(result.current.handlers.export!()).rejects.toThrow('no data');
+      deliver({ data: [], total: 0, hasMore: false });
+      await expect(result.current.handlers.export!()).resolves.toEqual([]);
+      deliver(complete);
+      await expect(result.current.handlers.export!()).resolves.toEqual(rows);
+
+      if (source === 'fetcher') {
+        expect(refetch).not.toHaveBeenCalled();
+        expect(exportFetcher).toHaveBeenLastCalledWith(
+          expect.objectContaining({ search: 'widget' }),
+        );
+        expect(exportFetcher.mock.lastCall?.[0]).not.toHaveProperty('page');
+        expect(exportFetcher.mock.lastCall?.[0]).not.toHaveProperty('perPage');
+      }
+    },
+  );
+});
 
 describe('useAutoCrudResource', () => {
   let cleanup: (() => void) | undefined;

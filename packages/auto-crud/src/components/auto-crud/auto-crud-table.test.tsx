@@ -2729,6 +2729,57 @@ describe('optional export delivery', () => {
     vi.restoreAllMocks();
   });
 
+  it.each([false, true])(
+    'excludes generated expansion controls while preserving business columns (collision: %s)',
+    async (collision) => {
+      const onExport = vi.fn().mockResolvedValue(undefined);
+      render(
+        <AutoCrudTable
+          id="export-test"
+          schema={schema}
+          resource={{
+            ...createResource(),
+            schema: collision ? schema.extend({ expand: z.string().optional() }) : schema,
+          }}
+          onExport={onExport}
+          table={{ getRowId: (row) => row.id, expandedRow: () => <span>Details</span> }}
+        />,
+      );
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+      await act(async () => {
+        await context.exportData!();
+      });
+
+      const columns = onExport.mock.calls[0]![0].columns;
+      expect(columns.map((column: { id: string }) => column.id)).toEqual([
+        'id',
+        'spuId',
+        'region',
+        'countries',
+        'tags',
+        ...(collision ? ['expand'] : []),
+      ]);
+    },
+  );
+
+  it('reports default CSV query failures without downloading', async () => {
+    const notify = vi.spyOn(toast, 'error').mockReturnValue('export-error');
+    const download = vi.spyOn(exportUtils, 'exportAllToCSV').mockImplementation(() => {});
+    render(
+      <AutoCrudTable
+        schema={schema}
+        locale="en-US"
+        resource={createResource({
+          exportHandler: vi.fn().mockRejectedValue(new Error('Export request failed')),
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Export request failed'));
+    expect(download).not.toHaveBeenCalled();
+    expect(context.isExporting).toBe(false);
+  });
+
   it('snapshots visible localized columns before fetching, preserves raw rows, and deduplicates', async () => {
     let finish!: (rows: Row[]) => void;
     const exportHandler = vi.fn(

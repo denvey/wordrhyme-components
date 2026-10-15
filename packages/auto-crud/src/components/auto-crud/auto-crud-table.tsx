@@ -2710,7 +2710,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           size="sm"
           onClick={
             overrides?.onClick ??
-            (onExport && !ownerExportAction?.onClick
+            (!ownerExportAction?.onClick
               ? () => {
                   void toolbarExportData?.().catch(reportExportError);
                 }

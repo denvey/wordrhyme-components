@@ -16,6 +16,7 @@ export function getVisibleExportColumns<TData>(
     .filter((column) => {
       if (excluded.has(column.id)) return false;
       const meta = column.columnDef.meta;
+      if (meta?.autoCrudExpandColumn) return false;
       const classes = [meta?.classNames?.th, meta?.classNames?.td];
       return !classes.some(
         (value) => typeof value === 'string' && /(?:^|\s)!?hidden!?(?:\s|$)/.test(value),

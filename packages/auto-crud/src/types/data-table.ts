@@ -34,6 +34,8 @@ declare module '@tanstack/react-table' {
   interface ColumnMeta<TData extends RowData, TValue> {
     label?: string;
     index?: number;
+    /** @internal Identifies the generated row expansion control, regardless of its id. */
+    autoCrudExpandColumn?: boolean;
     /** 按元素分组的列类名，优先于全局单元格类名 */
     classNames?: Pick<DataTableClassNames, 'th' | 'td'>;
     placeholder?: string;

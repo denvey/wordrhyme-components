@@ -250,6 +250,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       }
       result.unshift({
         id: expandColumnId,
+        meta: { autoCrudExpandColumn: true },
         header: () => <span className="sr-only">Row details</span>,
         cell: ({ row }) => (
           <Button
