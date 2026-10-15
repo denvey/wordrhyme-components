@@ -9,7 +9,11 @@ import {
   FileSpreadsheetIcon,
   ListFilterIcon,
 } from 'lucide-react';
-import { getExpandedRowModel, type TableOptions } from '@tanstack/react-table';
+import {
+  getExpandedRowModel,
+  type TableOptions,
+  type Table,
+} from '@tanstack/react-table';
 import { DataTable, type DataTableProps } from '@/components/data-table/data-table';
 import { DataTableFilterList } from '@/components/data-table/data-table-filter-list';
 import { DataTableFilterMenu } from '@/components/data-table/data-table-filter-menu';
@@ -141,6 +145,8 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
   onSelectedCountChange?: (count: number) => void;
   /** 选中行数据变化回调（用于外层组件获知选中行身份变化） */
   onSelectedRowsChange?: (rows: z.infer<T>[]) => void;
+  /** @internal Supplies the current table for opt-in export snapshots. */
+  exportTableRef?: React.MutableRefObject<Table<z.infer<T>> | null>;
   /** 获取选中行数据的回调（由外层组件调用） */
   getSelectedRows?: React.MutableRefObject<(() => z.infer<T>[]) | null>;
 }
@@ -177,6 +183,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   onSelectedCountChange,
   onSelectedRowsChange,
   getSelectedRows,
+  exportTableRef,
 }: AutoTableProps<T>) {
   if (expandedRow && !getRowId) {
     throw new Error('AutoTable requires getRowId when expandedRow is provided.');
@@ -243,6 +250,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       }
       result.unshift({
         id: expandColumnId,
+        meta: { autoCrudExpandColumn: true },
         header: () => <span className="sr-only">Row details</span>,
         cell: ({ row }) => (
           <Button
@@ -330,6 +338,14 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       };
     });
   }, [table, filterOnly]);
+
+  useEffect(() => {
+    if (!exportTableRef) return;
+    exportTableRef.current = table;
+    return () => {
+      exportTableRef.current = null;
+    };
+  }, [table, exportTableRef]);
 
   const rowSelection = table.getState().rowSelection;
   const columnFilters = table.getState().columnFilters;

@@ -825,18 +825,26 @@ export function useAutoCrudResource<
   // Handlers: Export — 导出筛选结果
   // 优先级：exportFetcher（自定义） > router.export（自动检测）
   const handleExport = useCallback(async (): Promise<Record<string, unknown>[]> => {
+    let result;
     // 优先使用自定义 exportFetcher
     if (exportFetcher) {
       const { page: _p, perPage: _pp, ...exportParams } = queryInput ?? {};
-      const result = await exportFetcher(exportParams);
-      return (result?.data ?? []) as Record<string, unknown>[];
+      result = await exportFetcher(exportParams);
+    } else if (exportQuery) {
+      const response = await exportQuery.refetch();
+      if (response.error) throw response.error;
+      result = response.data;
+    } else {
+      throw new Error('Export not supported');
     }
-    // 自动检测 router.export
-    if (exportQuery) {
-      const result = await exportQuery.refetch();
-      return (result?.data?.data ?? []) as Record<string, unknown>[];
+
+    if (!result || !Array.isArray(result.data)) {
+      throw new Error('Export returned no data. Please retry.');
     }
-    throw new Error('Export not supported');
+    if (result.hasMore !== false || result.total > result.data.length) {
+      throw new Error('Export results are incomplete. Narrow your filters and retry.');
+    }
+    return result.data as Record<string, unknown>[];
   }, [exportFetcher, exportQuery, queryInput]);
 
   const canExport = !!(exportFetcher || exportQuery);

@@ -2,7 +2,7 @@
 
 import type { TablePaginationOptions } from '@/types/data-table';
 
-import type { CellContext, ColumnMeta } from '@tanstack/react-table';
+import type { CellContext, ColumnMeta, Table } from '@tanstack/react-table';
 import type { z } from 'zod';
 import type {
   AutoCrudQueryCapabilities,
@@ -47,9 +47,14 @@ import { Badge } from '@wordrhyme/shadcn';
 import { ImportDialog } from './import-dialog';
 import type { ExportMode } from './export-dialog';
 import { Download, Loader2, RefreshCw, Upload } from 'lucide-react';
-import { exportAllToCSV, getExportColumnIds } from '@/lib/export';
+import {
+  exportAllToCSV,
+  getExportColumnIds,
+  getVisibleExportColumns,
+} from '@/lib/export';
 import { getDefaultSortingForSchema } from '@/lib/default-sorting';
 import * as React from 'react';
+import { toast } from 'sonner';
 import { type LocaleProp, resolveLocale } from '@/i18n/locale';
 import {
   dataSources,
@@ -512,9 +517,17 @@ function resolveToolbarActionsWithResolver(
     : ownerActions;
 }
 
-/**
- * AutoCrudTable Props 接口
- */
+function reportExportError(error: unknown): void {
+  toast.error(error instanceof Error ? error.message : String(error));
+}
+
+/** Unformatted rows without denied fields, and visible localized business columns. */
+export interface AutoCrudExportContext {
+  mode: 'selected' | 'filtered';
+  rows: Record<string, unknown>[];
+  columns: Array<{ id: string; label: string }>;
+}
+
 export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> {
   /** Public CRUD id. Used by hosts to document the extension target. */
   id?: string;
@@ -638,6 +651,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
    * 如果提供，将覆盖默认的打开新建弹窗行为
    */
   onCreate?: () => void;
+  /** Owns export delivery when supplied. Rejections propagate without CSV fallback. */
+  onExport?: (context: AutoCrudExportContext) => Promise<void>;
 }
 
 function applyResourceTablePresentation(
@@ -2206,6 +2221,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   toolbarActions,
   locale: localeProp,
   onCreate,
+  onExport,
 }: AutoCrudTableProps<TSchema>) {
   const locale = resolveLocale(localeProp);
   const getPagination = React.useCallback(
@@ -2247,6 +2263,8 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const [importOpen, setImportOpen] = React.useState(false);
   const [selectedRows, setSelectedRows] = React.useState<z.output<TSchema>[]>([]);
   const [exporting, setExporting] = React.useState(false);
+  const exportBusyRef = React.useRef(false);
+  const exportTableRef = React.useRef<Table<z.output<TSchema>> | null>(null);
   const getSelectedRowsRef = React.useRef<(() => z.output<TSchema>[]) | null>(null);
   const dynamicFilterOptions = useDynamicFilterOptions(resolvedFields);
   const filterOnly = React.useMemo(
@@ -2365,6 +2383,36 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   // 导出处理（支持选中/筛选两种模式）
   const handleExport = React.useCallback(
     async (mode: ExportMode) => {
+      if (onExport) {
+        if (exportBusyRef.current || !exportTableRef.current) return;
+        exportBusyRef.current = true;
+        setExporting(true);
+        try {
+          // Capture order, visibility and localized labels before fetching any rows.
+          const denied = new Set(denyFields);
+          const columns = getVisibleExportColumns(exportTableRef.current, denyFields);
+          const rows =
+            mode === 'selected'
+              ? getSelectedRowsRef.current?.()
+              : await resource.handlers.export?.();
+          if (!rows || (mode === 'selected' && rows.length === 0)) return;
+          await onExport({
+            mode,
+            rows: denied.size
+              ? rows.map((row) =>
+                  Object.fromEntries(
+                    Object.entries(row).filter(([key]) => !denied.has(key)),
+                  ),
+                )
+              : rows,
+            columns,
+          });
+        } finally {
+          exportBusyRef.current = false;
+          setExporting(false);
+        }
+        return;
+      }
       const filename = title ?? 'export';
       const excludeColumns = denyFields;
 
@@ -2386,20 +2434,33 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         );
       }
     },
-    [resource.handlers.export, title, denyFields, resolvedFields],
+    [resource.handlers.export, title, denyFields, resolvedFields, onExport],
   );
 
   // 导出按钮点击：根据选中状态智能判断导出模式
   const handleExportClick = React.useCallback(async () => {
     const mode: ExportMode = selectedCount > 0 ? 'selected' : 'filtered';
+    if (onExport) return handleExport(mode);
     setExporting(true);
     try {
       await handleExport(mode);
     } finally {
       setExporting(false);
     }
-  }, [selectedCount, handleExport]);
+  }, [selectedCount, handleExport, onExport]);
   const exportBatchActions = React.useMemo(() => {
+    if (onExport) {
+      return registryBatchActions.map((action) =>
+        action.type === 'export' && action.onClick === undefined && !action.component
+          ? {
+              ...action,
+              onClick: () => {
+                void handleExport('selected').catch(reportExportError);
+              },
+            }
+          : action,
+      );
+    }
     if (!Object.values(resolvedFields).some((field) => field.format)) {
       return registryBatchActions;
     }
@@ -2429,7 +2490,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         },
       } satisfies BatchActionItem<z.output<TSchema>>;
     });
-  }, [registryBatchActions, resolvedFields, denyFields]);
+  }, [registryBatchActions, resolvedFields, denyFields, onExport, handleExport]);
   const toolbarRefresh = React.useMemo<AutoCrudToolbarContext['refresh']>(() => {
     const refresh = ownerRefreshAction?.onClick ?? resource.handlers.refresh;
     if (!refresh) return undefined;
@@ -2647,7 +2708,14 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           key="export"
           variant="outline"
           size="sm"
-          onClick={overrides?.onClick ?? toolbarExportData}
+          onClick={
+            overrides?.onClick ??
+            (!ownerExportAction?.onClick
+              ? () => {
+                  void toolbarExportData?.().catch(reportExportError);
+                }
+              : toolbarExportData)
+          }
           disabled={exporting || (selectedCount === 0 && !resource.handlers.export)}
         >
           {exporting ? (
@@ -2774,6 +2842,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         initialSorting={defaultSort}
         onSelectedRowsChange={handleSelectedRowsChange}
         getSelectedRows={getSelectedRowsRef}
+        {...(onExport ? { exportTableRef } : {})}
       />
 
       {/* Custom row dialogs outlive their source menu and row. */}

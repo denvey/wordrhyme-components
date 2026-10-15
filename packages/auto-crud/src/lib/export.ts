@@ -1,6 +1,37 @@
 import type { Table } from '@tanstack/react-table';
 import { dataToCSV } from './import';
 
+/** Snapshot rendered business columns without changing the legacy CSV column policy. */
+export function getVisibleExportColumns<TData>(
+  table: Table<TData>,
+  deny: readonly string[] = [],
+): Array<{ id: string; label: string }> {
+  const excluded = new Set(['select', 'actions', ...deny]);
+  // Match getHeaderGroups()/row.getVisibleCells(): left, center, then right pins.
+  return [
+    ...table.getLeftVisibleLeafColumns(),
+    ...table.getCenterVisibleLeafColumns(),
+    ...table.getRightVisibleLeafColumns(),
+  ]
+    .filter((column) => {
+      if (excluded.has(column.id)) return false;
+      const meta = column.columnDef.meta;
+      if (meta?.autoCrudExpandColumn) return false;
+      const classes = [meta?.classNames?.th, meta?.classNames?.td];
+      return !classes.some(
+        (value) => typeof value === 'string' && /(?:^|\s)!?hidden!?(?:\s|$)/.test(value),
+      );
+    })
+    .map((column) => ({
+      id: column.id,
+      label:
+        column.columnDef.meta?.label ??
+        (typeof column.columnDef.header === 'string'
+          ? column.columnDef.header
+          : column.id),
+    }));
+}
+
 export function getExportColumnIds<TData>(table: Table<TData>): string[] {
   return table
     .getAllLeafColumns()

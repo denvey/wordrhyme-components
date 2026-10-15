@@ -7,6 +7,7 @@ export type {
   Fields,
   FilterConfig,
   AutoCrudTableProps,
+  AutoCrudExportContext,
   ActionItem,
   ActionConfig,
   AutoCrudActionConfig,
@@ -195,6 +196,7 @@ export {
 } from './lib/import';
 export type { ParsedImportData } from './lib/import';
 export { exportTableToCSV, exportAllToCSV, downloadCSVTemplate } from './lib/export';
+export { exportWorkbook, type WorkbookSheet } from './lib/workbook';
 
 // Types
 export type * from './types/data-table';

@@ -10,6 +10,8 @@ import {
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { DropdownMenuItem } from '@wordrhyme/ui';
+import { toast } from 'sonner';
+import * as exportUtils from '@/lib/export';
 import type {
   AutoCrudQueryCapabilities,
   UseAutoCrudResourceReturn,
@@ -2707,5 +2709,296 @@ describe('AutoCrudTable expandedRow', () => {
     expect(screen.queryByTestId('details-order-001')).toBeNull();
     expect(screen.getByTestId('details-order-002')).toBeTruthy();
     expect(buttons[0]!.getAttribute('aria-expanded')).toBe('false');
+  });
+});
+
+describe('optional export delivery', () => {
+  let context: AutoCrudToolbarContext;
+
+  beforeEach(() => {
+    window.history.replaceState({}, '', '/');
+    setToolbarResolver((_id, actions, value) => {
+      context = value;
+      return [...actions];
+    });
+  });
+
+  afterEach(() => {
+    cleanup();
+    setToolbarResolver(null);
+    vi.restoreAllMocks();
+  });
+
+  it.each([false, true])(
+    'excludes generated expansion controls while preserving business columns (collision: %s)',
+    async (collision) => {
+      const onExport = vi.fn().mockResolvedValue(undefined);
+      render(
+        <AutoCrudTable
+          id="export-test"
+          schema={schema}
+          resource={{
+            ...createResource(),
+            schema: collision ? schema.extend({ expand: z.string().optional() }) : schema,
+          }}
+          onExport={onExport}
+          table={{ getRowId: (row) => row.id, expandedRow: () => <span>Details</span> }}
+        />,
+      );
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+      await act(async () => {
+        await context.exportData!();
+      });
+
+      const columns = onExport.mock.calls[0]![0].columns;
+      expect(columns.map((column: { id: string }) => column.id)).toEqual([
+        'id',
+        'spuId',
+        'region',
+        'countries',
+        'tags',
+        ...(collision ? ['expand'] : []),
+      ]);
+    },
+  );
+
+  it('reports default CSV query failures without downloading', async () => {
+    const notify = vi.spyOn(toast, 'error').mockReturnValue('export-error');
+    const download = vi.spyOn(exportUtils, 'exportAllToCSV').mockImplementation(() => {});
+    render(
+      <AutoCrudTable
+        schema={schema}
+        locale="en-US"
+        resource={createResource({
+          exportHandler: vi.fn().mockRejectedValue(new Error('Export request failed')),
+        })}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Export' }));
+    await waitFor(() => expect(notify).toHaveBeenCalledWith('Export request failed'));
+    expect(download).not.toHaveBeenCalled();
+    expect(context.isExporting).toBe(false);
+  });
+
+  it('snapshots visible localized columns before fetching, preserves raw rows, and deduplicates', async () => {
+    let finish!: (rows: Row[]) => void;
+    const exportHandler = vi.fn(
+      () =>
+        new Promise<Row[]>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const onExport = vi.fn().mockResolvedValue(undefined);
+    const resource = createResource({ exportHandler });
+    const props = {
+      id: 'export-test',
+      schema,
+      resource,
+      onExport,
+      permissions: { deny: ['spuId'] },
+      fields: {
+        region: {
+          label: '地区',
+          table: { index: 0, header: () => 'Custom region header' },
+          format: () => 'formatted',
+        },
+        id: { table: { index: 1, label: '编号' } },
+        countries: { table: false as const },
+        tags: { table: { classNames: { th: 'hidden', td: 'hidden' } } },
+      },
+    };
+    const { rerender } = render(<AutoCrudTable {...props} />);
+    let pending!: Promise<void>;
+    act(() => {
+      pending = context.exportData!();
+    });
+    await act(async () => {
+      await context.exportData!();
+    });
+    expect(exportHandler).toHaveBeenCalledTimes(1);
+    expect(context.isExporting).toBe(true);
+    rerender(<AutoCrudTable {...props} fields={{ region: { table: false } }} />);
+    const rows = [{ id: '2', region: 'east', spuId: 'denied' }];
+    await act(async () => {
+      finish(rows);
+      await pending;
+    });
+    expect(onExport).toHaveBeenCalledWith({
+      mode: 'filtered',
+      rows: [{ id: '2', region: 'east' }],
+      columns: [
+        { id: 'region', label: '地区' },
+        { id: 'id', label: '编号' },
+      ],
+    });
+    expect(context.isExporting).toBe(false);
+    expect(rows[0]?.spuId).toBe('denied');
+  });
+
+  it('routes toolbar and built-in batch export to selected raw rows', async () => {
+    const exportHandler = vi
+      .fn()
+      .mockRejectedValue(new Error('Must not fetch selected rows'));
+    const rows = [{ id: '1', region: 'west', spuId: 'denied' }];
+    const onExport = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AutoCrudTable
+        id="export-test"
+        schema={schema}
+        resource={createResource({ exportHandler, data: rows })}
+        permissions={{ deny: ['spuId'] }}
+        onExport={onExport}
+        actions={{ batch: [{ type: 'export', label: 'Batch export' }] }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+    await waitFor(() => expect(context.selectedCount).toBe(1));
+    await act(async () => {
+      await context.exportData!();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Batch export' }));
+    await waitFor(() => expect(onExport).toHaveBeenCalledTimes(2));
+    for (const [value] of onExport.mock.calls) {
+      expect(value.mode).toBe('selected');
+      expect(value.rows).toEqual([{ id: '1', region: 'west' }]);
+      expect(value.columns.some((column: { id: string }) => column.id === 'spuId')).toBe(
+        false,
+      );
+    }
+    expect(exportHandler).not.toHaveBeenCalled();
+    expect(rows[0]?.spuId).toBe('denied');
+  });
+
+  it.each(['fetch', 'callback', 'selected callback'])(
+    'resets busy and propagates %s errors without a download',
+    async (failure) => {
+      const error = new Error('Export failed');
+      const exportHandler = vi.fn().mockResolvedValue([{ id: '1' }]);
+      const onExport = vi.fn().mockResolvedValue(undefined);
+      if (failure === 'fetch') exportHandler.mockRejectedValueOnce(error);
+      else onExport.mockRejectedValueOnce(error);
+      const download = vi
+        .spyOn(HTMLAnchorElement.prototype, 'click')
+        .mockImplementation(() => {});
+      render(
+        <AutoCrudTable
+          id="export-test"
+          schema={schema}
+          resource={createResource({ exportHandler })}
+          onExport={onExport}
+        />,
+      );
+      if (failure === 'selected callback') {
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+        await waitFor(() => expect(context.selectedCount).toBe(1));
+      }
+      await act(async () => {
+        await expect(context.exportData!()).rejects.toBe(error);
+      });
+      expect(context.isExporting).toBe(false);
+      expect(download).not.toHaveBeenCalled();
+      await act(async () => {
+        await context.exportData!();
+      });
+      expect(context.isExporting).toBe(false);
+      expect(onExport).toHaveBeenCalledTimes(failure === 'fetch' ? 1 : 2);
+      if (failure === 'selected callback') expect(exportHandler).not.toHaveBeenCalled();
+      expect(download).not.toHaveBeenCalled();
+    },
+  );
+
+  it('keeps the legacy raw CSV payload and options when the callback is absent', async () => {
+    const download = vi.spyOn(exportUtils, 'exportAllToCSV').mockImplementation(() => {});
+    const rows = [{ id: '1', region: 'west', spuId: 'private' }];
+    render(
+      <AutoCrudTable
+        id="export-test"
+        title="Legacy"
+        schema={schema}
+        resource={createResource({
+          data: rows,
+          exportHandler: vi.fn().mockResolvedValue(rows),
+        })}
+        permissions={{ deny: ['spuId'] }}
+        fields={{ region: { table: false } }}
+      />,
+    );
+    await act(async () => {
+      await context.exportData!();
+    });
+    expect(download).toHaveBeenLastCalledWith(rows, {
+      filename: 'Legacy',
+      excludeColumns: ['spuId'],
+    });
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+    await act(async () => {
+      await context.exportData!();
+    });
+    expect(download).toHaveBeenCalledTimes(2);
+    expect(download).toHaveBeenLastCalledWith(rows, {
+      filename: 'Legacy',
+      excludeColumns: ['spuId'],
+    });
+  });
+
+  it('handles rejected button exports without downloading and keeps batch/toolbar mutually exclusive', async () => {
+    let reject!: (error: Error) => void;
+    const onExport = vi.fn(
+      () =>
+        new Promise<void>((_resolve, fail) => {
+          reject = fail;
+        }),
+    );
+    const notify = vi.spyOn(toast, 'error').mockReturnValue('export-error');
+    const download = vi.spyOn(exportUtils, 'exportAllToCSV').mockImplementation(() => {});
+    render(
+      <AutoCrudTable
+        id="export-test"
+        schema={schema}
+        resource={createResource()}
+        onExport={onExport}
+        actions={{ batch: [{ type: 'export', label: 'Batch export' }] }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+    await waitFor(() => expect(context.selectedCount).toBe(1));
+    fireEvent.click(screen.getByRole('button', { name: 'Batch export' }));
+    await act(async () => {
+      await context.exportData!();
+    });
+    expect(onExport).toHaveBeenCalledTimes(1);
+    expect(context.isExporting).toBe(true);
+    await act(async () => {
+      reject(new Error('Delivery failed'));
+    });
+    expect(notify).toHaveBeenCalledWith('Delivery failed');
+    expect(context.isExporting).toBe(false);
+    expect(download).not.toHaveBeenCalled();
+  });
+
+  it('preserves owner toolbar and batch export overrides when opted in', async () => {
+    const ownerToolbar = vi.fn();
+    const ownerBatch = vi.fn();
+    const onExport = vi.fn().mockResolvedValue(undefined);
+    render(
+      <AutoCrudTable
+        id="export-test"
+        schema={schema}
+        resource={createResource()}
+        onExport={onExport}
+        actions={{
+          toolbar: [{ type: 'export', onClick: ownerToolbar }],
+          batch: [{ type: 'export', label: 'Owner batch', onClick: ownerBatch }],
+        }}
+      />,
+    );
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Select row' }));
+    await act(async () => {
+      await context.exportData!();
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Owner batch' }));
+    expect(ownerToolbar).toHaveBeenCalledTimes(1);
+    expect(ownerBatch).toHaveBeenCalledTimes(1);
+    expect(onExport).not.toHaveBeenCalled();
   });
 });
