@@ -63,41 +63,36 @@ jobs:
           # Release only the explicit .changeset entries committed with a change.
           AUTO_CHANGESET: false
 
-      - name: Ensure AutoCrud is published with OIDC
-        continue-on-error: true
+      - name: Ensure AutoCrud and its UI dependencies are published with OIDC
         env:
           NODE_AUTH_TOKEN: ''
           NPM_TOKEN: ''
           NPM_CONFIG_PROVENANCE: 'true'
           npm_config_ignore_scripts: 'true'
         run: |
-          PACKAGE_VERSION=$(node -p "require('./packages/auto-crud/package.json').version")
-          if npm view "@wordrhyme/auto-crud@$PACKAGE_VERSION" version --registry=https://registry.npmjs.org; then
-            exit 0
-          fi
-          # pnpm rewrites workspace dependencies; npm 11 provides OIDC publishing.
-          pnpm --filter @wordrhyme/auto-crud pack --pack-destination "$RUNNER_TEMP"
-          "$RUNNER_TEMP/npm-global/bin/npm" publish "$RUNNER_TEMP/wordrhyme-auto-crud-$PACKAGE_VERSION.tgz" \
-            --access public --provenance --ignore-scripts --registry=https://registry.npmjs.org
-          # Wait for registry visibility before the recovery publisher checks versions.
-          for attempt in $(seq 1 20); do
-            if npm view "@wordrhyme/auto-crud@$PACKAGE_VERSION" version --registry=https://registry.npmjs.org; then
-              exit 0
+          for PACKAGE_DIR in packages/shadcn packages/shadcn-ui packages/shadcn-formily packages/auto-crud; do
+            PACKAGE_NAME=$(node -p "require('./$PACKAGE_DIR/package.json').name")
+            PACKAGE_VERSION=$(node -p "require('./$PACKAGE_DIR/package.json').version")
+            if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version --registry=https://registry.npmjs.org; then
+              continue
             fi
-            if [ "$attempt" -lt 20 ]; then
+            # pnpm rewrites workspace dependencies; npm 11 provides OIDC publishing.
+            pnpm --filter "$PACKAGE_NAME" pack --pack-destination "$RUNNER_TEMP"
+            TARBALL_NAME="${PACKAGE_NAME#@}"
+            "$RUNNER_TEMP/npm-global/bin/npm" publish "$RUNNER_TEMP/${TARBALL_NAME//\//-}-$PACKAGE_VERSION.tgz" \
+              --access public --provenance --ignore-scripts --registry=https://registry.npmjs.org
+            # Wait for registry visibility before publishing dependent packages.
+            for attempt in $(seq 1 20); do
+              if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version --registry=https://registry.npmjs.org; then
+                break
+              fi
+              if [ "$attempt" -eq 20 ]; then
+                echo "$PACKAGE_NAME@$PACKAGE_VERSION is not visible in the registry"
+                exit 1
+              fi
               sleep 30
-            fi
+            done
           done
-          echo "Published AutoCrud version is not visible in the registry"
-          exit 1
-
-      - name: Ensure workspace releases are published
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_CONFIG_PROVENANCE: 'true'
-          # Dependencies are built above; concurrent prepublish hooks can remove them.
-          npm_config_ignore_scripts: 'true'
-        run: pnpm changeset publish
 
       - name: Verify published AutoCrud dependency closure
         run: |
@@ -118,3 +113,11 @@ jobs:
           done
           echo "Published AutoCrud dependencies could not be resolved"
           exit 1
+
+      - name: Ensure workspace releases are published
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+          # Dependencies are built above; concurrent prepublish hooks can remove them.
+          npm_config_ignore_scripts: 'true'
+        run: pnpm changeset publish
