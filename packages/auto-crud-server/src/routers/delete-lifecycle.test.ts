@@ -29,10 +29,16 @@ type Caller = {
 // Query results are controlled independently of input to model scope/concurrent misses.
 function database(returnedIds = ['one', 'two']) {
   const state = { rows: structuredClone(rows) as Row[], effects: [] as string[] };
-  const queries: Array<{ kind: string; where: SQL; selection: unknown[] }> = [];
+  const queries: Array<{
+    kind: string;
+    where: SQL;
+    selection: unknown[];
+    lock?: string;
+  }> = [];
   function connection(data: typeof state) {
     function query(kind: string) {
       let where: SQL;
+      let lock: string | undefined;
       let values: Partial<Row> = {};
       const builder = {
         from: vi.fn(() => builder),
@@ -44,8 +50,12 @@ function database(returnedIds = ['one', 'two']) {
           values = value;
           return builder;
         }),
+        for: vi.fn((value: string) => {
+          lock = value;
+          return builder;
+        }),
         then: (resolve: (result: Row[]) => unknown) => {
-          queries.push({ kind, where, selection: [] });
+          queries.push({ kind, where, selection: [], lock });
           return Promise.resolve(
             data.rows
               .filter((row) => row.tenant === 'allowed')
@@ -174,6 +184,45 @@ describe('delete lifecycle', () => {
       { dispatch: 'hook', mode: 'effect', tx: db },
     );
     expectScope(queries, ['one', 'missing']);
+    expect(queries[0]?.lock).toBe('update');
+  });
+
+  it('limits soft deletion to the locked snapshot while retaining the original scope', async () => {
+    const { db, state, queries } = database(['one']);
+    state.rows = [structuredClone(rows[0]!)];
+    const emit = vi.fn().mockResolvedValue(undefined);
+
+    expect(await caller(db, { emit }, { soft: true }).deleteMany(['one', 'two'])).toEqual(
+      {
+        deleted: 1,
+      },
+    );
+
+    const [snapshot, update] = queries;
+    expect(snapshot?.kind).toBe('select');
+    expect(snapshot?.lock).toBe('update');
+    expect(update?.kind).toBe('update');
+    expectScope(queries, ['one', 'two']);
+    const sql = new PgDialect().sqlToQuery(update!.where);
+    expect(sql.sql.match(/"items"\."key" in/g)).toHaveLength(2);
+    expect(sql.params).toEqual(['allowed', 'one', 'two', 'one']);
+    expect(emit).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps soft deletion empty when no rows were locked', async () => {
+    const { db, state, queries } = database([]);
+    state.rows = [];
+    const emit = vi.fn();
+
+    expect(await caller(db, { emit }, { soft: true }).deleteMany(['one'])).toEqual({
+      deleted: 0,
+    });
+
+    expect(queries[0]?.lock).toBe('update');
+    const sql = new PgDialect().sqlToQuery(queries[1]!.where);
+    expect(sql.sql).toContain('false');
+    expectScope(queries, ['one']);
+    expect(emit).not.toHaveBeenCalled();
   });
 
   it.each([false, true])(

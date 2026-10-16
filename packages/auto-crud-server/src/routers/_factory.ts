@@ -2032,21 +2032,29 @@ export function createCrudRouter<
                 extraValues: null,
               },
               async (writeCtx) => {
-                const emitLifecycle = shouldWrapCrudLifecycleTransaction(writeCtx, config);
+                const emitLifecycle = shouldWrapCrudLifecycleTransaction(
+                  writeCtx,
+                  config,
+                );
                 // Soft-delete RETURNING contains the updated row, so preserve the
                 // pre-write snapshot for the existing delete lifecycle contract.
                 const existingRows: Record<string, unknown>[] =
                   emitLifecycle && softDelete
-                    ? await writeCtx.db.select().from(table).where(where!)
+                    ? await writeCtx.db.select().from(table).where(where!).for('update')
                     : [];
                 const existingById = new Map(
                   existingRows.map((row) => [row[idField], row]),
                 );
+                // Only update locked rows; later matches have no pre-write snapshot.
+                const deleteWhere =
+                  emitLifecycle && softDelete
+                    ? and(where, inArray(getIdColumn(), [...existingById.keys()]))
+                    : where;
                 const query = softDelete
                   ? writeCtx.db
                       .update(table)
                       .set({ [softDelete.column]: softDelete.getValue() })
-                      .where(where!)
+                      .where(deleteWhere!)
                   : writeCtx.db.delete(table).where(where!);
                 // Keep the lightweight projection when no lifecycle is configured.
                 const deleted: Record<string, unknown>[] = emitLifecycle
