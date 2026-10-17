@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.12.0
+
+### Minor Changes
+
+- fc4acd9: Publish the optional displayed-value export callback and lazy multi-sheet Excel workbook writer. Keep the existing CSV export behavior for consumers that do not opt in.
+
 ## 1.11.2
 
 ### Patch Changes
