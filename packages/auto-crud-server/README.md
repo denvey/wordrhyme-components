@@ -1309,7 +1309,6 @@ const t = initTRPC
   .create();
 ```
 
-
 ## Optional batch counts
 
 Set `counts: true` on `createCrudRouter` to expose `counts({ queries })`. Each query has a unique `key` and the ordinary list `filters`, `joinOperator`, and optional `search`. A batch accepts 1–100 queries and returns `{ counts: { [key]: number } }` from one conditional aggregate SQL query.
