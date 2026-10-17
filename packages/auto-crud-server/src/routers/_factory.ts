@@ -1974,6 +1974,12 @@ export function createCrudRouter<
                 } else {
                   [deleted] = await writeCtx.db.delete(table).where(where!).returning();
                 }
+                if (!deleted) {
+                  throw new TRPCError({
+                    code: 'NOT_FOUND',
+                    message: 'Resource not found or access denied',
+                  });
+                }
                 await emitCrudWriteLifecycle(writeCtx, config, 'delete', {
                   id: input,
                   row: deleted as Record<string, unknown> | undefined,
@@ -2015,23 +2021,60 @@ export function createCrudRouter<
           const where = buildWhere(ctx, 'deleteMany', idsCondition);
 
           // 核心删除逻辑
-          // Performance: 只返回 id 以减少数据传输
           const doDeleteMany = async (): Promise<{ deleted: number }> => {
-            if (softDelete) {
-              const deleted = await ctx.db
-                .update(table)
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .set({ [softDelete.column]: softDelete.getValue() } as any)
-                .where(where!)
-                .returning({ id: getIdColumn() });
-              return { deleted: deleted.length };
-            } else {
-              const deleted = await ctx.db
-                .delete(table)
-                .where(where!)
-                .returning({ id: getIdColumn() });
-              return { deleted: deleted.length };
-            }
+            return runCrudExtensionWriteTransaction(
+              ctx,
+              config,
+              {
+                data: {},
+                rawValues: { ids: input },
+                baseValues: {},
+                extraValues: null,
+              },
+              async (writeCtx) => {
+                const emitLifecycle = shouldWrapCrudLifecycleTransaction(
+                  writeCtx,
+                  config,
+                );
+                // Soft-delete RETURNING contains the updated row, so preserve the
+                // pre-write snapshot for the existing delete lifecycle contract.
+                const existingRows: Record<string, unknown>[] =
+                  emitLifecycle && softDelete
+                    ? await writeCtx.db.select().from(table).where(where!).for('update')
+                    : [];
+                const existingById = new Map(
+                  existingRows.map((row) => [row[idField], row]),
+                );
+                // Only update locked rows; later matches have no pre-write snapshot.
+                const deleteWhere =
+                  emitLifecycle && softDelete
+                    ? and(where, inArray(getIdColumn(), [...existingById.keys()]))
+                    : where;
+                const query = softDelete
+                  ? writeCtx.db
+                      .update(table)
+                      .set({ [softDelete.column]: softDelete.getValue() })
+                      .where(deleteWhere!)
+                  : writeCtx.db.delete(table).where(where!);
+                // Keep the lightweight projection when no lifecycle is configured.
+                const deleted: Record<string, unknown>[] = emitLifecycle
+                  ? await query.returning()
+                  : await query.returning({ id: getIdColumn() });
+
+                if (emitLifecycle) {
+                  for (const row of deleted) {
+                    const id = row[idField];
+                    await emitCrudWriteLifecycle(writeCtx, config, 'delete', {
+                      id,
+                      row,
+                      existing: softDelete ? existingById.get(id) : row,
+                      entityId: id,
+                    });
+                  }
+                }
+                return { deleted: deleted.length };
+              },
+            );
           };
 
           // middleware 模式
