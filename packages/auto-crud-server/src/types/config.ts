@@ -131,9 +131,18 @@ export interface ListInput {
   joinOperator: 'and' | 'or';
 }
 
-/**
- * 列表查询结果类型
- */
+/** Named filters for a single batch count. */
+export type CountQuery = Pick<ListInput, 'search' | 'filters' | 'joinOperator'> & {
+  key: string;
+};
+export interface CountsInput {
+  queries: CountQuery[];
+}
+export interface CountsResult {
+  counts: Record<string, number>;
+}
+
+/** 列表查询结果类型 */
 export interface ListResult<TSelect> {
   data: TSelect[];
   total: number;
@@ -440,6 +449,13 @@ export interface CrudMiddleware<
     params: ListMiddlewareParams<TContext, TSelect, TListInput>,
   ) => Promise<ListResult<TSelect>>;
 
+  /** Batch counts use list authorization, but do not run row enrichment. */
+  counts?: (params: {
+    ctx: TContext;
+    input: CountsInput;
+    next: (input?: CountsInput) => Promise<CountsResult>;
+  }) => Promise<CountsResult>;
+
   /**
    * 单条查询包装器
    */
@@ -644,6 +660,9 @@ export interface CrudRouterConfig<
    * - provider/function: explicitly use this provider.
    */
   extensions?: CrudExtensionsConfig<TContext>;
+
+  /** Opt in after supplying any list-specific filter transformations in middleware.counts. */
+  counts?: boolean;
 
   // ========== Schema 配置 ==========
 
@@ -908,6 +927,7 @@ export interface CrudRouterConfig<
 // ============================================================
 
 export interface CrudProcedures {
+  counts?: AnyProcedure;
   meta: AnyProcedure;
   list: AnyProcedure;
   get: AnyProcedure;

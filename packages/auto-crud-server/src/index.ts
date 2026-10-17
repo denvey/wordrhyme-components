@@ -15,6 +15,7 @@ export {
   baseExportInputSchema,
   baseGetInputSchema,
   baseListInputSchema,
+  baseCountsInputSchema,
   createCrudRouter,
 } from './routers/_factory';
 
@@ -60,6 +61,9 @@ export type {
   // Input/Output types
   GetInput,
   ListInput,
+  CountQuery,
+  CountsInput,
+  CountsResult,
   ListResult,
   ExportInput,
   ExportResult,

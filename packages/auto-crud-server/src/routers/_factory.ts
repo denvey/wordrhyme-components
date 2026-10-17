@@ -43,6 +43,8 @@ import type {
   GetInput,
   ListInput,
   ListResult,
+  CountsInput,
+  CountsResult,
   ExportInput,
   ExportResult,
   ImportInput,
@@ -1305,6 +1307,34 @@ function combineConditions(...conditions: Array<SQL | undefined>): SQL | undefin
 // createCrudRouter - 类型防火墙版
 // ============================================================
 
+export const baseCountsInputSchema = z
+  .object({
+    queries: z
+      .array(
+        baseListInputSchema
+          .pick({ filters: true, search: true, joinOperator: true })
+          .extend({
+            key: z
+              .string()
+              .trim()
+              .min(1)
+              .max(100)
+              .refine((key) => !['__proto__', 'constructor', 'prototype'].includes(key), {
+                message: 'Count query key is reserved',
+              }),
+          })
+          .strict(),
+      )
+      .min(1)
+      .max(100),
+  })
+  .strict()
+  .refine(
+    (input) =>
+      new Set(input.queries.map((query) => query.key)).size === input.queries.length,
+    { message: 'Count query keys must be unique' },
+  );
+
 /**
  * 创建 CRUD Router
  *
@@ -1601,6 +1631,57 @@ export function createCrudRouter<
     }
   };
 
+  const queryWhere = async (ctx: TContext, input: ListInput) => {
+    const effectiveInput = (await applyCrudExtensionFilters(
+      ctx,
+      config,
+      table,
+      idField,
+      filterableColumns,
+      searchColumns,
+      input,
+    )) as ListInput & CrudExtensionInput;
+    const validatedFilters = effectiveInput.filters?.filter((filter) =>
+      validateColumn(filter.id, filterableColumns),
+    );
+
+    const filterCondition = validatedFilters?.length
+      ? filterColumns({
+          table,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          filters: validatedFilters as any,
+          joinOperator: effectiveInput.joinOperator,
+          resolveColumn: (columnId) => {
+            const id = String(columnId);
+            if (id === idField) return getTableColumn(table, idField);
+            return resolveColumnTarget({
+              table,
+              columnId: id,
+              allowedColumns: filterableColumns,
+            });
+          },
+          resolveDateRange: (ctx as { resolveDateRange?: DateRangeResolver })
+            .resolveDateRange,
+        })
+      : undefined;
+
+    const searchCondition = buildCrudSearchWithExtensions(
+      table,
+      effectiveInput,
+      searchColumns,
+    );
+    const where = buildWhere(
+      ctx,
+      'list',
+      combineConditions(
+        combineExtensionFilter(filterCondition, effectiveInput),
+        searchCondition,
+      ),
+    );
+
+    return { effectiveInput, where };
+  };
+
   // ========== Procedures 定义 ==========
   const procedures = {
     meta: metaProcedure
@@ -1623,6 +1704,55 @@ export function createCrudRouter<
         );
       }),
 
+    ...(config.counts
+      ? {
+          counts: resolved
+            .procedureFactory('list')
+            .input(baseCountsInputSchema)
+            .output(
+              z.object({ counts: z.record(z.string(), z.number().int().nonnegative()) }),
+            )
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .query(
+              async ({
+                ctx,
+                input,
+              }: {
+                ctx: TContext & { db: any };
+                input: CountsInput;
+              }) => {
+                await withGuard(ctx, 'list');
+                const count = async (batch: CountsInput): Promise<CountsResult> => {
+                  if (typeof ctx.db.$counts !== 'function') {
+                    throw new TRPCError({
+                      code: 'PRECONDITION_FAILED',
+                      message:
+                        'Batch counts require a database provider with scoped $counts support',
+                    });
+                  }
+                  const conditions: Record<string, SQL | undefined> = Object.create(null);
+                  for (const query of batch.queries) {
+                    const { where } = await queryWhere(ctx, {
+                      ...query,
+                      page: 1,
+                      perPage: 1,
+                    });
+                    conditions[query.key] = where;
+                  }
+                  return { counts: await ctx.db.$counts(table, conditions) };
+                };
+                return m.counts
+                  ? m.counts({
+                      ctx,
+                      input,
+                      next: async (modified) => count(modified ?? input),
+                    })
+                  : count(input);
+              },
+            ),
+        }
+      : {}),
+
     // 列表查询
     list: resolved
       .procedureFactory('list')
@@ -1635,54 +1765,8 @@ export function createCrudRouter<
 
           // 核心查询逻辑
           const doList = async (listInput: ListInput): Promise<ListResult<TSelect>> => {
-            const effectiveInput = (await applyCrudExtensionFilters(
-              ctx,
-              config,
-              table,
-              idField,
-              filterableColumns,
-              searchColumns,
-              listInput,
-            )) as ListInput;
+            const { effectiveInput, where } = await queryWhere(ctx, listInput);
             const offset = (effectiveInput.page - 1) * effectiveInput.perPage;
-
-            const validatedFilters = effectiveInput.filters?.filter((filter) =>
-              validateColumn(filter.id, filterableColumns),
-            );
-
-            const filterCondition = validatedFilters?.length
-              ? filterColumns({
-                  table,
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                  filters: validatedFilters as any,
-                  joinOperator: effectiveInput.joinOperator,
-                  resolveColumn: (columnId) => {
-                    const id = String(columnId);
-                    if (id === idField) return getTableColumn(table, idField);
-                    return resolveColumnTarget({
-                      table,
-                      columnId: id,
-                      allowedColumns: filterableColumns,
-                    });
-                  },
-                  resolveDateRange: (ctx as { resolveDateRange?: DateRangeResolver })
-                    .resolveDateRange,
-                })
-              : undefined;
-
-            const searchCondition = buildCrudSearchWithExtensions(
-              table,
-              effectiveInput,
-              searchColumns,
-            );
-            const where = buildWhere(
-              ctx,
-              'list',
-              combineConditions(
-                combineExtensionFilter(filterCondition, effectiveInput),
-                searchCondition,
-              ),
-            );
 
             let query = ctx.db.select().from(table).$dynamic();
             if (where) {
