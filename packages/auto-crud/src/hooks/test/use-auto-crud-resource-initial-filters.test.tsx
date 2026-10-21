@@ -80,6 +80,18 @@ describe('initial list filters', () => {
         pageCount: 10,
       },
     );
+    const filtered = {
+      data: [{ id: 'filtered', status: 'draft' }],
+      total: 1,
+      pageCount: 1,
+    };
+    let resolveList!: (value: typeof filtered) => void;
+    f.list.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveList = resolve;
+        }),
+    );
     const { result } = renderHook(
       () => useAutoCrudResource({ router: f.router, schema }),
       { wrapper: f.wrapper },
@@ -92,6 +104,45 @@ describe('initial list filters', () => {
     expect(f.list).not.toHaveBeenCalled();
     await act(async () => f.resolve(metadata));
     await waitFor(() => expect(f.list).toHaveBeenCalledTimes(1));
+    expect(result.current.tableData.data).toEqual([]);
+    expect(result.current.tableData.total).toBeUndefined();
+    expect(result.current.tableData.pageCount).toBe(0);
+    expect(result.current.tableData.isLoading).toBe(true);
+    await act(async () => resolveList(filtered));
+    await waitFor(() => expect(result.current.tableData.data).toEqual(filtered.data));
+    expect(result.current.tableData.total).toBe(1);
+  });
+
+  it('keeps the previous ready page while the next page loads', async () => {
+    window.history.replaceState(null, '', '/products?stage=queued&stage__op=eq');
+    const f = fixture();
+    const first = { data: [{ id: 'first', status: 'draft' }], total: 2, pageCount: 2 };
+    const second = { ...first, data: [{ id: 'second', status: 'draft' }] };
+    let resolveNextPage!: (value: typeof second) => void;
+    f.list.mockResolvedValueOnce(first).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveNextPage = resolve;
+        }),
+    );
+    const { result } = renderHook(
+      () => useAutoCrudResource({ router: f.router, schema }),
+      { wrapper: f.wrapper },
+    );
+    await act(async () => f.resolve(metadata));
+    await waitFor(() => expect(result.current.tableData.data).toEqual(first.data));
+    act(() => {
+      window.history.replaceState(null, '', '/products?stage=queued&stage__op=eq&page=2');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    await waitFor(() => expect(f.list).toHaveBeenCalledTimes(2));
+    expect(f.list.mock.calls[1]![0].page).toBe(2);
+    expect(result.current.tableData.data).toEqual(first.data);
+    expect(result.current.tableData.total).toBe(2);
+    expect(result.current.tableData.isLoading).toBe(false);
+    expect(result.current.tableData.isFetching).toBe(true);
+    await act(async () => resolveNextPage(second));
+    await waitFor(() => expect(result.current.tableData.data).toEqual(second.data));
   });
 
   it('keeps local-schema filtering usable when metadata fails', async () => {

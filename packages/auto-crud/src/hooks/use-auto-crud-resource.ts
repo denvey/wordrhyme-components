@@ -558,11 +558,18 @@ export function useAutoCrudResource<
 
   // tRPC Query 和 Mutations
   // 使用 keepPreviousData 保持旧数据显示，避免分页时的闪烁
+  const hasReadyListData = useRef(false);
   const listQuery = router.list.useQuery(queryInput, {
     enabled: listReady,
-    placeholderData: keepPreviousData,
+    placeholderData: hasReadyListData.current ? keepPreviousData : undefined,
     staleTime: 0,
   });
+  // Incomplete query inputs may have cached data; only reuse data from ready inputs.
+  useEffect(() => {
+    if (listReady && listQuery.data !== undefined) {
+      hasReadyListData.current = true;
+    }
+  }, [listReady, listQuery.data]);
   // A disabled query may still expose cached rows for the incomplete input.
   const listData = listReady ? listQuery.data : undefined;
   const tableRows = listData?.data ?? [];
