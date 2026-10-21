@@ -1,5 +1,4 @@
 import { cleanup, renderHook } from '@testing-library/react';
-import { keepPreviousData } from '@tanstack/react-query';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { z } from 'zod';
@@ -207,7 +206,8 @@ describe('useAutoCrudResource', () => {
         filters: [],
       }),
       {
-        placeholderData: keepPreviousData,
+        enabled: true,
+        placeholderData: undefined,
         staleTime: 0,
       },
     );
@@ -240,7 +240,8 @@ describe('useAutoCrudResource', () => {
         sort: [{ id: 'createdAt', desc: true }],
       }),
       {
-        placeholderData: keepPreviousData,
+        enabled: true,
+        placeholderData: undefined,
         staleTime: 0,
       },
     );
