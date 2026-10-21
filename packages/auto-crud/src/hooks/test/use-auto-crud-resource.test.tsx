@@ -207,6 +207,7 @@ describe('useAutoCrudResource', () => {
         filters: [],
       }),
       {
+        enabled: true,
         placeholderData: keepPreviousData,
         staleTime: 0,
       },
@@ -240,6 +241,7 @@ describe('useAutoCrudResource', () => {
         sort: [{ id: 'createdAt', desc: true }],
       }),
       {
+        enabled: true,
         placeholderData: keepPreviousData,
         staleTime: 0,
       },

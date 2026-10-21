@@ -1,4 +1,4 @@
-import { useReducer, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useReducer, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { z } from 'zod';
 import { toast as sonnerToast } from 'sonner';
 import { keepPreviousData } from '@tanstack/react-query';
@@ -536,6 +536,12 @@ export function useAutoCrudResource<
 
   // 内部 URL 状态：筛选
   const [filters] = useReadableFilters(columns, { shallow: false });
+  // useReadableFilters hydrates newly discovered fields in an effect. Wait for
+  // that commit as well as metadata, so the first request includes URL filters.
+  const metadataPending = Boolean(metadataQuery?.isPending);
+  const [filtersReady, setFiltersReady] = useState(!metadataPending);
+  useEffect(() => setFiltersReady(!metadataPending), [metadataPending]);
+  const listReady = !metadataPending && filtersReady;
 
   // 构建查询参数
   const queryInput = useMemo(() => {
@@ -553,10 +559,13 @@ export function useAutoCrudResource<
   // tRPC Query 和 Mutations
   // 使用 keepPreviousData 保持旧数据显示，避免分页时的闪烁
   const listQuery = router.list.useQuery(queryInput, {
+    enabled: listReady,
     placeholderData: keepPreviousData,
     staleTime: 0,
   });
-  const tableRows = listQuery.data?.data ?? [];
+  // A disabled query may still expose cached rows for the incomplete input.
+  const listData = listReady ? listQuery.data : undefined;
+  const tableRows = listData?.data ?? [];
 
   const createMutation = router.create.useMutation();
   const updateMutation = router.update.useMutation();
@@ -850,20 +859,19 @@ export function useAutoCrudResource<
   const canExport = !!(exportFetcher || exportQuery);
 
   const refresh = useCallback(async (): Promise<unknown> => {
+    if (!listReady) return;
     return listQuery.refetch();
-  }, [listQuery]);
+  }, [listQuery, listReady]);
 
   // 返回值
   return {
     idKey,
     tableData: {
       data: tableRows as TListItem[],
-      pageCount: listQuery.data?.pageCount ?? 0,
-      ...(typeof listQuery.data?.total === 'number'
-        ? { total: listQuery.data.total }
-        : {}),
-      isLoading: listQuery.isLoading,
-      isFetching: listQuery.isFetching,
+      pageCount: listData?.pageCount ?? 0,
+      ...(typeof listData?.total === 'number' ? { total: listData.total } : {}),
+      isLoading: !listReady || listQuery.isLoading,
+      isFetching: !listReady || listQuery.isFetching,
     },
     schema: resolvedSchema,
     fields: metadataFields,
