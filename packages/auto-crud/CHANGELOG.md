@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.12.1
+
+### Patch Changes
+
+- e749926: Wait for metadata and URL filter hydration before requesting list data, preventing an unfiltered first request and its dependent row queries.
+
 ## 1.12.0
 
 ### Minor Changes
