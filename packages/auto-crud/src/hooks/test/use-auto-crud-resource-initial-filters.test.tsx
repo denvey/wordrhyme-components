@@ -104,7 +104,7 @@ describe('initial list filters', () => {
     await act(async () => f.reject(new Error('metadata unavailable')));
     await waitFor(() => expect(f.list).toHaveBeenCalledTimes(1));
     expect(f.list.mock.calls[0]![0].filters).toMatchObject([
-      { id: 'status', value: 'draft' },
+      { id: 'status', value: ['draft'] },
     ]);
     await waitFor(() => expect(result.current.tableData.isLoading).toBe(false));
   });
