@@ -1192,17 +1192,30 @@ function useDynamicFilterOptions(fields?: Fields): DynamicFilterState {
     [clearFieldRequest],
   );
 
-  return {
-    hasMoreByField,
-    labelOptionsByField,
-    loadingByField,
-    optionsByField,
-    registeredByField,
-    searchValues,
-    searchableByField,
-    loadMore: (field: string) => loadFieldOptions(field, true),
-    setSearchValue,
-  };
+  return React.useMemo(
+    () => ({
+      hasMoreByField,
+      labelOptionsByField,
+      loadingByField,
+      optionsByField,
+      registeredByField,
+      searchValues,
+      searchableByField,
+      loadMore: (field: string) => loadFieldOptions(field, true),
+      setSearchValue,
+    }),
+    [
+      hasMoreByField,
+      labelOptionsByField,
+      loadingByField,
+      optionsByField,
+      registeredByField,
+      searchValues,
+      searchableByField,
+      loadFieldOptions,
+      setSearchValue,
+    ],
+  );
 }
 
 function rowHasResolveValue(
@@ -1421,23 +1434,25 @@ function useDynamicResolveOptions(
     };
   }, [registryVersion, rows, sourceEntries]);
 
-  const displayOptionsByField = { ...optionsByField };
-  for (const field of Object.keys(fields ?? {}).filter(
-    (key) => !hiddenColumns.includes(key),
-  )) {
-    const projectedOptions = rows.flatMap((row) => {
-      const option = readCrudReferenceOption(row, field, row[field]);
-      return option ? [option] : [];
-    });
-    if (projectedOptions.length > 0) {
-      displayOptionsByField[field] = mergeFilterOptions(
-        projectedOptions,
-        optionsByField[field] ?? [],
-      );
+  return React.useMemo(() => {
+    const displayOptionsByField = { ...optionsByField };
+    for (const field of Object.keys(fields ?? {}).filter(
+      (key) => !hiddenColumns.includes(key),
+    )) {
+      const projectedOptions = rows.flatMap((row) => {
+        const option = readCrudReferenceOption(row, field, row[field]);
+        return option ? [option] : [];
+      });
+      if (projectedOptions.length > 0) {
+        displayOptionsByField[field] = mergeFilterOptions(
+          projectedOptions,
+          optionsByField[field] ?? [],
+        );
+      }
     }
-  }
 
-  return { optionsByField: displayOptionsByField };
+    return { optionsByField: displayOptionsByField };
+  }, [optionsByField, fields, hiddenColumns, rows]);
 }
 
 function getOptionLabel(value: unknown, options?: FieldOption[]) {
@@ -2292,6 +2307,10 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       ),
     [resolvedFields, tableConfig?.hidden, denyFields, tableConfig?.overrides],
   );
+  const excludedColumns = React.useMemo(
+    () => hiddenColumns.filter((key) => !filterOnly.includes(key)),
+    [hiddenColumns, filterOnly],
+  );
   const dynamicResolveOptions = useDynamicResolveOptions(
     resolvedFields,
     resource.tableData.data as readonly Record<string, unknown>[],
@@ -2825,7 +2844,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         defaultExpanded={tableConfig?.defaultExpanded}
         overrides={tableOverrides as any}
         classNames={tableConfig?.classNames}
-        exclude={hiddenColumns.filter((key) => !filterOnly.includes(key)) as any}
+        exclude={excludedColumns as any}
         filterOnly={filterOnly}
         filterMode={tableConfig?.filterModes}
         search={searchConfig}
