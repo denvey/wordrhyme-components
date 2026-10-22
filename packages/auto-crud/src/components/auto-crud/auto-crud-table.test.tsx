@@ -8,6 +8,7 @@ import {
   within,
 } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { CellContext } from '@tanstack/react-table';
 import { z } from 'zod';
 import { DropdownMenuItem } from '@wordrhyme/ui';
 import { toast } from 'sonner';
@@ -1935,6 +1936,106 @@ describe('auto-crud table toolbar resolver', () => {
       }),
     );
     expect(screen.getByText('Injected')).toBeTruthy();
+  });
+
+  it('keeps cells mounted while selecting rows and updating batch actions', async () => {
+    const toolbarResolver = vi.fn<AutoCrudToolbarResolver>((_targetId, ownerActions) => [
+      ...ownerActions,
+    ]);
+    setToolbarResolver(toolbarResolver);
+    const runBatch = vi.fn();
+    const format = vi.fn((value: unknown) => `Region ${value}`);
+    render(
+      <AutoCrudTable
+        id="test.selection"
+        locale={{ toolbar: { refresh: 'Refresh' } }}
+        schema={schema}
+        resource={createResource({
+          data: [
+            { id: '1', region: 'west' },
+            { id: '2', region: 'east' },
+          ],
+        })}
+        fields={{
+          region: {
+            format,
+          },
+        }}
+        table={{
+          hidden: ['spuId'],
+          pagination: { showPageJump: true },
+          overrides: {
+            id: {
+              cell: ({ row }: CellContext<Row, unknown>) => (
+                <input
+                  aria-label={`Note ${row.original.id}`}
+                  defaultValue={row.original.region}
+                  data-selected={row.getIsSelected()}
+                />
+              ),
+            },
+          },
+        }}
+        actions={{
+          batch: [
+            {
+              type: 'custom',
+              component: ({ rows }) => (
+                <button type="button" onClick={() => runBatch(rows)}>
+                  Process {rows.length}
+                </button>
+              ),
+            },
+          ],
+        }}
+      />,
+    );
+    const note = screen.getByRole('textbox', { name: 'Note 1' });
+    const formattedCell = screen.getByText('Region west');
+    const selectAll = screen.getByRole('checkbox', { name: 'Select all' });
+    fireEvent.change(note, { target: { value: 'Unsaved note' } });
+    format.mockClear();
+
+    fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0]!);
+    await waitFor(() => {
+      expect(toolbarResolver.mock.lastCall?.[2].selectedRowIds).toEqual(['1']);
+    });
+    expect(selectAll.getAttribute('aria-checked')).toBe('mixed');
+    expect(note.getAttribute('data-selected')).toBe('true');
+    expect(format).not.toHaveBeenCalled();
+    expect(screen.getByRole('textbox', { name: 'Note 1' })).toBe(note);
+    expect(screen.getByText('Region west')).toBe(formattedCell);
+    expect(screen.getByRole('checkbox', { name: 'Select all' })).toBe(selectAll);
+    expect((note as HTMLInputElement).value).toBe('Unsaved note');
+    fireEvent.click(screen.getByRole('button', { name: 'Process 1' }));
+    expect(runBatch).toHaveBeenLastCalledWith([{ id: '1', region: 'west' }]);
+
+    format.mockClear();
+    fireEvent.click(selectAll);
+    await waitFor(() => {
+      expect(toolbarResolver.mock.lastCall?.[2].selectedRowIds).toEqual(['1', '2']);
+    });
+    expect(selectAll.getAttribute('aria-checked')).toBe('true');
+    expect(format).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Process 2' }));
+    expect(runBatch).toHaveBeenLastCalledWith([
+      { id: '1', region: 'west' },
+      { id: '2', region: 'east' },
+    ]);
+
+    format.mockClear();
+    fireEvent.click(selectAll);
+    await waitFor(() => {
+      expect(toolbarResolver.mock.lastCall?.[2].selectedRowIds).toEqual([]);
+    });
+    expect(selectAll.getAttribute('aria-checked')).toBe('false');
+    expect(note.getAttribute('data-selected')).toBe('false');
+    expect(format).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: /Process/ })).toBeNull();
+    expect(screen.getByRole('textbox', { name: 'Note 1' })).toBe(note);
+    expect(screen.getByText('Region west')).toBe(formattedCell);
+    expect(screen.getByRole('checkbox', { name: 'Select all' })).toBe(selectAll);
+    expect((note as HTMLInputElement).value).toBe('Unsaved note');
   });
 
   it('refreshes selected row ids when data changes without changing selected count', async () => {

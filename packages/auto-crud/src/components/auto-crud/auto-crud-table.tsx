@@ -37,6 +37,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/ui'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/ui';
 import {
   parseZodField,
+  memoCell,
   renderCell,
   type ResolvedActionItem,
 } from '@/lib/schema-bridge/zod-to-columns';
@@ -1192,17 +1193,30 @@ function useDynamicFilterOptions(fields?: Fields): DynamicFilterState {
     [clearFieldRequest],
   );
 
-  return {
-    hasMoreByField,
-    labelOptionsByField,
-    loadingByField,
-    optionsByField,
-    registeredByField,
-    searchValues,
-    searchableByField,
-    loadMore: (field: string) => loadFieldOptions(field, true),
-    setSearchValue,
-  };
+  return React.useMemo(
+    () => ({
+      hasMoreByField,
+      labelOptionsByField,
+      loadingByField,
+      optionsByField,
+      registeredByField,
+      searchValues,
+      searchableByField,
+      loadMore: (field: string) => loadFieldOptions(field, true),
+      setSearchValue,
+    }),
+    [
+      hasMoreByField,
+      labelOptionsByField,
+      loadingByField,
+      optionsByField,
+      registeredByField,
+      searchValues,
+      searchableByField,
+      loadFieldOptions,
+      setSearchValue,
+    ],
+  );
 }
 
 function rowHasResolveValue(
@@ -1421,23 +1435,25 @@ function useDynamicResolveOptions(
     };
   }, [registryVersion, rows, sourceEntries]);
 
-  const displayOptionsByField = { ...optionsByField };
-  for (const field of Object.keys(fields ?? {}).filter(
-    (key) => !hiddenColumns.includes(key),
-  )) {
-    const projectedOptions = rows.flatMap((row) => {
-      const option = readCrudReferenceOption(row, field, row[field]);
-      return option ? [option] : [];
-    });
-    if (projectedOptions.length > 0) {
-      displayOptionsByField[field] = mergeFilterOptions(
-        projectedOptions,
-        optionsByField[field] ?? [],
-      );
+  return React.useMemo(() => {
+    const displayOptionsByField = { ...optionsByField };
+    for (const field of Object.keys(fields ?? {}).filter(
+      (key) => !hiddenColumns.includes(key),
+    )) {
+      const projectedOptions = rows.flatMap((row) => {
+        const option = readCrudReferenceOption(row, field, row[field]);
+        return option ? [option] : [];
+      });
+      if (projectedOptions.length > 0) {
+        displayOptionsByField[field] = mergeFilterOptions(
+          projectedOptions,
+          optionsByField[field] ?? [],
+        );
+      }
     }
-  }
 
-  return { optionsByField: displayOptionsByField };
+    return { optionsByField: displayOptionsByField };
+  }, [optionsByField, fields, hiddenColumns, rows]);
 }
 
 function getOptionLabel(value: unknown, options?: FieldOption[]) {
@@ -1630,10 +1646,7 @@ function buildTableOverrides(
             : (presentationOptions ?? mergedSharedDynamicOptions);
           result[key] = {
             ...result[key],
-            cell: ({
-              row,
-              getValue,
-            }: CellContext<Record<string, unknown>, unknown>): React.ReactNode => {
+            cell: memoCell<Record<string, unknown>>(({ row, getValue }) => {
               const value = getValue();
               return (
                 config.format?.(value, { row: row.original, target: 'display' }) ??
@@ -1645,7 +1658,7 @@ function buildTableOverrides(
                   display ?? 'auto',
                 )
               );
-            },
+            }),
           };
         }
       }
@@ -2223,7 +2236,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   onCreate,
   onExport,
 }: AutoCrudTableProps<TSchema>) {
-  const locale = resolveLocale(localeProp);
+  const locale = React.useMemo(() => resolveLocale(localeProp), [localeProp]);
   const getPagination = React.useCallback(
     () => (id ? tablePagination.get(id) : undefined),
     [id],
@@ -2234,6 +2247,13 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     getPagination,
   );
   const pagination = tableConfig?.pagination ?? registeredPagination;
+  const paginationOptions = React.useMemo(
+    () =>
+      pagination
+        ? { pageJumpLabel: locale.pagination?.pageJump, ...pagination }
+        : undefined,
+    [pagination, locale.pagination?.pageJump],
+  );
   const resolvedSchema = resource.schema ?? schema;
   const resolvedFields = React.useMemo<Fields>(
     () =>
@@ -2291,6 +2311,10 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         tableConfig?.overrides,
       ),
     [resolvedFields, tableConfig?.hidden, denyFields, tableConfig?.overrides],
+  );
+  const excludedColumns = React.useMemo(
+    () => hiddenColumns.filter((key) => !filterOnly.includes(key)),
+    [hiddenColumns, filterOnly],
   );
   const dynamicResolveOptions = useDynamicResolveOptions(
     resolvedFields,
@@ -2565,13 +2589,13 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         const { type } = parseZodField(resolvedSchema.shape[key] as z.ZodType);
         formattedOverrides[key] = {
           ...override,
-          cell: (context): React.ReactNode => {
+          cell: memoCell<Record<string, unknown>>((context) => {
             const value = context.getValue();
             return (
               config.format?.(value, { row: context.row.original, target: 'display' }) ??
               renderCell(value, type, context.column.columnDef.meta?.options)
             );
-          },
+          }),
         };
       }
     }
@@ -2812,11 +2836,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         data={resource.tableData.data}
         schema={resolvedSchema as TSchema}
         pageCount={resource.tableData.pageCount}
-        pagination={
-          pagination
-            ? { pageJumpLabel: locale.pagination?.pageJump, ...pagination }
-            : undefined
-        }
+        pagination={paginationOptions}
         {...(resource.tableData.total !== undefined
           ? { total: resource.tableData.total }
           : {})}
@@ -2825,7 +2845,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         defaultExpanded={tableConfig?.defaultExpanded}
         overrides={tableOverrides as any}
         classNames={tableConfig?.classNames}
-        exclude={hiddenColumns.filter((key) => !filterOnly.includes(key)) as any}
+        exclude={excludedColumns as any}
         filterOnly={filterOnly}
         filterMode={tableConfig?.filterModes}
         search={searchConfig}
