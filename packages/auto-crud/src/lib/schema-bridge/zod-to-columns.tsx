@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@wordrhyme/ui';
 import { Ellipsis } from 'lucide-react';
-import { formatDate } from '@/lib/format';
+import { formatDate, useDateFormatterVersion } from '@/lib/format';
 import { humanize } from '@/lib/humanize';
 import type {
   ColumnOverrides,
@@ -28,6 +28,17 @@ import { fieldTypeToFilterVariant, inferFilterVariantByFieldName } from './types
 
 const parsedFieldCache = new WeakMap<z.ZodType, ParsedZodField>();
 const baseTableSchemaCache = new WeakMap<z.ZodObject<z.ZodRawShape>, ColumnDef<any>[]>();
+
+/** Cache generated value cells; custom cells keep observing every table state update. */
+export function memoCell<TData extends RowData>(
+  render: (context: CellContext<TData, unknown>) => React.ReactNode,
+) {
+  const ValueCell = React.memo(function ValueCell(context: CellContext<TData, unknown>) {
+    useDateFormatterVersion();
+    return render(context);
+  });
+  return (context: CellContext<TData, unknown>) => <ValueCell {...context} />;
+}
 
 /**
  * 解析 Zod 字段类型
@@ -318,12 +329,13 @@ export function createTableSchema<T extends z.ZodObject<z.ZodRawShape>>(
         id: key,
         accessorKey: key,
         header: ({ column }) => <DataTableColumnHeader column={column} label={label} />,
-        cell: ({ row }) =>
+        cell: memoCell<z.infer<T>>(({ row }) =>
           renderCell(
             row.getValue(key),
             parsed.type,
             meta.options as Array<{ label: string; value: string }> | undefined,
           ),
+        ),
         enableColumnFilter: true,
         enableSorting: true,
         meta,

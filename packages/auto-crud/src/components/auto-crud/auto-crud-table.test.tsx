@@ -2002,7 +2002,7 @@ describe('auto-crud table toolbar resolver', () => {
     });
     expect(selectAll.getAttribute('aria-checked')).toBe('mixed');
     expect(note.getAttribute('data-selected')).toBe('true');
-    expect(format).toHaveBeenCalledTimes(2);
+    expect(format).not.toHaveBeenCalled();
     expect(screen.getByRole('textbox', { name: 'Note 1' })).toBe(note);
     expect(screen.getByText('Region west')).toBe(formattedCell);
     expect(screen.getByRole('checkbox', { name: 'Select all' })).toBe(selectAll);
@@ -2016,7 +2016,7 @@ describe('auto-crud table toolbar resolver', () => {
       expect(toolbarResolver.mock.lastCall?.[2].selectedRowIds).toEqual(['1', '2']);
     });
     expect(selectAll.getAttribute('aria-checked')).toBe('true');
-    expect(format).toHaveBeenCalledTimes(2);
+    expect(format).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Process 2' }));
     expect(runBatch).toHaveBeenLastCalledWith([
       { id: '1', region: 'west' },
@@ -2030,7 +2030,7 @@ describe('auto-crud table toolbar resolver', () => {
     });
     expect(selectAll.getAttribute('aria-checked')).toBe('false');
     expect(note.getAttribute('data-selected')).toBe('false');
-    expect(format).toHaveBeenCalledTimes(2);
+    expect(format).not.toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: /Process/ })).toBeNull();
     expect(screen.getByRole('textbox', { name: 'Note 1' })).toBe(note);
     expect(screen.getByText('Region west')).toBe(formattedCell);

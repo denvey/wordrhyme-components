@@ -37,6 +37,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/ui'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/ui';
 import {
   parseZodField,
+  memoCell,
   renderCell,
   type ResolvedActionItem,
 } from '@/lib/schema-bridge/zod-to-columns';
@@ -1645,10 +1646,7 @@ function buildTableOverrides(
             : (presentationOptions ?? mergedSharedDynamicOptions);
           result[key] = {
             ...result[key],
-            cell: ({
-              row,
-              getValue,
-            }: CellContext<Record<string, unknown>, unknown>): React.ReactNode => {
+            cell: memoCell<Record<string, unknown>>(({ row, getValue }) => {
               const value = getValue();
               return (
                 config.format?.(value, { row: row.original, target: 'display' }) ??
@@ -1660,7 +1658,7 @@ function buildTableOverrides(
                   display ?? 'auto',
                 )
               );
-            },
+            }),
           };
         }
       }
@@ -2591,13 +2589,13 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         const { type } = parseZodField(resolvedSchema.shape[key] as z.ZodType);
         formattedOverrides[key] = {
           ...override,
-          cell: (context): React.ReactNode => {
+          cell: memoCell<Record<string, unknown>>((context) => {
             const value = context.getValue();
             return (
               config.format?.(value, { row: context.row.original, target: 'display' }) ??
               renderCell(value, type, context.column.columnDef.meta?.options)
             );
-          },
+          }),
         };
       }
     }
