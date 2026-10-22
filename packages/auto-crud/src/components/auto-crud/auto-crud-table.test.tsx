@@ -1944,9 +1944,11 @@ describe('auto-crud table toolbar resolver', () => {
     ]);
     setToolbarResolver(toolbarResolver);
     const runBatch = vi.fn();
+    const format = vi.fn((value: unknown) => `Region ${value}`);
     render(
       <AutoCrudTable
         id="test.selection"
+        locale={{ toolbar: { refresh: 'Refresh' } }}
         schema={schema}
         resource={createResource({
           data: [
@@ -1956,17 +1958,19 @@ describe('auto-crud table toolbar resolver', () => {
         })}
         fields={{
           region: {
-            format: (value) => `Region ${value}`,
+            format,
           },
         }}
         table={{
           hidden: ['spuId'],
+          pagination: { showPageJump: true },
           overrides: {
             id: {
               cell: ({ row }: CellContext<Row, unknown>) => (
                 <input
                   aria-label={`Note ${row.original.id}`}
                   defaultValue={row.original.region}
+                  data-selected={row.getIsSelected()}
                 />
               ),
             },
@@ -1990,12 +1994,15 @@ describe('auto-crud table toolbar resolver', () => {
     const formattedCell = screen.getByText('Region west');
     const selectAll = screen.getByRole('checkbox', { name: 'Select all' });
     fireEvent.change(note, { target: { value: 'Unsaved note' } });
+    format.mockClear();
 
     fireEvent.click(screen.getAllByRole('checkbox', { name: 'Select row' })[0]!);
     await waitFor(() => {
       expect(toolbarResolver.mock.lastCall?.[2].selectedRowIds).toEqual(['1']);
     });
     expect(selectAll.getAttribute('aria-checked')).toBe('mixed');
+    expect(note.getAttribute('data-selected')).toBe('true');
+    expect(format).toHaveBeenCalledTimes(2);
     expect(screen.getByRole('textbox', { name: 'Note 1' })).toBe(note);
     expect(screen.getByText('Region west')).toBe(formattedCell);
     expect(screen.getByRole('checkbox', { name: 'Select all' })).toBe(selectAll);
@@ -2003,22 +2010,27 @@ describe('auto-crud table toolbar resolver', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Process 1' }));
     expect(runBatch).toHaveBeenLastCalledWith([{ id: '1', region: 'west' }]);
 
+    format.mockClear();
     fireEvent.click(selectAll);
     await waitFor(() => {
       expect(toolbarResolver.mock.lastCall?.[2].selectedRowIds).toEqual(['1', '2']);
     });
     expect(selectAll.getAttribute('aria-checked')).toBe('true');
+    expect(format).toHaveBeenCalledTimes(2);
     fireEvent.click(screen.getByRole('button', { name: 'Process 2' }));
     expect(runBatch).toHaveBeenLastCalledWith([
       { id: '1', region: 'west' },
       { id: '2', region: 'east' },
     ]);
 
+    format.mockClear();
     fireEvent.click(selectAll);
     await waitFor(() => {
       expect(toolbarResolver.mock.lastCall?.[2].selectedRowIds).toEqual([]);
     });
     expect(selectAll.getAttribute('aria-checked')).toBe('false');
+    expect(note.getAttribute('data-selected')).toBe('false');
+    expect(format).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole('button', { name: /Process/ })).toBeNull();
     expect(screen.getByRole('textbox', { name: 'Note 1' })).toBe(note);
     expect(screen.getByText('Region west')).toBe(formattedCell);

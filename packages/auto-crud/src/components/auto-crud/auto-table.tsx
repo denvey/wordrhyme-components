@@ -454,6 +454,45 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     }
   }, [currentMode, table, columns, shallow, searchInput, debounceMs, throttleMs]);
 
+  const state = table.getState();
+  // Parent selection callbacks can render AutoTable again without changing its inputs.
+  // Keep every table state dependency so cells observing selection or layout still update.
+  const tableContent = useMemo(
+    () => (
+      <DataTable
+        pagination={pagination}
+        table={table}
+        classNames={classNames}
+        expandedRow={expandedRow}
+      />
+    ),
+    [
+      table,
+      data,
+      columns,
+      getRowId,
+      pageCount,
+      total,
+      stableInitialState,
+      pagination,
+      classNames,
+      expandedRow,
+      state.columnFilters,
+      state.columnOrder,
+      state.columnPinning,
+      state.columnSizing,
+      state.columnSizingInfo,
+      state.columnVisibility,
+      state.expanded,
+      state.globalFilter,
+      state.grouping,
+      state.pagination,
+      state.rowPinning,
+      state.rowSelection,
+      state.sorting,
+    ],
+  );
+
   return (
     <div className="space-y-4">
       <div className="flex w-full items-start justify-between gap-2 p-1">
@@ -471,12 +510,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           <DataTableViewOptions table={table} align="end" locale={locale.columns} />
         </div>
       </div>
-      <DataTable
-        pagination={pagination}
-        table={table}
-        classNames={classNames}
-        expandedRow={expandedRow}
-      />
+      {tableContent}
       {enableRowSelection && (
         <AutoTableActionBar
           table={table}
