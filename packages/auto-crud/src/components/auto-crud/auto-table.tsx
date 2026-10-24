@@ -13,6 +13,7 @@ import {
   getExpandedRowModel,
   type TableOptions,
   type Table,
+  type VisibilityState,
 } from '@tanstack/react-table';
 import { DataTable, type DataTableProps } from '@/components/data-table/data-table';
 import { DataTableFilterList } from '@/components/data-table/data-table-filter-list';
@@ -51,7 +52,7 @@ import {
 } from '@/lib/schema-bridge/zod-to-columns';
 import type { TableControlsLocale } from '@/i18n/locale';
 import type { ColumnOverrides } from '@/lib/schema-bridge/types';
-import type { DataTableClassNames } from '@/types/data-table';
+import type { DataTableClassNames, QueryKeys } from '@/types/data-table';
 
 /** 过滤模式类型 */
 export type FilterMode = 'simple' | 'advanced' | 'command';
@@ -98,6 +99,10 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
   /** 按元素分组的全局表格类名 */
   classNames?: DataTableClassNames;
   enableRowSelection?: boolean;
+  /** URL keys shared with useAutoCrudResource. */
+  queryKeys?: Partial<QueryKeys>;
+  /** Initial visibility; users can still toggle columns in the view options. */
+  initialColumnVisibility?: VisibilityState;
   exclude?: (keyof z.infer<T>)[];
   filterOnly?: string[];
   actions?: ActionsColumnConfig<z.infer<T>>;
@@ -163,6 +168,8 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   overrides,
   classNames,
   enableRowSelection = true,
+  queryKeys,
+  initialColumnVisibility,
   exclude,
   filterOnly,
   actions,
@@ -209,10 +216,11 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       clearOnDefault: true,
     },
   );
-  const [, setSearchPage] = useUrlState('page', parseAsInteger.withDefault(1), {
-    shallow: false,
-    clearOnDefault: true,
-  });
+  const [, setSearchPage] = useUrlState(
+    queryKeys?.page ?? 'page',
+    parseAsInteger.withDefault(1),
+    { shallow: false, clearOnDefault: true },
+  );
   const searchConfig = search && typeof search === 'object' ? search : {};
 
   // 所有模式都使用高级过滤的数据流（filters 数组同步到 URL）
@@ -291,6 +299,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   const stableInitialState = useMemo(
     () => ({
       sorting: initialSorting,
+      columnVisibility: initialColumnVisibility,
       expanded: enableExpansion && defaultExpanded ? (true as const) : {},
       columnPinning: pinnedColumns ?? {
         left: [
@@ -302,6 +311,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     }),
     [
       initialSorting,
+      initialColumnVisibility,
       pinnedColumns,
       enableRowSelection,
       enableExpansion,
@@ -316,6 +326,8 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   const { table, shallow, debounceMs, throttleMs } = useDataTable({
     data,
     columns,
+    queryKeys,
+    enableRowSelection,
     getRowId,
     getRowCanExpand: () => enableExpansion,
     getExpandedRowModel: enableExpansion ? expandedRowModel : undefined,

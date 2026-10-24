@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { toast as sonnerToast } from 'sonner';
 import { keepPreviousData } from '@tanstack/react-query';
 import {
-  useQueryStates,
+  useQueryState,
   parseAsInteger,
   parseAsString,
   parseAsStringEnum,
@@ -15,6 +15,7 @@ import { coerceRowValues } from '@/lib/import';
 import { getDefaultSortingForSchema, type AutoCrudSorting } from '@/lib/default-sorting';
 import { mergeFields } from '@/lib/field-config';
 import type { Fields } from '@/components/auto-crud/auto-crud-table';
+import type { QueryKeys } from '@/types/data-table';
 
 /**
  * Toast 适配器接口
@@ -282,6 +283,7 @@ export interface UseAutoCrudResourceReturn<
   TSchema extends z.ZodObject<z.ZodRawShape>,
   TListItem,
 > {
+  queryKeys?: Partial<QueryKeys>;
   /** 主键字段名（默认: "id"） */
   idKey?: keyof TListItem & string;
   tableData: {
@@ -420,6 +422,8 @@ export interface UseAutoCrudResourceParams<
 > {
   /** tRPC router (如 trpc.tasks) */
   router: CrudRouter;
+  /** URL keys shared with the table, for multiple resources on one page. */
+  queryKeys?: Partial<QueryKeys>;
   /** Zod schema */
   schema: TSchema;
   /** Field filter configuration shared with AutoCrudTable. */
@@ -452,6 +456,7 @@ export function useAutoCrudResource<
   TListItem = z.output<TSchema>,
 >({
   router,
+  queryKeys,
   schema,
   query: queryTransform,
   fields,
@@ -523,19 +528,28 @@ export function useAutoCrudResource<
   );
 
   // 内部 URL 状态：分页、排序、joinOperator
-  const [urlParams] = useQueryStates(
-    {
-      page: parseAsInteger.withDefault(1),
-      perPage: parseAsInteger.withDefault(10),
-      sort: getSortingStateParser<Record<string, unknown>>().withDefault(defaultSorting),
-      joinOperator: parseAsStringEnum(['and', 'or']).withDefault('and'),
-      search: parseAsString.withDefault(''),
-    },
-    { shallow: false },
+  const [page] = useQueryState(queryKeys?.page ?? 'page', parseAsInteger.withDefault(1));
+  const [perPage] = useQueryState(
+    queryKeys?.perPage ?? 'perPage',
+    parseAsInteger.withDefault(10),
   );
+  const [sort] = useQueryState(
+    queryKeys?.sort ?? 'sort',
+    getSortingStateParser<Record<string, unknown>>().withDefault(defaultSorting),
+  );
+  const [joinOperator] = useQueryState(
+    queryKeys?.joinOperator ?? 'joinOperator',
+    parseAsStringEnum(['and', 'or']).withDefault('and'),
+  );
+  const [search] = useQueryState('search', parseAsString.withDefault(''), {
+    shallow: false,
+  });
 
   // 内部 URL 状态：筛选
-  const [filters] = useReadableFilters(columns, { shallow: false });
+  const [filters] = useReadableFilters(columns, {
+    shallow: false,
+    resetPageKey: queryKeys?.page ?? 'page',
+  });
   // useReadableFilters hydrates newly discovered fields in an effect. Wait for
   // that commit as well as metadata, so the first request includes URL filters.
   const metadataPending = Boolean(metadataQuery?.isPending);
@@ -546,15 +560,15 @@ export function useAutoCrudResource<
   // 构建查询参数
   const queryInput = useMemo(() => {
     const autoParams: AutoQueryParams = {
-      page: urlParams.page,
-      perPage: urlParams.perPage,
-      sort: urlParams.sort,
+      page,
+      perPage,
+      sort,
       filters,
-      joinOperator: urlParams.joinOperator,
-      ...(urlParams.search.trim() ? { search: urlParams.search.trim() } : {}),
+      joinOperator,
+      ...(search.trim() ? { search: search.trim() } : {}),
     };
     return queryTransform ? queryTransform(autoParams) : autoParams;
-  }, [urlParams, filters, queryTransform]);
+  }, [page, perPage, sort, filters, joinOperator, search, queryTransform]);
 
   // tRPC Query 和 Mutations
   // 使用 keepPreviousData 保持旧数据显示，避免分页时的闪烁
@@ -873,6 +887,7 @@ export function useAutoCrudResource<
   // 返回值
   return {
     idKey,
+    queryKeys,
     tableData: {
       data: tableRows as TListItem[],
       pageCount: listData?.pageCount ?? 0,
