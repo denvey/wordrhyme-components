@@ -1506,7 +1506,10 @@ describe('auto-crud table toolbar resolver', () => {
             spuId: {
               label: 'Record name',
               table: { index: 30 },
-              form: { 'x-index': 10 },
+              form: {
+                'x-index': 10,
+                'x-decorator-props': { className: 'col-span-2' },
+              },
             },
             region: { table: { index: 10 }, form: { 'x-index': 20 } },
             countries: { table: { index: 20 } },
@@ -1517,7 +1520,6 @@ describe('auto-crud table toolbar resolver', () => {
             overrides: {
               countries: {
                 'x-index': 30,
-                'x-decorator-props': { className: 'col-span-2' },
               },
             },
           }}
@@ -1533,8 +1535,11 @@ describe('auto-crud table toolbar resolver', () => {
         'Id',
         'Tags',
       ]);
-      expect(labels[2]?.closest('[data-slot="form-item"]')?.className).toContain(
+      expect(labels[0]?.closest('[data-slot="form-item"]')?.className).toContain(
         'col-span-2',
+      );
+      expect(labels[2]?.closest('[data-slot="form-item"]')?.className).not.toContain(
+        'col-span-full',
       );
       expect(dialog.querySelector('.grid-cols-2')).not.toBeNull();
     },
