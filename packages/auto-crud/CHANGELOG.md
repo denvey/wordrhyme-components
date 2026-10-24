@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.14.1
+
+### Patch Changes
+
+- c63b98f: Preserve form field order and layout in record details while allowing explicit detail ordering and custom table cell formatting.
+
 ## 1.14.0
 
 ### Minor Changes
