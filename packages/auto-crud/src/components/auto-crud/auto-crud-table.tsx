@@ -549,7 +549,7 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
    * 支持共用配置（label, hidden）+ 表格/表单特定配置
    */
   fields?: Fields;
-  /** Detail presentation shares field formatting by default. */
+  /** Details share form layout and field formatting by default. */
   view?: {
     /** Explicitly reuse custom list cells with a separate, single-row table context. */
     presentation?: 'table';
@@ -2119,14 +2119,13 @@ function ViewModalContent<TSchema extends z.ZodObject<z.ZodRawShape>>({
   );
   const overrides = buildFormOverrides(fieldConfig, form?.overrides, denyFields, 'view');
   const renderers: Record<string, () => React.ReactNode> = {};
-  for (const [index, cell] of (
-    table.getRowModel().rows[0]?.getAllCells() ?? []
-  ).entries()) {
+  for (const cell of table.getRowModel().rows[0]?.getAllCells() ?? []) {
     const key = cell.column.id;
+    const index = view?.overrides?.[key]?.index;
     overrides[key] = {
       ...overrides[key],
       title: cell.column.columnDef.meta?.label ?? humanize(key),
-      'x-index': index,
+      ...(index !== undefined ? { 'x-index': index } : {}),
     };
     renderers[key] = () => flexRender(cell.column.columnDef.cell, cell.getContext());
     // Detail options are already resolved by the shared table data source above.
