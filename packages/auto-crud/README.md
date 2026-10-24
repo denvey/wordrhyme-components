@@ -1782,6 +1782,13 @@ Table-only hidden fields remain available in details; shared `hidden` and
 `permissions.deny` always take precedence. Labels are resolved from the selected
 record, including when it is absent from the current list page.
 
+Details share the form's column count, field spans and `x-index` order (including
+`form.overrides`). Fields without an index retain schema order. List column order
+does not control detail layout, even with `view.presentation: 'table'`.
+`view.overrides[field].index` takes precedence for detail-only ordering. Fields
+hidden only in forms remain available in details; use detail ordering to place
+read-only business fields next to related information or audit fields at the end.
+
 ```tsx
 <AutoCrudTable
   schema={schema}

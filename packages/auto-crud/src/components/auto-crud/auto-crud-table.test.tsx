@@ -1484,6 +1484,61 @@ describe('auto-crud table toolbar resolver', () => {
     expect(dialog.queryByText('Id')).toBeNull();
   });
 
+  it.each([undefined, 'table'] as const)(
+    'shares form order and field spans in details with presentation %s',
+    (presentation) => {
+      render(
+        <AutoCrudTable
+          schema={schema}
+          resource={createResource({
+            modal: {
+              viewOpen: true,
+              selected: {
+                id: '1',
+                spuId: 'Store',
+                region: 'west',
+                countries: ['CN'],
+                tags: ['internal'],
+              },
+            },
+          })}
+          fields={{
+            spuId: {
+              label: 'Record name',
+              table: { index: 30 },
+              form: { 'x-index': 10 },
+            },
+            region: { table: { index: 10 }, form: { 'x-index': 20 } },
+            countries: { table: { index: 20 } },
+            tags: { table: { index: 0 }, form: false },
+          }}
+          form={{
+            columns: 2,
+            overrides: {
+              countries: {
+                'x-index': 30,
+                'x-decorator-props': { className: 'col-span-2' },
+              },
+            },
+          }}
+          view={{ presentation }}
+        />,
+      );
+      const dialog = screen.getByRole('dialog');
+      const labels = Array.from(dialog.querySelectorAll('[data-slot="form-item-label"]'));
+      expect(labels.map((label) => label.textContent)).toEqual([
+        'Record name',
+        'Region',
+        'Countries',
+        'Tags',
+      ]);
+      expect(labels[2]?.closest('[data-slot="form-item"]')?.className).toContain(
+        'col-span-2',
+      );
+      expect(dialog.querySelector('.grid-cols-2')).not.toBeNull();
+    },
+  );
+
   it('uses real table cell context for custom detail formatting', () => {
     render(
       <AutoCrudTable
@@ -1677,6 +1732,10 @@ describe('auto-crud table toolbar resolver', () => {
         resource={createResource({
           modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
         })}
+        fields={{
+          spuId: { form: { 'x-index': 10 } },
+          region: { form: { 'x-index': 20 } },
+        }}
         table={{ overrides: { region: { cell: () => 'Formatted region' } } }}
         view={{ presentation: 'table', overrides: { region: { index: 0 } } }}
       />,
