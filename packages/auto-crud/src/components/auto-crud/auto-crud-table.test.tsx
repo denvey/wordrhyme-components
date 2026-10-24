@@ -1530,6 +1530,7 @@ describe('auto-crud table toolbar resolver', () => {
         'Record name',
         'Region',
         'Countries',
+        'Id',
         'Tags',
       ]);
       expect(labels[2]?.closest('[data-slot="form-item"]')?.className).toContain(
