@@ -172,19 +172,19 @@ Zod Schema → 自动推断字段类型 → 生成表格列 + 表单字段
 ```typescript
 import { createMemoryDataSource } from '@wordrhyme/auto-crud';
 
-const dataSource = createMemoryDataSource({
-  data: initialData,
-  onCreate: async (data) => {
-    /* ... */
-  },
-  onUpdate: async (id, data) => {
-    /* ... */
-  },
-  onDelete: async (id) => {
-    /* ... */
-  },
+const dataSource = createMemoryDataSource(initialData);
+const result = await dataSource.list({
+  page: 1,
+  perPage: 10,
+  filters: [{ id: 'status', operator: 'inArray', value: ['draft', 'published'] }],
+  sort: [
+    { id: 'createdAt', desc: true },
+    { id: 'id', desc: false },
+  ],
 });
 ```
+
+筛选支持省略 operator / `eq`（严格相等）和 `inArray`（字段值属于给定数组）；其他 operator 会报错。排序按配置顺序比较，前一字段相同时使用下一字段，再进行分页。内存数据源不执行全文搜索。
 
 #### 2. tRPC 数据源（tRPC Data Source）
 
@@ -327,6 +327,37 @@ interface AutoCrudTableProps<TSchema> {
 `AutoTable` 同样支持 `getRowId` 和 `expandedRow`；直接使用 `DataTable` 时，需自行配置 TanStack 展开能力及触发按钮。
 
 `expandedRow` 的第二个参数是当前 TanStack `Row`，可通过 `row.getAllCells()` 读取已解析的列和单元格上下文，复用字段渲染器及数据源标签。只接收订单数据的单参数回调仍可使用。
+
+#### 表格状态与 URL 参数
+
+同页显示多个表格时，在资源 Hook 中配置独立的分页、排序和条件连接符参数名，`AutoCrudTable` 会自动传给表格：
+
+```tsx
+const resource = useAutoCrudResource({
+  router: trpc.orders,
+  schema: orderSchema,
+  queryKeys: {
+    page: 'ordersPage',
+    perPage: 'ordersSize',
+    sort: 'ordersSort',
+    joinOperator: 'ordersJoin',
+  },
+});
+
+<AutoCrudTable
+  id="orders"
+  schema={orderSchema}
+  resource={resource}
+  table={{
+    enableRowSelection: false,
+    initialColumnVisibility: { createdAt: false },
+  }}
+/>;
+```
+
+未配置的参数名保留默认值。搜索仍使用共享的 `search` 参数，字段筛选仍使用字段名；`queryKeys` 不隔离这些值。筛选或搜索变化时，仅重置该表格对应的页码。直接使用 `AutoTable` 时传入相同的 `queryKeys`；`table.queryKeys` 可覆盖资源提供的整组配置。
+
+`enableRowSelection` 默认 `true`，设为 `false` 后关闭行选择并隐藏选择列和批量操作栏。`initialColumnVisibility` 只设置首次显示的列，用户仍可通过列设置切换；它不同于 `table.hidden` 对列的排除。
 
 ### `useAutoCrudResource()`
 

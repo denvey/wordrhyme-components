@@ -127,19 +127,27 @@ export function createMemoryDataSource<T extends { id: string | number }>(
         filtered = filtered.filter((item) => {
           return params.filters!.every((filter) => {
             const value = (item as any)[filter.id];
-            return value === filter.value;
+            if (filter.operator === 'inArray') {
+              return Array.isArray(filter.value) && filter.value.includes(value);
+            }
+            if (!filter.operator || filter.operator === 'eq') {
+              return value === filter.value;
+            }
+            throw new Error(`Unsupported memory filter operator: ${filter.operator}`);
           });
         });
       }
 
       // 排序
       if (params.sort && params.sort.length > 0) {
-        const sortItem = params.sort[0]!;
         filtered.sort((a, b) => {
-          const aVal = (a as any)[sortItem.id];
-          const bVal = (b as any)[sortItem.id];
-          const result = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
-          return sortItem.desc ? -result : result;
+          for (const sortItem of params.sort!) {
+            const aVal = (a as any)[sortItem.id];
+            const bVal = (b as any)[sortItem.id];
+            const result = aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+            if (result) return sortItem.desc ? -result : result;
+          }
+          return 0;
         });
       }
 
