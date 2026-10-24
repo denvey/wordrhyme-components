@@ -701,18 +701,9 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
       };
       const properties = typeof grid.properties === 'object' ? grid.properties : {};
       for (const property of Object.values(properties)) {
-        const decoratorProps = property['x-decorator-props'];
-        const fullWidth =
-          property.type === 'object' ||
-          property.type === 'array' ||
-          ['Textarea', 'RichTextEditor'].includes(property['x-component']);
         property['x-decorator-props'] = {
           colon: false,
-          ...decoratorProps,
-          className: cn(
-            fullWidth && decoratorProps?.gridSpan == null && 'col-span-full',
-            decoratorProps?.className,
-          ),
+          ...property['x-decorator-props'],
         };
       }
     }

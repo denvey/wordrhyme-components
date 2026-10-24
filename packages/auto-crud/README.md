@@ -1788,6 +1788,8 @@ does not control detail layout, even with `view.presentation: 'table'`.
 `view.overrides[field].index` takes precedence for detail-only ordering. Fields
 hidden only in forms remain available in details; use detail ordering to place
 read-only business fields next to related information or audit fields at the end.
+Field spans come from the shared form configuration; details do not expand arrays,
+objects or long-text fields to a full row automatically.
 
 ```tsx
 <AutoCrudTable

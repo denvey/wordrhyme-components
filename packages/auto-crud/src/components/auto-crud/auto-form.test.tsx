@@ -72,9 +72,47 @@ describe('AutoForm readPretty', () => {
     expect(
       screen.getByText('First line Second line').closest('[data-slot="form-item"]')
         ?.className,
-    ).toContain('col-span-full');
+    ).not.toContain('col-span-full');
     expect(screen.getByText('Active status').closest('[data-slot="badge"]')).toBeNull();
   });
+
+  it.each(['edit', 'view'] as const)(
+    'preserves shared array and textarea spans in %s mode',
+    (mode) => {
+      render(
+        <AutoForm
+          {...(mode === 'view'
+            ? { mode: 'view' as const }
+            : { mode: 'edit' as const, onSubmit: vi.fn() })}
+          schema={z.object({
+            status: z.string(),
+            country: z.array(z.string()),
+            note: z.string(),
+          })}
+          initialValues={{ status: 'active', country: ['DE'], note: 'Store note' }}
+          gridColumns={2}
+          fields={{
+            country: {
+              enum: [{ value: 'DE', label: 'Germany' }],
+              form: { 'x-component': 'MultiCombobox' },
+            },
+            note: {
+              form: {
+                'x-component': 'Textarea',
+                'x-decorator-props': { className: 'col-span-2' },
+              },
+            },
+          }}
+        />,
+      );
+      const items = Array.from(document.querySelectorAll('[data-slot="form-item"]'));
+      expect(items).toHaveLength(3);
+      expect(items[0]?.className).not.toContain('col-span-full');
+      expect(items[1]?.className).not.toContain('col-span-full');
+      expect(items[2]?.className).toContain('col-span-2');
+      expect(document.querySelector('.grid')?.className).toContain('grid-cols-2');
+    },
+  );
 
   it('preserves an explicit detail column count and field span', () => {
     render(
