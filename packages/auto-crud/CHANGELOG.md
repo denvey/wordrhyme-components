@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.14.0
+
+### Minor Changes
+
+- 3c73b8d: Support shared URL query keys for resource and table pagination and sorting, initial column visibility, and disabling row selection. Add equality and array membership filters and multi-column sorting to memory data sources.
+
 ## 1.13.0
 
 ### Minor Changes
