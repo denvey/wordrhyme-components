@@ -70,17 +70,9 @@ export function buildFormOverrides(
   fields?: Fields,
   legacyOverrides?: Record<string, any>,
   denyFields?: string[],
+  mode: 'create' | 'edit' | 'view' = 'edit',
 ): Record<string, any> {
   const result: Record<string, any> = { ...legacyOverrides };
-
-  if (denyFields) {
-    for (const field of denyFields) {
-      result[field] = {
-        ...result[field],
-        'x-hidden': true,
-      };
-    }
-  }
 
   if (fields) {
     for (const [key, config] of Object.entries(fields)) {
@@ -102,13 +94,6 @@ export function buildFormOverrides(
         };
       }
 
-      if (config.hidden) {
-        result[key] = {
-          ...result[key],
-          'x-hidden': true,
-        };
-      }
-
       if (fieldOptions) {
         result[key] = {
           ...result[key],
@@ -123,18 +108,30 @@ export function buildFormOverrides(
         };
       }
 
-      if (config.form === false) {
+      if (config.form === false && mode !== 'view') {
         result[key] = {
           ...result[key],
           'x-hidden': true,
         };
       } else if (config.form && typeof config.form === 'object') {
+        const { 'x-hidden': formHidden, ...sharedFormConfig } = config.form;
         result[key] = {
           ...result[key],
-          ...config.form,
+          ...sharedFormConfig,
+          ...(mode !== 'view' && formHidden !== undefined
+            ? { 'x-hidden': formHidden }
+            : {}),
         };
       }
+
+      if (config.hidden) {
+        result[key] = { ...result[key], 'x-hidden': true };
+      }
     }
+  }
+
+  for (const field of denyFields ?? []) {
+    result[field] = { ...result[field], 'x-hidden': true };
   }
 
   return result;

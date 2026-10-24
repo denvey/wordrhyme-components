@@ -87,7 +87,7 @@ const meta = {
   tags: ['autodocs'],
   decorators: [
     (Story) => (
-      <div style={{ width: 360 }}>
+      <div style={{ width: 360, maxWidth: 'calc(100vw - 32px)' }}>
         <Story />
       </div>
     ),
@@ -115,6 +115,67 @@ export const Create: Story = {
     await waitFor(async () => {
       await expect(args.onSubmit).toHaveBeenCalledWith({ name: 'North Store' });
     });
+  },
+};
+
+export const ReadPretty: Story = {
+  render: () => (
+    <AutoForm
+      mode="view"
+      schema={regionFormSchema}
+      initialValues={{ regions: regionOptions.slice(0, 6).map((option) => option.value) }}
+      fields={{
+        regions: {
+          label: 'Regions',
+          enum: regionOptions,
+          form: { 'x-component': 'MultiCombobox' },
+        },
+      }}
+    />
+  ),
+};
+
+export const ReadPrettyInDialog: Story = {
+  render: function DetailPreview() {
+    const [open, setOpen] = useState(true);
+
+    return (
+      <>
+        <Button onClick={() => setOpen(true)}>View details</Button>
+        <CrudFormModal
+          open={open}
+          onOpenChange={setOpen}
+          mode="view"
+          title="Store details"
+          schema={z.object({
+            id: z.number(),
+            name: z.string(),
+            region: z.string(),
+            status: z.enum(['active', 'inactive']),
+            regions: z.array(z.string()),
+            notes: z.string(),
+          })}
+          initialValues={{
+            id: 1,
+            name: 'North Store',
+            region: 'north',
+            status: 'active',
+            regions: regionOptions.slice(0, 6).map((option) => option.value),
+            notes:
+              'Main store serving the northern region.\nDeliveries are accepted Monday through Friday, 09:00–18:00.',
+          }}
+          overrides={{
+            region: { enum: [{ value: 'north', label: 'North Region' }] },
+            regions: {
+              title: 'Service areas',
+              enum: regionOptions,
+              'x-component': 'MultiCombobox',
+            },
+            notes: { title: 'Notes', 'x-component': 'Textarea' },
+          }}
+        />
+      </>
+    );
   },
 };
 

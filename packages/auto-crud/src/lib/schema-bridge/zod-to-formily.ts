@@ -92,6 +92,10 @@ export function createFormSchema<T extends z.ZodObject<z.ZodRawShape>>(
     const component =
       inferredByName?.component ?? fieldTypeToFormilyComponent[parsed.type];
     const inferredProps = inferredByName?.props ?? {};
+    const componentProps = getComponentProps(parsed.type, parsed);
+    if (parsed.type === 'enum' && override?.enum) {
+      componentProps.options = override.enum;
+    }
 
     properties[key] = {
       type: mapToJsonSchemaType(parsed.type),
@@ -101,7 +105,7 @@ export function createFormSchema<T extends z.ZodObject<z.ZodRawShape>>(
       'x-decorator-props': decoratorProps,
       'x-component': component,
       'x-component-props': {
-        ...getComponentProps(parsed.type, parsed),
+        ...componentProps,
         ...inferredProps,
       },
       ...(parsed.enumValues && {

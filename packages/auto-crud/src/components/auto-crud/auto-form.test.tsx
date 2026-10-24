@@ -3,7 +3,8 @@ import type { Field } from '@formily/core';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 import { dataSources } from '@/lib/registries';
-import { AutoForm } from './auto-form';
+import { createRef } from 'react';
+import { AutoForm, type AutoFormRef } from './auto-form';
 
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -17,6 +18,120 @@ beforeAll(() => {
 afterEach(() => {
   dataSources.unregister('test.dynamic-regions');
   cleanup();
+});
+
+describe('AutoForm readPretty', () => {
+  it('shows managed fields, labels and complete values without editable controls', () => {
+    const detailSchema = z.object({
+      id: z.string(),
+      createdAt: z.date(),
+      description: z.string(),
+      status: z.enum(['active', 'inactive']),
+      enabled: z.boolean(),
+      count: z.number(),
+      tags: z.array(z.string()),
+      metadata: z.object({ source: z.string() }),
+      secret: z.string(),
+    });
+    render(
+      <AutoForm
+        mode="view"
+        schema={detailSchema}
+        initialValues={{
+          id: 'detail-1',
+          createdAt: new Date('2026-01-01T00:00:00Z'),
+          description: 'First line\nSecond line',
+          status: 'active',
+          enabled: false,
+          count: 0,
+          tags: ['one', 'two', 'three', 'four', 'five', 'six'],
+          metadata: { source: 'detail-source' },
+          secret: 'must-not-display',
+        }}
+        fields={{
+          id: { form: false },
+          description: { form: { 'x-hidden': true, 'x-component': 'Textarea' } },
+          status: { enum: [{ value: 'active', label: 'Active status' }] },
+          secret: { hidden: true, form: { 'x-hidden': false } },
+        }}
+      />,
+    );
+
+    expect(screen.getByText('detail-1')).toBeTruthy();
+    expect(screen.getByText(/January 1, 2026/)).toBeTruthy();
+    expect(screen.getByText('First line Second line')).toBeTruthy();
+    expect(screen.getByText('Active status')).toBeTruthy();
+    expect(screen.getByText('否')).toBeTruthy();
+    expect(screen.getByText('0')).toBeTruthy();
+    expect(screen.getByText('six')).toBeTruthy();
+    expect(screen.getByText(/detail-source/)).toBeTruthy();
+    expect(screen.queryByText('must-not-display')).toBeNull();
+    expect(document.querySelector('input, textarea, select, button')).toBeNull();
+    expect(document.querySelector('.grid')?.className).toContain('grid-cols-1');
+    expect(document.querySelector('.grid')?.className).not.toContain('@min-');
+    expect(
+      screen.getByText('First line Second line').closest('[data-slot="form-item"]')
+        ?.className,
+    ).toContain('col-span-full');
+    expect(screen.getByText('Active status').closest('[data-slot="badge"]')).toBeNull();
+  });
+
+  it('preserves an explicit detail column count and field span', () => {
+    render(
+      <AutoForm
+        mode="view"
+        schema={z.object({ description: z.string() })}
+        initialValues={{ description: 'Custom layout' }}
+        gridColumns={2}
+        overrides={{
+          description: {
+            'x-component': 'Textarea',
+            'x-decorator-props': { gridSpan: 1 },
+          },
+        }}
+      />,
+    );
+
+    expect(document.querySelector('.grid')?.className).toContain('grid-cols-2');
+    expect(document.querySelector('.grid')?.className).not.toContain('@min-');
+    const item = screen
+      .getByText('Custom layout')
+      .closest<HTMLElement>('[data-slot="form-item"]');
+    expect(item?.className).not.toContain('col-span-full');
+    expect(item?.style.gridColumn).toBe('span 1 / span 1');
+  });
+
+  it('rebuilds the pattern on mode changes and prevents imperative submission in view mode', async () => {
+    const ref = createRef<AutoFormRef>();
+    const onSubmit = vi.fn();
+    const initialValues = { country: 'CN' };
+    const { rerender } = render(
+      <AutoForm ref={ref} mode="view" schema={schema} initialValues={initialValues} />,
+    );
+    await ref.current?.submit();
+    expect(screen.queryByRole('button')).toBeNull();
+
+    rerender(
+      <AutoForm
+        ref={ref}
+        mode="edit"
+        schema={schema}
+        initialValues={initialValues}
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(screen.getByRole('textbox')).toBeTruthy();
+    expect(document.querySelector('.grid')?.className).toContain('grid-cols-1');
+    fireEvent.click(screen.getByRole('button', { name: '保存' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledWith(initialValues));
+
+    rerender(
+      <AutoForm ref={ref} mode="view" schema={schema} initialValues={initialValues} />,
+    );
+    expect(screen.queryByRole('textbox')).toBeNull();
+    await ref.current?.submit();
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
 });
 
 const schema = z.object({

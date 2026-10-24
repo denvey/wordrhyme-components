@@ -12,9 +12,11 @@ import {
 } from 'react';
 import type { Field } from '@formily/core';
 import { createForm } from '@formily/core';
+import { mapReadPretty } from '@formily/react';
 import { action, observable } from '@formily/reactive';
 import {
   connect,
+  defaultComponentRegistry,
   Form,
   JsonSchemaField,
   mapProps,
@@ -22,7 +24,11 @@ import {
   type JsonSchemaFormScope,
 } from '@wordrhyme/formily-shadcn';
 import { Button, cn, Switch as UiSwitch } from '@wordrhyme/shadcn';
-import { createEditFormSchema } from '@/lib/schema-bridge/zod-to-formily';
+import {
+  createEditFormSchema,
+  createFormSchema,
+} from '@/lib/schema-bridge/zod-to-formily';
+import { ReadPrettyField } from './read-pretty-field';
 import type { FormSchemaOverrides } from '@/lib/schema-bridge/types';
 import { readCrudReferenceOption } from '@/lib/crud-reference-projection';
 import { buildFormOverrides, type Fields } from '@/lib/field-config';
@@ -41,26 +47,27 @@ import {
   type AutoCrudDataSourceEntry,
 } from '@/lib/registries';
 
-export interface AutoFormProps<T extends z.ZodObject<z.ZodRawShape>> {
+export type AutoFormProps<T extends z.ZodObject<z.ZodRawShape>> = {
   schema: T;
   initialValues?: Partial<z.infer<T>>;
-  onSubmit: (values: z.infer<T>) => void | Promise<void>;
   /** 统一字段配置，推荐用于描述 auto-crud 字段级表单行为 */
   fields?: Fields;
   /** Formily 字段 schema 覆盖配置，保留兼容旧 API */
   overrides?: FormSchemaOverrides;
   /** Formily schema expression/reaction scope */
   scope?: JsonSchemaFormScope;
-  mode?: 'create' | 'edit';
   loading?: boolean;
   gridColumns?: number;
   /** Label 对齐方式 */
   labelAlign?: 'left' | 'top' | 'right';
-  /** Label 宽度（labelAlign 为 left 时有效） */
+  /** Label 宽度（labelAlign 为 left 或 right 时有效） */
   labelWidth?: number | string;
   /** 是否显示提交按钮（默认 true） */
   showSubmitButton?: boolean;
-}
+} & (
+  | { mode: 'view'; onSubmit?: never }
+  | { mode?: 'create' | 'edit'; onSubmit: (values: z.infer<T>) => void | Promise<void> }
+);
 
 export interface AutoFormRef {
   submit: () => Promise<void>;
@@ -177,6 +184,18 @@ const defaultFieldComponents = {
   Switch: { component: FormilySwitch, decorator: 'FormItem' },
 };
 
+const readPrettyFieldComponents = Object.fromEntries(
+  Object.entries({ ...defaultComponentRegistry, ...defaultFieldComponents })
+    .filter(([, config]) => 'decorator' in config)
+    .map(([name, config]) => [
+      name,
+      {
+        ...config,
+        component: connect(config.component, mapReadPretty(ReadPrettyField)),
+      },
+    ]),
+);
+
 const AUTO_CRUD_DATA_SOURCE_SCOPE_KEY = '$autoCrudDataSource';
 
 type AutoCrudDataSourceReactionState = {
@@ -253,7 +272,8 @@ function mergeReactions(existing: unknown, reaction: string): unknown {
   return [existing, reaction];
 }
 
-function applyDataSourceReactions(schema: Record<string, any>): void {
+function applyDataSourceReactions(schema: Record<string, any>, readPretty = false): void {
+  if (readPretty) schema['x-pattern'] = 'readPretty';
   const dataSourceConfig = getSchemaDataSourceConfig(schema);
   if (dataSourceConfig) {
     const reaction = `{{${AUTO_CRUD_DATA_SOURCE_SCOPE_KEY}(${JSON.stringify(
@@ -266,7 +286,7 @@ function applyDataSourceReactions(schema: Record<string, any>): void {
   if (properties && typeof properties === 'object' && !Array.isArray(properties)) {
     for (const property of Object.values(properties)) {
       if (property && typeof property === 'object' && !Array.isArray(property)) {
-        applyDataSourceReactions(property as Record<string, any>);
+        applyDataSourceReactions(property as Record<string, any>, readPretty);
       }
     }
   }
@@ -275,11 +295,11 @@ function applyDataSourceReactions(schema: Record<string, any>): void {
   if (Array.isArray(items)) {
     for (const item of items) {
       if (item && typeof item === 'object') {
-        applyDataSourceReactions(item as Record<string, any>);
+        applyDataSourceReactions(item as Record<string, any>, readPretty);
       }
     }
   } else if (items && typeof items === 'object') {
-    applyDataSourceReactions(items as Record<string, any>);
+    applyDataSourceReactions(items as Record<string, any>, readPretty);
   }
 }
 
@@ -375,6 +395,7 @@ function loadAutoCrudDataSource({
 
   if (
     entry.reset &&
+    !field.readPretty &&
     state.dependencyKey !== undefined &&
     state.dependencyKey !== dependencyKey
   ) {
@@ -638,9 +659,10 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
   ref: React.Ref<AutoFormRef>,
 ) {
   const form = useMemo(
-    () => createForm({ initialValues }),
+    () =>
+      createForm({ initialValues, pattern: mode === 'view' ? 'readPretty' : 'editable' }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [JSON.stringify(initialValues)],
+    [JSON.stringify(initialValues), mode],
   );
   const dataSourceRegistryState = useMemo(
     () => observable<AutoCrudDataSourceRegistryState>({ version: 0 }),
@@ -656,45 +678,81 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
     updateDataSourceRegistryState,
   );
   const formOverrides = useMemo(
-    () => buildFormOverrides(fields, overrides),
-    [fields, overrides],
+    () => buildFormOverrides(fields, overrides, undefined, mode),
+    [fields, overrides, mode],
   );
 
   const formSchema = useMemo(() => {
-    const nextSchema = createEditFormSchema(zodSchema, {
+    const buildSchema = mode === 'view' ? createFormSchema : createEditFormSchema;
+    const nextSchema = buildSchema(zodSchema, {
       overrides: formOverrides,
       layout: 'grid',
       gridColumns,
     });
 
-    applyDataSourceReactions(nextSchema);
+    const grid =
+      typeof nextSchema.properties === 'object'
+        ? nextSchema.properties.layout
+        : undefined;
+    if (mode === 'view' && grid && typeof grid === 'object') {
+      grid['x-component-props'] = {
+        ...grid['x-component-props'],
+        className: cn(grid['x-component-props']?.className, 'gap-x-10 gap-y-7 py-2'),
+      };
+      const properties = typeof grid.properties === 'object' ? grid.properties : {};
+      for (const property of Object.values(properties)) {
+        const decoratorProps = property['x-decorator-props'];
+        const fullWidth =
+          property.type === 'object' ||
+          property.type === 'array' ||
+          ['Textarea', 'RichTextEditor'].includes(property['x-component']);
+        property['x-decorator-props'] = {
+          colon: false,
+          ...decoratorProps,
+          className: cn(
+            fullWidth && decoratorProps?.gridSpan == null && 'col-span-full',
+            decoratorProps?.className,
+          ),
+        };
+      }
+    }
+
+    applyDataSourceReactions(nextSchema, mode === 'view');
 
     return nextSchema;
-  }, [zodSchema, formOverrides, gridColumns, dataSourceRegistryVersion]);
+  }, [zodSchema, formOverrides, gridColumns, dataSourceRegistryVersion, mode]);
   const formLayout = useMemo<FormLayoutOptions>(() => {
     const inlineLabel = labelAlign === 'left' || labelAlign === 'right';
 
     return {
-      labelPlacement: inlineLabel ? 'start' : 'top',
-      itemProps: inlineLabel
-        ? {
-            label: {
-              className: labelAlign === 'right' ? 'text-right' : undefined,
-              style: labelWidth != null ? { width: labelWidth } : undefined,
-            },
-          }
-        : undefined,
+      itemProps: {
+        container: mode === 'view' ? { className: 'min-w-0 space-y-0 gap-2' } : undefined,
+        label: {
+          placement: inlineLabel ? 'start' : 'top',
+          className: cn(
+            mode === 'view' && 'mb-0 text-sm font-normal text-muted-foreground leading-5',
+            labelAlign === 'right' && 'text-right',
+          ),
+          style: inlineLabel && labelWidth != null ? { width: labelWidth } : undefined,
+        },
+      },
     };
-  }, [labelAlign, labelWidth]);
+  }, [labelAlign, labelWidth, mode]);
   const formComponentVersion = useRegistryVersion(components.subscribe);
   const fieldComponents = useMemo(
     () => ({
       fields: {
         ...defaultFieldComponents,
+        ...(mode === 'view'
+          ? {
+              ...readPrettyFieldComponents,
+              ObjectField: { component: ReadPrettyField, decorator: 'FormItem' },
+            }
+          : {}),
         ...components.all(),
       },
     }),
-    [formComponentVersion],
+    [formComponentVersion, mode],
   );
   const scope = useMemo<JsonSchemaFormScope>(
     () => ({
@@ -706,6 +764,7 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
   );
 
   const handleSubmit = async () => {
+    if (mode === 'view' || !onSubmit) return;
     await form.validate();
     if (form.valid) {
       await onSubmit(form.values as z.infer<T>);
@@ -719,7 +778,7 @@ function AutoFormInner<T extends z.ZodObject<z.ZodRawShape>>(
   return (
     <Form form={form} layout={formLayout}>
       <JsonSchemaField schema={formSchema} components={fieldComponents} scope={scope} />
-      {showSubmitButton && (
+      {mode !== 'view' && showSubmitButton && (
         <div className="flex justify-end gap-2 mt-6">
           <Button type="button" onClick={handleSubmit} disabled={loading}>
             {loading ? '处理中...' : mode === 'create' ? '创建' : '保存'}

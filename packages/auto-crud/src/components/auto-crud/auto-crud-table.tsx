@@ -21,6 +21,12 @@ import type {
   BatchUpdateField,
 } from './auto-table-action-bar';
 import { CrudFormModal } from './crud-form-modal';
+import type { AutoFormProps } from './auto-form';
+import {
+  ReadPrettyBooleanLocale,
+  ReadPrettyRenderers,
+  ReadPrettyValue,
+} from './read-pretty-field';
 import { Button } from '@wordrhyme/shadcn';
 import { DropdownMenuItem } from '@wordrhyme/ui';
 import {
@@ -33,8 +39,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@wordrhyme/ui';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@wordrhyme/ui';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@wordrhyme/ui';
 import {
   parseZodField,
   memoCell,
@@ -600,6 +604,10 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     scope?: JsonSchemaFormScope;
     /** 表单列数 */
     columns?: number;
+    /** 标签布局：top 为上下布局，left/right 为左右布局并指定标签文字对齐 */
+    labelAlign?: AutoFormProps<TSchema>['labelAlign'];
+    /** 左右布局时的标签宽度，数字单位为 px，也支持 CSS 宽度字符串 */
+    labelWidth?: AutoFormProps<TSchema>['labelWidth'];
     /** 弹窗自定义容器类名（支持控制大小、最大高度等） */
     className?: string;
   };
@@ -1986,6 +1994,7 @@ interface ViewModalProps<TSchema extends z.ZodObject<z.ZodRawShape>> {
   locale: { viewModal: { title: string }; boolean: { true: string; false: string } };
   tableOverrides?: ColumnOverrides<z.output<TSchema>>;
   view?: AutoCrudTableProps<TSchema>['view'];
+  form?: AutoCrudTableProps<TSchema>['form'];
 }
 
 function ViewModal<TSchema extends z.ZodObject<z.ZodRawShape>>(
@@ -2007,6 +2016,7 @@ function ViewModalContent<TSchema extends z.ZodObject<z.ZodRawShape>>({
   locale,
   tableOverrides,
   view,
+  form,
 }: ViewModalProps<TSchema>) {
   const excluded = React.useMemo(() => {
     const denied = new Set(denyFields ?? []);
@@ -2049,14 +2059,23 @@ function ViewModalContent<TSchema extends z.ZodObject<z.ZodRawShape>>({
           const value = getValue();
           return (
             config.format?.(value, { row: row.original, target: 'display' }) ??
-            renderFieldValue(
-              value,
-              parseZodField(fieldSchema as z.ZodType).type,
-              locale.boolean,
-              options,
-              tableConfig?.display ?? 'auto',
-              Infinity,
-            )
+            ((tableConfig?.display && tableConfig.display !== 'auto') ||
+            options?.some((option) => option.badgeTone) ? (
+              renderFieldValue(
+                value,
+                parseZodField(fieldSchema as z.ZodType).type,
+                locale.boolean,
+                options,
+                tableConfig?.display ?? 'auto',
+                Infinity,
+              )
+            ) : (
+              <ReadPrettyValue
+                value={value}
+                options={options}
+                date={parseZodField(fieldSchema as z.ZodType).type === 'date'}
+              />
+            ))
           );
         },
         ...(view?.presentation === 'table' ? listOverride : undefined),
@@ -2086,49 +2105,46 @@ function ViewModalContent<TSchema extends z.ZodObject<z.ZodRawShape>>({
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
-  const content = (
-    <dl className="grid gap-4 py-4">
-      {table
-        .getRowModel()
-        .rows[0]?.getAllCells()
-        .map((cell) => (
-          <div key={cell.id} className="grid grid-cols-3 items-start gap-4">
-            <dt className="text-sm font-medium text-muted-foreground">
-              {cell.column.columnDef.meta?.label ?? humanize(cell.column.id)}
-            </dt>
-            <dd className="col-span-2 min-w-0 whitespace-pre-wrap break-words text-sm">
-              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-            </dd>
-          </div>
-        ))}
-    </dl>
+  const detailSchema = React.useMemo<z.ZodObject<z.ZodRawShape>>(
+    () => schema.omit(Object.fromEntries(excluded.map((key) => [key, true as const]))),
+    [schema, excluded],
   );
-
-  if (variant === 'sheet') {
-    return (
-      <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>{locale.viewModal.title}</SheetTitle>
-          </SheetHeader>
-          {content}
-        </SheetContent>
-      </Sheet>
-    );
+  const overrides = buildFormOverrides(fieldConfig, form?.overrides, denyFields, 'view');
+  const renderers: Record<string, () => React.ReactNode> = {};
+  for (const [index, cell] of (
+    table.getRowModel().rows[0]?.getAllCells() ?? []
+  ).entries()) {
+    const key = cell.column.id;
+    overrides[key] = {
+      ...overrides[key],
+      title: cell.column.columnDef.meta?.label ?? humanize(key),
+      'x-index': index,
+    };
+    renderers[key] = () => flexRender(cell.column.columnDef.cell, cell.getContext());
+    // Detail options are already resolved by the shared table data source above.
+    delete overrides[key]['x-data-source'];
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        aria-describedby={undefined}
-        className="max-w-2xl max-h-[80vh] overflow-y-auto"
-      >
-        <DialogHeader>
-          <DialogTitle>{locale.viewModal.title}</DialogTitle>
-        </DialogHeader>
-        {content}
-      </DialogContent>
-    </Dialog>
+    <ReadPrettyBooleanLocale.Provider value={locale.boolean}>
+      <ReadPrettyRenderers.Provider value={renderers}>
+        <CrudFormModal
+          open={open}
+          onOpenChange={onOpenChange}
+          mode="view"
+          variant={variant}
+          schema={detailSchema}
+          initialValues={data ?? undefined}
+          overrides={overrides}
+          scope={form?.scope}
+          title={locale.viewModal.title}
+          gridColumns={form?.columns}
+          labelAlign={form?.labelAlign}
+          labelWidth={form?.labelWidth}
+          className={form?.className}
+        />
+      </ReadPrettyRenderers.Provider>
+    </ReadPrettyBooleanLocale.Provider>
   );
 }
 
@@ -2889,6 +2905,8 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         scope={formConfig?.scope}
         locale={locale.formModal}
         gridColumns={formConfig?.columns}
+        labelAlign={formConfig?.labelAlign}
+        labelWidth={formConfig?.labelWidth}
         className={formConfig?.className}
       />
 
@@ -2905,6 +2923,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         locale={locale}
         tableOverrides={detailTableOverrides as ColumnOverrides<z.output<TSchema>>}
         view={viewConfig}
+        form={formConfig}
       />
 
       {/* Delete Confirmation */}

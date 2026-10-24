@@ -278,6 +278,8 @@ interface AutoCrudTableProps<TSchema> {
   form?: {
     overrides?: Record<string, any>; // 表单覆盖配置
     columns?: number; // 表单列数
+    labelAlign?: 'left' | 'top' | 'right'; // 默认 top；left/right 为左右布局及标签文字对齐
+    labelWidth?: number | string; // 左右布局的标签宽度，数字单位为 px
   };
   /**
    * 行操作配置，或统一配置 toolbar/row/batch。
@@ -1509,26 +1511,38 @@ function CustomTable({ data }) {
 ### 使用 AutoForm 组件
 
 ```typescript
-import { AutoForm, createFormSchema } from "@wordrhyme/auto-crud";
-import { createForm } from "@formily/core";
+import { AutoForm } from "@wordrhyme/auto-crud";
 
 function CustomForm() {
-  const form = createForm();
-  const formSchema = createFormSchema(taskSchema, {
-    exclude: ["id", "createdAt"],
-    layout: "grid",
-    gridColumns: 2,
-  });
-
   return (
     <AutoForm
-      form={form}
-      schema={formSchema}
+      schema={taskSchema}
+      gridColumns={2}
       onSubmit={(values) => console.log(values)}
     />
   );
 }
 ```
+
+详情使用同一条 Formily 渲染链路，通过 `mode="view"` 启用 `readPretty`，无需传入 `onSubmit`，也不会显示提交按钮：
+
+```tsx
+<AutoForm
+  mode="view"
+  schema={taskSchema}
+  initialValues={selectedTask}
+  fields={fields}
+  gridColumns={2}
+/>
+```
+
+创建、编辑排除 ID 和审计托管字段；详情保留 ID、创建时间和更新时间。`form: false` 和字段级 `form['x-hidden']` 只影响创建、编辑；全局 `hidden` 和 `permissions.deny` 仍限制详情字段。其他表单覆盖配置、布局、scope 和选项标签继续共用。
+
+内置字段提供阅读态映射；通过 `components.register()` 注册的自定义组件应使用 Formily `mapReadPretty` 实现自己的阅读态。`AutoCrudTable` 详情仍展示当前选中记录，不会额外请求单条接口。
+
+详情默认单列，列数由 `AutoCrudTable` 的 `form.columns` 或 `AutoForm` 的 `gridColumns` 控制，使用浅色标签和宽松间距；长文本、数组和对象默认占满整行，字段 `gridSpan` 可指定跨度。单选标签显示为文字，多选标签使用轻量徽标。长内容自动换行；弹窗最高为视口高度的 85%，超出后正文滚动，标题保持可见。
+
+`AutoCrudTable` 的 `form.labelAlign` 和 `form.labelWidth` 同时作用于创建、编辑及详情弹窗。例如 `form={{ columns: 1, labelAlign: 'left', labelWidth: 100 }}` 表示单列、左侧标签文字左对齐，标签宽度为 100px。`top` 表示上下布局（默认），`right` 表示左侧标签文字右对齐；`labelWidth` 仅在 `left` / `right` 布局时生效。
 
 ### 使用 useDataTable Hook
 

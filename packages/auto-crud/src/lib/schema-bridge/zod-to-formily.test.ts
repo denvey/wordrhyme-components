@@ -26,4 +26,19 @@ describe('createEditFormSchema', () => {
     expect(formSchema.properties).not.toHaveProperty('updatedBy');
     expect(formSchema.properties).not.toHaveProperty('updatedByType');
   });
+
+  it('uses overridden enum labels in both data sources and component options', () => {
+    const options = [{ value: 'active', label: 'Active status' }];
+    const formSchema = createEditFormSchema(z.object({ status: z.enum(['active']) }), {
+      overrides: { status: { enum: options } },
+    });
+    expect(formSchema).toMatchObject({
+      properties: {
+        status: {
+          enum: options,
+          'x-component-props': { options },
+        },
+      },
+    });
+  });
 });
