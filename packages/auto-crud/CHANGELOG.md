@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.13.0
+
+### Minor Changes
+
+- df11a36: Render details through Formily readPretty with shared field configuration and readable spacing. Add form.labelAlign and form.labelWidth for create, edit, and detail modals, while preserving detail formatting and custom cell overrides.
+
 ## 1.12.2
 
 ### Patch Changes
