@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.14.2
+
+### Patch Changes
+
+- 9091ecd: Preserve shared form spans in details instead of forcing array, object and long-text fields to occupy a full row.
+
 ## 1.14.1
 
 ### Patch Changes
