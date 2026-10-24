@@ -76,7 +76,7 @@
     "@iconify-json/fa": "catalog:prod",
     "@iconify-json/mdi": "catalog:prod",
     "@iconify/react": "catalog:prod",
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "@pixpilot/env": "catalog:prod",
     "@pixpilot/string": "catalog:prod",
     "@wordrhyme/shadcn": "workspace:*",
