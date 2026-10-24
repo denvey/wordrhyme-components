@@ -1684,7 +1684,10 @@ describe('auto-crud table toolbar resolver', () => {
     const dialog = within(screen.getByRole('dialog'));
     expect(dialog.getByText('Formatted region')).toBeTruthy();
     expect(dialog.queryByText('west')).toBeNull();
-    expect(dialog.getAllByRole('term')[0]?.textContent).toBe('Region');
+    expect(
+      screen.getByRole('dialog').querySelector('[data-slot="form-item-label"]')
+        ?.textContent,
+    ).toBe('Region');
   });
 
   it('shares table data source labels with details but not filters', async () => {
@@ -3102,4 +3105,74 @@ describe('optional export delivery', () => {
     expect(ownerBatch).toHaveBeenCalledTimes(1);
     expect(onExport).not.toHaveBeenCalled();
   });
+});
+
+describe('AutoCrudTable Formily detail', () => {
+  afterEach(cleanup);
+
+  it.each(['create', 'edit', 'view'] as const)(
+    'passes label layout configuration to the %s modal',
+    (mode) => {
+      const resource = createAuditResource();
+      resource.modal = {
+        ...resource.modal,
+        createOpen: mode === 'create',
+        editOpen: mode === 'edit',
+        viewOpen: mode === 'view',
+        selected: mode === 'create' ? null : resource.tableData.data[0]!,
+      };
+      render(
+        <AutoCrudTable
+          schema={auditSchema}
+          resource={resource}
+          form={{
+            labelAlign: mode === 'edit' ? 'right' : 'left',
+            labelWidth: mode === 'edit' ? '8rem' : 100,
+          }}
+        />,
+      );
+
+      const label = screen
+        .getByRole('dialog')
+        .querySelector<HTMLElement>('[data-slot="form-item-label"]');
+      expect(label?.style.width).toBe(mode === 'edit' ? '8rem' : '100px');
+      expect(label?.closest('[data-slot="form-item-content"]')).toBeTruthy();
+      expect(label?.classList.contains('text-right')).toBe(mode === 'edit');
+    },
+  );
+
+  it.each(['dialog', 'sheet'] as const)(
+    'uses readPretty in %s and excludes denied fields',
+    (variant) => {
+      const resource = createAuditResource();
+      resource.modal = {
+        ...resource.modal,
+        variant,
+        viewOpen: true,
+        selected: resource.tableData.data[0]!,
+      };
+      render(
+        <AutoCrudTable
+          schema={auditSchema}
+          resource={resource}
+          permissions={{ deny: ['name'] }}
+          fields={{
+            id: { form: false },
+            name: { form: { 'x-hidden': false } },
+            createdBy: { hidden: true, form: { 'x-hidden': false } },
+          }}
+          form={{ columns: 2 }}
+        />,
+      );
+      const dialog = screen.getByRole('dialog');
+      expect(within(dialog).getByText('1')).toBeTruthy();
+      expect(within(dialog).getByText(/January 1, 2026/)).toBeTruthy();
+      expect(within(dialog).queryByText('North Store')).toBeNull();
+      expect(within(dialog).queryByText('user-1')).toBeNull();
+      expect(dialog.querySelector('input, textarea, select')).toBeNull();
+      expect(within(dialog).queryByRole('button', { name: '保存' })).toBeNull();
+      expect(resource.handlers.submitCreate).not.toHaveBeenCalled();
+      expect(resource.handlers.submitUpdate).not.toHaveBeenCalled();
+    },
+  );
 });

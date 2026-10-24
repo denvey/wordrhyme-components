@@ -49,6 +49,7 @@ export function FormModal({
     return (
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
+          {...(!description ? { 'aria-describedby': undefined } : {})}
           side={side}
           className={cn('sm:max-w-lg flex flex-col p-0', className)}
         >
@@ -70,6 +71,7 @@ export function FormModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        {...(!description ? { 'aria-describedby': undefined } : {})}
         className={cn(
           'max-w-2xl sm:max-w-2xl flex flex-col max-h-[85vh] overflow-hidden p-0',
           className,

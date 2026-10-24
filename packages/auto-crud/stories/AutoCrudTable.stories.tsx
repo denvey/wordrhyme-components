@@ -176,6 +176,7 @@ interface AutoCrudTableStoryProps {
   fieldSearch?: boolean;
   nameFilter?: boolean;
   tableSearch?: false | { placeholder?: string };
+  form?: AutoCrudTableProps<typeof storeTableSchema>['form'];
   locale?: AutoCrudTableProps<typeof storeTableSchema>['locale'];
   expandedRow?: NonNullable<
     AutoCrudTableProps<typeof storeTableSchema>['table']
@@ -192,6 +193,7 @@ function AutoCrudTableStory({
     placeholder: 'Search stores...',
   },
   expandedRow,
+  form,
   locale = 'en-US',
 }: AutoCrudTableStoryProps) {
   const search = useLocationSearch();
@@ -392,6 +394,7 @@ function AutoCrudTableStory({
       description="Schema-first CRUD table generated from a Zod schema."
       schema={storeTableSchema}
       resource={resource}
+      form={form}
       fields={{
         storeId: {
           label: 'Id',
@@ -528,6 +531,19 @@ export const LocalizedControls: Story = {
       await userEvent.click(canvas.getByRole('combobox', { name: '列设置' }));
       await expect(page.getByPlaceholderText('搜索列...')).toBeInTheDocument();
     });
+  },
+};
+
+export const HorizontalLabels: Story = {
+  args: {
+    form: { columns: 1, labelAlign: 'left', labelWidth: 100 },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const page = within(canvasElement.ownerDocument.body);
+    await userEvent.click(canvas.getAllByRole('button', { name: 'Open menu' })[0]!);
+    await userEvent.click(page.getByRole('menuitem', { name: 'View' }));
+    await expect(await page.findByRole('dialog')).toHaveTextContent('North Store');
   },
 };
 
