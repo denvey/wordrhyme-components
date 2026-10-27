@@ -20,13 +20,13 @@ describe('AutoTable global search debounce', () => {
     fireEvent.change(screen.getByRole('textbox'), { target: { value } });
   const search = () => new URLSearchParams(window.location.search).get('search');
 
-  it('shows input immediately and submits only the final keyword after 300ms', () => {
+  it('shows input immediately and submits only the final keyword after 200ms', () => {
     render(<AutoTableSearch />);
     type('2');
-    advance(200);
+    advance(100);
     type('2022');
     expect((screen.getByRole('textbox') as HTMLInputElement).value).toBe('2022');
-    advance(299);
+    advance(199);
     expect(search()).toBeNull();
     advance(1);
     expect(search()).toBe('2022');
@@ -44,7 +44,7 @@ describe('AutoTable global search debounce', () => {
     window.addEventListener('urlchange', observe);
     try {
       type('2022');
-      advance(300);
+      advance(200);
       expect(snapshots).toHaveLength(1);
       const params = new URLSearchParams(snapshots[0]);
       expect(params.get('search')).toBe('2022');
@@ -94,7 +94,7 @@ describe('AutoTable global search debounce', () => {
     expect(search()).toBeNull();
     type('店铺');
     fireEvent.compositionEnd(screen.getByRole('textbox'));
-    advance(299);
+    advance(199);
     expect(search()).toBeNull();
     advance(1);
     expect(search()).toBe('店铺');

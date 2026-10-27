@@ -118,7 +118,7 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
     | boolean
     | {
         placeholder?: string;
-        /** Search delay in milliseconds. Defaults to 300; use 0 for immediate queries. */
+        /** Search delay in milliseconds. Defaults to 200; use 0 for immediate queries. */
         debounceMs?: number;
       };
   /** Extra table controls rendered between sorting and column visibility. */

@@ -13,7 +13,7 @@ interface AutoTableSearchProps {
 
 export function AutoTableSearch({
   placeholder = '搜索',
-  debounceMs = 300,
+  debounceMs = 200,
   pageKey = 'page',
 }: AutoTableSearchProps) {
   const [value, setValue] = useState(() => getUrlParams().get('search') ?? '');
