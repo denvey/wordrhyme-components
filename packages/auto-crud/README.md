@@ -357,6 +357,8 @@ const resource = useAutoCrudResource({
 
 未配置的参数名保留默认值。搜索仍使用共享的 `search` 参数，字段筛选仍使用字段名；`queryKeys` 不隔离这些值。筛选或搜索变化时，仅重置该表格对应的页码。直接使用 `AutoTable` 时传入相同的 `queryKeys`；`table.queryKeys` 可覆盖资源提供的整组配置。
 
+全局搜索输入立即显示，停止输入 300ms 后提交查询并回到第一页；清空立即提交，中文输入法组词期间不查询。可以通过 `table.search: { debounceMs: 0 }` 恢复即时查询，或指定其他延时；直接使用 `AutoTable` 时配置 `search.debounceMs`。浏览器导航或其他 URL 状态变化会取消尚未提交的搜索，并按 URL 恢复输入框。
+
 `enableRowSelection` 默认 `true`，设为 `false` 后关闭行选择并隐藏选择列和批量操作栏。`initialColumnVisibility` 只设置首次显示的列，用户仍可通过列设置切换；它不同于 `table.hidden` 对列的排除。
 
 ### `useAutoCrudResource()`

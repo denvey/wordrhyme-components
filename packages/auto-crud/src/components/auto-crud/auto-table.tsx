@@ -20,7 +20,7 @@ import { DataTableFilterList } from '@/components/data-table/data-table-filter-l
 import { DataTableFilterMenu } from '@/components/data-table/data-table-filter-menu';
 import { DataTableSortList } from '@/components/data-table/data-table-sort-list';
 import { DataTableViewOptions } from '@/components/data-table/data-table-view-options';
-import { Button, Input } from '@wordrhyme/shadcn';
+import { Button } from '@wordrhyme/shadcn';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,15 +28,10 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@wordrhyme/shadcn';
-import {
-  parseAsInteger,
-  parseAsString,
-  parseAsStringEnum,
-  useQueryState,
-  useUrlState,
-} from '@/hooks/use-url-state';
+import { parseAsStringEnum, useQueryState } from '@/hooks/use-url-state';
 import { enUSTableControls } from '@/i18n/locale';
 import { AutoTableSimpleFilters } from './auto-table-simple-filters';
+import { AutoTableSearch } from './auto-table-search';
 import {
   AutoTableActionBar,
   type BatchActionConfig,
@@ -123,6 +118,8 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
     | boolean
     | {
         placeholder?: string;
+        /** Search delay in milliseconds. Defaults to 300; use 0 for immediate queries. */
+        debounceMs?: number;
       };
   /** Extra table controls rendered between sorting and column visibility. */
   toolbarExtra?: React.ReactNode;
@@ -208,19 +205,6 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     parseAsStringEnum<FilterMode>(modes).withDefault(modes[0] ?? 'simple'),
   );
   const showToggle = modes.length > 1;
-  const [searchValue, setSearchValue] = useUrlState(
-    'search',
-    parseAsString.withDefault(''),
-    {
-      shallow: false,
-      clearOnDefault: true,
-    },
-  );
-  const [, setSearchPage] = useUrlState(
-    queryKeys?.page ?? 'page',
-    parseAsInteger.withDefault(1),
-    { shallow: false, clearOnDefault: true },
-  );
   const searchConfig = search && typeof search === 'object' ? search : {};
 
   // 所有模式都使用高级过滤的数据流（filters 数组同步到 URL）
@@ -426,15 +410,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   ) : null;
 
   const searchInput = search ? (
-    <Input
-      value={searchValue}
-      onChange={(event) => {
-        setSearchValue(event.target.value);
-        setSearchPage(1);
-      }}
-      placeholder={searchConfig.placeholder ?? '搜索'}
-      className="h-8 w-48 shrink-0"
-    />
+    <AutoTableSearch {...searchConfig} pageKey={queryKeys?.page} />
   ) : null;
 
   // 渲染过滤器组件（memoized to avoid recreating on every render）

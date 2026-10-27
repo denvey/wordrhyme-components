@@ -908,6 +908,27 @@ describe('auto-crud table toolbar resolver', () => {
     expect(screen.getByPlaceholderText('搜索')).toBeTruthy();
   });
 
+  it('forwards the global search delay and page key to the search input', () => {
+    window.history.replaceState(null, '', '/orders?ordersPage=4&page=7');
+    render(
+      <AutoCrudTable
+        id="com.wordrhyme.shop.orders"
+        schema={schema}
+        resource={createResource({
+          capabilities: { search: { enabled: true, fields: ['region'] } },
+        })}
+        table={{ search: { debounceMs: 0 }, queryKeys: { page: 'ordersPage' } }}
+      />,
+    );
+    fireEvent.change(screen.getByPlaceholderText('搜索'), {
+      target: { value: '2022' },
+    });
+    const params = new URLSearchParams(window.location.search);
+    expect(params.get('search')).toBe('2022');
+    expect(params.has('ordersPage')).toBe(false);
+    expect(params.get('page')).toBe('7');
+  });
+
   it('does not use field search config when metadata disables search', () => {
     render(
       <AutoCrudTable
