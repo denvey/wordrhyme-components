@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.14.3
+
+### Patch Changes
+
+- 81badf6: Debounce global table search by 200ms, commit search and pagination together, and avoid queries during IME composition. Support search.debounceMs: 0 for immediate queries.
+
 ## 1.14.2
 
 ### Patch Changes
