@@ -1145,6 +1145,11 @@ create index tasks_tenant_created_at_id_idx
 应为真实文本列配置 `pg_trgm` GIN 索引；JSON/custom expression 需要与生成 SQL 一致的
 表达式索引。
 
+可信扩展 provider 的 `getMetadata()` 可以通过 `fields[fieldId].search: false`
+关闭某个基础字段的全局搜索。该覆盖同时收窄能力元数据、列表、数量统计及导出查询；
+未声明覆盖的字段沿用 router 的搜索白名单。`search: true` 不会把白名单以外的基础字段
+加入搜索，router 的 `search: false` 仍关闭整个搜索能力。客户端不能通过请求参数扩大范围。
+
 扩展字段筛选与搜索使用可信服务端 provider 的 `buildConditions` 契约。Host 接收
 CRUD target、原表 ID 列、扩展筛选条件和搜索词，返回组织隔离的 SQL `filter` / `search`
 条件（例如关联 `EXISTS`），不返回全量 ID 数组。基础筛选与扩展筛选按 `joinOperator`

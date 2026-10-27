@@ -593,6 +593,16 @@ function mergeCrudCapabilities(
   };
 }
 
+function allowsSearch(fields: CrudExtensionMetadata['fields'], id: string): boolean {
+  const field = fields?.[id];
+  return !(
+    field &&
+    typeof field === 'object' &&
+    'search' in field &&
+    field.search === false
+  );
+}
+
 function withCrudCapabilities(
   metadata: CrudExtensionMetadata | undefined,
   capabilities: CrudCapabilityMetadata,
@@ -602,9 +612,22 @@ function withCrudCapabilities(
     sort: boolean;
   },
 ): CrudExtensionMetadata {
+  const merged = mergeCrudCapabilities(capabilities, metadata?.capabilities, disabled);
+  const fields = merged.search.fields.filter((id) => allowsSearch(metadata?.fields, id));
   return {
     ...(metadata ?? {}),
-    capabilities: mergeCrudCapabilities(capabilities, metadata?.capabilities, disabled),
+    capabilities: {
+      ...merged,
+      search: {
+        enabled:
+          merged.search.enabled &&
+          (merged.search.fields.length === 0 ||
+            fields.length > 0 ||
+            (metadata?.capabilities?.search?.enabled === true &&
+              metadata.capabilities.search.fields.length === 0)),
+        fields,
+      },
+    },
   };
 }
 
@@ -1631,14 +1654,26 @@ export function createCrudRouter<
     }
   };
 
+  const querySearch = async (ctx: TContext, search?: string) => {
+    if (!search?.trim() || !Array.isArray(searchColumns)) return searchColumns;
+    const target = readCrudTarget(config);
+    const provider = resolveCrudExtensions(ctx, config);
+    if (!target || !provider?.getMetadata) return searchColumns;
+    const metadata = await provider.getMetadata({ id: target.id });
+    return searchColumns.filter((column) =>
+      allowsSearch(metadata.fields, getColumnRefId(column)),
+    );
+  };
+
   const queryWhere = async (ctx: TContext, input: ListInput) => {
+    const columns = await querySearch(ctx, input.search);
     const effectiveInput = (await applyCrudExtensionFilters(
       ctx,
       config,
       table,
       idField,
       filterableColumns,
-      searchColumns,
+      columns,
       input,
     )) as ListInput & CrudExtensionInput;
     const validatedFilters = effectiveInput.filters?.filter((filter) =>
@@ -1665,11 +1700,7 @@ export function createCrudRouter<
         })
       : undefined;
 
-    const searchCondition = buildCrudSearchWithExtensions(
-      table,
-      effectiveInput,
-      searchColumns,
-    );
+    const searchCondition = buildCrudSearchWithExtensions(table, effectiveInput, columns);
     const where = buildWhere(
       ctx,
       'list',
@@ -2381,13 +2412,14 @@ export function createCrudRouter<
           const doExport = async (
             exportInput: ExportInput,
           ): Promise<ExportResult<TSelect>> => {
+            const columns = await querySearch(ctx, exportInput.search);
             const effectiveInput = (await applyCrudExtensionFilters(
               ctx,
               config,
               table,
               idField,
               filterableColumns,
-              searchColumns,
+              columns,
               {
                 page: 1,
                 perPage: Math.min(
@@ -2430,7 +2462,7 @@ export function createCrudRouter<
             const searchCondition = buildCrudSearchWithExtensions(
               table,
               effectiveInput,
-              searchColumns,
+              columns,
             );
             const where = buildWhere(
               ctx,
