@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 2.1.1
+
+### Patch Changes
+
+- eab903e: Honor explicit field search exclusions from trusted extension metadata consistently in lists, counts, and exports. Preserve router search defaults, global search disabling, and extension-only search capabilities.
+
 ## 2.1.0
 
 ### Minor Changes
