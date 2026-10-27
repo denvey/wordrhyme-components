@@ -575,11 +575,7 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
      */
     filterModes?: FilterMode | FilterMode[];
     /** 全局搜索框；默认在存在 search: true 字段时显示 */
-    search?:
-      | boolean
-      | {
-          placeholder?: string;
-        };
+    search?: AutoTableProps<TSchema>['search'];
     /**
      * 批量更新字段配置
      * - 只需传字段名数组，options 自动从 schema enum 推导
