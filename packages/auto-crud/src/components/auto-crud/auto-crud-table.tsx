@@ -595,6 +595,7 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     AutoTableProps<TSchema>,
     | 'getRowId'
     | 'expandedRow'
+    | 'rowFooter'
     | 'defaultExpanded'
     | 'enableRowSelection'
     | 'initialColumnVisibility'
@@ -2864,6 +2865,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         initialColumnVisibility={tableConfig?.initialColumnVisibility}
         getRowId={tableConfig?.getRowId}
         expandedRow={tableConfig?.expandedRow}
+        rowFooter={tableConfig?.rowFooter}
         defaultExpanded={tableConfig?.defaultExpanded}
         overrides={tableOverrides as any}
         classNames={tableConfig?.classNames}
