@@ -21,8 +21,6 @@ export interface DataTableProps<TData> extends ComponentProps<'div'> {
   pagination?: TablePaginationOptions;
   classNames?: DataTableClassNames;
   actionBar?: ReactNode;
-  /** Always-visible content within a record, below its cells. Return null to omit it. */
-  rowFooter?: (record: TData, row: Row<TData>) => ReactNode;
   /** Content mounted below an expanded row; row provides resolved cell contexts. */
   expandedRow?: (record: TData, row: Row<TData>) => ReactNode;
 }
@@ -32,7 +30,6 @@ export function DataTable<TData>({
   actionBar,
   pagination,
   expandedRow,
-  rowFooter,
   children,
   className,
   classNames,
@@ -61,7 +58,7 @@ export function DataTable<TData>({
       {children}
       <div
         className="overflow-hidden rounded-md border"
-        style={expandedRow || rowFooter ? { containerType: 'inline-size' } : undefined}
+        style={expandedRow ? { containerType: 'inline-size' } : undefined}
       >
         <Table
           className={classNames?.table}
@@ -111,97 +108,46 @@ export function DataTable<TData>({
           </TableHeader>
           <TableBody className={classNames?.tbody}>
             {table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => {
-                const footer = rowFooter?.(row.original, row);
-                const hasFooter =
-                  footer !== null && footer !== undefined && footer !== false;
-                const cells = row.getVisibleCells();
-                // The selection control belongs to the whole record, not its footer.
-                const firstDataCell = cells.findIndex(
-                  (cell) =>
-                    cell.column.id !== 'select' &&
-                    !cell.column.columnDef.meta?.autoCrudExpandColumn,
-                );
-                const controls =
-                  hasFooter && firstDataCell > 0 ? cells.slice(0, firstDataCell) : [];
-                const controlsWidth = controls.reduce(
-                  (width, cell) => width + cell.column.getSize(),
-                  0,
-                );
-                return (
-                  <Fragment key={row.id}>
-                    <TableRow
-                      className={cn(
-                        classNames?.tr,
-                        hasFooter &&
-                          'border-b-0 has-[+tr[data-row-footer]:hover]:bg-muted/50',
-                      )}
-                      data-row-main=""
-                      data-state={row.getIsSelected() && 'selected'}
-                    >
-                      {row.getVisibleCells().map((cell) => {
-                        const columnClassName =
-                          cell.column.columnDef.meta?.classNames?.td;
+              table.getRowModel().rows.map((row) => (
+                <Fragment key={row.id}>
+                  <TableRow
+                    className={classNames?.tr}
+                    data-state={row.getIsSelected() && 'selected'}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const columnClassName = cell.column.columnDef.meta?.classNames?.td;
 
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            rowSpan={controls.includes(cell) ? 2 : undefined}
-                            className={cn(
-                              hasWidthCap && 'overflow-hidden text-ellipsis',
-                              classNames?.td,
-                              typeof columnClassName === 'string'
-                                ? columnClassName
-                                : undefined,
-                            )}
-                            style={{
-                              ...getColumnPinningStyle({ column: cell.column }),
-                            }}
-                          >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                    {hasFooter && (
-                      <TableRow
-                        data-row-footer=""
-                        data-state={row.getIsSelected() && 'selected'}
-                        className={cn(
-                          classNames?.tr,
-                          '[[data-row-main]:hover+&]:bg-muted/50',
-                        )}
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            hasWidthCap && 'overflow-hidden text-ellipsis',
+                            classNames?.td,
+                            typeof columnClassName === 'string'
+                              ? columnClassName
+                              : undefined,
+                          )}
+                          style={{
+                            ...getColumnPinningStyle({ column: cell.column }),
+                          }}
+                        >
+                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                  {expandedRow && row.getCanExpand() && row.getIsExpanded() && (
+                    <TableRow className={classNames?.tr}>
+                      <TableCell
+                        colSpan={row.getVisibleCells().length}
+                        className={classNames?.td}
                       >
-                        <TableCell
-                          colSpan={cells.length - controls.length}
-                          className={classNames?.td}
-                        >
-                          <div
-                            className="sticky min-w-0 whitespace-normal"
-                            style={{
-                              left: controlsWidth,
-                              width: `calc(100cqw - ${controlsWidth + 16}px)`,
-                              maxWidth: '100%',
-                            }}
-                          >
-                            {footer}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                    {expandedRow && row.getCanExpand() && row.getIsExpanded() && (
-                      <TableRow className={classNames?.tr}>
-                        <TableCell
-                          colSpan={row.getVisibleCells().length}
-                          className={classNames?.td}
-                        >
-                          {expandedRow(row.original, row)}
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </Fragment>
-                );
-              })
+                        {expandedRow(row.original, row)}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </Fragment>
+              ))
             ) : (
               <TableRow className={classNames?.tr}>
                 <TableCell
