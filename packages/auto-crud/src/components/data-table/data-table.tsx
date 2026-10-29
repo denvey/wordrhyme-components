@@ -21,9 +21,9 @@ export interface DataTableProps<TData> extends ComponentProps<'div'> {
   pagination?: TablePaginationOptions;
   classNames?: DataTableClassNames;
   actionBar?: ReactNode;
-  /** Content mounted below an expanded row; row provides resolved cell contexts. */
   /** Always-visible content within a record, below its cells. Return null to omit it. */
   rowFooter?: (record: TData, row: Row<TData>) => ReactNode;
+  /** Content mounted below an expanded row; row provides resolved cell contexts. */
   expandedRow?: (record: TData, row: Row<TData>) => ReactNode;
 }
 
