@@ -25,7 +25,7 @@
     "mcp:generate": "tsx ./src/generate-mcp-registry-cli.ts"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "zod": "catalog:prod"
   },
   "devDependencies": {
