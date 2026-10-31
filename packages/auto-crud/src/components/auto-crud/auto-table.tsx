@@ -45,7 +45,7 @@ import {
   createActionsColumn,
   type ActionsColumnConfig,
 } from '@/lib/schema-bridge/zod-to-columns';
-import type { TableControlsLocale } from '@/i18n/locale';
+import type { TableActionBarLocale, TableControlsLocale } from '@/i18n/locale';
 import type { ColumnOverrides } from '@/lib/schema-bridge/types';
 import type { DataTableClassNames, QueryKeys } from '@/types/data-table';
 
@@ -133,6 +133,7 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
   batchUpdateFields?: BatchUpdateField[];
   /** 批量操作栏额外按钮 */
   actionBarExtra?: React.ReactNode;
+  actionBarLocale?: Partial<TableActionBarLocale>;
   /** 批量悬浮操作配置 */
   actionBarActions?: BatchActionConfig<z.infer<T>>;
   /** 批量删除二次确认文案 */
@@ -179,6 +180,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   onUpdateSelected,
   batchUpdateFields,
   actionBarExtra,
+  actionBarLocale,
   actionBarActions,
   deleteConfirmation,
   initialSorting,
@@ -502,6 +504,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       {enableRowSelection && (
         <AutoTableActionBar
           table={table}
+          locale={actionBarLocale}
           onDeleteSelected={onDeleteSelected}
           onUpdateSelected={onUpdateSelected}
           batchUpdateFields={batchUpdateFields}
