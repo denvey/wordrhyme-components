@@ -2268,10 +2268,8 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const pagination = tableConfig?.pagination ?? registeredPagination;
   const paginationOptions = React.useMemo(
     () =>
-      pagination
-        ? { pageJumpLabel: locale.pagination?.pageJump, ...pagination }
-        : undefined,
-    [pagination, locale.pagination?.pageJump],
+      ({ locale: locale.pagination, pageJumpLabel: locale.pagination?.pageJump, ...pagination }),
+    [pagination, locale.pagination],
   );
   const resolvedSchema = resource.schema ?? schema;
   const resolvedFields = React.useMemo<Fields>(
@@ -2873,6 +2871,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         search={searchConfig}
         toolbarExtra={refreshNodes}
         locale={locale.tableControls}
+        actionBarLocale={locale.actionBar}
         actions={tableRowActions}
         onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
         onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}

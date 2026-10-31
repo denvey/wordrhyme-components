@@ -32,7 +32,7 @@ export { setToolbarResolver } from './components/auto-crud/auto-crud-table';
 
 // i18n
 export { zhCN, enUS, jaJP, koKR, frFR, deDE, esES, resolveLocale } from './i18n/locale';
-export type { AutoCrudLocale, LocaleProp, TableControlsLocale } from './i18n/locale';
+export type { AutoCrudLocale, LocaleProp, TableControlsLocale, TablePaginationLocale, TableActionBarLocale } from './i18n/locale';
 export { AutoForm, type AutoFormProps } from './components/auto-crud/auto-form';
 export { AutoTable, type AutoTableProps } from './components/auto-crud/auto-table';
 export { AutoTableActionBar } from './components/auto-crud/auto-table-action-bar';

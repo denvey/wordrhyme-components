@@ -1,5 +1,6 @@
 'use client';
 
+import { enUSActionBar, type TableActionBarLocale } from '@/i18n/locale';
 import type { Table } from '@tanstack/react-table';
 import { Download, Trash2, X, ChevronDown } from 'lucide-react';
 import * as React from 'react';
@@ -117,6 +118,7 @@ function isBatchCustomAction<TData>(
 
 interface AutoTableActionBarProps<TData> {
   table: Table<TData>;
+  locale?: Partial<TableActionBarLocale>;
   onDeleteSelected?: (rows: TData[]) => void;
   /** 批量更新回调 */
   onUpdateSelected?: (rows: TData[], data: Record<string, unknown>) => void;
@@ -138,6 +140,7 @@ interface AutoTableActionBarProps<TData> {
 
 export function AutoTableActionBar<TData>({
   table,
+  locale: localeProp,
   onDeleteSelected,
   onUpdateSelected,
   batchUpdateFields,
@@ -148,6 +151,7 @@ export function AutoTableActionBar<TData>({
   actions,
   deleteConfirmation = DEFAULT_DELETE_CONFIRMATION,
 }: AutoTableActionBarProps<TData>) {
+  const locale = React.useMemo(() => ({ ...enUSActionBar, ...localeProp }), [localeProp]);
   const rows = table.getFilteredSelectedRowModel().rows;
   const selectedRows = React.useMemo(() => rows.map((row) => row.original), [rows]);
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
@@ -291,7 +295,7 @@ export function AutoTableActionBar<TData>({
             }
           >
             <Download />
-            {action.label ?? 'Export'}
+            {action.label ?? locale.export}
           </ActionBarItem>
         );
       }
@@ -309,7 +313,7 @@ export function AutoTableActionBar<TData>({
               onSelect={(event) => event.preventDefault()}
             >
               <Trash2 />
-              {action.label ?? 'Delete'}
+              {action.label ?? locale.delete}
             </ActionBarItem>
             <AlertDialogContent>
               <AlertDialogHeader>
@@ -338,6 +342,7 @@ export function AutoTableActionBar<TData>({
     [
       actionContext,
       batchUpdateFields?.length,
+      locale,
       enableDelete,
       enableExport,
       deleteConfirmation,
@@ -462,10 +467,9 @@ export function AutoTableActionBar<TData>({
   return (
     <ActionBar open={rows.length > 0} onOpenChange={onOpenChange}>
       <ActionBarSelection>
-        <span className="font-medium">{rows.length}</span>
-        <span>selected</span>
+        <span className="font-medium">{locale.selected(rows.length)}</span>
         <ActionBarSeparator />
-        <ActionBarClose>
+        <ActionBarClose aria-label={locale.clearSelection}>
           <X />
         </ActionBarClose>
       </ActionBarSelection>

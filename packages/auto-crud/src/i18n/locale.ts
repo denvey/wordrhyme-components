@@ -41,10 +41,30 @@ export interface TableControlsLocale {
   };
 }
 
+export interface TablePaginationLocale {
+  selected: (count: number, total: number) => string;
+  total: (count: number) => string;
+  rowsPerPage: string;
+  page: (page: number, total: number) => string;
+  pageJump: string;
+  firstPage: string;
+  previousPage: string;
+  nextPage: string;
+  lastPage: string;
+}
+
+export interface TableActionBarLocale {
+  selected: (count: number) => string;
+  export: string;
+  delete: string;
+  clearSelection: string;
+}
+
 export interface AutoCrudLocale {
   /** Sorting and column visibility controls. Optional for existing custom locales. */
   tableControls?: TableControlsLocale;
-  pagination?: { pageJump?: string };
+  pagination?: Partial<TablePaginationLocale>;
+  actionBar?: Partial<TableActionBarLocale>;
   toolbar: {
     refresh: string;
     create: string;
@@ -121,6 +141,25 @@ export interface AutoCrudLocale {
 
 // ─── Built-in Locales ────────────────────────────────────────────────────────
 
+export const enUSPagination: TablePaginationLocale = {
+  selected: (count, total) => `${count} of ${total} row(s) selected.`,
+  total: (count) => `Total: ${count}`,
+  rowsPerPage: 'Rows per page',
+  page: (page, total) => `Page ${page} of ${total}`,
+  pageJump: 'Go to page',
+  firstPage: 'Go to first page',
+  previousPage: 'Go to previous page',
+  nextPage: 'Go to next page',
+  lastPage: 'Go to last page',
+};
+
+export const enUSActionBar: TableActionBarLocale = {
+  selected: (count) => `${count} selected`,
+  export: 'Export',
+  delete: 'Delete',
+  clearSelection: 'Clear selection',
+};
+
 export const enUSTableControls: TableControlsLocale = {
   sort: {
     label: 'Sort rows',
@@ -189,7 +228,23 @@ export const zhCN: AutoCrudLocale = {
       empty: '未找到列。',
     },
   },
-  pagination: { pageJump: '跳转到页' },
+  pagination: {
+    selected: (count, total) => `已选择 ${total} 条中的 ${count} 条`,
+    total: (count) => `共 ${count} 条`,
+    rowsPerPage: '每页条数',
+    page: (page, total) => `第 ${page} / ${total} 页`,
+    pageJump: '跳转到页',
+    firstPage: '首页',
+    previousPage: '上一页',
+    nextPage: '下一页',
+    lastPage: '末页',
+  },
+  actionBar: {
+    selected: (count) => `已选 ${count} 条`,
+    export: '导出',
+    delete: '删除',
+    clearSelection: '清空选择',
+  },
   toolbar: {
     refresh: '刷新',
     create: '新建',
@@ -262,7 +317,8 @@ export const zhCN: AutoCrudLocale = {
 
 export const enUS: AutoCrudLocale = {
   tableControls: enUSTableControls,
-  pagination: { pageJump: 'Go to page' },
+  pagination: enUSPagination,
+  actionBar: enUSActionBar,
   toolbar: {
     refresh: 'Refresh',
     create: 'New',
@@ -369,7 +425,23 @@ export const jaJP: AutoCrudLocale = {
       empty: '列が見つかりません。',
     },
   },
-  pagination: { pageJump: 'ページへ移動' },
+  pagination: {
+    selected: (count, total) => `${total} 件中 ${count} 件を選択`,
+    total: (count) => `合計: ${count}`,
+    rowsPerPage: 'ページあたりの行数',
+    page: (page, total) => `${page} / ${total} ページ`,
+    pageJump: 'ページへ移動',
+    firstPage: '最初のページ',
+    previousPage: '前のページ',
+    nextPage: '次のページ',
+    lastPage: '最後のページ',
+  },
+  actionBar: {
+    selected: (count) => `${count} 件選択`,
+    export: 'エクスポート',
+    delete: '削除',
+    clearSelection: '選択を解除',
+  },
   toolbar: {
     refresh: '更新',
     create: '新規作成',
@@ -471,7 +543,23 @@ export const koKR: AutoCrudLocale = {
       empty: '열을 찾을 수 없습니다.',
     },
   },
-  pagination: { pageJump: '페이지로 이동' },
+  pagination: {
+    selected: (count, total) => `${total}개 중 ${count}개 선택됨`,
+    total: (count) => `전체: ${count}`,
+    rowsPerPage: '페이지당 행 수',
+    page: (page, total) => `${page} / ${total} 페이지`,
+    pageJump: '페이지로 이동',
+    firstPage: '첫 페이지',
+    previousPage: '이전 페이지',
+    nextPage: '다음 페이지',
+    lastPage: '마지막 페이지',
+  },
+  actionBar: {
+    selected: (count) => `${count}개 선택됨`,
+    export: '내보내기',
+    delete: '삭제',
+    clearSelection: '선택 해제',
+  },
   toolbar: {
     refresh: '새로고침',
     create: '새로 만들기',
@@ -574,7 +662,23 @@ export const frFR: AutoCrudLocale = {
       empty: 'Aucune colonne trouvée.',
     },
   },
-  pagination: { pageJump: 'Aller à la page' },
+  pagination: {
+    selected: (count, total) => `${count} ligne(s) sélectionnée(s) sur ${total}.`,
+    total: (count) => `Total : ${count}`,
+    rowsPerPage: 'Lignes par page',
+    page: (page, total) => `Page ${page} sur ${total}`,
+    pageJump: 'Aller à la page',
+    firstPage: 'Première page',
+    previousPage: 'Page précédente',
+    nextPage: 'Page suivante',
+    lastPage: 'Dernière page',
+  },
+  actionBar: {
+    selected: (count) => `${count} sélectionné(s)`,
+    export: 'Exporter',
+    delete: 'Supprimer',
+    clearSelection: 'Effacer la sélection',
+  },
   toolbar: {
     refresh: 'Actualiser',
     create: 'Nouveau',
@@ -678,7 +782,23 @@ export const deDE: AutoCrudLocale = {
       empty: 'Keine Spalten gefunden.',
     },
   },
-  pagination: { pageJump: 'Zur Seite springen' },
+  pagination: {
+    selected: (count, total) => `${count} von ${total} Zeile(n) ausgewählt.`,
+    total: (count) => `Gesamt: ${count}`,
+    rowsPerPage: 'Zeilen pro Seite',
+    page: (page, total) => `Seite ${page} von ${total}`,
+    pageJump: 'Zur Seite springen',
+    firstPage: 'Erste Seite',
+    previousPage: 'Vorherige Seite',
+    nextPage: 'Nächste Seite',
+    lastPage: 'Letzte Seite',
+  },
+  actionBar: {
+    selected: (count) => `${count} ausgewählt`,
+    export: 'Exportieren',
+    delete: 'Löschen',
+    clearSelection: 'Auswahl aufheben',
+  },
   toolbar: {
     refresh: 'Aktualisieren',
     create: 'Neu',
@@ -783,7 +903,23 @@ export const esES: AutoCrudLocale = {
       empty: 'No se encontraron columnas.',
     },
   },
-  pagination: { pageJump: 'Ir a la página' },
+  pagination: {
+    selected: (count, total) => `${count} de ${total} fila(s) seleccionada(s).`,
+    total: (count) => `Total: ${count}`,
+    rowsPerPage: 'Filas por página',
+    page: (page, total) => `Página ${page} de ${total}`,
+    pageJump: 'Ir a la página',
+    firstPage: 'Primera página',
+    previousPage: 'Página anterior',
+    nextPage: 'Página siguiente',
+    lastPage: 'Última página',
+  },
+  actionBar: {
+    selected: (count) => `${count} seleccionado(s)`,
+    export: 'Exportar',
+    delete: 'Eliminar',
+    clearSelection: 'Borrar selección',
+  },
   toolbar: {
     refresh: 'Actualizar',
     create: 'Nuevo',

@@ -1,3 +1,4 @@
+import { enUSPagination } from '@/i18n/locale';
 import type { Table } from '@tanstack/react-table';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 
@@ -25,10 +26,13 @@ export function DataTablePagination<TData>({
   alwaysShowFirstLast = false,
   responsive = false,
   showPageJump = false,
-  pageJumpLabel = 'Go to page',
+  locale: localeProp,
+  pageJumpLabel,
   className,
   ...props
 }: DataTablePaginationProps<TData>) {
+  const locale = { ...enUSPagination, ...localeProp };
+  const jumpLabel = pageJumpLabel ?? locale.pageJump;
   const pageJump = useRef<HTMLDivElement>(null);
   const container = useRef<HTMLDivElement>(null);
   const summary = useRef<HTMLDivElement>(null);
@@ -122,10 +126,9 @@ export function DataTablePagination<TData>({
         className="flex flex-1 items-center gap-6 whitespace-nowrap text-muted-foreground text-sm"
       >
         <span>
-          {table.getFilteredSelectedRowModel().rows.length} of{' '}
-          {table.getFilteredRowModel().rows.length} row(s) selected.
+          {locale.selected(table.getFilteredSelectedRowModel().rows.length, table.getFilteredRowModel().rows.length)}
         </span>
-        {total !== undefined && <span>Total: {total}</span>}
+        {total !== undefined && <span>{locale.total(total)}</span>}
       </div>
       <div
         ref={controls}
@@ -137,7 +140,7 @@ export function DataTablePagination<TData>({
         )}
       >
         <div className="flex items-center space-x-2">
-          <p className="whitespace-nowrap font-medium text-sm">Rows per page</p>
+          <p className="whitespace-nowrap font-medium text-sm">{locale.rowsPerPage}</p>
           <Select
             value={`${table.getState().pagination.pageSize}`}
             onValueChange={(value) => {
@@ -157,7 +160,7 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
         <div className="flex items-center justify-center font-medium text-sm">
-          Page {pageIndex + 1} of {pageCount}
+          {locale.page(pageIndex + 1, pageCount)}
         </div>
         {showPageJump && (
           <div
@@ -180,7 +183,7 @@ export function DataTablePagination<TData>({
               }}
             >
               <label className="flex items-center gap-2 whitespace-nowrap text-sm">
-                {pageJumpLabel}
+                {jumpLabel}
                 <Input
                   key={`${pageIndex}-${pageCount}`}
                   name="page"
@@ -200,7 +203,7 @@ export function DataTablePagination<TData>({
                 size="icon"
                 className="size-8"
                 disabled={!canJump}
-                aria-label={pageJumpLabel}
+                aria-label={jumpLabel}
               >
                 <ChevronRight />
               </Button>
@@ -209,7 +212,7 @@ export function DataTablePagination<TData>({
         )}
         <div ref={navigation} className="flex items-center space-x-2">
           <Button
-            aria-label="Go to first page"
+            aria-label={locale.firstPage}
             variant="outline"
             size="icon"
             className={cn(
@@ -223,7 +226,7 @@ export function DataTablePagination<TData>({
             <ChevronsLeft />
           </Button>
           <Button
-            aria-label="Go to previous page"
+            aria-label={locale.previousPage}
             variant="outline"
             size="icon"
             className="size-8"
@@ -233,7 +236,7 @@ export function DataTablePagination<TData>({
             <ChevronLeft />
           </Button>
           <Button
-            aria-label="Go to next page"
+            aria-label={locale.nextPage}
             variant="outline"
             size="icon"
             className="size-8"
@@ -243,7 +246,7 @@ export function DataTablePagination<TData>({
             <ChevronRight />
           </Button>
           <Button
-            aria-label="Go to last page"
+            aria-label={locale.lastPage}
             variant="outline"
             size="icon"
             className={cn(

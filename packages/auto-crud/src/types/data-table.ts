@@ -1,3 +1,4 @@
+import type { TablePaginationLocale } from '@/i18n/locale';
 import type { ColumnSort, Row, RowData } from '@tanstack/react-table';
 import type { DataTableConfig } from '@/config/data-table';
 import type { FilterItemSchema } from '@/lib/parsers';
@@ -14,6 +15,7 @@ export interface DataTableClassNames {
 
 /** Optional pagination controls. Omitted options preserve the existing layout. */
 export interface TablePaginationOptions {
+  locale?: Partial<TablePaginationLocale>;
   /** Show first/last page buttons at every viewport width; default remains lg-only. */
   alwaysShowFirstLast?: boolean;
   /** Hide optional controls when their measured content does not fit the container. */
