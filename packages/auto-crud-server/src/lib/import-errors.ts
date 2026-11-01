@@ -66,13 +66,15 @@ export function importIssue(issue: z.ZodIssue, row: unknown): ImportIssue | null
   );
   if (issue.code === 'invalid_type') {
     params['received'] =
-      input === null
-        ? 'null'
-        : Array.isArray(input)
-          ? 'array'
-          : typeof input === 'number' && Number.isNaN(input)
-            ? 'nan'
-            : typeof input;
+      typeof detail['received'] === 'string'
+        ? detail['received']
+        : input === null
+          ? 'null'
+          : Array.isArray(input)
+            ? 'array'
+            : typeof input === 'number' && Number.isNaN(input)
+              ? 'nan'
+              : typeof input;
   }
   // Normalize Zod 3 constraint names for the Zod 4 locale catalogs.
   let code: string = issue.code;
