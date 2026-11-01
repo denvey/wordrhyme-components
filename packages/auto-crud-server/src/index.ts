@@ -69,6 +69,7 @@ export type {
   ExportResult,
   ImportInput,
   ImportResult,
+  ImportIssue,
   ImportFailedRow,
 } from './types/config';
 

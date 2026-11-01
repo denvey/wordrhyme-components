@@ -123,6 +123,7 @@ export type {
   AutoCrudQueryCapabilities,
   AutoQueryParams,
   ImportResult,
+  ImportIssue,
 } from './hooks/use-auto-crud-resource';
 export { useDataTable } from './hooks/use-data-table';
 export { useReadableFilters } from './hooks/use-readable-filters';

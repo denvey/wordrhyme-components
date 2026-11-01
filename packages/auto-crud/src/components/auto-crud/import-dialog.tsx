@@ -14,6 +14,8 @@ import {
   generateCSVTemplate,
   type ParsedImportData,
 } from '@/lib/import';
+import { formatImportError } from '@/lib/import-errors';
+import type { Fields } from '@/lib/field-config';
 import type { ImportResult } from '@/hooks/use-auto-crud-resource';
 import type { AutoCrudLocale } from '@/i18n/locale';
 import { zhCN } from '@/i18n/locale';
@@ -27,6 +29,8 @@ export interface ImportDialogProps {
   onImport: (rows: Record<string, unknown>[]) => Promise<ImportResult>;
   /** 可用列名（用于生成模板） */
   columns?: string[];
+  /** Localized field labels and enum options from the resource. */
+  fields?: Fields;
   /** 对话框标题（优先于 locale.title） */
   title?: string;
   /** 语言包，默认 zh-CN */
@@ -38,6 +42,7 @@ export function ImportDialog({
   onOpenChange,
   onImport,
   columns = [],
+  fields = {},
   title,
   locale = zhCN.importDialog,
 }: ImportDialogProps) {
@@ -64,20 +69,23 @@ export function ImportDialog({
     [onOpenChange, reset],
   );
 
-  const handleFile = React.useCallback(async (file: File) => {
-    setError(null);
-    try {
-      const data = await parseImportFile(file);
-      if (data.rows.length === 0) {
-        setError(locale.errorNoData);
-        return;
+  const handleFile = React.useCallback(
+    async (file: File) => {
+      setError(null);
+      try {
+        const data = await parseImportFile(file);
+        if (data.rows.length === 0) {
+          setError(locale.errorNoData);
+          return;
+        }
+        setParsedData(data);
+        setStep('preview');
+      } catch (e) {
+        setError(e instanceof Error ? e.message : locale.errorParseFailed);
       }
-      setParsedData(data);
-      setStep('preview');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : locale.errorParseFailed);
-    }
-  }, []);
+    },
+    [locale.errorNoData, locale.errorParseFailed],
+  );
 
   const handleDrop = React.useCallback(
     (e: React.DragEvent) => {
@@ -108,7 +116,7 @@ export function ImportDialog({
       setError(e instanceof Error ? e.message : locale.errorImportFailed);
       setStep('preview');
     }
-  }, [parsedData, onImport]);
+  }, [parsedData, onImport, locale.errorImportFailed]);
 
   const handleDownloadTemplate = React.useCallback(() => {
     if (columns.length === 0) return;
@@ -326,7 +334,18 @@ export function ImportDialog({
                             >
                               <td className="px-3 py-2 text-red-600">{f.row + 1}</td>
                               <td className="px-3 py-2 text-red-600/80">
-                                {f.errors.join('; ')}
+                                {f.errors
+                                  .map((error, index) => {
+                                    const issue = f.issues?.[index];
+                                    return issue
+                                      ? formatImportError(
+                                          issue,
+                                          fields,
+                                          locale.validationError,
+                                        )
+                                      : error;
+                                  })
+                                  .join('; ')}
                               </td>
                             </tr>
                           ))}

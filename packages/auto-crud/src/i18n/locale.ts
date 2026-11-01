@@ -1,3 +1,6 @@
+import type { ImportIssue } from '@/hooks/use-auto-crud-resource';
+import { importError } from '@/lib/import-errors';
+
 /**
  * AutoCrud 国际化接口及内置语言包
  *
@@ -116,6 +119,8 @@ export interface AutoCrudLocale {
     errorNoData: string;
     errorParseFailed: string;
     errorImportFailed: string;
+    /** Localize structured validation issues; plain string errors are preserved. */
+    validationError?: (issue: ImportIssue) => string;
   };
 }
 
@@ -232,6 +237,7 @@ export const zhCN: AutoCrudLocale = {
     confirm: '确认删除',
   },
   importDialog: {
+    validationError: importError('zhCN'),
     title: '导入数据',
     uploadDescription: '上传 CSV 或 JSON 文件以批量导入数据',
     previewDescription: (count) => `已解析 ${count} 条数据，确认后开始导入`,
@@ -307,6 +313,7 @@ export const enUS: AutoCrudLocale = {
     confirm: 'Delete',
   },
   importDialog: {
+    validationError: importError('en'),
     title: 'Import Data',
     uploadDescription: 'Upload a CSV or JSON file to bulk import data',
     previewDescription: (count) => `Parsed ${count} records, confirm to start importing`,
@@ -408,6 +415,7 @@ export const jaJP: AutoCrudLocale = {
     confirm: '削除する',
   },
   importDialog: {
+    validationError: importError('ja'),
     title: 'データのインポート',
     uploadDescription: 'CSVまたはJSONファイルをアップロードして一括インポート',
     previewDescription: (count) =>
@@ -510,6 +518,7 @@ export const koKR: AutoCrudLocale = {
     confirm: '삭제',
   },
   importDialog: {
+    validationError: importError('ko'),
     title: '데이터 가져오기',
     uploadDescription: 'CSV 또는 JSON 파일을 업로드하여 일괄 가져오기',
     previewDescription: (count) =>
@@ -614,6 +623,7 @@ export const frFR: AutoCrudLocale = {
     confirm: 'Supprimer',
   },
   importDialog: {
+    validationError: importError('fr'),
     title: 'Importer des données',
     uploadDescription: 'Téléchargez un fichier CSV ou JSON pour importer en masse',
     previewDescription: (count) =>
@@ -718,6 +728,7 @@ export const deDE: AutoCrudLocale = {
     confirm: 'Löschen',
   },
   importDialog: {
+    validationError: importError('de'),
     title: 'Daten importieren',
     uploadDescription:
       'CSV- oder JSON-Datei hochladen, um Daten massenweise zu importieren',
@@ -823,6 +834,7 @@ export const esES: AutoCrudLocale = {
     confirm: 'Eliminar',
   },
   importDialog: {
+    validationError: importError('es'),
     title: 'Importar datos',
     uploadDescription: 'Suba un archivo CSV o JSON para importar datos de forma masiva',
     previewDescription: (count) =>

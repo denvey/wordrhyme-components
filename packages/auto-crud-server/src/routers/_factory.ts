@@ -25,6 +25,7 @@ import type { AnyColumn, SQL } from 'drizzle-orm';
 import type { PgTable } from 'drizzle-orm/pg-core';
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
+import { importIssue } from '../lib/import-errors';
 import { router, publicProcedure } from '../trpc';
 import type { DateRangeResolver } from '../lib/filter-columns';
 import { filterColumns } from '../lib/filter-columns';
@@ -1481,6 +1482,18 @@ export function createCrudRouter<
       z.object({
         row: z.number(),
         errors: z.array(z.string()),
+        issues: z
+          .array(
+            z
+              .object({
+                code: z.string(),
+                path: z.array(z.string()),
+                message: z.string(),
+                params: z.record(z.string(), z.unknown()),
+              })
+              .nullable(),
+          )
+          .optional(),
       }),
     ),
   });
@@ -2620,7 +2633,7 @@ export function createCrudRouter<
             // 逐行验证
             for (let i = 0; i < importData.rows.length; i++) {
               const row = importData.rows[i];
-              const result = importSchema.safeParse(row);
+              const result = importSchema.safeParse(row, { reportInput: true });
               if (result.success) {
                 const splitRow = splitCrudExtensionWriteInput(
                   result.data as TInsert,
@@ -2631,7 +2644,11 @@ export function createCrudRouter<
                 const errors = result.error.issues.map(
                   (issue) => `${issue.path.join('.')}: ${issue.message}`,
                 );
-                failed.push({ row: i, errors });
+                failed.push({
+                  row: i,
+                  errors,
+                  issues: result.error.issues.map((issue) => importIssue(issue, row)),
+                });
 
                 // onConflict="error" 时遇到验证失败直接中止
                 if (importData.onConflict === 'error') {

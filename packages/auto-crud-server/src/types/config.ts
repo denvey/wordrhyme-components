@@ -280,11 +280,21 @@ export interface ExportResult<TSelect> {
 /**
  * 导入行失败详情
  */
+/** Serializable validation details; excludes the submitted cell value. */
+export interface ImportIssue {
+  code: string;
+  path: string[];
+  message: string;
+  params: Record<string, unknown>;
+}
+
 export interface ImportFailedRow {
   /** 行号（0-indexed） */
   row: number;
   /** 验证错误信息列表 */
   errors: string[];
+  /** Optional details for localized presentation; errors remains backwards compatible. */
+  issues?: Array<ImportIssue | null>;
 }
 
 /**
