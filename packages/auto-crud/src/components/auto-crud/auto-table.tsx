@@ -5,6 +5,7 @@ import type { TablePaginationOptions } from '@/types/data-table';
 import { useCallback, useEffect, useMemo } from 'react';
 import {
   ChevronRightIcon,
+  ChevronsRightIcon,
   CommandIcon,
   FileSpreadsheetIcon,
   ListFilterIcon,
@@ -243,7 +244,27 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       result.unshift({
         id: expandColumnId,
         meta: { autoCrudExpandColumn: true },
-        header: () => <span className="sr-only">Row details</span>,
+        header: ({ table }) => {
+          const isAllExpanded = table.getIsAllRowsExpanded();
+          const label = isAllExpanded ? '全部折叠' : '全部展开';
+
+          return (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={label}
+              title={label}
+              aria-expanded={isAllExpanded}
+              disabled={!table.getCanSomeRowsExpand()}
+              onClick={table.getToggleAllRowsExpandedHandler()}
+            >
+              <ChevronsRightIcon
+                className={isAllExpanded ? 'size-4 rotate-90' : 'size-4'}
+              />
+            </Button>
+          );
+        },
         cell: ({ row }) => (
           <Button
             type="button"
