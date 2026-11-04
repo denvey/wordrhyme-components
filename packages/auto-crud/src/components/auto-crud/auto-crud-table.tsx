@@ -2964,6 +2964,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           onOpenChange={setImportOpen}
           onImport={resource.handlers.import}
           columns={importColumns}
+          fields={resolvedFields}
           locale={locale.importDialog}
         />
       )}

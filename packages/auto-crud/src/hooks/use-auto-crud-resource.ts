@@ -269,11 +269,19 @@ export interface UseAutoCrudResourceOptions<
 /**
  * 导入结果类型（与服务端保持一致）
  */
+/** Serializable validation details; excludes the submitted cell value. */
+export interface ImportIssue {
+  code: string;
+  path: string[];
+  message: string;
+  params: Record<string, unknown>;
+}
+
 export interface ImportResult {
   success: number;
   updated: number;
   skipped: number;
-  failed: Array<{ row: number; errors: string[] }>;
+  failed: Array<{ row: number; errors: string[]; issues?: Array<ImportIssue | null> }>;
 }
 
 /**
