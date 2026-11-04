@@ -1321,3 +1321,20 @@ Set `counts: true` on `createCrudRouter` to expose `counts({ queries })`. Each q
 This route uses the list procedure, guard, scope, soft deletion and extension conditions. It does not load or enrich rows. Keep the supplied database scoped to the caller. Counts are disabled by default. If list middleware transforms filters or enforces additional visibility restrictions, supply the equivalent transformation through `middleware.counts({ ctx, input, next })` before opting in; row enrichment middleware is deliberately not executed.
 
 The database provider must implement governed `$counts(table, predicates)`, applying the same tenant, row and field observation rules as scalar counts. Missing support returns `PRECONDITION_FAILED`; this route never falls back to raw aggregation or repeated list calls. Deliver the Host capability before enabling counts in consumers, and pin a published Components version containing this route.
+
+## 结构化标签条件
+
+列表与导出共享标签条件协议：
+
+```ts
+{
+  id: 'tags', variant: 'tags', operator: 'matches', filterId: 'tags',
+  value: { include: ['vip'], exclude: ['blocked'], match: 'any' },
+}
+```
+
+固定字段对应动态标签 ID；包含与排除不能有同一个 ID。标签条件内部是 `(任一/全部正选) AND (无反选)`，然后与普通条件按照 `joinOperator` 组合。客户端应删除空标签条件；服务端 provider 应拒绝空条件和不存在的 ID。
+
+为 CRUD extension provider 实现 `buildConditions({ id, entityId, filters, joinOperator, search })`，返回 `{ filter?: SQL, search?: SQL }`。这属于可信进程内接口，客户端不能提供 SQL。使用 `entityId` 与标签关联表构造相关 `EXISTS` 查询，列表、总数和导出会在原有数据权限条件内组合这些谓词，无须先取一批实体 ID。
+
+扩展筛选统一通过既有 `buildConditions` 接口生成 SQL。标签字段不直接映射为基础表列，应由扩展 provider 提供条件和读取投影；赋值服务负责校验租户、字段及记录更新权限。

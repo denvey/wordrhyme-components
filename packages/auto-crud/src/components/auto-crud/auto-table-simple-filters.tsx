@@ -35,6 +35,8 @@ import { getDefaultFilterOperator } from '@/lib/data-table';
 import { useDateFormatterVersion } from '@/lib/format';
 import { generateId } from '@/lib/id';
 import { useReadableFilters } from '@/hooks/use-readable-filters';
+import { TagFilter } from './tag-filter';
+import { isTagFilterValue, type TagFilterValue } from '@/lib/tag-filter';
 import { cn } from '@/lib/utils';
 import type { ExtendedColumnFilter, Option } from '@/types/data-table';
 
@@ -140,11 +142,26 @@ export function AutoTableSimpleFilters<TData>({
 
   // 更新某列的过滤值
   const updateFilter = React.useCallback(
-    (columnId: string, value: string | string[] | undefined) => {
+    (columnId: string, value: string | string[] | TagFilterValue | undefined) => {
       const column = columns.find((c) => c.id === columnId);
       if (!column) return;
 
       const variant = column.columnDef.meta?.variant ?? 'text';
+
+      if (variant === 'tags') {
+        const next = filters.filter((filter) => filter.id !== columnId);
+        if (isTagFilterValue(value) && (value.include.length || value.exclude.length))
+          next.push({
+            id: columnId as Extract<keyof TData, string>,
+            variant: 'tags',
+            operator: 'matches',
+            value,
+            filterId: generateId({ length: 8 }),
+          });
+        setFilters(next);
+        return;
+      }
+      if (isTagFilterValue(value)) return;
 
       if (!value || (Array.isArray(value) && value.length === 0)) {
         setFilters(filters.filter((f) => f.id !== columnId));
@@ -163,7 +180,10 @@ export function AutoTableSimpleFilters<TData>({
               id: columnId as Extract<keyof TData, string>,
               value,
               variant,
-              operator: getDefaultFilterOperator(variant),
+              operator: getDefaultFilterOperator(variant) as Exclude<
+                import('@/types/data-table').FilterOperator,
+                'matches'
+              >,
               filterId: generateId({ length: 8 }),
             },
           ]);
@@ -356,6 +376,21 @@ export function AutoTableSimpleFilters<TData>({
         const isHidden = !expanded && visibleCount !== null && index >= visibleCount;
 
         switch (meta.variant) {
+          case 'tags':
+            return (
+              <div key={column.id} className={isHidden ? 'hidden' : ''} data-filter-item>
+                <TagFilter
+                  field={column.id}
+                  title={meta.label ?? column.id}
+                  value={
+                    isTagFilterValue(value)
+                      ? value
+                      : { include: [], exclude: [], match: 'any' }
+                  }
+                  onChange={(next) => updateFilter(column.id, next)}
+                />
+              </div>
+            );
           case 'text':
             return (
               <div key={column.id} className={isHidden ? 'hidden' : ''} data-filter-item>
@@ -370,7 +405,11 @@ export function AutoTableSimpleFilters<TData>({
 
           case 'select':
           case 'multiSelect': {
-            const selectedValues = Array.isArray(value) ? value : value ? [value] : [];
+            const selectedValues = Array.isArray(value)
+              ? value
+              : typeof value === 'string' && value
+                ? [value]
+                : [];
             const currentOptions = meta.autoCrudFilterOptions ?? meta.options ?? [];
             const filterOptions = mergeSelectedFilterOptions(
               currentOptions,
@@ -422,7 +461,7 @@ export function AutoTableSimpleFilters<TData>({
                   title={meta.label ?? column.id}
                   multiple={meta.variant === 'dateRange'}
                   maxDate={meta.maxDate}
-                  value={value}
+                  value={isTagFilterValue(value) ? undefined : value}
                   onChange={(v) => updateFilter(column.id, v)}
                 />
               </div>

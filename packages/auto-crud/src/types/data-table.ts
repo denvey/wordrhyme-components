@@ -80,6 +80,7 @@ export interface Option {
   value: string;
   searchText?: string;
   count?: number;
+  color?: string;
   icon?: React.FC<React.SVGProps<SVGSVGElement>>;
 }
 
@@ -91,9 +92,9 @@ export interface ExtendedColumnSort<TData> extends Omit<ColumnSort, 'id'> {
   id: Extract<keyof TData, string>;
 }
 
-export interface ExtendedColumnFilter<TData> extends FilterItemSchema {
+export type ExtendedColumnFilter<TData> = FilterItemSchema & {
   id: Extract<keyof TData, string>;
-}
+};
 
 export interface DataTableRowAction<TData> {
   row: Row<TData>;

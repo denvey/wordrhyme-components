@@ -16,6 +16,7 @@ export {
   baseGetInputSchema,
   baseListInputSchema,
   baseCountsInputSchema,
+  tagFilterValueSchema,
   createCrudRouter,
 } from './routers/_factory';
 

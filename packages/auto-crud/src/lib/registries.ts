@@ -13,6 +13,7 @@ export type AutoCrudOption = {
   searchText?: string | string[];
   keywords?: string[];
   count?: number;
+  color?: string;
   disabled?: boolean;
 };
 

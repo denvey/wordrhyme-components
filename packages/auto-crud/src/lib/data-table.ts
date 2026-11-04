@@ -46,6 +46,7 @@ export function getFilterOperators(filterVariant: FilterVariant) {
     boolean: dataTableConfig.booleanOperators,
     select: dataTableConfig.selectOperators,
     multiSelect: dataTableConfig.multiSelectOperators,
+    tags: [{ label: 'Matches', value: 'matches' }],
   };
 
   return operatorMap[filterVariant] ?? dataTableConfig.textOperators;
@@ -65,12 +66,15 @@ export function getDefaultFilterOperator(filterVariant: FilterVariant) {
 export function getValidFilters<TData>(
   filters: ExtendedColumnFilter<TData>[],
 ): ExtendedColumnFilter<TData>[] {
-  return filters.filter(
-    (filter) =>
+  return filters.filter((filter) => {
+    if (filter.variant === 'tags')
+      return filter.value.include.length + filter.value.exclude.length > 0;
+    return (
       filter.operator === 'isEmpty' ||
       filter.operator === 'isNotEmpty' ||
       (Array.isArray(filter.value)
         ? filter.value.length > 0
-        : filter.value !== '' && filter.value !== null && filter.value !== undefined),
-  );
+        : filter.value !== '' && filter.value !== null && filter.value !== undefined)
+    );
+  });
 }

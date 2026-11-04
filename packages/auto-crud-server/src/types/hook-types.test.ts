@@ -121,7 +121,10 @@ describe('CrudHookEventMap 类型推导', () => {
       search?: string;
       filters?: Array<{
         id: string;
-        value: string | string[];
+        value:
+          | string
+          | string[]
+          | { include: string[]; exclude: string[]; match: 'any' | 'all' };
         variant: string;
         operator: string;
         filterId: string;
@@ -151,7 +154,10 @@ describe('CrudHookEventMap 类型推导', () => {
       search?: string;
       filters?: Array<{
         id: string;
-        value: string | string[];
+        value:
+          | string
+          | string[]
+          | { include: string[]; exclude: string[]; match: 'any' | 'all' };
         variant: string;
         operator: string;
         filterId: string;

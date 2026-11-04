@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { tagFilterValueSchema } from '@/lib/tag-filter';
 import { dataTableConfig } from '@/config/data-table';
 import type { Parser } from '@/hooks/use-url-state';
 
@@ -68,13 +69,26 @@ export const getSortingStateParser = <TData>(columnIds?: string[] | Set<string>)
   });
 };
 
-const filterItemSchema = z.object({
+const ordinaryFilterSchema = z.object({
   id: z.string(),
   value: z.union([z.string(), z.array(z.string())]),
-  variant: z.enum(dataTableConfig.filterVariants),
-  operator: z.enum(dataTableConfig.operators),
+  variant: z.enum(dataTableConfig.filterVariants.filter((variant) => variant !== 'tags')),
+  operator: z.enum(
+    dataTableConfig.operators.filter((operator) => operator !== 'matches'),
+  ),
   filterId: z.string(),
 });
+
+export const filterItemSchema = z.union([
+  ordinaryFilterSchema,
+  z.object({
+    id: z.string(),
+    filterId: z.string(),
+    variant: z.literal('tags'),
+    operator: z.literal('matches'),
+    value: tagFilterValueSchema,
+  }),
+]);
 
 export type FilterItemSchema = z.infer<typeof filterItemSchema>;
 

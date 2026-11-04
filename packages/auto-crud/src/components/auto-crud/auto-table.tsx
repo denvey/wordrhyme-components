@@ -1,8 +1,10 @@
 'use client';
 
 import { z } from 'zod';
+import { SavedViews } from './saved-views';
+import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
 import type { TablePaginationOptions } from '@/types/data-table';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useContext, useEffect, useMemo } from 'react';
 import {
   ChevronRightIcon,
   ChevronsRightIcon,
@@ -81,6 +83,10 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
   DataTableProps<z.infer<T>>,
   'expandedRow'
 > {
+  /** Stable CRUD identity for saved views and tag services. */
+  resourceId?: string;
+  /** Defaults to enabled when a global viewStorage is configured. */
+  views?: boolean;
   schema: T;
   data: z.infer<T>[];
   /** Stable row identity; required when expandedRow is provided. */
@@ -156,6 +162,8 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
 }
 
 export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
+  resourceId,
+  views,
   schema,
   data,
   getRowId,
@@ -192,6 +200,13 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   getSelectedRows,
   exportTableRef,
 }: AutoTableProps<T>) {
+  const inheritedResourceId = useContext(CrudResourceContext);
+  const activeResourceId = resourceId ?? inheritedResourceId;
+  const services = useAutoCrudConfig();
+  const viewsEnabled = views ?? (!!activeResourceId && !!services?.viewStorage);
+  if (viewsEnabled && !activeResourceId)
+    throw new Error('Saved views require a stable resourceId');
+
   if (expandedRow && !getRowId) {
     throw new Error('AutoTable requires getRowId when expandedRow is provided.');
   }
@@ -505,38 +520,43 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   );
 
   return (
-    <div className="space-y-4">
-      <div className="flex w-full items-start justify-between gap-2 p-1">
-        <div
-          className="flex min-h-[40px] min-w-0 flex-1 items-start gap-2"
-          data-filter-parent
-        >
-          {currentMode !== 'simple' && searchInput}
-          {filtersContent}
+    <CrudResourceContext.Provider value={activeResourceId}>
+      <div className="space-y-4">
+        <div className="flex w-full items-start justify-between gap-2 p-1">
+          <div
+            className="flex min-h-[40px] min-w-0 flex-1 items-start gap-2"
+            data-filter-parent
+          >
+            {viewsEnabled && activeResourceId && (
+              <SavedViews resourceId={activeResourceId} table={table} />
+            )}
+            {currentMode !== 'simple' && searchInput}
+            {filtersContent}
+          </div>
+          <div className="flex items-center gap-2">
+            {FilterModeSelect}
+            <DataTableSortList table={table} align="end" locale={locale.sort} />
+            {toolbarExtra}
+            <DataTableViewOptions table={table} align="end" locale={locale.columns} />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {FilterModeSelect}
-          <DataTableSortList table={table} align="end" locale={locale.sort} />
-          {toolbarExtra}
-          <DataTableViewOptions table={table} align="end" locale={locale.columns} />
-        </div>
+        {tableContent}
+        {enableRowSelection && (
+          <AutoTableActionBar
+            table={table}
+            locale={actionBarLocale}
+            onDeleteSelected={onDeleteSelected}
+            onUpdateSelected={onUpdateSelected}
+            batchUpdateFields={batchUpdateFields}
+            enableDelete={!!onDeleteSelected}
+            enableExport={enableExport}
+            showDefaultExport={showDefaultExport}
+            extraActions={actionBarExtra}
+            actions={actionBarActions}
+            deleteConfirmation={deleteConfirmation}
+          />
+        )}
       </div>
-      {tableContent}
-      {enableRowSelection && (
-        <AutoTableActionBar
-          table={table}
-          locale={actionBarLocale}
-          onDeleteSelected={onDeleteSelected}
-          onUpdateSelected={onUpdateSelected}
-          batchUpdateFields={batchUpdateFields}
-          enableDelete={!!onDeleteSelected}
-          enableExport={enableExport}
-          showDefaultExport={showDefaultExport}
-          extraActions={actionBarExtra}
-          actions={actionBarActions}
-          deleteConfirmation={deleteConfirmation}
-        />
-      )}
-    </div>
+    </CrudResourceContext.Provider>
   );
 }

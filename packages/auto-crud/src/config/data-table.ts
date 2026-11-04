@@ -61,6 +61,7 @@ export const dataTableConfig = {
     'boolean',
     'select',
     'multiSelect',
+    'tags',
   ] as const,
   operators: [
     'iLike',
@@ -77,6 +78,7 @@ export const dataTableConfig = {
     'gte',
     'isBetween',
     'isRelativeToToday',
+    'matches',
   ] as const,
   joinOperators: ['and', 'or'] as const,
 };

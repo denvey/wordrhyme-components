@@ -1,5 +1,6 @@
 import type { Column, ColumnDef } from '@tanstack/react-table';
 import { getDefaultFilterOperator } from '@/lib/data-table';
+import { tagFilterValueSchema } from '@/lib/tag-filter';
 import { generateId } from '@/lib/id';
 import type {
   ExtendedColumnFilter,
@@ -88,9 +89,33 @@ export function parseReadableFilters<TData>(
 
     const { base } = splitKey(key);
     const column = columnsById.get(base);
-    if (!column) continue;
+    const structuredTag = params.get(`${key}${OP_SUFFIX}`) === 'matches';
+    if (!column && !structuredTag) continue;
 
-    const variant = (getColumnVariant(column) ?? 'text') as FilterVariant;
+    // A structured tag parameter is self-describing, including in the resource
+    // hook before table overrides have been applied. Invalid values fail closed.
+    if (structuredTag || (column && getColumnVariant(column) === 'tags')) {
+      let value: unknown;
+      try {
+        value = JSON.parse(rawValue);
+      } catch {
+        throw new Error(`Invalid tag filter: ${base}`);
+      }
+      const parsed = tagFilterValueSchema.parse(value);
+      if (parsed.include.length || parsed.exclude.length)
+        filters.push({
+          id: base as Extract<keyof TData, string>,
+          variant: 'tags',
+          operator: 'matches',
+          value: parsed,
+          filterId: key,
+        });
+      continue;
+    }
+
+    const variant = (
+      column ? (getColumnVariant(column) ?? 'text') : 'text'
+    ) as FilterVariant;
     const opKey = `${key}${OP_SUFFIX}`;
     const operator =
       (params.get(opKey) as FilterOperator | null) ?? getDefaultFilterOperator(variant);
@@ -103,8 +128,8 @@ export function parseReadableFilters<TData>(
     filters.push({
       id: base as Extract<keyof TData, string>,
       value: parsedValue,
-      variant,
-      operator,
+      variant: variant as Exclude<FilterVariant, 'tags'>,
+      operator: operator as Exclude<FilterOperator, 'matches'>,
       filterId: key || generateId({ length: 8 }),
     });
   }
@@ -129,11 +154,22 @@ export function applyReadableFilters<TData>(
 
   const counters = new Map<string, number>();
   for (const filter of filters) {
+    if (
+      filter.variant === 'tags' &&
+      !filter.value.include.length &&
+      !filter.value.exclude.length
+    )
+      continue;
     const columnId = String(filter.id);
     const count = (counters.get(columnId) ?? 0) + 1;
     counters.set(columnId, count);
 
     const key = count === 1 ? columnId : `${columnId}${INDEX_SEPARATOR}${count}`;
+    if (filter.variant === 'tags') {
+      params.set(key, JSON.stringify(tagFilterValueSchema.parse(filter.value)));
+      params.set(`${key}${OP_SUFFIX}`, 'matches');
+      continue;
+    }
     const variant = filter.variant ?? 'text';
     const value = serializeValue(filter.value, variant);
 

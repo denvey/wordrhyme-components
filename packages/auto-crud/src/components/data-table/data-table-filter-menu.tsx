@@ -4,6 +4,8 @@ import type { Column, Table } from '@tanstack/react-table';
 import { BadgeCheck, CalendarIcon, Check, ListFilter, Text, X } from 'lucide-react';
 import * as React from 'react';
 
+import { TagFilter } from '@/components/auto-crud/tag-filter';
+import { createColumnFilter, emptyTagFilter } from '@/lib/tag-filter';
 import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { DataTableRangeFilter } from '@/components/data-table/data-table-range-filter';
 import { Button } from '@wordrhyme/shadcn';
@@ -34,7 +36,6 @@ import {
   useCalendarToday,
 } from '@/lib/calendar-date';
 import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';
-import { generateId } from '@/lib/id';
 import { cn } from '@/lib/utils';
 import type { ExtendedColumnFilter, FilterOperator, Option } from '@/types/data-table';
 
@@ -133,13 +134,11 @@ export function DataTableFilterMenu<TData>({
       const filterValue =
         column.columnDef.meta?.variant === 'multiSelect' ? [value] : value;
 
-      const newFilter: ExtendedColumnFilter<TData> = {
-        id: column.id as Extract<keyof TData, string>,
-        value: filterValue,
-        variant: column.columnDef.meta?.variant ?? 'text',
-        operator: getDefaultFilterOperator(column.columnDef.meta?.variant ?? 'text'),
-        filterId: generateId({ length: 8 }),
-      };
+      const newFilter = createColumnFilter<TData>(
+        column.id as Extract<keyof TData, string>,
+        column.columnDef.meta?.variant ?? 'text',
+        filterValue,
+      );
 
       debouncedSetFilters([...filters, newFilter]);
       setOpen(false);
@@ -452,7 +451,10 @@ function DataTableFilterItem<TData>({
                           operator: getDefaultFilterOperator(
                             column.columnDef.meta?.variant ?? 'text',
                           ),
-                          value: '',
+                          value:
+                            column.columnDef.meta?.variant === 'tags'
+                              ? emptyTagFilter()
+                              : '',
                         });
 
                         setShowFieldSelector(false);
@@ -544,6 +546,12 @@ function FilterValueSelector<TData>({
   const variant = column.columnDef.meta?.variant ?? 'text';
 
   switch (variant) {
+    case 'tags':
+      return (
+        <CommandGroup>
+          <CommandItem onSelect={() => onSelect('')}>选择标签条件</CommandItem>
+        </CommandGroup>
+      );
     case 'boolean':
       return (
         <CommandGroup>
@@ -655,6 +663,15 @@ function onFilterInputRender<TData>({
   }
 
   switch (filter.variant) {
+    case 'tags':
+      return (
+        <TagFilter
+          field={String(filter.id)}
+          title={column.columnDef.meta?.label ?? String(filter.id)}
+          value={filter.value}
+          onChange={(value) => onFilterUpdate(filter.filterId, { value })}
+        />
+      );
     case 'text':
     case 'number':
     case 'range': {

@@ -49,7 +49,8 @@ export type FilterVariant =
   | 'dateRange'
   | 'boolean'
   | 'select'
-  | 'multiSelect';
+  | 'multiSelect'
+  | 'tags';
 
 /** 过滤器操作符 */
 export type FilterOperator =
@@ -66,7 +67,8 @@ export type FilterOperator =
   | 'isBetween'
   | 'isRelativeToToday'
   | 'isEmpty'
-  | 'isNotEmpty';
+  | 'isNotEmpty'
+  | 'matches';
 
 type DateRangeOperator = Extract<
   FilterOperator,
@@ -277,6 +279,8 @@ export function filterColumns<T extends Table>({
   const joinFn = joinOperator === 'and' ? and : or;
 
   const conditions = filters.map((filter) => {
+    if (filter.variant === 'tags')
+      throw new Error('Tag filters require an extension buildConditions provider');
     const column = resolveColumn ? resolveColumn(filter.id) : getColumn(table, filter.id);
     if (!column) return undefined;
     // Keep the column's driver encoder (notably for timestamp Date values).

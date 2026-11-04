@@ -1936,3 +1936,45 @@ In `AutoCrudTable`, the jump label follows the existing `locale` unless explicit
 Set `responsive: true` alongside these options to hide the extra controls when
 their measured content does not fit the pagination container. This responds to
 container resizing and translated text widths, without changing other tables.
+
+## 保存视图与动态标签
+
+在 `QueryClientProvider` 内配置一次服务，所有带稳定 `id` 的 `AutoCrudTable` 自动显示视图菜单：
+
+```tsx
+import {
+  AutoCrudProvider,
+  AutoCrudTable,
+  createLocalViewStorage,
+} from '@wordrhyme/auto-crud';
+
+// 服务对象应保持引用稳定。后端存储只需实现 ViewStorage 的四个方法。
+const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
+
+<QueryClientProvider client={queryClient}>
+  <AutoCrudProvider
+    scope={`${organizationId}:${userId}`}
+    viewStorage={viewStorage}
+    tagService={tagService}
+  >
+    <AutoCrudTable
+      id="crm.customers"
+      schema={schema}
+      resource={resource}
+      fields={{
+        tags: { label: '分类', filter: { variant: 'tags' }, form: false },
+      }}
+    />
+  </AutoCrudProvider>
+</QueryClientProvider>;
+```
+
+- 视图保存筛选条件、条件间的 AND/OR、搜索词和排序；不保存分页、选中行。支持新建、复制、重命名、删除、保存和放弃修改。`table={{ views: false }}` 可在某个表关闭。
+- `scope` 必须包含当前用户与租户；切换时重置组件状态。`createLocalViewStorage` 仅保存当前浏览器中的视图。换用后端时传入 `ViewStorage`，组件调用方式不变。
+- `TagService.list` 复用数据源的 `query/page/pageSize/signal` 和分页结果格式；`resolve` 返回指定稳定 ID 对应的名称与颜色。用户新建标签只增加选项，不增加 schema 字段。
+- `create/update/remove/assign` 是可选能力。`assign` 必须只添加或移除指定标签，保留其他关联；单条编辑和选中行批量设置共用此方法。权限必须由服务端校验。
+- 标签查询条件形如 `{ include: ['vip'], exclude: ['blocked'], match: 'any' }`。`any/all` 只作用于正选标签，反选始终要求全部不包含；整个标签条件再参与外层 AND/OR。空条件不进入 URL。
+- 标签 ID 通过 JSON 和 `__op=matches` 写入 URL；普通条件沿用现有可读格式。标签重命名不会破坏视图。失效 ID 保留在界面，服务端应拒绝失效条件，避免查询范围意外扩大。
+- 后端保存视图须按用户、租户和 CRUD `id` 隔离；标签及其数据关联按租户、CRUD `id` 和字段隔离。视图不是权限凭证。
+
+`ViewStorage` 和 `TagService` 的完整 TypeScript 接口由包导出。完整交互示例见 Storybook 的 **Auto CRUD / Saved views and tags**；可切换 simple、advanced、command 三种模式。

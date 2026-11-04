@@ -22,13 +22,19 @@ type ColumnLike<TData> =
 function filterSignature<TData>(filters: ExtendedColumnFilter<TData>[]): string {
   return JSON.stringify(
     filters
-      .map(({ id, operator, value, variant }) =>
-        JSON.stringify([
-          id,
-          operator,
-          variant === 'multiSelect' && Array.isArray(value) ? [...value].sort() : value,
-        ]),
-      )
+      .map(({ id, operator, value, variant }) => {
+        let normalized = value;
+        if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+          normalized = {
+            include: [...value.include].sort(),
+            exclude: [...value.exclude].sort(),
+            match: value.match,
+          };
+        } else if (variant === 'multiSelect' && Array.isArray(value)) {
+          normalized = [...value].sort();
+        }
+        return JSON.stringify([id, operator, normalized]);
+      })
       .sort(),
   );
 }

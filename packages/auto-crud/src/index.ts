@@ -32,7 +32,13 @@ export { setToolbarResolver } from './components/auto-crud/auto-crud-table';
 
 // i18n
 export { zhCN, enUS, jaJP, koKR, frFR, deDE, esES, resolveLocale } from './i18n/locale';
-export type { AutoCrudLocale, LocaleProp, TableControlsLocale, TablePaginationLocale, TableActionBarLocale } from './i18n/locale';
+export type {
+  AutoCrudLocale,
+  LocaleProp,
+  TableControlsLocale,
+  TablePaginationLocale,
+  TableActionBarLocale,
+} from './i18n/locale';
 export { AutoForm, type AutoFormProps } from './components/auto-crud/auto-form';
 export { AutoTable, type AutoTableProps } from './components/auto-crud/auto-table';
 export { AutoTableActionBar } from './components/auto-crud/auto-table-action-bar';
@@ -204,3 +210,25 @@ export type * from './types/data-table';
 export type { CrudPermissions, CrudOperationPermissions } from './types/permissions';
 
 export type { TablePaginationOptions } from './types/data-table';
+
+export {
+  AutoCrudProvider,
+  type AutoCrudProviderProps,
+  type ViewStorage,
+  type TagService,
+  type TagScope,
+  type TagInput,
+  type TagOption,
+} from './components/auto-crud/auto-crud-provider';
+export {
+  TagFilter,
+  TagAssignment,
+  type TagFilterProps,
+} from './components/auto-crud/tag-filter';
+export {
+  createLocalViewStorage,
+  type SavedView,
+  type ViewInput,
+  type ViewQuery,
+} from './lib/saved-views';
+export { tagFilterValueSchema, type TagFilterValue } from './lib/tag-filter';
