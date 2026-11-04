@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@wordrhyme/shadcn';
 import { Button } from '@wordrhyme/shadcn';
 import {
@@ -125,10 +126,10 @@ export function ImportDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-h-[85vh] overflow-y-auto"
+        className="flex max-h-[85vh] min-w-0 flex-col overflow-hidden"
         style={{ width: 'calc(100vw - 4rem)', maxWidth: '52rem' }}
       >
-        <DialogHeader>
+        <DialogHeader className="shrink-0">
           <DialogTitle>{title ?? locale.title}</DialogTitle>
           <DialogDescription>
             {step === 'upload' && locale.uploadDescription}
@@ -139,7 +140,7 @@ export function ImportDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="min-h-0 min-w-0 flex-1 space-y-4 overflow-auto">
           {/* 上传步骤 */}
           {step === 'upload' && (
             <>
@@ -183,17 +184,6 @@ export function ImportDialog({
                   onChange={handleFileInput}
                 />
               </div>
-
-              {columns.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={handleDownloadTemplate}
-                >
-                  {locale.downloadTemplate}
-                </Button>
-              )}
             </>
           )}
 
@@ -246,13 +236,6 @@ export function ImportDialog({
                   parsedData.rows.length > 10 ? 10 : undefined,
                 )}
               </p>
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={reset}>
-                  {locale.reselect}
-                </Button>
-                <Button onClick={handleImport}>{locale.confirmImport}</Button>
-              </div>
             </>
           )}
 
@@ -336,15 +319,6 @@ export function ImportDialog({
                   </div>
                 )}
               </div>
-
-              <div className="flex gap-2 justify-end">
-                <Button variant="outline" onClick={() => handleOpenChange(false)}>
-                  {locale.close}
-                </Button>
-                <Button variant="outline" onClick={reset}>
-                  {locale.continueImport}
-                </Button>
-              </div>
             </>
           )}
 
@@ -355,6 +329,36 @@ export function ImportDialog({
             </div>
           )}
         </div>
+        {step === 'upload' && columns.length > 0 && (
+          <DialogFooter className="shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              onClick={handleDownloadTemplate}
+            >
+              {locale.downloadTemplate}
+            </Button>
+          </DialogFooter>
+        )}
+        {step === 'preview' && parsedData && (
+          <DialogFooter className="shrink-0">
+            <Button variant="outline" onClick={reset}>
+              {locale.reselect}
+            </Button>
+            <Button onClick={handleImport}>{locale.confirmImport}</Button>
+          </DialogFooter>
+        )}
+        {step === 'result' && result && (
+          <DialogFooter className="shrink-0">
+            <Button variant="outline" onClick={() => handleOpenChange(false)}>
+              {locale.close}
+            </Button>
+            <Button variant="outline" onClick={reset}>
+              {locale.continueImport}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
