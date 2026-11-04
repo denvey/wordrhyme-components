@@ -15,6 +15,7 @@ const locales = (z as unknown as { locales?: LocaleMap }).locales;
 const inputs: Record<string, unknown> = {
   string: '',
   number: 0,
+  float: 0.5,
   nan: NaN,
   boolean: false,
   object: {},
@@ -49,11 +50,15 @@ export function importError(language: string) {
     )
       return issue.message;
     const params = issue.params;
+    const received = String(params['received']);
+    // Unknown source types must not be presented as missing input.
+    if (issue.code === 'invalid_type' && !Object.hasOwn(inputs, received))
+      return issue.message;
     const result = translate({
       ...params,
       code: issue.code,
       path: issue.path,
-      input: inputs[String(params['received'])],
+      input: inputs[received],
     });
     return typeof result === 'string' ? result : (result?.message ?? issue.message);
   };
