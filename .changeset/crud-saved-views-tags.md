@@ -8,3 +8,5 @@ Add globally configured saved query views and dynamic tags with inclusion, exclu
 Keep tag columns read-only by default and expose a controlled assignment dialog so consumers can place text or icon triggers in existing row, toolbar, cell or batch action slots.
 
 Initialize tag selection from current record tags, preserve untouched mixed selections in batch editing and submit only the resulting additions and removals. Place editor actions in a single row.
+
+Create tags from the current picker list and edit names and colors inline through per-tag icons, with inline deletion confirmation and no separate management dialog.

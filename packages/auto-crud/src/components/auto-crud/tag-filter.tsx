@@ -15,7 +15,6 @@ import {
   Checkbox,
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   Input,
@@ -24,7 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@wordrhyme/shadcn';
-import { Plus, Settings } from 'lucide-react';
+import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useContext, useEffect, useState } from 'react';
 import { normalizeHasMore, normalizeOptions } from '@/lib/registries';
 import { emptyTagFilter, tagFilterIds } from '@/lib/tag-filter';
@@ -63,7 +62,8 @@ type TagPickerProps = {
   scope: TagScope;
   title: string;
   disabled?: boolean;
-  footer?: ReactNode;
+  footer?: (editing: boolean) => ReactNode;
+  onDeleted?: (id: string) => unknown | Promise<unknown>;
 } & (
   | {
       purpose: 'filter';
@@ -85,7 +85,7 @@ function TagPicker(props: TagPickerProps) {
     return () => clearTimeout(timer);
   }, [query]);
   const [open, setOpen] = useState(false);
-  const [manager, setManager] = useState(false);
+  const [editing, setEditing] = useState<TagOption | null>();
   const [requestError, setRequestError] = useState<Error | null>(null);
   const onRequestError = (reason: unknown) =>
     setRequestError(reason instanceof Error ? reason : new Error(String(reason)));
@@ -108,7 +108,7 @@ function TagPicker(props: TagPickerProps) {
       }),
     getNextPageParam: (last, pages) =>
       normalizeHasMore(last) ? pages.length + 1 : undefined,
-    enabled: purpose === 'assign' || open || manager,
+    enabled: purpose === 'assign' || open,
   });
   const selected = useQuery({
     queryKey: [...prefix, 'resolve', ids],
@@ -131,6 +131,12 @@ function TagPicker(props: TagPickerProps) {
         label: `${unresolvedLabel} (${id})`,
         disabled: true,
       });
+  if (editing && !merged.has(editing.value)) merged.set(editing.value, editing);
+  const finishEditing = async (deletedId?: string) => {
+    await client.invalidateQueries({ queryKey: prefix });
+    if (deletedId !== undefined) await props.onDeleted?.(deletedId);
+    setEditing(undefined);
+  };
   const change = (id: string, mode: 'include' | 'exclude' | 'none') => {
     if (props.purpose === 'assign') {
       props.onChange({
@@ -161,7 +167,7 @@ function TagPicker(props: TagPickerProps) {
         aria-label={`搜索${title}`}
         placeholder={`搜索${title}`}
         value={query}
-        disabled={disabled}
+        disabled={disabled || editing !== undefined}
         onChange={(event) => setQuery(event.target.value)}
       />
       {purpose === 'assign' && (
@@ -222,6 +228,16 @@ function TagPicker(props: TagPickerProps) {
         }}
       >
         {[...merged.values()].map((option) => {
+          if (editing?.value === option.value)
+            return (
+              <TagEditor
+                key={option.value}
+                scope={scope}
+                tag={editing}
+                onSaved={finishEditing}
+                onCancel={() => setEditing(undefined)}
+              />
+            );
           let mode: 'include' | 'exclude' | 'none' = 'none';
           if (props.purpose === 'filter') {
             if (props.value.include.includes(option.value)) mode = 'include';
@@ -235,7 +251,9 @@ function TagPicker(props: TagPickerProps) {
                 aria-label={`选择 ${option.label}`}
                 checked={mixed ? 'indeterminate' : mode !== 'none'}
                 disabled={
-                  disabled || (option.disabled === true && mode === 'none' && !mixed)
+                  disabled ||
+                  editing !== undefined ||
+                  (option.disabled === true && mode === 'none' && !mixed)
                 }
                 onCheckedChange={(checked) =>
                   change(option.value, checked === true ? 'include' : 'none')
@@ -253,6 +271,7 @@ function TagPicker(props: TagPickerProps) {
                   aria-label={`${option.label}匹配方式`}
                   className="rounded border bg-background p-1 text-sm"
                   value={mode}
+                  disabled={disabled || editing !== undefined}
                   onChange={(event) =>
                     change(option.value, event.target.value as 'include' | 'exclude')
                   }
@@ -261,6 +280,21 @@ function TagPicker(props: TagPickerProps) {
                   <option value="exclude">反选</option>
                 </select>
               )}
+              {(service.update || service.remove) &&
+                typeof option.color === 'string' &&
+                !option.disabled && (
+                  <Button
+                    type="button"
+                    size="icon-sm"
+                    variant="ghost"
+                    aria-label={`编辑 ${option.label}`}
+                    title={`编辑 ${option.label}`}
+                    disabled={disabled || editing !== undefined}
+                    onClick={() => setEditing({ ...option, color: option.color! })}
+                  >
+                    <Pencil aria-hidden="true" className="size-3.5" />
+                  </Button>
+                )}
             </div>
           );
         })}
@@ -273,6 +307,28 @@ function TagPicker(props: TagPickerProps) {
           <p className="py-3 text-sm text-muted-foreground">暂无标签</p>
         )}
       </div>
+      {editing === null && (
+        <TagEditor
+          scope={scope}
+          tag={null}
+          defaultLabel={query.trim()}
+          onSaved={finishEditing}
+          onCancel={() => setEditing(undefined)}
+        />
+      )}
+      {editing !== null && service.create && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start"
+          disabled={disabled || editing !== undefined}
+          onClick={() => setEditing(null)}
+        >
+          <Plus aria-hidden="true" className="size-4" />
+          添加标签
+        </Button>
+      )}
       {props.purpose === 'filter' && (
         <Label className="flex items-center gap-2">
           <Checkbox
@@ -289,7 +345,7 @@ function TagPicker(props: TagPickerProps) {
           type="button"
           variant="ghost"
           size="sm"
-          disabled={disabled}
+          disabled={disabled || editing !== undefined}
           onClick={() => {
             if (props.purpose === 'filter') props.onChange(emptyTagFilter());
             else props.onChange({ selected: [], mixed: [] });
@@ -297,21 +353,7 @@ function TagPicker(props: TagPickerProps) {
         >
           清空
         </Button>
-        <div className="flex items-center gap-2">
-          {(service.create || service.update || service.remove) && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              disabled={disabled}
-              onClick={() => setManager(true)}
-            >
-              <Settings className="size-4" />
-              自定义设置
-            </Button>
-          )}
-          {footer}
-        </div>
+        {footer?.(editing !== undefined)}
       </div>
     </>
   );
@@ -320,7 +362,13 @@ function TagPicker(props: TagPickerProps) {
       {purpose === 'assign' ? (
         <div>{picker}</div>
       ) : (
-        <Popover open={open} onOpenChange={setOpen}>
+        <Popover
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) setEditing(undefined);
+          }}
+        >
           <PopoverTrigger asChild>
             <Button
               type="button"
@@ -340,230 +388,152 @@ function TagPicker(props: TagPickerProps) {
           </PopoverContent>
         </Popover>
       )}
-      {manager && (
-        <TagManager
-          key={`${scope.resourceId}:${scope.field}`}
-          open={manager}
-          onOpenChange={setManager}
-          scope={scope}
-          options={[...merged.values()].filter(
-            (option): option is TagOption => typeof option.color === 'string',
-          )}
-          onSaved={() => client.invalidateQueries({ queryKey: prefix })}
-          listControls={
-            <>
-              <Input
-                aria-label="搜索要管理的标签"
-                placeholder="搜索标签"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-              />
-              {options.error && (
-                <p role="alert" className="text-destructive">
-                  {options.error.message}
-                  <Button
-                    variant="link"
-                    onClick={() => {
-                      options.refetch().catch(onRequestError);
-                    }}
-                  >
-                    重试
-                  </Button>
-                </p>
-              )}
-            </>
-          }
-          pagination={
-            options.hasNextPage && (
-              <Button
-                type="button"
-                variant="ghost"
-                disabled={options.isFetchingNextPage}
-                onClick={() => {
-                  options.fetchNextPage().catch(onRequestError);
-                }}
-              >
-                加载更多标签
-              </Button>
-            )
-          }
-        />
-      )}
     </>
   );
 }
 
-function TagManager({
-  open,
-  onOpenChange,
+function TagEditor({
   scope,
-  options,
+  tag,
+  defaultLabel = '',
   onSaved,
-  listControls,
-  pagination,
+  onCancel,
 }: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   scope: TagScope;
-  options: TagOption[];
-  onSaved: () => Promise<void>;
-  listControls: ReactNode;
-  pagination: ReactNode;
+  tag: TagOption | null;
+  defaultLabel?: string;
+  onSaved: (deletedId?: string) => Promise<void>;
+  onCancel: () => void;
 }) {
   const service = useAutoCrudConfig()!.tagService!;
-  const [editing, setEditing] = useState<TagOption | null>(null);
-  const [label, setLabel] = useState('');
-  const [color, setColor] = useState('#3b82f6');
-  const [deleting, setDeleting] = useState<TagOption | null>(null);
+  const [label, setLabel] = useState(tag?.label ?? defaultLabel);
+  const [color, setColor] = useState(tag?.color ?? '#3b82f6');
+  const [deleting, setDeleting] = useState(false);
   const mutation = useMutation({
     mutationFn: async (operation: 'save' | 'delete') => {
       if (operation === 'delete') {
-        await service.remove!({ ...scope, id: deleting!.value });
+        if (!tag || !service.remove) throw new Error('没有删除标签的权限');
+        await service.remove({ ...scope, id: tag.value });
         return;
       }
       if (!label.trim()) throw new Error('请输入标签名称');
-      if ((editing && !service.update) || (!editing && !service.create))
+      if ((tag && !service.update) || (!tag && !service.create))
         throw new Error('没有管理标签的权限');
-      if (editing)
+      if (tag)
         await service.update!({
           ...scope,
-          id: editing.value,
+          id: tag.value,
           label: label.trim(),
           color,
         });
       else await service.create!({ ...scope, label: label.trim(), color });
     },
-    onSuccess: async () => {
-      setEditing(null);
-      setDeleting(null);
-      setLabel('');
-      await onSaved();
+    onSuccess: async (_result, operation) => {
+      await onSaved(operation === 'delete' ? tag!.value : undefined);
     },
   });
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!mutation.isPending) {
-          onOpenChange(next);
-          setDeleting(null);
-        }
-      }}
-    >
-      <DialogContent aria-describedby={undefined}>
-        <DialogHeader>
-          <DialogTitle>自定义分类</DialogTitle>
-        </DialogHeader>
-        {listControls}
-        <div className="max-h-60 overflow-auto">
-          {options.map((option) => (
-            <div className="flex items-center gap-2 py-1" key={option.value}>
-              <span
-                className="size-3 rounded"
-                style={{ backgroundColor: option.color }}
-              />
-              <span className="flex-1">{option.label}</span>
-              {service.update && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setEditing(option);
-                    setLabel(option.label);
-                    setColor(option.color);
-                    setDeleting(null);
-                    mutation.reset();
-                  }}
-                >
-                  编辑
-                </Button>
-              )}
-              {service.remove && (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={mutation.isPending}
-                  onClick={() => setDeleting(option)}
-                >
-                  删除
-                </Button>
-              )}
-            </div>
-          ))}
-        </div>
-        {pagination}
-        {deleting ? (
-          <div className="grid gap-2">
-            <p>删除「{deleting.label}」及其数据关联？引用此标签的视图将提示标签失效。</p>
+    <div className="my-2 rounded-md border p-2">
+      {deleting ? (
+        <div className="grid gap-2">
+          <p className="text-sm">
+            删除「{tag!.label}」及其数据关联？引用此标签的视图将提示标签失效。
+          </p>
+          <div className="flex items-center justify-end gap-2">
             <Button
               type="button"
+              size="sm"
               variant="destructive"
               disabled={mutation.isPending}
               onClick={() => mutation.mutate('delete')}
             >
               确认删除
             </Button>
-            <Button type="button" variant="outline" onClick={() => setDeleting(null)}>
-              取消
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={mutation.isPending}
+              onClick={() => setDeleting(false)}
+            >
+              取消删除
             </Button>
           </div>
-        ) : (
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              mutation.mutate('save');
-            }}
-            className="grid gap-3"
+        </div>
+      ) : (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            mutation.mutate('save');
+          }}
+          className="flex items-center gap-1"
+        >
+          <Input
+            aria-label="标签名称"
+            placeholder="标签名称"
+            className="min-w-0 flex-1"
+            value={label}
+            maxLength={80}
+            required
+            disabled={mutation.isPending || Boolean(tag && !service.update)}
+            onChange={(event) => setLabel(event.target.value)}
+          />
+          <Input
+            aria-label="标签颜色"
+            type="color"
+            value={color}
+            disabled={mutation.isPending || Boolean(tag && !service.update)}
+            onChange={(event) => setColor(event.target.value)}
+            className="size-9 shrink-0 p-1"
+          />
+          {(tag ? service.update : service.create) && (
+            <Button
+              type="submit"
+              size="icon-sm"
+              variant="ghost"
+              aria-label={tag ? '保存标签修改' : '创建标签'}
+              title={tag ? '保存标签修改' : '创建标签'}
+              disabled={mutation.isPending || !label.trim()}
+            >
+              <Check aria-hidden="true" className="size-4" />
+            </Button>
+          )}
+          {tag && service.remove && (
+            <Button
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label={`删除 ${tag.label}`}
+              title={`删除 ${tag.label}`}
+              disabled={mutation.isPending}
+              onClick={() => {
+                mutation.reset();
+                setDeleting(true);
+              }}
+            >
+              <Trash2 aria-hidden="true" className="size-4" />
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="icon-sm"
+            variant="ghost"
+            aria-label="取消编辑标签"
+            title="取消编辑标签"
+            disabled={mutation.isPending}
+            onClick={onCancel}
           >
-            <Label>
-              标签名称
-              <Input
-                value={label}
-                maxLength={80}
-                required
-                onChange={(event) => setLabel(event.target.value)}
-              />
-            </Label>
-            <Label>
-              颜色
-              <Input
-                type="color"
-                value={color}
-                onChange={(event) => setColor(event.target.value)}
-                className="h-9 w-20"
-              />
-            </Label>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setEditing(null);
-                  setLabel('');
-                }}
-              >
-                新建标签
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  mutation.isPending || !(editing ? service.update : service.create)
-                }
-              >
-                {editing ? '保存修改' : '创建标签'}
-              </Button>
-            </DialogFooter>
-          </form>
-        )}
-        {mutation.error && (
-          <p role="alert" className="text-destructive">
-            {mutation.error.message}
-          </p>
-        )}
-      </DialogContent>
-    </Dialog>
+            <X aria-hidden="true" className="size-4" />
+          </Button>
+        </form>
+      )}
+      {mutation.error && (
+        <p role="alert" className="text-destructive">
+          {mutation.error.message}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -602,7 +572,7 @@ function TagAssignmentEditor({
   onSaved,
 }: TagAssignmentProps) {
   const config = useAutoCrudConfig()!;
-  const [initial] = useState(() => {
+  const [initial, setInitial] = useState(() => {
     const counts = new Map<string, number>();
     for (const entity of entities)
       for (const id of new Set(entity.tagIds)) counts.set(id, (counts.get(id) ?? 0) + 1);
@@ -674,15 +644,32 @@ function TagAssignmentEditor({
           onChange={setValue}
           purpose="assign"
           disabled={mutation.isPending}
-          footer={
+          onDeleted={async (id) => {
+            setInitial((current) => ({
+              ...current,
+              ids: current.ids.filter((tag) => tag !== id),
+              selection: {
+                selected: current.selection.selected.filter((tag) => tag !== id),
+                mixed: current.selection.mixed.filter((tag) => tag !== id),
+              },
+            }));
+            setValue((current) => ({
+              selected: current.selected.filter((tag) => tag !== id),
+              mixed: current.mixed.filter((tag) => tag !== id),
+            }));
+            await onSaved?.();
+          }}
+          footer={(editing) => (
             <Button
               type="button"
-              disabled={mutation.isPending || !initial.entityIds.length || !hasChanges}
+              disabled={
+                mutation.isPending || editing || !initial.entityIds.length || !hasChanges
+              }
               onClick={() => mutation.mutate()}
             >
               保存
             </Button>
-          }
+          )}
         />
       </DialogContent>
     </Dialog>
