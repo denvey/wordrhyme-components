@@ -18,15 +18,20 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-  Label,
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@wordrhyme/shadcn';
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useContext, useEffect, useState } from 'react';
 import { normalizeHasMore, normalizeOptions } from '@/lib/registries';
 import { emptyTagFilter, tagFilterIds } from '@/lib/tag-filter';
+import { cn } from '@/lib/utils';
 import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
 
 export interface TagFilterProps {
@@ -34,9 +39,15 @@ export interface TagFilterProps {
   title: string;
   value: TagFilterValue;
   onChange: (value: TagFilterValue) => void;
+  /** Toolbar buttons show the field label; inputs fit an existing filter condition. */
+  variant?: 'toolbar' | 'input';
+  id?: string;
+  className?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
-export function TagFilter({ field, title, value, onChange }: TagFilterProps) {
+export function TagFilter({ field, ...props }: TagFilterProps) {
   const resourceId = useContext(CrudResourceContext);
   const config = useAutoCrudConfig();
   if (resourceId === undefined || resourceId === '' || !config?.tagService)
@@ -45,9 +56,7 @@ export function TagFilter({ field, title, value, onChange }: TagFilterProps) {
     <TagPicker
       key={`${config.cacheKey}:${resourceId}:${field}`}
       scope={{ resourceId, field }}
-      title={title}
-      value={value}
-      onChange={onChange}
+      {...props}
       purpose="filter"
     />
   );
@@ -65,11 +74,7 @@ type TagPickerProps = {
   footer?: (editing: boolean) => ReactNode;
   onDeleted?: (id: string) => unknown | Promise<unknown>;
 } & (
-  | {
-      purpose: 'filter';
-      value: TagFilterValue;
-      onChange: (value: TagFilterValue) => void;
-    }
+  | ({ purpose: 'filter' } & Omit<TagFilterProps, 'field' | 'title'>)
   | { purpose: 'assign'; value: TagSelection; onChange: (value: TagSelection) => void }
 );
 
@@ -84,8 +89,14 @@ function TagPicker(props: TagPickerProps) {
     const timer = setTimeout(() => setDebouncedQuery(query), 250);
     return () => clearTimeout(timer);
   }, [query]);
-  const [open, setOpen] = useState(false);
+  const [localOpen, setLocalOpen] = useState(false);
   const [editing, setEditing] = useState<TagOption | null>();
+  const open = props.purpose === 'filter' ? (props.open ?? localOpen) : false;
+  const setOpen = (next: boolean) => {
+    setLocalOpen(next);
+    if (props.purpose === 'filter') props.onOpenChange?.(next);
+    if (!next) setEditing(undefined);
+  };
   const [requestError, setRequestError] = useState<Error | null>(null);
   const onRequestError = (reason: unknown) =>
     setRequestError(reason instanceof Error ? reason : new Error(String(reason)));
@@ -161,6 +172,19 @@ function TagPicker(props: TagPickerProps) {
     });
   };
   const failure = requestError ?? options.error ?? selected.error;
+  const inputSummary =
+    props.purpose === 'filter'
+      ? [
+          props.value.include.length > 0
+            ? `${props.value.match === 'all' ? '包含全部' : '包含任一'}：${props.value.include.map((id) => merged.get(id)?.label ?? id).join('、')}`
+            : '',
+          props.value.exclude.length > 0
+            ? `不包含：${props.value.exclude.map((id) => merged.get(id)?.label ?? id).join('、')}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('；')
+      : '';
   const picker = (
     <>
       <Input
@@ -170,6 +194,32 @@ function TagPicker(props: TagPickerProps) {
         disabled={disabled || editing !== undefined}
         onChange={(event) => setQuery(event.target.value)}
       />
+      {props.purpose === 'filter' && (
+        <div className="mt-3 flex items-center justify-between gap-2 text-sm">
+          <span className="text-muted-foreground">包含的标签</span>
+          <Select
+            value={props.value.match}
+            disabled={
+              disabled || editing !== undefined || props.value.include.length === 0
+            }
+            onValueChange={(match: 'any' | 'all') => {
+              if (props.purpose === 'filter') props.onChange({ ...props.value, match });
+            }}
+          >
+            <SelectTrigger
+              aria-label={`${title}包含项匹配方式`}
+              size="sm"
+              className="h-8 w-auto font-normal"
+            >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="any">满足任一</SelectItem>
+              <SelectItem value="all">满足全部</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       {purpose === 'assign' && (
         <div aria-live="polite">
           {ids.length > 0 ? (
@@ -266,19 +316,30 @@ function TagPicker(props: TagPickerProps) {
               <span className="min-w-0 flex-1 truncate text-sm" title={option.label}>
                 {option.label}
               </span>
-              {purpose === 'filter' && mode !== 'none' && (
-                <select
-                  aria-label={`${option.label}匹配方式`}
-                  className="rounded border bg-background p-1 text-sm"
-                  value={mode}
-                  disabled={disabled || editing !== undefined}
-                  onChange={(event) =>
-                    change(option.value, event.target.value as 'include' | 'exclude')
+              {purpose === 'filter' && (
+                <Select
+                  value={mode === 'none' ? '' : mode}
+                  disabled={
+                    disabled ||
+                    editing !== undefined ||
+                    (option.disabled === true && mode === 'none')
+                  }
+                  onValueChange={(value: 'include' | 'exclude') =>
+                    change(option.value, value)
                   }
                 >
-                  <option value="include">正选</option>
-                  <option value="exclude">反选</option>
-                </select>
+                  <SelectTrigger
+                    aria-label={`${option.label}筛选方式`}
+                    size="sm"
+                    className="h-7 w-24 shrink-0 font-normal"
+                  >
+                    <SelectValue placeholder="筛选方式" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="include">包含</SelectItem>
+                    <SelectItem value="exclude">不包含</SelectItem>
+                  </SelectContent>
+                </Select>
               )}
               {(service.update || service.remove) &&
                 typeof option.color === 'string' &&
@@ -329,16 +390,8 @@ function TagPicker(props: TagPickerProps) {
           添加标签
         </Button>
       )}
-      {props.purpose === 'filter' && (
-        <Label className="flex items-center gap-2">
-          <Checkbox
-            checked={props.value.match === 'all'}
-            onCheckedChange={(checked) =>
-              props.onChange({ ...props.value, match: checked === true ? 'all' : 'any' })
-            }
-          />
-          多选取交集
-        </Label>
+      {props.purpose === 'filter' && props.value.exclude.length > 0 && (
+        <p className="mt-2 text-xs text-muted-foreground">不包含项始终同时生效。</p>
       )}
       <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2">
         <Button
@@ -362,28 +415,41 @@ function TagPicker(props: TagPickerProps) {
       {purpose === 'assign' ? (
         <div>{picker}</div>
       ) : (
-        <Popover
-          open={open}
-          onOpenChange={(next) => {
-            setOpen(next);
-            if (!next) setEditing(undefined);
-          }}
-        >
-          <PopoverTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 border-dashed"
-            >
-              <Plus className="size-4" />
-              {title}
-              {ids.length > 0 && (
-                <span className="text-muted-foreground">{ids.length}</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-80 p-3">
+        <Popover open={open} onOpenChange={setOpen}>
+          {props.variant === 'input' ? (
+            <PopoverTrigger asChild>
+              <Button
+                id={props.id}
+                type="button"
+                variant="outline"
+                size="sm"
+                className={cn(
+                  'h-8 min-w-0 w-full justify-start font-normal',
+                  props.className,
+                )}
+                aria-label={`${title}：${inputSummary || '选择标签'}`}
+                title={inputSummary || undefined}
+              >
+                <span className="truncate">{inputSummary || '选择标签'}</span>
+              </Button>
+            </PopoverTrigger>
+          ) : (
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 border-dashed"
+              >
+                <Plus className="size-4" />
+                {title}
+                {ids.length > 0 && (
+                  <span className="text-muted-foreground">{ids.length}</span>
+                )}
+              </Button>
+            </PopoverTrigger>
+          )}
+          <PopoverContent align="start" className="w-88 max-w-[calc(100vw-2rem)] p-3">
             {picker}
           </PopoverContent>
         </Popover>

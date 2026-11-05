@@ -127,7 +127,11 @@ export function DataTableFilterMenu<TData>({
 
   const onFilterAdd = React.useCallback(
     (column: Column<TData>, value: string) => {
-      if (!value.trim() && column.columnDef.meta?.variant !== 'boolean') {
+      if (
+        !value.trim() &&
+        column.columnDef.meta?.variant !== 'boolean' &&
+        column.columnDef.meta?.variant !== 'tags'
+      ) {
         return;
       }
 
@@ -330,6 +334,10 @@ export function DataTableFilterMenu<TData>({
                         key={column.id}
                         value={column.id}
                         onSelect={() => {
+                          if (column.columnDef.meta?.variant === 'tags') {
+                            onFilterAdd(column, '');
+                            return;
+                          }
                           setSelectedColumn(column);
                           setInputValue('');
                           requestAnimationFrame(() => {
@@ -376,7 +384,11 @@ function DataTableFilterItem<TData>({
     const today = useCalendarToday();
     const [showFieldSelector, setShowFieldSelector] = React.useState(false);
     const [showOperatorSelector, setShowOperatorSelector] = React.useState(false);
-    const [showValueSelector, setShowValueSelector] = React.useState(false);
+    const [showValueSelector, setShowValueSelector] = React.useState(
+      filter.variant === 'tags' &&
+        !filter.value.include.length &&
+        !filter.value.exclude.length,
+    );
 
     const column = columns.find((column) => column.id === filter.id);
 
@@ -458,6 +470,8 @@ function DataTableFilterItem<TData>({
                         });
 
                         setShowFieldSelector(false);
+                        if (column.columnDef.meta?.variant === 'tags')
+                          setShowValueSelector(true);
                       }}
                     >
                       {column.columnDef.meta?.icon && <column.columnDef.meta.icon />}
@@ -547,11 +561,7 @@ function FilterValueSelector<TData>({
 
   switch (variant) {
     case 'tags':
-      return (
-        <CommandGroup>
-          <CommandItem onSelect={() => onSelect('')}>选择标签条件</CommandItem>
-        </CommandGroup>
-      );
+      return null;
     case 'boolean':
       return (
         <CommandGroup>
@@ -666,6 +676,11 @@ function onFilterInputRender<TData>({
     case 'tags':
       return (
         <TagFilter
+          id={inputId}
+          variant="input"
+          className="h-full w-auto max-w-72 rounded-none border-r-0 px-2.5"
+          open={showValueSelector}
+          onOpenChange={setShowValueSelector}
           field={String(filter.id)}
           title={column.columnDef.meta?.label ?? String(filter.id)}
           value={filter.value}

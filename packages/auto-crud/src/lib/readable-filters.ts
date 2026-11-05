@@ -17,7 +17,7 @@ type ColumnLike<TData> =
   | ColumnDef<TData, unknown>
   | { id?: string; accessorKey?: string; meta?: { variant?: FilterVariant } };
 
-function getColumnId<TData>(column: ColumnLike<TData>): string | null {
+export function getColumnId<TData>(column: ColumnLike<TData>): string | null {
   if ('id' in column && column.id) return String(column.id);
   if ('accessorKey' in column && column.accessorKey) {
     return String(column.accessorKey);
@@ -25,7 +25,9 @@ function getColumnId<TData>(column: ColumnLike<TData>): string | null {
   return null;
 }
 
-function getColumnVariant<TData>(column: ColumnLike<TData>): FilterVariant | undefined {
+export function getColumnVariant<TData>(
+  column: ColumnLike<TData>,
+): FilterVariant | undefined {
   if ('columnDef' in column) {
     return column.columnDef.meta?.variant as FilterVariant | undefined;
   }

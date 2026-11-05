@@ -46,7 +46,7 @@ export function getFilterOperators(filterVariant: FilterVariant) {
     boolean: dataTableConfig.booleanOperators,
     select: dataTableConfig.selectOperators,
     multiSelect: dataTableConfig.multiSelectOperators,
-    tags: [{ label: 'Matches', value: 'matches' }],
+    tags: [{ label: '匹配', value: 'matches' }],
   };
 
   return operatorMap[filterVariant] ?? dataTableConfig.textOperators;

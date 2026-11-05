@@ -346,7 +346,11 @@ function DataTableFilterItem<TData>({
   const today = useCalendarToday();
   const [showFieldSelector, setShowFieldSelector] = React.useState(false);
   const [showOperatorSelector, setShowOperatorSelector] = React.useState(false);
-  const [showValueSelector, setShowValueSelector] = React.useState(false);
+  const [showValueSelector, setShowValueSelector] = React.useState(
+    filter.variant === 'tags' &&
+      !filter.value.include.length &&
+      !filter.value.exclude.length,
+  );
 
   const column = columns.find((column) => column.id === filter.id);
 
@@ -467,6 +471,8 @@ function DataTableFilterItem<TData>({
                         });
 
                         setShowFieldSelector(false);
+                        if (column.columnDef.meta?.variant === 'tags')
+                          setShowValueSelector(true);
                       }}
                     >
                       <span className="truncate">{column.columnDef.meta?.label}</span>
@@ -588,6 +594,10 @@ function onFilterInputRender<TData>({
     case 'tags':
       return (
         <TagFilter
+          id={inputId}
+          variant="input"
+          open={showValueSelector}
+          onOpenChange={setShowValueSelector}
           field={String(filter.id)}
           title={column.columnDef.meta?.label ?? String(filter.id)}
           value={filter.value}
