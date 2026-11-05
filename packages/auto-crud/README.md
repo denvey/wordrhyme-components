@@ -1982,7 +1982,7 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 
 ### 自定义标签编辑入口
 
-`TagAssignment` 是受控弹窗，不包含按钮。在同一个 `AutoCrudProvider` 和 `QueryClientProvider` 内渲染，`resourceId` 与表格 `id` 一致；`entityIds` 传一个 ID 即为单条编辑，多个 ID 即为批量编辑。保存成功后刷新标签缓存，调用 `onSaved`，最后通过 `onOpenChange(false)` 请求关闭；失败时保留弹窗并显示错误，关闭后清空未提交选择。未提供 `tagService.assign` 时不渲染弹窗。
+`TagAssignment` 是受控弹窗，不包含按钮。打开后直接显示搜索和标签列表，无需再展开选择框；待保存的标签名称、颜色及添加／移除状态随选择实时显示，点击保存后才提交。在同一个 `AutoCrudProvider` 和 `QueryClientProvider` 内渲染，`resourceId` 与表格 `id` 一致；`entityIds` 传一个 ID 即为单条编辑，多个 ID 即为批量编辑。保存成功后刷新标签缓存，调用 `onSaved`，最后通过 `onOpenChange(false)` 请求关闭；失败时保留弹窗并显示错误，关闭后清空未提交选择。未提供 `tagService.assign` 时不渲染弹窗。
 
 ```tsx
 import { useState } from 'react';

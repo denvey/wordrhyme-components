@@ -98,7 +98,7 @@ function TagPicker({
       }),
     getNextPageParam: (last, pages) =>
       normalizeHasMore(last) ? pages.length + 1 : undefined,
-    enabled: open || manager,
+    enabled: purpose === 'assign' || open || manager,
   });
   const selected = useQuery({
     queryKey: [...prefix, 'resolve', ids],
@@ -134,138 +134,181 @@ function TagPicker({
       ],
     });
   const failure = requestError ?? options.error ?? selected.error;
-  return (
+  const picker = (
     <>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button type="button" variant="outline" size="sm" className="h-8 border-dashed">
-            <Plus className="size-4" />
-            {title}
-            {ids.length > 0 && (
-              <span className="text-muted-foreground">{ids.length}</span>
-            )}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent align="start" className="w-80 p-3">
-          <Input
-            aria-label={`搜索${title}`}
-            placeholder={`搜索${title}`}
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-          {failure && (
-            <p role="alert" className="text-sm text-destructive">
-              {failure.message}
-              <Button
-                variant="link"
-                size="sm"
-                onClick={() => {
-                  setRequestError(null);
-                  Promise.all([options.refetch(), selected.refetch()]).catch(
-                    onRequestError,
-                  );
-                }}
-              >
-                重试
-              </Button>
+      <Input
+        aria-label={`搜索${title}`}
+        placeholder={`搜索${title}`}
+        value={query}
+        onChange={(event) => setQuery(event.target.value)}
+      />
+      {purpose === 'assign' && (
+        <div aria-live="polite">
+          {ids.length > 0 ? (
+            <ul aria-label="待保存的标签变更" className="flex flex-wrap gap-2 pt-3">
+              {ids.map((id) => {
+                const option = merged.get(id)!;
+                const action = value.include.includes(id) ? '添加' : '移除';
+                return (
+                  <li
+                    key={id}
+                    className="inline-flex items-center gap-1 rounded border px-2 py-1 text-sm"
+                  >
+                    <span
+                      className="size-2 shrink-0 rounded"
+                      style={{
+                        backgroundColor: option.color ?? 'var(--muted-foreground)',
+                      }}
+                    />
+                    {option.label}
+                    <span className="text-muted-foreground">（{action}）</span>
+                  </li>
+                );
+              })}
+            </ul>
+          ) : (
+            <p className="pt-3 text-sm text-muted-foreground">
+              尚未选择要添加或移除的标签
             </p>
           )}
-          <div
-            className="my-2 max-h-72 overflow-auto"
-            onScroll={(event) => {
-              const el = event.currentTarget;
-              if (
-                el.scrollHeight - el.scrollTop - el.clientHeight < 24 &&
-                options.hasNextPage &&
-                !options.isFetchingNextPage
-              )
-                options.fetchNextPage().catch(onRequestError);
+        </div>
+      )}
+      {failure && (
+        <p role="alert" className="text-sm text-destructive">
+          {failure.message}
+          <Button
+            variant="link"
+            size="sm"
+            onClick={() => {
+              setRequestError(null);
+              Promise.all([options.refetch(), selected.refetch()]).catch(onRequestError);
             }}
           >
-            {[...merged.values()].map((option) => {
-              let mode: 'include' | 'exclude' | 'none' = 'none';
-              if (value.include.includes(option.value)) mode = 'include';
-              else if (value.exclude.includes(option.value)) mode = 'exclude';
-              return (
-                <div key={option.value} className="flex items-center gap-2 py-2">
-                  <Checkbox
-                    aria-label={`选择 ${option.label}`}
-                    checked={mode !== 'none'}
-                    disabled={option.disabled === true && mode === 'none'}
-                    onCheckedChange={(checked) =>
-                      change(option.value, checked === true ? 'include' : 'none')
-                    }
-                  />
-                  <span
-                    className="size-3 shrink-0 rounded"
-                    style={{ backgroundColor: option.color ?? 'var(--muted-foreground)' }}
-                  />
-                  <span className="min-w-0 flex-1 truncate text-sm" title={option.label}>
-                    {option.label}
-                  </span>
-                  {mode !== 'none' && (
-                    <select
-                      aria-label={`${option.label}匹配方式`}
-                      className="rounded border bg-background p-1 text-sm"
-                      value={mode}
-                      onChange={(event) =>
-                        change(option.value, event.target.value as 'include' | 'exclude')
-                      }
-                    >
-                      <option value="include">
-                        {purpose === 'assign' ? '添加' : '正选'}
-                      </option>
-                      <option value="exclude">
-                        {purpose === 'assign' ? '移除' : '反选'}
-                      </option>
-                    </select>
-                  )}
-                </div>
-              );
-            })}
-            {options.isFetching && (
-              <p role="status" className="text-sm text-muted-foreground">
-                加载中…
-              </p>
-            )}
-            {!options.isFetching && !merged.size && (
-              <p className="py-3 text-sm text-muted-foreground">暂无标签</p>
-            )}
-          </div>
-          {purpose === 'filter' && (
-            <Label className="flex items-center gap-2">
+            重试
+          </Button>
+        </p>
+      )}
+      <div
+        className="my-2 max-h-72 overflow-auto"
+        onScroll={(event) => {
+          const el = event.currentTarget;
+          if (
+            el.scrollHeight - el.scrollTop - el.clientHeight < 24 &&
+            options.hasNextPage &&
+            !options.isFetchingNextPage
+          )
+            options.fetchNextPage().catch(onRequestError);
+        }}
+      >
+        {[...merged.values()].map((option) => {
+          let mode: 'include' | 'exclude' | 'none' = 'none';
+          if (value.include.includes(option.value)) mode = 'include';
+          else if (value.exclude.includes(option.value)) mode = 'exclude';
+          return (
+            <div key={option.value} className="flex items-center gap-2 py-2">
               <Checkbox
-                checked={value.match === 'all'}
+                aria-label={`选择 ${option.label}`}
+                checked={mode !== 'none'}
+                disabled={option.disabled === true && mode === 'none'}
                 onCheckedChange={(checked) =>
-                  onChange({ ...value, match: checked === true ? 'all' : 'any' })
+                  change(option.value, checked === true ? 'include' : 'none')
                 }
               />
-              多选取交集
-            </Label>
-          )}
-          <div className="mt-3 flex items-center justify-between border-t pt-2">
+              <span
+                className="size-3 shrink-0 rounded"
+                style={{ backgroundColor: option.color ?? 'var(--muted-foreground)' }}
+              />
+              <span className="min-w-0 flex-1 truncate text-sm" title={option.label}>
+                {option.label}
+              </span>
+              {mode !== 'none' && (
+                <select
+                  aria-label={`${option.label}匹配方式`}
+                  className="rounded border bg-background p-1 text-sm"
+                  value={mode}
+                  onChange={(event) =>
+                    change(option.value, event.target.value as 'include' | 'exclude')
+                  }
+                >
+                  <option value="include">
+                    {purpose === 'assign' ? '添加' : '正选'}
+                  </option>
+                  <option value="exclude">
+                    {purpose === 'assign' ? '移除' : '反选'}
+                  </option>
+                </select>
+              )}
+            </div>
+          );
+        })}
+        {options.isFetching && (
+          <p role="status" className="text-sm text-muted-foreground">
+            加载中…
+          </p>
+        )}
+        {!options.isFetching && !merged.size && (
+          <p className="py-3 text-sm text-muted-foreground">暂无标签</p>
+        )}
+      </div>
+      {purpose === 'filter' && (
+        <Label className="flex items-center gap-2">
+          <Checkbox
+            checked={value.match === 'all'}
+            onCheckedChange={(checked) =>
+              onChange({ ...value, match: checked === true ? 'all' : 'any' })
+            }
+          />
+          多选取交集
+        </Label>
+      )}
+      <div className="mt-3 flex items-center justify-between border-t pt-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => onChange(emptyTagFilter())}
+        >
+          清空
+        </Button>
+        {(service.create || service.update || service.remove) && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => setManager(true)}
+          >
+            <Settings className="size-4" />
+            自定义设置
+          </Button>
+        )}
+      </div>
+    </>
+  );
+  return (
+    <>
+      {purpose === 'assign' ? (
+        <div>{picker}</div>
+      ) : (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              onClick={() => onChange(emptyTagFilter())}
+              className="h-8 border-dashed"
             >
-              清空
+              <Plus className="size-4" />
+              {title}
+              {ids.length > 0 && (
+                <span className="text-muted-foreground">{ids.length}</span>
+              )}
             </Button>
-            {(service.create || service.update || service.remove) && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setManager(true)}
-              >
-                <Settings className="size-4" />
-                自定义设置
-              </Button>
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-80 p-3">
+            {picker}
+          </PopoverContent>
+        </Popover>
+      )}
       {manager && (
         <TagManager
           key={`${scope.resourceId}:${scope.field}`}
