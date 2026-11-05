@@ -35,16 +35,9 @@ export interface TagFilterProps {
   title: string;
   value: TagFilterValue;
   onChange: (value: TagFilterValue) => void;
-  purpose?: 'filter' | 'assign';
 }
 
-export function TagFilter({
-  field,
-  title,
-  value,
-  onChange,
-  purpose = 'filter',
-}: TagFilterProps) {
+export function TagFilter({ field, title, value, onChange }: TagFilterProps) {
   const resourceId = useContext(CrudResourceContext);
   const config = useAutoCrudConfig();
   if (resourceId === undefined || resourceId === '' || !config?.tagService)
@@ -56,18 +49,32 @@ export function TagFilter({
       title={title}
       value={value}
       onChange={onChange}
-      purpose={purpose}
+      purpose="filter"
     />
   );
 }
 
-function TagPicker({
-  scope,
-  title,
-  value,
-  onChange,
-  purpose,
-}: Omit<TagFilterProps, 'field'> & { scope: TagScope }) {
+interface TagSelection {
+  selected: string[];
+  mixed: string[];
+}
+
+type TagPickerProps = {
+  scope: TagScope;
+  title: string;
+  disabled?: boolean;
+  footer?: ReactNode;
+} & (
+  | {
+      purpose: 'filter';
+      value: TagFilterValue;
+      onChange: (value: TagFilterValue) => void;
+    }
+  | { purpose: 'assign'; value: TagSelection; onChange: (value: TagSelection) => void }
+);
+
+function TagPicker(props: TagPickerProps) {
+  const { scope, title, purpose, disabled, footer } = props;
   const config = useAutoCrudConfig()!;
   const service = config.tagService!;
   const client = useQueryClient();
@@ -83,7 +90,10 @@ function TagPicker({
   const onRequestError = (reason: unknown) =>
     setRequestError(reason instanceof Error ? reason : new Error(String(reason)));
   const prefix = ['auto-crud-tags', config.cacheKey, scope.resourceId, scope.field];
-  const ids = tagFilterIds(value);
+  const ids =
+    props.purpose === 'filter'
+      ? tagFilterIds(props.value)
+      : [...props.value.selected, ...props.value.mixed];
   const options = useInfiniteQuery({
     queryKey: [...prefix, 'list', debouncedQuery],
     initialPageParam: 1,
@@ -121,18 +131,29 @@ function TagPicker({
         label: `${unresolvedLabel} (${id})`,
         disabled: true,
       });
-  const change = (id: string, mode: 'include' | 'exclude' | 'none') =>
-    onChange({
-      ...value,
+  const change = (id: string, mode: 'include' | 'exclude' | 'none') => {
+    if (props.purpose === 'assign') {
+      props.onChange({
+        selected: [
+          ...props.value.selected.filter((tag) => tag !== id),
+          ...(mode === 'include' ? [id] : []),
+        ],
+        mixed: props.value.mixed.filter((tag) => tag !== id),
+      });
+      return;
+    }
+    props.onChange({
+      ...props.value,
       include: [
-        ...value.include.filter((tag) => tag !== id),
+        ...props.value.include.filter((tag) => tag !== id),
         ...(mode === 'include' ? [id] : []),
       ],
       exclude: [
-        ...value.exclude.filter((tag) => tag !== id),
+        ...props.value.exclude.filter((tag) => tag !== id),
         ...(mode === 'exclude' ? [id] : []),
       ],
     });
+  };
   const failure = requestError ?? options.error ?? selected.error;
   const picker = (
     <>
@@ -140,15 +161,15 @@ function TagPicker({
         aria-label={`搜索${title}`}
         placeholder={`搜索${title}`}
         value={query}
+        disabled={disabled}
         onChange={(event) => setQuery(event.target.value)}
       />
       {purpose === 'assign' && (
         <div aria-live="polite">
           {ids.length > 0 ? (
-            <ul aria-label="待保存的标签变更" className="flex flex-wrap gap-2 pt-3">
+            <ul aria-label="已选标签" className="flex flex-wrap gap-2 pt-3">
               {ids.map((id) => {
                 const option = merged.get(id)!;
-                const action = value.include.includes(id) ? '添加' : '移除';
                 return (
                   <li
                     key={id}
@@ -161,15 +182,15 @@ function TagPicker({
                       }}
                     />
                     {option.label}
-                    <span className="text-muted-foreground">（{action}）</span>
+                    {props.purpose === 'assign' && props.value.mixed.includes(id) && (
+                      <span className="text-muted-foreground">（部分记录）</span>
+                    )}
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p className="pt-3 text-sm text-muted-foreground">
-              尚未选择要添加或移除的标签
-            </p>
+            <p className="pt-3 text-sm text-muted-foreground">尚未选择标签</p>
           )}
         </div>
       )}
@@ -202,14 +223,20 @@ function TagPicker({
       >
         {[...merged.values()].map((option) => {
           let mode: 'include' | 'exclude' | 'none' = 'none';
-          if (value.include.includes(option.value)) mode = 'include';
-          else if (value.exclude.includes(option.value)) mode = 'exclude';
+          if (props.purpose === 'filter') {
+            if (props.value.include.includes(option.value)) mode = 'include';
+            else if (props.value.exclude.includes(option.value)) mode = 'exclude';
+          } else if (props.value.selected.includes(option.value)) mode = 'include';
+          const mixed =
+            props.purpose === 'assign' && props.value.mixed.includes(option.value);
           return (
             <div key={option.value} className="flex items-center gap-2 py-2">
               <Checkbox
                 aria-label={`选择 ${option.label}`}
-                checked={mode !== 'none'}
-                disabled={option.disabled === true && mode === 'none'}
+                checked={mixed ? 'indeterminate' : mode !== 'none'}
+                disabled={
+                  disabled || (option.disabled === true && mode === 'none' && !mixed)
+                }
                 onCheckedChange={(checked) =>
                   change(option.value, checked === true ? 'include' : 'none')
                 }
@@ -221,7 +248,7 @@ function TagPicker({
               <span className="min-w-0 flex-1 truncate text-sm" title={option.label}>
                 {option.label}
               </span>
-              {mode !== 'none' && (
+              {purpose === 'filter' && mode !== 'none' && (
                 <select
                   aria-label={`${option.label}匹配方式`}
                   className="rounded border bg-background p-1 text-sm"
@@ -230,12 +257,8 @@ function TagPicker({
                     change(option.value, event.target.value as 'include' | 'exclude')
                   }
                 >
-                  <option value="include">
-                    {purpose === 'assign' ? '添加' : '正选'}
-                  </option>
-                  <option value="exclude">
-                    {purpose === 'assign' ? '移除' : '反选'}
-                  </option>
+                  <option value="include">正选</option>
+                  <option value="exclude">反选</option>
                 </select>
               )}
             </div>
@@ -250,37 +273,45 @@ function TagPicker({
           <p className="py-3 text-sm text-muted-foreground">暂无标签</p>
         )}
       </div>
-      {purpose === 'filter' && (
+      {props.purpose === 'filter' && (
         <Label className="flex items-center gap-2">
           <Checkbox
-            checked={value.match === 'all'}
+            checked={props.value.match === 'all'}
             onCheckedChange={(checked) =>
-              onChange({ ...value, match: checked === true ? 'all' : 'any' })
+              props.onChange({ ...props.value, match: checked === true ? 'all' : 'any' })
             }
           />
           多选取交集
         </Label>
       )}
-      <div className="mt-3 flex items-center justify-between border-t pt-2">
+      <div className="mt-3 flex items-center justify-between gap-2 border-t pt-2">
         <Button
           type="button"
           variant="ghost"
           size="sm"
-          onClick={() => onChange(emptyTagFilter())}
+          disabled={disabled}
+          onClick={() => {
+            if (props.purpose === 'filter') props.onChange(emptyTagFilter());
+            else props.onChange({ selected: [], mixed: [] });
+          }}
         >
           清空
         </Button>
-        {(service.create || service.update || service.remove) && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setManager(true)}
-          >
-            <Settings className="size-4" />
-            自定义设置
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {(service.create || service.update || service.remove) && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={disabled}
+              onClick={() => setManager(true)}
+            >
+              <Settings className="size-4" />
+              自定义设置
+            </Button>
+          )}
+          {footer}
+        </div>
       </div>
     </>
   );
@@ -539,34 +570,69 @@ function TagManager({
 export interface TagAssignmentProps
   extends TagScope, Pick<RowActionDialogProps, 'open' | 'onOpenChange'> {
   title: string;
-  entityIds: string[];
+  /** Current record tags, snapshotted when the editor opens. */
+  entities: { id: string; tagIds: string[] }[];
   onSaved?: () => unknown | Promise<unknown>;
 }
 
 /** Controlled dialog. Callers own the trigger, its appearance and its placement. */
-export function TagAssignment({
+export function TagAssignment(props: TagAssignmentProps) {
+  const config = useAutoCrudConfig();
+  if (!props.open || !config?.tagService?.assign) return null;
+  return (
+    <TagAssignmentEditor
+      key={JSON.stringify([
+        config.cacheKey,
+        props.resourceId,
+        props.field,
+        props.entities.map((entity) => entity.id),
+      ])}
+      {...props}
+    />
+  );
+}
+
+function TagAssignmentEditor({
   resourceId,
   field,
   title,
-  entityIds,
+  entities,
   open,
   onOpenChange,
   onSaved,
 }: TagAssignmentProps) {
-  const config = useAutoCrudConfig();
-  const [value, setValue] = useState(emptyTagFilter);
+  const config = useAutoCrudConfig()!;
+  const [initial] = useState(() => {
+    const counts = new Map<string, number>();
+    for (const entity of entities)
+      for (const id of new Set(entity.tagIds)) counts.set(id, (counts.get(id) ?? 0) + 1);
+    return {
+      entityIds: entities.map((entity) => entity.id),
+      ids: [...counts.keys()],
+      selection: {
+        selected: [...counts.keys()].filter((id) => counts.get(id) === entities.length),
+        mixed: [...counts.keys()].filter((id) => counts.get(id)! < entities.length),
+      },
+    };
+  });
+  const [value, setValue] = useState<TagSelection>(initial.selection);
+  const add = value.selected.filter((id) => !initial.selection.selected.includes(id));
+  const remove = initial.ids.filter(
+    (id) => !value.selected.includes(id) && !value.mixed.includes(id),
+  );
+  const hasChanges = add.length > 0 || remove.length > 0;
   const client = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
       if (resourceId === undefined || resourceId === '' || !config?.tagService?.assign)
         throw new Error('Tag assignment is not available');
-      if (!entityIds.length) throw new Error('Select at least one record');
+      if (!initial.entityIds.length) throw new Error('Select at least one record');
       await config.tagService.assign({
         resourceId,
         field,
-        entityIds,
-        add: value.include,
-        remove: value.exclude,
+        entityIds: initial.entityIds,
+        add,
+        remove,
       });
     },
     onSuccess: async () => {
@@ -574,18 +640,9 @@ export function TagAssignment({
         queryKey: ['auto-crud-tags', config?.cacheKey, resourceId, field],
       });
       await onSaved?.();
-      setValue(emptyTagFilter());
       onOpenChange(false);
     },
   });
-  const { reset } = mutation;
-  useEffect(() => {
-    if (!open) {
-      setValue(emptyTagFilter());
-      reset();
-    }
-  }, [open, reset]);
-  if (!config?.tagService?.assign) return null;
   return (
     <Dialog
       open={open}
@@ -596,12 +653,19 @@ export function TagAssignment({
       <DialogContent aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle>
-            设置{title}（{entityIds.length} 条）
+            设置{title}（{initial.entityIds.length} 条）
           </DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          选择要添加或移除的标签，其他标签会保留。
+          {initial.entityIds.length > 1
+            ? '勾选或取消勾选以设置标签；半选表示仅部分记录拥有，未改动的标签会保留。'
+            : '勾选需要的标签，取消勾选即可移除。'}
         </p>
+        {mutation.error && (
+          <p role="alert" className="text-destructive">
+            {mutation.error.message}
+          </p>
+        )}
         <TagPicker
           key={`${config.cacheKey}:${resourceId}:${field}`}
           scope={{ resourceId, field }}
@@ -609,23 +673,17 @@ export function TagAssignment({
           value={value}
           onChange={setValue}
           purpose="assign"
+          disabled={mutation.isPending}
+          footer={
+            <Button
+              type="button"
+              disabled={mutation.isPending || !initial.entityIds.length || !hasChanges}
+              onClick={() => mutation.mutate()}
+            >
+              保存
+            </Button>
+          }
         />
-        {mutation.error && (
-          <p role="alert" className="text-destructive">
-            {mutation.error.message}
-          </p>
-        )}
-        <DialogFooter>
-          <Button
-            type="button"
-            disabled={
-              mutation.isPending || !entityIds.length || !tagFilterIds(value).length
-            }
-            onClick={() => mutation.mutate()}
-          >
-            保存
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

@@ -1982,16 +1982,20 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 
 ### 自定义标签编辑入口
 
-`TagAssignment` 是受控弹窗，不包含按钮。打开后直接显示搜索和标签列表，无需再展开选择框；待保存的标签名称、颜色及添加／移除状态随选择实时显示，点击保存后才提交。在同一个 `AutoCrudProvider` 和 `QueryClientProvider` 内渲染，`resourceId` 与表格 `id` 一致；`entityIds` 传一个 ID 即为单条编辑，多个 ID 即为批量编辑。保存成功后刷新标签缓存，调用 `onSaved`，最后通过 `onOpenChange(false)` 请求关闭；失败时保留弹窗并显示错误，关闭后清空未提交选择。未提供 `tagService.assign` 时不渲染弹窗。
+`TagAssignment` 是受控弹窗，不包含按钮。打开后直接显示搜索和标签列表，已有标签默认选中，通过勾选／取消勾选编辑，无需选择添加或移除。已选标签的名称、颜色实时显示；清空、自定义设置、保存位于同一行，点击保存后才提交。
+
+在同一个 `AutoCrudProvider` 和 `QueryClientProvider` 内渲染，`resourceId` 与表格 `id` 一致。`entities` 传入 `{ id, tagIds }` 数组，组件在打开时保存当前标签快照：单条记录默认勾选已有标签；多条记录的共同标签全选，部分记录才有的标签半选。未操作的半选标签保持原样，勾选后给所有记录设置，取消勾选后从所有记录移除；清空会清除所选记录的所有已有标签。只有存在实际变化时才能保存，底层仍通过 `TagService.assign` 提交增删差异，保留其他标签。
+
+保存成功后刷新标签缓存，调用 `onSaved`，最后通过 `onOpenChange(false)` 请求关闭；失败时保留弹窗并显示错误，提交期间禁用选择操作。关闭后放弃未提交选择，再次打开使用新的当前标签；打开期间切换资源、字段或目标记录时重建编辑状态。未提供 `tagService.assign` 时不渲染弹窗。
 
 ```tsx
 import { useState } from 'react';
 import { Tags } from 'lucide-react';
 import { Button } from '@wordrhyme/shadcn';
-import { TagAssignment } from '@wordrhyme/auto-crud';
+import { TagAssignment, type TagAssignmentProps } from '@wordrhyme/auto-crud';
 
-function EditTags({ entityIds, onSaved }: {
-  entityIds: string[];
+function EditTags({ entities, onSaved }: {
+  entities: TagAssignmentProps['entities'];
   onSaved: () => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
@@ -2001,7 +2005,7 @@ function EditTags({ entityIds, onSaved }: {
       variant="outline"
       size="icon-sm"
       aria-label="设置标签"
-      disabled={!entityIds.length}
+      disabled={!entities.length}
       onClick={() => setOpen(true)}
     >
       <Tags aria-hidden="true" className="size-4" />
@@ -2010,7 +2014,7 @@ function EditTags({ entityIds, onSaved }: {
       resourceId="crm.customers"
       field="tags"
       title="标签"
-      entityIds={entityIds}
+      entities={entities}
       open={open}
       onOpenChange={setOpen}
       onSaved={onSaved}

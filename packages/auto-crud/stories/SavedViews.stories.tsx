@@ -31,7 +31,7 @@ function Demo({
   tagActionAppearance: 'text' | 'icon' | 'both';
 }) {
   const [client] = useState(() => new QueryClient());
-  const [tagTargets, setTagTargets] = useState<string[] | null>(null);
+  const [tagTargets, setTagTargets] = useState<Row[] | null>(null);
   const [rows, setRows] = useState<Row[]>([
     { id: '1', name: '客户 A', tags: ['vip', 'review'] },
     { id: '2', name: '客户 B', tags: ['vip'] },
@@ -182,10 +182,7 @@ function Demo({
               {
                 type: 'custom',
                 component: ({ row, MenuItem }) => (
-                  <MenuItem
-                    aria-label="设置标签"
-                    onSelect={() => setTagTargets([row.id])}
-                  >
+                  <MenuItem aria-label="设置标签" onSelect={() => setTagTargets([row])}>
                     {tagActionAppearance !== 'text' && (
                       <Tags aria-hidden="true" className="size-4" />
                     )}
@@ -203,7 +200,7 @@ function Demo({
                     variant="outline"
                     size={tagActionAppearance === 'icon' ? 'icon-sm' : 'sm'}
                     aria-label="批量设置标签"
-                    onClick={() => setTagTargets(selectedRows.map((row) => row.id))}
+                    onClick={() => setTagTargets(selectedRows)}
                   >
                     {tagActionAppearance !== 'text' && (
                       <Tags aria-hidden="true" className="size-4" />
@@ -237,7 +234,7 @@ function Demo({
           resourceId="demo.customers"
           field="tags"
           title="标签"
-          entityIds={tagTargets ?? []}
+          entities={(tagTargets ?? []).map((row) => ({ id: row.id, tagIds: row.tags }))}
           open={tagTargets !== null}
           onOpenChange={(open) => {
             if (!open) setTagTargets(null);
