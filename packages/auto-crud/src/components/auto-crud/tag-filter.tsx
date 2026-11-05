@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { TagOption, TagScope } from './auto-crud-provider';
+import type { RowActionDialogProps } from '@/lib/row-action-dialog';
 import type { TagFilterValue } from '@/lib/tag-filter';
 import {
   useInfiniteQuery,
@@ -492,26 +493,31 @@ function TagManager({
   );
 }
 
-export function TagAssignment({
-  field,
-  title,
-  entityIds,
-  onSaved,
-}: {
-  field: string;
+export interface TagAssignmentProps
+  extends TagScope, Pick<RowActionDialogProps, 'open' | 'onOpenChange'> {
   title: string;
   entityIds: string[];
   onSaved?: () => unknown | Promise<unknown>;
-}) {
-  const resourceId = useContext(CrudResourceContext);
+}
+
+/** Controlled dialog. Callers own the trigger, its appearance and its placement. */
+export function TagAssignment({
+  resourceId,
+  field,
+  title,
+  entityIds,
+  open,
+  onOpenChange,
+  onSaved,
+}: TagAssignmentProps) {
   const config = useAutoCrudConfig();
-  const [open, setOpen] = useState(false);
   const [value, setValue] = useState(emptyTagFilter);
   const client = useQueryClient();
   const mutation = useMutation({
     mutationFn: async () => {
       if (resourceId === undefined || resourceId === '' || !config?.tagService?.assign)
         throw new Error('Tag assignment is not available');
+      if (!entityIds.length) throw new Error('Select at least one record');
       await config.tagService.assign({
         resourceId,
         field,
@@ -526,79 +532,63 @@ export function TagAssignment({
       });
       await onSaved?.();
       setValue(emptyTagFilter());
-      setOpen(false);
+      onOpenChange(false);
     },
   });
+  const { reset } = mutation;
+  useEffect(() => {
+    if (!open) {
+      setValue(emptyTagFilter());
+      reset();
+    }
+  }, [open, reset]);
   if (!config?.tagService?.assign) return null;
   return (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={!entityIds.length}
-        onClick={() => {
-          setOpen(true);
-          mutation.reset();
-        }}
-      >
-        设置{title}
-      </Button>
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          if (!mutation.isPending) setOpen(next);
-        }}
-      >
-        <DialogContent aria-describedby={undefined}>
-          <DialogHeader>
-            <DialogTitle>
-              设置{title}（{entityIds.length} 条）
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            选择要添加或移除的标签，其他标签会保留。
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!mutation.isPending) onOpenChange(next);
+      }}
+    >
+      <DialogContent aria-describedby={undefined}>
+        <DialogHeader>
+          <DialogTitle>
+            设置{title}（{entityIds.length} 条）
+          </DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          选择要添加或移除的标签，其他标签会保留。
+        </p>
+        <TagPicker
+          key={`${config.cacheKey}:${resourceId}:${field}`}
+          scope={{ resourceId, field }}
+          title={title}
+          value={value}
+          onChange={setValue}
+          purpose="assign"
+        />
+        {mutation.error && (
+          <p role="alert" className="text-destructive">
+            {mutation.error.message}
           </p>
-          <TagFilter
-            field={field}
-            title={title}
-            value={value}
-            onChange={setValue}
-            purpose="assign"
-          />
-          {mutation.error && (
-            <p role="alert" className="text-destructive">
-              {mutation.error.message}
-            </p>
-          )}
-          <DialogFooter>
-            <Button
-              type="button"
-              disabled={mutation.isPending || !tagFilterIds(value).length}
-              onClick={() => mutation.mutate()}
-            >
-              保存
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
+        )}
+        <DialogFooter>
+          <Button
+            type="button"
+            disabled={
+              mutation.isPending || !entityIds.length || !tagFilterIds(value).length
+            }
+            onClick={() => mutation.mutate()}
+          >
+            保存
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-export function TagCell({
-  field,
-  entityId,
-  ids,
-  editable,
-  onSaved,
-}: {
-  field: string;
-  entityId: string;
-  ids: string[];
-  editable: boolean;
-  onSaved?: () => unknown | Promise<unknown>;
-}) {
+export function TagCell({ field, ids }: { field: string; ids: string[] }) {
   const resourceId = useContext(CrudResourceContext);
   const config = useAutoCrudConfig();
   const data = useQuery({
@@ -627,14 +617,6 @@ export function TagCell({
         <span role="alert" className="text-destructive">
           {data.error.message}
         </span>
-      )}
-      {editable && (
-        <TagAssignment
-          field={field}
-          title="标签"
-          entityIds={[entityId]}
-          onSaved={onSaved}
-        />
       )}
     </div>
   );

@@ -1,9 +1,16 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type { TagOption, TagService, UseAutoCrudResourceReturn } from '../src';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Button } from '@wordrhyme/shadcn';
+import { Tags } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
-import { AutoCrudProvider, AutoCrudTable, createLocalViewStorage } from '../src';
+import {
+  AutoCrudProvider,
+  AutoCrudTable,
+  createLocalViewStorage,
+  TagAssignment,
+} from '../src';
 import { parseReadableFilters } from '../src/lib/readable-filters';
 
 const schema = z.object({ id: z.string(), name: z.string(), tags: z.array(z.string()) });
@@ -16,8 +23,15 @@ const initialTags: TagOption[] = [
   { value: 'review', label: '需要跟进', color: '#f59e0b' },
 ];
 
-function Demo({ mode }: { mode: 'simple' | 'advanced' | 'command' }) {
+function Demo({
+  mode,
+  tagActionAppearance,
+}: {
+  mode: 'simple' | 'advanced' | 'command';
+  tagActionAppearance: 'text' | 'icon' | 'both';
+}) {
   const [client] = useState(() => new QueryClient());
+  const [tagTargets, setTagTargets] = useState<string[] | null>(null);
   const [rows, setRows] = useState<Row[]>([
     { id: '1', name: '客户 A', tags: ['vip', 'review'] },
     { id: '2', name: '客户 B', tags: ['vip'] },
@@ -156,17 +170,56 @@ function Demo({ mode }: { mode: 'simple' | 'advanced' | 'command' }) {
     <QueryClientProvider client={client}>
       <AutoCrudProvider scope="storybook:user:tenant" {...services}>
         <p className="mb-4 text-sm text-muted-foreground">
-          可创建标签、修改颜色、单条或批量打标签，再把筛选与排序保存成视图。视图保存在当前浏览器。
+          通过行操作菜单或多选后的批量操作设置标签。入口位置及文字、图标由业务配置；视图保存在当前浏览器。
         </p>
         <AutoCrudTable
           id="demo.customers"
           schema={schema}
           resource={resource}
           permissions={{ can: { create: false, delete: false } }}
+          actions={{
+            row: [
+              {
+                type: 'custom',
+                component: ({ row, MenuItem }) => (
+                  <MenuItem
+                    aria-label="设置标签"
+                    onSelect={() => setTagTargets([row.id])}
+                  >
+                    {tagActionAppearance !== 'text' && (
+                      <Tags aria-hidden="true" className="size-4" />
+                    )}
+                    {tagActionAppearance !== 'icon' && '设置标签'}
+                  </MenuItem>
+                ),
+              },
+            ],
+            batch: [
+              {
+                type: 'custom',
+                component: ({ rows: selectedRows }) => (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size={tagActionAppearance === 'icon' ? 'icon-sm' : 'sm'}
+                    aria-label="批量设置标签"
+                    onClick={() => setTagTargets(selectedRows.map((row) => row.id))}
+                  >
+                    {tagActionAppearance !== 'text' && (
+                      <Tags aria-hidden="true" className="size-4" />
+                    )}
+                    {tagActionAppearance !== 'icon' && '批量设置标签'}
+                  </Button>
+                ),
+              },
+            ],
+          }}
           table={{
             filterModes: [
               mode,
-              ...(['simple', 'advanced', 'command'] as const).filter((value) => value !== mode),
+              ...(['simple', 'advanced', 'command'] as const).filter(
+                (value) => value !== mode,
+              ),
             ],
           }}
           fields={{
@@ -180,6 +233,17 @@ function Demo({ mode }: { mode: 'simple' | 'advanced' | 'command' }) {
             },
           }}
         />
+        <TagAssignment
+          resourceId="demo.customers"
+          field="tags"
+          title="标签"
+          entityIds={tagTargets ?? []}
+          open={tagTargets !== null}
+          onOpenChange={(open) => {
+            if (!open) setTagTargets(null);
+          }}
+          onSaved={resource.handlers.refresh}
+        />
       </AutoCrudProvider>
     </QueryClientProvider>
   );
@@ -188,8 +252,11 @@ function Demo({ mode }: { mode: 'simple' | 'advanced' | 'command' }) {
 const meta = {
   title: 'Auto CRUD/Saved views and tags',
   component: Demo,
-  args: { mode: 'simple' },
-  argTypes: { mode: { control: 'select', options: ['simple', 'advanced', 'command'] } },
+  args: { mode: 'simple', tagActionAppearance: 'both' },
+  argTypes: {
+    mode: { control: 'select', options: ['simple', 'advanced', 'command'] },
+    tagActionAppearance: { control: 'select', options: ['text', 'icon', 'both'] },
+  },
 } satisfies Meta<typeof Demo>;
 export default meta;
 type Story = StoryObj<typeof meta>;

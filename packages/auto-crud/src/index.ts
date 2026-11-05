@@ -224,6 +224,7 @@ export {
   TagFilter,
   TagAssignment,
   type TagFilterProps,
+  type TagAssignmentProps,
 } from './components/auto-crud/tag-filter';
 export {
   createLocalViewStorage,

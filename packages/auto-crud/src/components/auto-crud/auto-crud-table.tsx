@@ -1,7 +1,7 @@
 'use client';
 
 import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
-import { TagAssignment, TagCell } from './tag-filter';
+import { TagCell } from './tag-filter';
 
 import type { TablePaginationOptions } from '@/types/data-table';
 
@@ -2642,16 +2642,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         cell: ({ row }) => (
           <TagCell
             field={field}
-            entityId={String(row.original[resourceIdKey])}
             ids={
               Array.isArray(row.original[field]) ? (row.original[field] as string[]) : []
             }
-            editable={
-              can.update &&
-              row.original[resourceIdKey] != null &&
-              !denyFields?.includes(field)
-            }
-            onSaved={resource.handlers.refresh}
           />
         ),
       };
@@ -2661,10 +2654,6 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       detailTableOverrides: presentationOverrides,
     };
   }, [
-    can.update,
-    denyFields,
-    resourceIdKey,
-    resource.handlers.refresh,
     resolvedFields,
     tableConfig?.overrides,
     dynamicFilterOptions,
@@ -2893,24 +2882,6 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           </div>
         )}
 
-        {can.update &&
-          selectedRowIds.length > 0 &&
-          Object.entries(resolvedFields)
-            .filter(
-              ([field, config]) =>
-                config.filter &&
-                config.filter.variant === 'tags' &&
-                !denyFields?.includes(field),
-            )
-            .map(([field, config]) => (
-              <TagAssignment
-                key={field}
-                field={field}
-                title={config.label ?? field}
-                entityIds={selectedRowIds}
-                onSaved={resource.handlers.refresh}
-              />
-            ))}
         {/* Table */}
         <AutoTable
           resourceId={id}

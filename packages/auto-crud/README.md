@@ -1973,8 +1973,50 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 - `scope` 必须包含当前用户与租户；切换时重置组件状态。`createLocalViewStorage` 仅保存当前浏览器中的视图。换用后端时传入 `ViewStorage`，组件调用方式不变。
 - `TagService.list` 复用数据源的 `query/page/pageSize/signal` 和分页结果格式；`resolve` 返回指定稳定 ID 对应的名称与颜色。用户新建标签只增加选项，不增加 schema 字段。
 - `create/update/remove/assign` 是可选能力。`assign` 必须只添加或移除指定标签，保留其他关联；单条编辑和选中行批量设置共用此方法。权限必须由服务端校验。
+- 标签列默认只展示标签，不自动添加行内或批量编辑按钮。入口由业务通过 `actions.row`、`actions.batch`、工具栏或自定义单元格配置；文字、图标及样式使用现有按钮组件控制。
 - 标签查询条件形如 `{ include: ['vip'], exclude: ['blocked'], match: 'any' }`。`any/all` 只作用于正选标签，反选始终要求全部不包含；整个标签条件再参与外层 AND/OR。空条件不进入 URL。
 - 标签 ID 通过 JSON 和 `__op=matches` 写入 URL；普通条件沿用现有可读格式。标签重命名不会破坏视图。失效 ID 保留在界面，服务端应拒绝失效条件，避免查询范围意外扩大。
 - 后端保存视图须按用户、租户和 CRUD `id` 隔离；标签及其数据关联按租户、CRUD `id` 和字段隔离。视图不是权限凭证。
 
 `ViewStorage` 和 `TagService` 的完整 TypeScript 接口由包导出。完整交互示例见 Storybook 的 **Auto CRUD / Saved views and tags**；可切换 simple、advanced、command 三种模式。
+
+### 自定义标签编辑入口
+
+`TagAssignment` 是受控弹窗，不包含按钮。在同一个 `AutoCrudProvider` 和 `QueryClientProvider` 内渲染，`resourceId` 与表格 `id` 一致；`entityIds` 传一个 ID 即为单条编辑，多个 ID 即为批量编辑。保存成功后刷新标签缓存，调用 `onSaved`，最后通过 `onOpenChange(false)` 请求关闭；失败时保留弹窗并显示错误，关闭后清空未提交选择。未提供 `tagService.assign` 时不渲染弹窗。
+
+```tsx
+import { useState } from 'react';
+import { Tags } from 'lucide-react';
+import { Button } from '@wordrhyme/shadcn';
+import { TagAssignment } from '@wordrhyme/auto-crud';
+
+function EditTags({ entityIds, onSaved }: {
+  entityIds: string[];
+  onSaved: () => void | Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-sm"
+      aria-label="设置标签"
+      disabled={!entityIds.length}
+      onClick={() => setOpen(true)}
+    >
+      <Tags aria-hidden="true" className="size-4" />
+    </Button>
+    <TagAssignment
+      resourceId="crm.customers"
+      field="tags"
+      title="标签"
+      entityIds={entityIds}
+      open={open}
+      onOpenChange={setOpen}
+      onSaved={onSaved}
+    />
+  </>;
+}
+```
+
+按钮内容可换成文字或文字加图标；纯图标入口应提供 `aria-label`。调用方根据更新权限和字段权限决定是否展示入口，服务端仍须校验赋值权限。放入行菜单时，可在菜单项点击后打开表格层的受控弹窗，或复用 `open({ type: 'custom', component: ... })` 托管弹窗，避免菜单关闭时卸载编辑状态。Storybook 示例通过 `tagActionAppearance` 演示三种外观。
