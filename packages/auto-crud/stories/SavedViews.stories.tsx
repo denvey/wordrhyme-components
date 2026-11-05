@@ -163,7 +163,12 @@ function Demo({ mode }: { mode: 'simple' | 'advanced' | 'command' }) {
           schema={schema}
           resource={resource}
           permissions={{ can: { create: false, delete: false } }}
-          table={{ filterModes: mode }}
+          table={{
+            filterModes: [
+              mode,
+              ...(['simple', 'advanced', 'command'] as const).filter((value) => value !== mode),
+            ],
+          }}
           fields={{
             id: { table: false, form: false },
             name: { label: '客户', filter: { variant: 'text' } },
