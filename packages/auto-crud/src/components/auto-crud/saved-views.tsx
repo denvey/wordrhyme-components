@@ -41,6 +41,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getUrlParams, setSearchParams } from '@/hooks/use-url-state';
 import { getSortingStateParser } from '@/lib/parsers';
 import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
+import { cn } from '@/lib/utils';
 import {
   queryFingerprint,
   readViewPreferences,
@@ -53,6 +54,17 @@ import { useAutoCrudConfig } from './auto-crud-provider';
 export interface SavedViewsConfig {
   /** Initial display mode when no local preference exists. */
   selector?: ViewPreferences['selector'];
+  /** Appearance of the tab selector; supplied classes override the defaults. */
+  tabs?: {
+    variant?: 'default' | 'line';
+    /** Position of the active line. Defaults to bottom; only applies to line tabs. */
+    linePosition?: 'top' | 'bottom';
+    classNames?: {
+      list?: string;
+      trigger?: string;
+      indicator?: string;
+    };
+  };
   /** Count saved queries (including All), in batches of at most 100. Keys are opaque. */
   counts?: (input: {
     queries: Array<
@@ -75,6 +87,7 @@ export function SavedViews<TData>({
   resourceId,
   table,
   selector,
+  tabs,
   counts,
   children,
 }: SavedViewsProps<TData>) {
@@ -87,6 +100,7 @@ export function SavedViews<TData>({
       resourceId={resourceId}
       table={table}
       selector={selector}
+      tabs={tabs}
       counts={counts}
       children={children}
     />
@@ -97,6 +111,7 @@ function ViewMenu<TData>({
   resourceId,
   table,
   selector = 'dropdown',
+  tabs,
   counts,
   children,
 }: SavedViewsProps<TData>) {
@@ -350,11 +365,35 @@ function ViewMenu<TData>({
       if (view) select(view);
     }
   };
+  const lineTabs = tabs?.variant === 'line';
+  const linePosition = tabs?.linePosition ?? 'bottom';
+  const tabClassName = cn(
+    lineTabs
+      ? 'relative h-11 rounded-none px-4 text-muted-foreground hover:bg-transparent data-[state=on]:bg-transparent data-[state=on]:text-foreground data-[state=on]:shadow-none'
+      : 'data-[state=on]:bg-background data-[state=on]:shadow-sm',
+    tabs?.classNames?.trigger,
+  );
+  const renderIndicator = (active: boolean) =>
+    lineTabs && active ? (
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute inset-x-0 h-1 bg-primary',
+          linePosition === 'top' ? '-top-px' : '-bottom-px',
+          tabs?.classNames?.indicator,
+        )}
+      />
+    ) : null;
   const controls = (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <div className="flex min-w-0 max-w-full items-center gap-1">
+      <div
+        className={cn(
+          'flex min-w-0 max-w-full items-center gap-1',
+          display === 'tabs' && lineTabs && 'w-full',
+        )}
+      >
         {display === 'tabs' && (
-          <div className="min-w-0 max-w-full overflow-x-auto">
+          <div className={cn('min-w-0 max-w-full overflow-x-auto', lineTabs && 'flex-1')}>
             <ToggleGroup
               type="single"
               size="sm"
@@ -363,23 +402,28 @@ function ViewMenu<TData>({
               onValueChange={selectValue}
               disabled={views.isPending || mutation.isPending}
               aria-label="已保存的视图"
-              className="rounded-lg bg-muted p-1"
+              className={cn(
+                lineTabs
+                  ? 'min-w-full justify-start gap-0 rounded-none border-border bg-transparent p-0'
+                  : 'rounded-lg bg-muted p-1',
+                lineTabs && (linePosition === 'top' ? 'border-t' : 'border-b'),
+                tabs?.classNames?.list,
+              )}
             >
-              <ToggleGroupItem
-                value="all"
-                className="data-[state=on]:bg-background data-[state=on]:shadow-sm"
-              >
+              <ToggleGroupItem value="all" className={tabClassName}>
                 全部
                 {renderCount('all')}
+                {renderIndicator(selected === null)}
               </ToggleGroupItem>
               {views.data?.map((view, index) => (
                 <ToggleGroupItem
                   key={view.id}
                   value={`view:${view.id}`}
-                  className="data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                  className={tabClassName}
                 >
                   {view.name}
                   {renderCount(`view:${index}`)}
+                  {renderIndicator(selected?.id === view.id)}
                   {selected?.id === view.id && dirty && (
                     <span
                       aria-label="有未保存修改"

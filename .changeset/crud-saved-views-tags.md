@@ -18,3 +18,5 @@ Limit TagService.list to resource/field scope and query/page/pageSize/signal inp
 Add an optional views.counts callback for batched saved-view totals in tabs and dropdowns, with loading, zero and retry states, and an in-memory Storybook example.
 
 Remember view selector mode and selected view ID in localStorage by user/tenant scope and resource. Restore saved queries only when no explicit URL query is present, and discard unavailable selections without blocking the table.
+
+Support line-style view tabs with top or bottom active indicators and external class overrides for the list, triggers and indicator. Add Storybook examples for both positions.

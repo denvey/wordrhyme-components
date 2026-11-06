@@ -2033,6 +2033,36 @@ const loadViewCounts: NonNullable<SavedViewsConfig['counts']> = async ({
 
 Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 使用内存视图与标签数据，模拟 300ms 请求延迟，预置数量为 3、2、1、0 的视图。列表和数量共用筛选逻辑，修改客户标签后会重新计算；刷新页面后重置示例数据。
 
+### 视图 Tab 样式
+
+`views.tabs` 控制 Tab 外观。默认使用现有的分段样式；`variant: 'line'` 显示选中项的强调线，`linePosition` 支持 `bottom`（默认）和 `top`。下拉展示不受此配置影响。
+
+```tsx
+<AutoCrudTable
+  id="crm.customers"
+  schema={schema}
+  resource={resource}
+  table={{
+    views: {
+      selector: 'tabs',
+      tabs: {
+        variant: 'line',
+        linePosition: 'bottom',
+        classNames: {
+          list: 'gap-2',
+          trigger: 'text-base data-[state=on]:text-blue-700',
+          indicator: 'h-1 bg-blue-600',
+        },
+      },
+    },
+  }}
+/>;
+```
+
+`classNames.list` 作用于 Tab 列表，`trigger` 作用于每个 Tab（含「全部」），`indicator` 作用于选中项的线条，可修改颜色和粗细。类名通过 `cn` 在默认类名之后合并；`trigger` 的选中状态可用 `data-[state=on]` 定制。`linePosition` 和 `indicator` 仅在线条样式中生效。独立 `AutoTable` 使用同样的 `views.tabs` 配置。这些外观配置由使用方提供，不写入本地偏好。
+
+Storybook 提供 **Line Tabs**（下方蓝色强调线）和 **Top Line Tabs**（上方强调线）示例，均带视图数量；可通过 Controls 切换样式和线条位置。已有本地展示偏好时，仍可在视图设置中切换到 Tab。
+
 ### 自定义标签编辑入口
 
 `TagAssignment` 是受控弹窗，不包含按钮。打开后直接显示搜索和标签列表，已有标签默认选中，通过勾选／取消勾选编辑，无需选择添加或移除。已选标签的名称、颜色实时显示；清空和保存位于同一行，点击保存后才提交记录的标签关联。

@@ -105,11 +105,15 @@ function Demo({
   tagActionAppearance,
   selector = 'dropdown',
   showCounts = false,
+  tabVariant = 'default',
+  linePosition = 'bottom',
 }: {
   mode: 'simple' | 'advanced' | 'command';
   tagActionAppearance: 'text' | 'icon' | 'both';
   selector?: SavedViewsConfig['selector'];
   showCounts?: boolean;
+  tabVariant?: NonNullable<SavedViewsConfig['tabs']>['variant'];
+  linePosition?: NonNullable<SavedViewsConfig['tabs']>['linePosition'];
 }) {
   const [client] = useState(() => new QueryClient());
   const [tagTargets, setTagTargets] = useState<Row[] | null>(null);
@@ -305,7 +309,22 @@ function Demo({
             ],
           }}
           table={{
-            views: { selector, counts: showCounts ? counts : undefined },
+            views: {
+              selector,
+              counts: showCounts ? counts : undefined,
+              tabs: {
+                variant: tabVariant,
+                linePosition,
+                classNames:
+                  tabVariant === 'line'
+                    ? {
+                        trigger:
+                          'text-base data-[state=on]:text-blue-700 dark:data-[state=on]:text-blue-400',
+                        indicator: 'h-1 bg-blue-600 dark:bg-blue-400',
+                      }
+                    : undefined,
+              },
+            },
             filterModes: [
               mode,
               ...(['simple', 'advanced', 'command'] as const).filter(
@@ -348,12 +367,16 @@ const meta = {
     tagActionAppearance: 'both',
     selector: 'dropdown',
     showCounts: false,
+    tabVariant: 'default',
+    linePosition: 'bottom',
   },
   argTypes: {
     mode: { control: 'select', options: ['simple', 'advanced', 'command'] },
     tagActionAppearance: { control: 'select', options: ['text', 'icon', 'both'] },
     selector: { control: 'select', options: ['dropdown', 'tabs'] },
     showCounts: { control: 'boolean' },
+    tabVariant: { control: 'select', options: ['default', 'line'] },
+    linePosition: { control: 'select', options: ['bottom', 'top'] },
   },
 } satisfies Meta<typeof Demo>;
 export default meta;
@@ -361,3 +384,14 @@ type Story = StoryObj<typeof meta>;
 export const Playground: Story = {};
 export const Tabs: Story = { args: { selector: 'tabs' } };
 export const TabsWithCounts: Story = { args: { selector: 'tabs', showCounts: true } };
+export const LineTabs: Story = {
+  args: { selector: 'tabs', showCounts: true, tabVariant: 'line' },
+};
+export const TopLineTabs: Story = {
+  args: {
+    selector: 'tabs',
+    showCounts: true,
+    tabVariant: 'line',
+    linePosition: 'top',
+  },
+};
