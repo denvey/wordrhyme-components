@@ -412,6 +412,8 @@ function ViewMenu<TData>({
         )}
       />
     ) : null;
+  const triggerLabel =
+    display === 'tabs' ? '视图设置' : selected === null ? '全部' : undefined;
   const controls = (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <div
@@ -473,15 +475,19 @@ function ViewMenu<TData>({
               variant={display === 'tabs' ? 'ghost' : 'outline'}
               size={display === 'tabs' ? 'icon-sm' : 'sm'}
               className="shrink-0"
-              aria-label={display === 'tabs' ? '视图设置' : undefined}
-              title={display === 'tabs' ? '视图设置' : undefined}
+              aria-label={triggerLabel}
+              title={triggerLabel}
               disabled={!fieldsReady || views.isPending || mutation.isPending}
             >
               {display === 'tabs' ? (
                 <Settings className="size-4" />
               ) : (
                 <>
-                  {selected?.name ?? '全部'}
+                  {selected ? (
+                    selected.name
+                  ) : (
+                    <PanelsTopLeft aria-hidden="true" className="size-4" />
+                  )}
                   {renderCount(
                     selected
                       ? `view:${views.data?.findIndex((view) => view.id === selected.id)}`
