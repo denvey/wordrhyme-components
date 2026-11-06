@@ -278,7 +278,7 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
       await screen.findByRole('button', { name: /Customer.*East Dynamic/ }),
     ).toBeTruthy();
     expect(screen.queryByRole('columnheader', { name: /Customer/ })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Reset' }));
+    fireEvent.click(screen.getByRole('button', { name: '清除筛选' }));
     await waitFor(() =>
       expect(new URLSearchParams(window.location.search).has('region')).toBe(false),
     );
@@ -341,7 +341,7 @@ describe('AutoCrudTable dynamic filter dataSource', () => {
   it('shows the total returned for the current query', () => {
     render(<AutoCrudTable schema={schema} resource={createResource({ total: 394 })} />);
 
-    expect(screen.getByText('Total: 394')).toBeTruthy();
+    expect(screen.getByText('共 394 条')).toBeTruthy();
   });
 
   it('passes simple filter search text to searchable dataSource loaders', async () => {
@@ -2853,7 +2853,7 @@ describe('AutoCrudTable expandedRow', () => {
     );
     expect(screen.queryByTestId('details-order-001')).toBeNull();
     expect(screen.getByTestId('details-order-002')).toBeTruthy();
-    expect(screen.getByText('0 of 2 row(s) selected.')).toBeTruthy();
+    expect(screen.getByText('已选择 2 条中的 0 条')).toBeTruthy();
   });
 
   it('mounts details on expansion without adding selectable records', () => {
@@ -2893,7 +2893,7 @@ describe('AutoCrudTable expandedRow', () => {
     expect(screen.getByTestId('details-order-001')).toBeTruthy();
     expect(screen.getByTestId('details-order-002')).toBeTruthy();
     expect(screen.getAllByRole('checkbox')).toHaveLength(checkboxCount);
-    expect(screen.getByText('0 of 2 row(s) selected.')).toBeTruthy();
+    expect(screen.getByText('已选择 2 条中的 0 条')).toBeTruthy();
 
     fireEvent.click(buttons[0]!);
     expect(screen.queryByTestId('details-order-001')).toBeNull();
