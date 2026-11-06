@@ -1948,7 +1948,7 @@ import {
   createLocalViewStorage,
 } from '@wordrhyme/auto-crud';
 
-// 服务对象应保持引用稳定。后端存储只需实现 ViewStorage 的四个方法。
+// 服务对象应保持引用稳定。后端存储实现 ViewStorage 的四个必需方法，可选实现 reorder。
 const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 
 <QueryClientProvider client={queryClient}>
@@ -1983,6 +1983,37 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 `ViewStorage` 和 `TagService` 的完整 TypeScript 接口由包导出。完整交互示例见 Storybook 的 **Auto CRUD / Saved views and tags**；可切换 simple、advanced、command 三种模式。
 
 展示方式与当前选中视图的 ID 自动存入浏览器 `localStorage`，键为 `auto-crud:view-preferences:${encodeURIComponent(scope)}:${encodeURIComponent(resourceId)}`，按用户／租户和资源隔离，独立于 `ViewStorage` 的本地或服务端实现。刷新或重新进入时恢复展示方式；视图列表加载成功后恢复选中项。URL 已有筛选、搜索、排序或分页参数时保留 URL 查询，否则应用上次视图的保存条件，使用 replace 更新 URL。上次视图已删除或字段不可用时清除其选中记忆，保留 URL 查询。本地数据损坏或存储不可用时使用配置的初始展示方式，仍可在当前页面切换。未保存的查询不另存到本地偏好中。
+
+### 默认视图、分享链接与排列顺序
+
+```tsx
+<AutoCrudTable
+  id="crm.customers"
+  schema={schema}
+  resource={resource}
+  table={{
+    views: { defaultView: 'vip-customers', selector: 'tabs' },
+    // 可选；同页多个列表或字段名与 view 冲突时使用不同的 URL 参数名。
+    queryKeys: { view: 'customerView' },
+  }}
+/>
+```
+
+`defaultView` 接受视图的 slug 或 ID，独立 `AutoTable` 使用 `views={{ defaultView: 'vip-customers' }}`。初始化优先级为 URL 指定、用户本地选中记忆、`defaultView`、全部；本地明确记住“全部”也优先于默认值。默认项不存在时回到全部，不自动选择其他视图。`views` 仍须显式开启，本地偏好与 URL 都不会自动开启视图功能。
+
+视图可包含可选的 `slug`，例如 `{ id: 'view-123', slug: 'vip-customers', name: '重点客户', query }`。新建时按名称建议 slug，可手动修改；重命名保持原 slug。slug 为 1–80 个文字、数字或连接用的短横线，区分大小写。`ViewStorage.create/update` 须保存并返回该字段；已有数据无需迁移，没有 slug 时继续使用 ID。同一资源内 ID 和 slug 必须唯一，slug 也不能与另一视图的 ID 相同。服务端须在用户／租户／资源边界内校验唯一性；修改 slug 后旧 slug 链接失效，稳定 ID 仍可定位。
+
+默认参数为 `?view=vip-customers`，也接受 `?view=view-123`；若配置上例的 `queryKeys.view`，则使用 `?customerView=vip-customers`。切换视图会同步参数并创建浏览器历史记录，前进／后退恢复 URL 指定的视图。有 slug 时写入规范 slug，只有 ID 的旧链接会以 replace 规范化。`?view=` 明确表示“全部”。仅带视图参数的链接会应用保存条件；若同时带筛选、搜索、排序或分页参数，保留完整 URL 查询，便于分享未保存的调整。无权访问、已删除或查询字段失效时显示错误并保留 URL 查询，不回退到另一个视图。链接接收者仍需有权限读取该视图及资源，URL 不授予访问权限。
+
+下拉和 Tab 都按 `ViewStorage.list()` 的返回顺序展示，“全部”固定在最前。存储提供可选方法后，设置菜单显示“调整顺序”，拖动手柄（也支持键盘）后点击保存；取消或保存失败不会改变显示顺序或当前选中项：
+
+```ts
+reorder?: (resourceId: string, ids: string[]) => Promise<void>;
+```
+
+`ids` 必须包含该资源的全部视图 ID，顺序即新顺序。服务端应在事务中校验并保存，拒绝重复、未知或缺失 ID；并发新增／删除导致列表不一致时返回错误，让用户刷新后重试。成功后组件重新调用 `list()`。排序不修改视图 ID、slug 或查询条件；服务未实现 `reorder` 时不展示排序入口。`createLocalViewStorage` 已实现本地排序持久化。
+
+Storybook 的 **Default View** 演示按 slug 默认选中，“视图设置 → 调整顺序”可体验排序；该示例使用内存存储，刷新后恢复种子数据。
 
 标签列表调用示例：
 

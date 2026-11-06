@@ -20,6 +20,7 @@ import {
   TagAssignment,
 } from '../src';
 import { parseReadableFilters } from '../src/lib/readable-filters';
+import { reorderSavedViews } from '../src/lib/saved-views';
 
 const schema = z.object({ id: z.string(), name: z.string(), tags: z.array(z.string()) });
 type Row = z.output<typeof schema>;
@@ -58,6 +59,7 @@ function createDemoViewStorage(): ViewStorage {
   let views: SavedView[] = [
     ...initialTags.map((tag) => ({
       id: tag.value,
+      slug: tag.value === 'vip' ? 'vip-customers' : 'follow-up',
       name: tag.label,
       query: {
         filters: [
@@ -76,6 +78,7 @@ function createDemoViewStorage(): ViewStorage {
     })),
     {
       id: 'customer-d',
+      slug: 'customer-d',
       name: '客户 D',
       query: { filters: [], joinOperator: 'and', search: '客户 D', sort: [] },
     },
@@ -97,6 +100,9 @@ function createDemoViewStorage(): ViewStorage {
     async remove(_resourceId, id) {
       views = views.filter((view) => view.id !== id);
     },
+    async reorder(_resourceId, ids) {
+      views = reorderSavedViews(views, ids);
+    },
   };
 }
 
@@ -105,6 +111,7 @@ function Demo({
   tagActionAppearance,
   automaticTags = false,
   enableViews = true,
+  defaultView,
   selector = 'dropdown',
   showCounts = false,
   tabVariant = 'default',
@@ -114,6 +121,7 @@ function Demo({
   tagActionAppearance: 'text' | 'icon' | 'both';
   automaticTags?: boolean;
   enableViews?: boolean;
+  defaultView?: string;
   selector?: SavedViewsConfig['selector'];
   showCounts?: boolean;
   tabVariant?: NonNullable<SavedViewsConfig['tabs']>['variant'];
@@ -271,13 +279,13 @@ function Demo({
   return (
     <QueryClientProvider client={client}>
       <AutoCrudProvider
-        scope={`storybook:user:tenant${showCounts ? ':counts' : ''}`}
+        scope={`storybook:user:tenant${showCounts ? ':counts' : ''}${defaultView !== undefined && defaultView !== '' ? `:default:${defaultView}` : ''}`}
         tagService={tagService}
         viewStorage={viewStorage}
       >
         <p className="mb-4 text-sm text-muted-foreground">{description}</p>
         <AutoCrudTable
-          key={selector}
+          key={`${selector}:${defaultView ?? ''}`}
           id="demo.customers"
           schema={schema}
           resource={resource}
@@ -327,6 +335,7 @@ function Demo({
             views: enableViews
               ? {
                   selector,
+                  defaultView,
                   counts: showCounts ? counts : undefined,
                   tabs: {
                     variant: tabVariant,
@@ -398,6 +407,7 @@ const meta = {
     tagActionAppearance: { control: 'select', options: ['text', 'icon', 'both'] },
     automaticTags: { control: 'boolean' },
     enableViews: { control: 'boolean' },
+    defaultView: { control: 'text' },
     selector: { control: 'select', options: ['dropdown', 'tabs'] },
     showCounts: { control: 'boolean' },
     tabVariant: { control: 'select', options: ['default', 'line'] },
@@ -409,6 +419,9 @@ type Story = StoryObj<typeof meta>;
 export const Playground: Story = {};
 export const AutomaticTags: Story = { args: { automaticTags: true } };
 export const DefaultDisabled: Story = { args: { enableViews: false } };
+export const DefaultView: Story = {
+  args: { defaultView: 'vip-customers', selector: 'tabs', showCounts: true },
+};
 export const Tabs: Story = { args: { selector: 'tabs' } };
 export const TabsWithCounts: Story = { args: { selector: 'tabs', showCounts: true } };
 export const LineTabs: Story = {

@@ -10,12 +10,52 @@ export const viewQuerySchema = z.object({
 });
 export const viewInputSchema = z.object({
   name: z.string().trim().min(1).max(40),
+  slug: z
+    .string()
+    .trim()
+    .min(1)
+    .max(80)
+    .regex(
+      /^[\p{L}\p{N}]+(?:-[\p{L}\p{N}]+)*$/u,
+      'Slug 只能包含文字、数字和连接用的短横线',
+    )
+    .optional(),
   query: viewQuerySchema,
 });
 export const savedViewSchema = viewInputSchema.extend({ id: z.string().min(1) });
 export type ViewQuery = z.infer<typeof viewQuerySchema>;
 export type ViewInput = z.infer<typeof viewInputSchema>;
 export type SavedView = z.infer<typeof savedViewSchema>;
+
+/** IDs and slugs share a lookup namespace within a resource. */
+export function parseSavedViews(value: unknown): SavedView[] {
+  const views = z.array(savedViewSchema).parse(value);
+  const ids = new Set<string>();
+  const references = new Map<string, string>();
+  for (const view of views) {
+    if (ids.has(view.id)) throw new Error('视图 ID 重复');
+    ids.add(view.id);
+    for (const reference of [view.id, view.slug].filter((item) => item !== undefined)) {
+      const owner = references.get(reference);
+      if (owner !== undefined && owner !== view.id)
+        throw new Error('视图 slug 必须唯一，且不能与其他视图的 ID 相同');
+      references.set(reference, view.id);
+    }
+  }
+  return views;
+}
+
+/** Require a complete permutation so stale lists cannot silently drop views. */
+export function reorderSavedViews(views: SavedView[], ids: string[]): SavedView[] {
+  const byId = new Map(views.map((view) => [view.id, view]));
+  if (
+    ids.length !== views.length ||
+    new Set(ids).size !== ids.length ||
+    ids.some((id) => !byId.has(id))
+  )
+    throw new Error('视图列表已变化，请取消后重新调整顺序');
+  return ids.map((id) => byId.get(id)!);
+}
 
 const viewPreferencesSchema = z.object({
   selector: z.enum(['dropdown', 'tabs']),
@@ -86,11 +126,9 @@ export function createLocalViewStorage(namespace: string): ViewStorage {
   const key = (resourceId: string) =>
     `auto-crud:views:${encodeURIComponent(namespace)}:${encodeURIComponent(resourceId)}`;
   const read = (resourceId: string) =>
-    z
-      .array(savedViewSchema)
-      .parse(JSON.parse(localStorage.getItem(key(resourceId)) ?? '[]'));
+    parseSavedViews(JSON.parse(localStorage.getItem(key(resourceId)) ?? '[]'));
   const write = (resourceId: string, views: SavedView[]) =>
-    localStorage.setItem(key(resourceId), JSON.stringify(views));
+    localStorage.setItem(key(resourceId), JSON.stringify(parseSavedViews(views)));
   return {
     async list(resourceId) {
       return read(resourceId);
@@ -115,6 +153,9 @@ export function createLocalViewStorage(namespace: string): ViewStorage {
         resourceId,
         read(resourceId).filter((view) => view.id !== id),
       );
+    },
+    async reorder(resourceId, ids) {
+      write(resourceId, reorderSavedViews(read(resourceId), ids));
     },
   };
 }

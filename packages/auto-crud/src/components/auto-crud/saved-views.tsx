@@ -28,9 +28,17 @@ import {
   ToggleGroupItem,
 } from '@wordrhyme/shadcn';
 import {
+  Sortable,
+  SortableContent,
+  SortableItem,
+  SortableItemHandle,
+} from '@wordrhyme/shadcn-ui';
+import {
   AppWindow,
+  ArrowDownUp,
   ChevronDown,
   Copy,
+  GripVertical,
   Layers,
   PanelsTopLeft,
   Pencil,
@@ -44,8 +52,10 @@ import { getSortingStateParser } from '@/lib/parsers';
 import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
 import { cn } from '@/lib/utils';
 import {
+  parseSavedViews,
   queryFingerprint,
   readViewPreferences,
+  reorderSavedViews,
   savedViewSchema,
   viewInputSchema,
   writeViewPreferences,
@@ -53,6 +63,8 @@ import {
 import { useAutoCrudConfig } from './auto-crud-provider';
 
 export interface SavedViewsConfig {
+  /** Initial view slug or ID when the URL and local preferences do not select a view. */
+  defaultView?: string;
   /** Wait for asynchronous field metadata before restoring or selecting a view. */
   fieldsReady?: boolean;
   /** Initial display mode when no local preference exists. */
@@ -87,10 +99,28 @@ interface SavedViewsProps<TData> extends SavedViewsConfig {
   ) => ReactNode;
 }
 
+function suggestSlug(name: string, views: SavedView[]): string {
+  if (!name.trim()) return '';
+  const base =
+    name
+      .normalize('NFKC')
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}]+/gu, '-')
+      .replace(/^-|-$/gu, '')
+      .slice(0, 70)
+      .replace(/-$/gu, '') || 'view';
+  const references = new Set(views.flatMap((view) => [view.id, view.slug]));
+  let slug = base;
+  let suffix = 2;
+  while (references.has(slug)) slug = `${base}-${suffix++}`;
+  return slug;
+}
+
 export function SavedViews<TData>({
   resourceId,
   table,
   fieldsReady,
+  defaultView,
   selector,
   tabs,
   counts,
@@ -106,6 +136,7 @@ export function SavedViews<TData>({
       resourceId={resourceId}
       table={table}
       fieldsReady={fieldsReady}
+      defaultView={defaultView}
       onApply={onApply}
       selector={selector}
       tabs={tabs}
@@ -119,6 +150,7 @@ function ViewMenu<TData>({
   resourceId,
   table,
   fieldsReady = true,
+  defaultView,
   selector = 'dropdown',
   tabs,
   counts,
@@ -131,8 +163,7 @@ function ViewMenu<TData>({
   const queryKey = ['auto-crud-views', config.cacheKey, resourceId];
   const views = useQuery({
     queryKey,
-    queryFn: async () =>
-      (await storage.list(resourceId)).map((view) => savedViewSchema.parse(view)),
+    queryFn: async () => parseSavedViews(await storage.list(resourceId)),
   });
   const countQueries = useMemo(
     () => [
@@ -215,9 +246,11 @@ function ViewMenu<TData>({
     if (preferences) setDisplay(preferences.selector);
   }, [config.scope, resourceId]);
   const [dialog, setDialog] = useState<
-    'create' | 'rename' | 'duplicate' | 'delete' | null
+    'create' | 'rename' | 'duplicate' | 'delete' | 'reorder' | null
   >(null);
   const [name, setName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [orderedViews, setOrderedViews] = useState<SavedView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(() => getUrlParams().toString());
   useEffect(() => {
@@ -231,6 +264,8 @@ function ViewMenu<TData>({
   }, []);
   const columns = table.getAllColumns().filter((column) => column.getCanFilter());
   const keys = table.options.meta?.queryKeys;
+  const viewKey = keys?.view ?? 'view';
+  const lastViewParam = useRef<string | null>(null);
   const readQuery = useCallback((): ViewQuery => {
     const params = getUrlParams();
     return {
@@ -266,7 +301,7 @@ function ViewMenu<TData>({
     [columns, table],
   );
   const apply = useCallback(
-    (query: ViewQuery, history: 'push' | 'replace' = 'push') => {
+    (query: ViewQuery, history: 'push' | 'replace' = 'push', reference?: string) => {
       validateQuery(query);
       const params = getUrlParams();
       applyReadableFilters(
@@ -284,23 +319,45 @@ function ViewMenu<TData>({
         );
       else params.set(keys?.sort ?? 'sort', '');
       params.set(keys?.page ?? 'page', '1');
+      if (reference !== undefined) {
+        params.set(viewKey, reference);
+        lastViewParam.current = reference;
+      }
       setSearchParams(params, { history });
       onApply?.();
     },
-    [columns, keys, validateQuery, onApply],
+    [columns, keys, validateQuery, onApply, viewKey],
   );
   const preferencesRestored = useRef(false);
   useEffect(() => {
-    if (preferencesRestored.current || !views.isSuccess || !fieldsReady) return;
+    if (!views.isSuccess || !fieldsReady) return;
+    const first = !preferencesRestored.current;
+    const urlReference = getUrlParams().get(viewKey);
+    if (!first && urlReference === lastViewParam.current) return;
     const savedViews = views.data;
     let cancelled = false;
     // Cached views can be ready on mount, before ancestor URL hooks subscribe.
     queueMicrotask(() => {
-      if (cancelled || preferencesRestored.current) return;
+      if (cancelled) return;
       preferencesRestored.current = true;
+      lastViewParam.current = urlReference;
       const preferences = initialPreferences.current;
-      if (!preferences || preferences.viewId === null) return;
-      const view = savedViews.find((item) => item.id === preferences.viewId);
+      let reference = urlReference;
+      if (first && urlReference === null)
+        reference = preferences ? preferences.viewId : (defaultView ?? null);
+      if (reference === null || reference === '') {
+        setSelected(null);
+        setError(null);
+        if (!first || urlReference !== null)
+          writeViewPreferences(config.scope, resourceId, {
+            selector: display,
+            viewId: null,
+          });
+        return;
+      }
+      const view = savedViews.find(
+        (item) => item.id === reference || item.slug === reference,
+      );
       try {
         if (view) {
           validateQuery(view.query);
@@ -314,14 +371,29 @@ function ViewMenu<TData>({
               keys?.page ?? 'page',
               keys?.perPage ?? 'perPage',
             ].some((key) => params.has(key));
-          if (!hasUrlQuery) apply(view.query, 'replace');
+          const canonical = view.slug ?? view.id;
+          if (!hasUrlQuery) apply(view.query, 'replace', canonical);
+          else if (urlReference !== canonical) {
+            params.set(viewKey, canonical);
+            lastViewParam.current = canonical;
+            setSearchParams(params, { history: 'replace' });
+          }
           setSelected(view);
+          writeViewPreferences(config.scope, resourceId, {
+            selector: display,
+            viewId: view.id,
+          });
+          setError(null);
           return;
         }
+        if (urlReference !== null && urlReference !== '')
+          setError('链接指定的视图不存在或不可用');
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : String(reason));
       }
-      writeViewPreferences(config.scope, resourceId, { ...preferences, viewId: null });
+      setSelected(null);
+      if (first && urlReference === null && preferences)
+        writeViewPreferences(config.scope, resourceId, { ...preferences, viewId: null });
     });
     return () => {
       cancelled = true;
@@ -336,33 +408,61 @@ function ViewMenu<TData>({
     readQuery,
     apply,
     validateQuery,
+    search,
+    viewKey,
+    defaultView,
+    display,
   ]);
   const mutation = useMutation({
-    mutationFn: async ({
-      operation,
-      input,
-    }: {
-      operation: 'create' | 'update' | 'delete';
-      input?: ViewInput;
-    }) => {
-      if (operation === 'delete') {
+    mutationFn: async (
+      request:
+        | { operation: 'create' | 'update'; input: ViewInput }
+        | { operation: 'delete' }
+        | { operation: 'reorder'; ids: string[] },
+    ) => {
+      if (request.operation === 'reorder') {
+        if (!storage.reorder) throw new Error('存储服务不支持视图排序');
+        reorderSavedViews(views.data ?? [], request.ids);
+        await storage.reorder(resourceId, request.ids);
+        return null;
+      }
+      if (request.operation === 'delete') {
         await storage.remove(resourceId, selected!.id);
         return null;
       }
-      const valid = viewInputSchema.parse(input);
+      const valid = viewInputSchema.parse(request.input);
+      parseSavedViews([
+        ...(views.data ?? []).filter(
+          (view) => request.operation === 'create' || view.id !== selected!.id,
+        ),
+        {
+          ...valid,
+          id: request.operation === 'create' ? crypto.randomUUID() : selected!.id,
+        },
+      ]);
       return savedViewSchema.parse(
-        operation === 'create'
+        request.operation === 'create'
           ? await storage.create(resourceId, valid)
           : await storage.update(resourceId, selected!.id, valid),
       );
     },
-    onSuccess: async (view) => {
-      if (!view) apply({ filters: [], joinOperator: 'and', search: '', sort: [] });
-      setSelected(view);
-      writeViewPreferences(config.scope, resourceId, {
-        selector: display,
-        viewId: view?.id ?? null,
-      });
+    onSuccess: async (view, request) => {
+      if (request.operation !== 'reorder') {
+        if (!view)
+          apply({ filters: [], joinOperator: 'and', search: '', sort: [] }, 'push', '');
+        else {
+          const reference = view.slug ?? view.id;
+          const params = getUrlParams();
+          params.set(viewKey, reference);
+          lastViewParam.current = reference;
+          setSearchParams(params, { history: 'replace' });
+        }
+        setSelected(view);
+        writeViewPreferences(config.scope, resourceId, {
+          selector: display,
+          viewId: view?.id ?? null,
+        });
+      }
       setDialog(null);
       setError(null);
       await client.invalidateQueries({ queryKey });
@@ -371,7 +471,11 @@ function ViewMenu<TData>({
   });
   const select = (view: SavedView | null) => {
     try {
-      apply(view?.query ?? { filters: [], joinOperator: 'and', search: '', sort: [] });
+      apply(
+        view?.query ?? { filters: [], joinOperator: 'and', search: '', sort: [] },
+        'push',
+        view?.slug ?? view?.id ?? '',
+      );
       setSelected(view);
       writeViewPreferences(config.scope, resourceId, {
         selector: display,
@@ -384,6 +488,12 @@ function ViewMenu<TData>({
   };
   const open = (operation: NonNullable<typeof dialog>) => {
     setName(operation === 'create' ? '' : (selected?.name ?? ''));
+    let nextSlug = '';
+    if (operation === 'rename') nextSlug = selected?.slug ?? '';
+    else if (operation === 'duplicate')
+      nextSlug = suggestSlug(selected?.name ?? '', views.data ?? []);
+    setSlug(nextSlug);
+    if (operation === 'reorder') setOrderedViews(views.data ?? []);
     setError(null);
     setDialog(operation);
   };
@@ -554,6 +664,15 @@ function ViewMenu<TData>({
               </>
             )}
             {selected && <DropdownMenuSeparator />}
+            {storage.reorder && (
+              <DropdownMenuItem
+                disabled={views.isError || (views.data?.length ?? 0) < 2}
+                onSelect={() => open('reorder')}
+              >
+                <ArrowDownUp className="size-4" />
+                调整顺序
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
                 <PanelsTopLeft className="size-4" />
@@ -595,7 +714,7 @@ function ViewMenu<TData>({
             onClick={() =>
               mutation.mutate({
                 operation: 'update',
-                input: { name: selected.name, query: current },
+                input: { name: selected.name, slug: selected.slug, query: current },
               })
             }
           >
@@ -619,6 +738,7 @@ function ViewMenu<TData>({
             variant="link"
             size="sm"
             onClick={() => {
+              preferencesRestored.current = false;
               views
                 .refetch()
                 .catch((reason: unknown) =>
@@ -659,19 +779,32 @@ function ViewMenu<TData>({
                     rename: '重命名视图',
                     create: '另存为新视图',
                     duplicate: '复制视图',
+                    reorder: '调整视图顺序',
                   }[dialog]}
             </DialogTitle>
           </DialogHeader>
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              let operation: 'delete' | 'update' | 'create' = 'create';
-              if (dialog === 'delete') operation = 'delete';
-              else if (dialog === 'rename') operation = 'update';
+              if (mutation.isPending) return;
+              if (dialog === 'reorder') {
+                mutation.mutate({
+                  operation: 'reorder',
+                  ids: orderedViews.map((view) => view.id),
+                });
+                return;
+              }
+              if (dialog === 'delete') {
+                mutation.mutate({ operation: 'delete' });
+                return;
+              }
+              let operation: 'update' | 'create' = 'create';
+              if (dialog === 'rename') operation = 'update';
               mutation.mutate({
                 operation,
                 input: {
                   name,
+                  slug: slug.trim() || undefined,
                   query:
                     dialog === 'rename' || dialog === 'duplicate'
                       ? selected!.query
@@ -682,17 +815,73 @@ function ViewMenu<TData>({
           >
             {dialog === 'delete' ? (
               <p>删除「{selected?.name}」？数据和标签会保留。</p>
+            ) : dialog === 'reorder' ? (
+              <div className="grid gap-3">
+                <p className="text-sm text-muted-foreground">
+                  拖动手柄调整顺序，“全部”固定在最前。保存后生效。
+                </p>
+                <Sortable
+                  value={orderedViews}
+                  onValueChange={setOrderedViews}
+                  getItemValue={(view) => view.id}
+                >
+                  <SortableContent className="grid max-h-80 gap-2 overflow-y-auto">
+                    {orderedViews.map((view) => (
+                      <SortableItem
+                        key={view.id}
+                        value={view.id}
+                        disabled={mutation.isPending}
+                        className="flex items-center gap-2 rounded-md border bg-background p-2"
+                      >
+                        <SortableItemHandle asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`拖动排序：${view.name}`}
+                          >
+                            <GripVertical className="size-4" />
+                          </Button>
+                        </SortableItemHandle>
+                        <span className="min-w-0 truncate">{view.name}</span>
+                      </SortableItem>
+                    ))}
+                  </SortableContent>
+                </Sortable>
+              </div>
             ) : (
-              <label className="grid gap-2">
-                视图名称
-                <Input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  maxLength={40}
-                  required
-                  autoFocus
-                />
-              </label>
+              <div className="grid gap-4">
+                <label className="grid gap-2">
+                  视图名称
+                  <Input
+                    value={name}
+                    onChange={(event) => {
+                      const { value } = event.target;
+                      if (
+                        dialog !== 'rename' &&
+                        slug === suggestSlug(name, views.data ?? [])
+                      )
+                        setSlug(suggestSlug(value, views.data ?? []));
+                      setName(value);
+                    }}
+                    maxLength={40}
+                    required
+                    autoFocus
+                  />
+                </label>
+                <label className="grid gap-2">
+                  链接标识（slug）
+                  <Input
+                    value={slug}
+                    onChange={(event) => setSlug(event.target.value)}
+                    maxLength={80}
+                    placeholder="例如 vip-customers"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    用于分享链接，同一列表内唯一。修改后旧链接将失效。
+                  </span>
+                </label>
+              </div>
             )}
             {error !== null && (
               <p role="alert" className="text-destructive">
