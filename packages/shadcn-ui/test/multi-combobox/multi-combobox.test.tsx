@@ -7,6 +7,39 @@ import { MultiCombobox } from '../../src/multi-combobox';
 Element.prototype.scrollIntoView ??= () => {};
 
 describe('multi-combobox', () => {
+  it.each(['single', 'multiple'] as const)(
+    'shows unresolved %s values until their options load',
+    (selectionMode) => {
+      const values = selectionMode === 'single' ? ['cn-east'] : ['cn-east', 'north'];
+      const { rerender } = render(
+        <MultiCombobox
+          selectionMode={selectionMode}
+          value={values}
+          options={[{ value: 'north', label: 'North' }]}
+        />,
+      );
+
+      expect(screen.getByRole('combobox')).toHaveTextContent('cn-east');
+      if (selectionMode === 'multiple') {
+        expect(screen.getByRole('combobox')).toHaveTextContent('North');
+      }
+
+      rerender(
+        <MultiCombobox
+          selectionMode={selectionMode}
+          value={values}
+          options={[
+            { value: 'north', label: 'North' },
+            { value: 'cn-east', label: '华东' },
+          ]}
+        />,
+      );
+
+      expect(screen.getByRole('combobox')).toHaveTextContent('华东');
+      expect(screen.getByRole('combobox')).not.toHaveTextContent('cn-east');
+    },
+  );
+
   it('uses compact horizontal padding for the default searchable trigger', () => {
     render(
       <MultiCombobox

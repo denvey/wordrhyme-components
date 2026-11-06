@@ -277,7 +277,12 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
   const currentSearchValue = searchValue ?? internalSearchValue;
   const selectedValueSet = React.useMemo(() => new Set(selectedValues), [selectedValues]);
   const selectedOptions = React.useMemo(
-    () => options.filter((option) => selectedValueSet.has(option.value)),
+    () => [
+      ...options.filter((option) => selectedValueSet.has(option.value)),
+      ...Array.from(selectedValueSet)
+        .filter((value) => !options.some((option) => option.value === value))
+        .map((value) => ({ value, label: value })),
+    ],
     [options, selectedValueSet],
   );
 
