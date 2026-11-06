@@ -2124,3 +2124,29 @@ function EditTags({
 独立使用 `TagFilter` 时，在 `AutoCrudProvider` 内传入 `resourceId="crm.customers"` 和 `field="tags"`，默认显示工具栏按钮；表格内部可省略 `resourceId`，自动继承表格的 CRUD id。嵌入自有条件行可传 `variant="input"`；`id` 和 `className` 对应输入样式的触发按钮，`open/onOpenChange` 可控制其展开状态。值仍通过 `value/onChange` 控制，不需要转换成普通多选数组。
 
 `useAutoCrudResource` 返回 `metadataPending`，`AutoCrudTable` 据此等待字段元数据就绪，再恢复上次视图，避免把尚未加载的扩展字段当成已删除字段。自定义资源应在异步字段加载期间提供 `metadataPending: true`；独立 `AutoTable` 使用 `views={{ fieldsReady: false }}` 暂停恢复和视图切换，字段加载完成后改为 `true`。未提供这些状态时沿用同步字段行为。
+
+## 自定义全局搜索
+
+`table.search.render` 可替换搜索输入框。回调的 `value` / `onValueChange` 沿用表格文字搜索和分页状态；额外条件变化时调用 `resetPage()`。未提供 `render` 时保留默认输入框。
+
+```tsx
+const resource = useAutoCrudResource({
+  router: api.products,
+  schema: productSchema,
+  query: params => ({ ...params, image }),
+  queryContext: { methodOverride: 'POST' },
+});
+
+<AutoCrudTable
+  resource={resource}
+  schema={productSchema}
+  table={{
+    search: {
+      placeholder: '搜索商品',
+      render: props => <ProductSearch {...props} image={image} onImageChange={setImage} />,
+    },
+  }}
+/>
+```
+
+`TableSearchProps` / `TableSearchConfig` 可从包入口导入。`queryContext` 透传给 tRPC 列表与自动导出；自定义 `exportFetcher` 需自行传递请求上下文。服务端须支持所选传输方式。`resource.tableData.error` 暴露查询失败，调用方可展示具体错误；它不把失败当成无匹配结果。

@@ -1338,3 +1338,25 @@ The database provider must implement governed `$counts(table, predicates)`, appl
 为 CRUD extension provider 实现 `buildConditions({ id, entityId, filters, joinOperator, search })`，返回 `{ filter?: SQL, search?: SQL }`。这属于可信进程内接口，客户端不能提供 SQL。使用 `entityId` 与标签关联表构造相关 `EXISTS` 查询，列表、总数和导出会在原有数据权限条件内组合这些谓词，无须先取一批实体 ID。
 
 扩展筛选统一通过既有 `buildConditions` 接口生成 SQL。标签字段不直接映射为基础表列，应由扩展 provider 提供条件和读取投影；赋值服务负责校验租户、字段及记录更新权限。
+
+## 按请求补充查询条件
+
+`query({ ctx, input, operation })` 在守卫之后执行，`operation` 为 `list` 或 `export`，`input` 来自对应输入 schema 和 middleware。返回的 `where` 始终与普通筛选、搜索、scope 求交集，先于列表与导出总数、分页及导出限制执行。未配置时保持原行为。
+
+```ts
+createCrudRouter({
+  table: products,
+  listInputSchema,
+  exportInputSchema,
+  query: async ({ ctx, input }) => {
+    if (!input.image) return {};
+    const distance = await imageDistance(ctx, input.image);
+    return {
+      where: sql`${distance} <= ${0.65}`,
+      ...(!input.sort?.length ? { orderBy: [asc(distance), asc(products.id)] } : {}),
+    };
+  },
+});
+```
+
+`orderBy` 提供时替换默认排序；权限和作用域不会被覆盖。SQL 表达式必须通过当前数据库 capability 的治理机制构造，不能把其他租户或无权读取的数据带入派生条件。本扩展只作用于列表及导出；批量 counts 仍使用其原有输入契约。

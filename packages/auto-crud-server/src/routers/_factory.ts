@@ -1834,7 +1834,13 @@ export function createCrudRouter<
 
           // 核心查询逻辑
           const doList = async (listInput: ListInput): Promise<ListResult<TSelect>> => {
-            const { effectiveInput, where } = await queryWhere(ctx, listInput);
+            const extra = await config.query?.({
+              ctx,
+              input: listInput as TListInput,
+              operation: 'list',
+            });
+            const { effectiveInput, where: baseWhere } = await queryWhere(ctx, listInput);
+            const where = combineConditions(baseWhere, extra?.where);
             const offset = (effectiveInput.page - 1) * effectiveInput.perPage;
 
             let query = ctx.db.select().from(table).$dynamic();
@@ -1842,7 +1848,8 @@ export function createCrudRouter<
               query = query.where(where);
             }
 
-            const orderByExpressions = buildOrderByExpressions(effectiveInput.sort, true);
+            const orderByExpressions =
+              extra?.orderBy ?? buildOrderByExpressions(effectiveInput.sort, true);
             if (orderByExpressions.length > 0) {
               query = query.orderBy(...orderByExpressions);
             }
@@ -2450,6 +2457,11 @@ export function createCrudRouter<
           const doExport = async (
             exportInput: ExportInput,
           ): Promise<ExportResult<TSelect>> => {
+            const extra = await config.query?.({
+              ctx,
+              input: exportInput as TExportInput,
+              operation: 'export',
+            });
             const columns = await querySearch(ctx, exportInput.search);
             const effectiveInput = (await applyCrudExtensionFilters(
               ctx,
@@ -2508,6 +2520,7 @@ export function createCrudRouter<
               combineConditions(
                 combineExtensionFilter(filterCondition, effectiveInput),
                 searchCondition,
+                extra?.where,
               ),
             );
 
@@ -2516,10 +2529,8 @@ export function createCrudRouter<
               query = query.where(where);
             }
 
-            const orderByExpressions = buildOrderByExpressions(
-              effectiveInput.sort,
-              false,
-            );
+            const orderByExpressions =
+              extra?.orderBy ?? buildOrderByExpressions(effectiveInput.sort, false);
             if (orderByExpressions.length > 0) {
               query = query.orderBy(...orderByExpressions);
             }

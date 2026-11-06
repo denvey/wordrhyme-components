@@ -41,6 +41,10 @@ export type {
 } from './i18n/locale';
 export { AutoForm, type AutoFormProps } from './components/auto-crud/auto-form';
 export { AutoTable, type AutoTableProps } from './components/auto-crud/auto-table';
+export type {
+  TableSearchProps,
+  TableSearchConfig,
+} from './components/auto-crud/auto-table';
 export { AutoTableActionBar } from './components/auto-crud/auto-table-action-bar';
 export type {
   BatchActionConfig,
