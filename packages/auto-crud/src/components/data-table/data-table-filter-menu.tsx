@@ -503,8 +503,9 @@ function DataTableFilterItem<TData>({
           }
         >
           <SelectTrigger
+            size="sm"
             aria-controls={operatorListboxId}
-            className="h-8 rounded-none border-r-0 px-2.5 lowercase data-size:h-8 [&_svg]:hidden"
+            className="rounded-none border-border border-r-0 px-2.5 py-0 text-sm font-normal lowercase shadow-none [&_svg]:hidden"
           >
             <SelectValue placeholder={filter.operator} />
           </SelectTrigger>
