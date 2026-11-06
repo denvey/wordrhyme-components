@@ -2,7 +2,7 @@
 
 import type { Table } from '@tanstack/react-table';
 import type { ReactNode } from 'react';
-import type { SavedView, ViewInput, ViewQuery } from '@/lib/saved-views';
+import type { SavedView, ViewInput, ViewPreferences, ViewQuery } from '@/lib/saved-views';
 import type { ExtendedColumnFilter } from '@/types/data-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -41,12 +41,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getUrlParams, setSearchParams } from '@/hooks/use-url-state';
 import { getSortingStateParser } from '@/lib/parsers';
 import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
-import { queryFingerprint, savedViewSchema, viewInputSchema } from '@/lib/saved-views';
+import {
+  queryFingerprint,
+  readViewPreferences,
+  savedViewSchema,
+  viewInputSchema,
+  writeViewPreferences,
+} from '@/lib/saved-views';
 import { useAutoCrudConfig } from './auto-crud-provider';
 
 export interface SavedViewsConfig {
-  /** Initial display mode; users can switch modes in the toolbar. */
-  selector?: 'dropdown' | 'tabs';
+  /** Initial display mode when no local preference exists. */
+  selector?: ViewPreferences['selector'];
   /** Count saved queries (including All), in batches of at most 100. Keys are opaque. */
   counts?: (input: {
     queries: Array<
@@ -168,6 +174,12 @@ function ViewMenu<TData>({
   };
   const [selected, setSelected] = useState<SavedView | null>(null);
   const [display, setDisplay] = useState(selector);
+  const initialPreferences = useRef<ViewPreferences | null>(null);
+  useEffect(() => {
+    const preferences = readViewPreferences(config.scope, resourceId);
+    initialPreferences.current = preferences;
+    if (preferences) setDisplay(preferences.selector);
+  }, [config.scope, resourceId]);
   const [dialog, setDialog] = useState<
     'create' | 'rename' | 'duplicate' | 'delete' | null
   >(null);
@@ -198,37 +210,89 @@ function ViewMenu<TData>({
   const current = useMemo(() => readQuery(), [readQuery, search]);
   const dirty =
     selected !== null && queryFingerprint(selected.query) !== queryFingerprint(current);
-  const apply = (query: ViewQuery) => {
-    const allowed = new Set(columns.map((column) => column.id));
-    if (
-      query.filters.some((filter) => !allowed.has(filter.id)) ||
-      query.sort.some((sort) => !table.getColumn(sort.id)?.getCanSort())
-    ) {
-      throw new Error('视图包含已删除或不可用的字段，请修改视图条件');
-    }
-    if (
-      query.filters.some(
-        (filter) =>
-          (table.getColumn(filter.id)?.columnDef.meta?.variant ?? 'text') !==
-          filter.variant,
-      )
-    ) {
-      throw new Error('视图中的字段类型已变化，请重新配置筛选条件');
-    }
-    const params = getUrlParams();
-    applyReadableFilters(params, columns, query.filters as ExtendedColumnFilter<TData>[]);
-    params.set(keys?.joinOperator ?? 'joinOperator', query.joinOperator);
-    if (query.search) params.set('search', query.search);
-    else params.delete('search');
-    if (query.sort.length)
-      params.set(
-        keys?.sort ?? 'sort',
-        getSortingStateParser<Record<string, unknown>>().serialize(query.sort),
+  const validateQuery = useCallback(
+    (query: ViewQuery) => {
+      const allowed = new Set(columns.map((column) => column.id));
+      if (
+        query.filters.some((filter) => !allowed.has(filter.id)) ||
+        query.sort.some((sort) => !table.getColumn(sort.id)?.getCanSort())
+      ) {
+        throw new Error('视图包含已删除或不可用的字段，请修改视图条件');
+      }
+      if (
+        query.filters.some(
+          (filter) =>
+            (table.getColumn(filter.id)?.columnDef.meta?.variant ?? 'text') !==
+            filter.variant,
+        )
+      ) {
+        throw new Error('视图中的字段类型已变化，请重新配置筛选条件');
+      }
+    },
+    [columns, table],
+  );
+  const apply = useCallback(
+    (query: ViewQuery, history: 'push' | 'replace' = 'push') => {
+      validateQuery(query);
+      const params = getUrlParams();
+      applyReadableFilters(
+        params,
+        columns,
+        query.filters as ExtendedColumnFilter<TData>[],
       );
-    else params.set(keys?.sort ?? 'sort', '');
-    params.set(keys?.page ?? 'page', '1');
-    setSearchParams(params, { history: 'push' });
-  };
+      params.set(keys?.joinOperator ?? 'joinOperator', query.joinOperator);
+      if (query.search) params.set('search', query.search);
+      else params.delete('search');
+      if (query.sort.length)
+        params.set(
+          keys?.sort ?? 'sort',
+          getSortingStateParser<Record<string, unknown>>().serialize(query.sort),
+        );
+      else params.set(keys?.sort ?? 'sort', '');
+      params.set(keys?.page ?? 'page', '1');
+      setSearchParams(params, { history });
+    },
+    [columns, keys, validateQuery],
+  );
+  const preferencesRestored = useRef(false);
+  useEffect(() => {
+    if (preferencesRestored.current || !views.isSuccess) return;
+    preferencesRestored.current = true;
+    const preferences = initialPreferences.current;
+    if (!preferences) return;
+    if (preferences.viewId === null) return;
+    const view = views.data.find((item) => item.id === preferences.viewId);
+    try {
+      if (view) {
+        validateQuery(view.query);
+        const params = getUrlParams();
+        const hasUrlQuery =
+          readQuery().filters.length > 0 ||
+          [
+            'search',
+            keys?.sort ?? 'sort',
+            keys?.joinOperator ?? 'joinOperator',
+            keys?.page ?? 'page',
+            keys?.perPage ?? 'perPage',
+          ].some((key) => params.has(key));
+        if (!hasUrlQuery) apply(view.query, 'replace');
+        setSelected(view);
+        return;
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
+    writeViewPreferences(config.scope, resourceId, { ...preferences, viewId: null });
+  }, [
+    views.isSuccess,
+    views.data,
+    config.scope,
+    resourceId,
+    keys,
+    readQuery,
+    apply,
+    validateQuery,
+  ]);
   const mutation = useMutation({
     mutationFn: async ({
       operation,
@@ -251,6 +315,10 @@ function ViewMenu<TData>({
     onSuccess: async (view) => {
       if (!view) apply({ filters: [], joinOperator: 'and', search: '', sort: [] });
       setSelected(view);
+      writeViewPreferences(config.scope, resourceId, {
+        selector: display,
+        viewId: view?.id ?? null,
+      });
       setDialog(null);
       setError(null);
       await client.invalidateQueries({ queryKey });
@@ -261,6 +329,10 @@ function ViewMenu<TData>({
     try {
       apply(view?.query ?? { filters: [], joinOperator: 'and', search: '', sort: [] });
       setSelected(view);
+      writeViewPreferences(config.scope, resourceId, {
+        selector: display,
+        viewId: view?.id ?? null,
+      });
       setError(null);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -403,7 +475,13 @@ function ViewMenu<TData>({
                 <DropdownMenuRadioGroup
                   value={display}
                   onValueChange={(value) => {
-                    if (value === 'dropdown' || value === 'tabs') setDisplay(value);
+                    if (value === 'dropdown' || value === 'tabs') {
+                      setDisplay(value);
+                      writeViewPreferences(config.scope, resourceId, {
+                        selector: value,
+                        viewId: selected?.id ?? null,
+                      });
+                    }
                   }}
                 >
                   <DropdownMenuRadioItem value="dropdown">

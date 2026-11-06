@@ -16,3 +16,5 @@ Allow switching saved views between a dropdown before search and tabs above the 
 Limit TagService.list to resource/field scope and query/page/pageSize/signal inputs, and require a single paginated result with TagOption entries and hasMore.
 
 Add an optional views.counts callback for batched saved-view totals in tabs and dropdowns, with loading, zero and retry states, and an in-memory Storybook example.
+
+Remember view selector mode and selected view ID in localStorage by user/tenant scope and resource. Restore saved queries only when no explicit URL query is present, and discard unavailable selections without blocking the table.

@@ -1970,7 +1970,7 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 ```
 
 - 视图保存筛选条件、条件间的 AND/OR、搜索词和排序；不保存分页、选中行。支持新建、复制、重命名、删除、保存和放弃修改。`table={{ views: false }}` 可在某个表关闭。
-- 视图支持下拉与 Tab 两种展示：下拉放在搜索框前，设置收在下拉菜单内；Tab 放在筛选栏上方，末尾仅提供设置图标，新建操作与下拉模式一致，放在设置菜单内。在设置菜单的“展示方式”中切换，当前视图及未保存修改会保留。有修改时显示状态点、“保存修改”和“还原”。默认使用下拉；`table={{ views: { selector: 'tabs' } }}` 可设置初始展示。独立使用 `AutoTable` 时传 `views={{ selector: 'tabs' }}`。`selector` 仅用于初始化，展示方式不写入已保存的查询。
+- 视图支持下拉与 Tab 两种展示：下拉放在搜索框前，设置收在下拉菜单内；Tab 放在筛选栏上方，末尾仅提供设置图标，新建操作与下拉模式一致，放在设置菜单内。在设置菜单的“展示方式”中切换，当前视图及未保存修改会保留。有修改时显示状态点、“保存修改”和“还原”。无本地偏好时默认使用下拉；`table={{ views: { selector: 'tabs' } }}` 可设置初始展示。独立使用 `AutoTable` 时传 `views={{ selector: 'tabs' }}`。本地记忆优先于 `selector`，展示方式不写入已保存的查询。
 - `scope` 必须包含当前用户与租户；切换时重置组件状态。`createLocalViewStorage` 仅保存当前浏览器中的视图。换用后端时传入 `ViewStorage`，组件调用方式不变。
 - `TagService.list` 接收 `resourceId/field` 和可选的 `query/page/pageSize/signal`，统一返回 `{ options: TagOption[], hasMore: boolean }`，两个字段都必须提供。每个选项包含稳定 ID `value`、名称 `label` 和颜色 `color`。`resolve` 返回指定稳定 ID 对应的名称与颜色。用户新建标签只增加选项，不增加 schema 字段。
 - `create/update/remove/assign` 是可选能力。`assign` 必须只添加或移除指定标签，保留其他关联；单条编辑和选中行批量设置共用此方法。权限必须由服务端校验。
@@ -1980,6 +1980,8 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 - 后端保存视图须按用户、租户和 CRUD `id` 隔离；标签及其数据关联按租户、CRUD `id` 和字段隔离。视图不是权限凭证。
 
 `ViewStorage` 和 `TagService` 的完整 TypeScript 接口由包导出。完整交互示例见 Storybook 的 **Auto CRUD / Saved views and tags**；可切换 simple、advanced、command 三种模式。
+
+展示方式与当前选中视图的 ID 自动存入浏览器 `localStorage`，键为 `auto-crud:view-preferences:${encodeURIComponent(scope)}:${encodeURIComponent(resourceId)}`，按用户／租户和资源隔离，独立于 `ViewStorage` 的本地或服务端实现。刷新或重新进入时恢复展示方式；视图列表加载成功后恢复选中项。URL 已有筛选、搜索、排序或分页参数时保留 URL 查询，否则应用上次视图的保存条件，使用 replace 更新 URL。上次视图已删除或字段不可用时清除其选中记忆，保留 URL 查询。本地数据损坏或存储不可用时使用配置的初始展示方式，仍可在当前页面切换。未保存的查询不另存到本地偏好中。
 
 标签列表调用示例：
 

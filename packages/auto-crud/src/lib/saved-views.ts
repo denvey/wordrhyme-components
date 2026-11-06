@@ -17,6 +17,45 @@ export type ViewQuery = z.infer<typeof viewQuerySchema>;
 export type ViewInput = z.infer<typeof viewInputSchema>;
 export type SavedView = z.infer<typeof savedViewSchema>;
 
+const viewPreferencesSchema = z.object({
+  selector: z.enum(['dropdown', 'tabs']),
+  viewId: z.string().min(1).nullable(),
+});
+export type ViewPreferences = z.infer<typeof viewPreferencesSchema>;
+
+function viewPreferencesKey(scope: string, resourceId: string): string {
+  return `auto-crud:view-preferences:${encodeURIComponent(scope)}:${encodeURIComponent(resourceId)}`;
+}
+
+export function readViewPreferences(
+  scope: string,
+  resourceId: string,
+): ViewPreferences | null {
+  try {
+    return viewPreferencesSchema.parse(
+      JSON.parse(localStorage.getItem(viewPreferencesKey(scope, resourceId)) ?? 'null'),
+    );
+  } catch {
+    // Unavailable storage or invalid preferences must not prevent loading a table.
+    return null;
+  }
+}
+
+export function writeViewPreferences(
+  scope: string,
+  resourceId: string,
+  preferences: ViewPreferences,
+): void {
+  try {
+    localStorage.setItem(
+      viewPreferencesKey(scope, resourceId),
+      JSON.stringify(preferences),
+    );
+  } catch {
+    // Preferences remain usable in memory when browser storage is unavailable.
+  }
+}
+
 export function queryFingerprint(query: ViewQuery): string {
   const filters = query.filters
     .map(({ filterId: _, ...filter }) => {
