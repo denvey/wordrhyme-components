@@ -104,6 +104,7 @@ function Demo({
   mode,
   tagActionAppearance,
   automaticTags = false,
+  enableViews = true,
   selector = 'dropdown',
   showCounts = false,
   tabVariant = 'default',
@@ -112,6 +113,7 @@ function Demo({
   mode: 'simple' | 'advanced' | 'command';
   tagActionAppearance: 'text' | 'icon' | 'both';
   automaticTags?: boolean;
+  enableViews?: boolean;
   selector?: SavedViewsConfig['selector'];
   showCounts?: boolean;
   tabVariant?: NonNullable<SavedViewsConfig['tabs']>['variant'];
@@ -322,22 +324,24 @@ function Demo({
                 }
           }
           table={{
-            views: {
-              selector,
-              counts: showCounts ? counts : undefined,
-              tabs: {
-                variant: tabVariant,
-                linePosition,
-                classNames:
-                  tabVariant === 'line'
-                    ? {
-                        trigger:
-                          'text-base data-[state=on]:text-blue-700 dark:data-[state=on]:text-blue-400',
-                        indicator: 'h-1 bg-blue-600 dark:bg-blue-400',
-                      }
-                    : undefined,
-              },
-            },
+            views: enableViews
+              ? {
+                  selector,
+                  counts: showCounts ? counts : undefined,
+                  tabs: {
+                    variant: tabVariant,
+                    linePosition,
+                    classNames:
+                      tabVariant === 'line'
+                        ? {
+                            trigger:
+                              'text-base data-[state=on]:text-blue-700 dark:data-[state=on]:text-blue-400',
+                            indicator: 'h-1 bg-blue-600 dark:bg-blue-400',
+                          }
+                        : undefined,
+                  },
+                }
+              : undefined,
             filterModes: [
               mode,
               ...(['simple', 'advanced', 'command'] as const).filter(
@@ -383,6 +387,7 @@ const meta = {
     mode: 'simple',
     tagActionAppearance: 'both',
     automaticTags: false,
+    enableViews: true,
     selector: 'dropdown',
     showCounts: false,
     tabVariant: 'default',
@@ -392,6 +397,7 @@ const meta = {
     mode: { control: 'select', options: ['simple', 'advanced', 'command'] },
     tagActionAppearance: { control: 'select', options: ['text', 'icon', 'both'] },
     automaticTags: { control: 'boolean' },
+    enableViews: { control: 'boolean' },
     selector: { control: 'select', options: ['dropdown', 'tabs'] },
     showCounts: { control: 'boolean' },
     tabVariant: { control: 'select', options: ['default', 'line'] },
@@ -402,6 +408,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 export const Playground: Story = {};
 export const AutomaticTags: Story = { args: { automaticTags: true } };
+export const DefaultDisabled: Story = { args: { enableViews: false } };
 export const Tabs: Story = { args: { selector: 'tabs' } };
 export const TabsWithCounts: Story = { args: { selector: 'tabs', showCounts: true } };
 export const LineTabs: Story = {

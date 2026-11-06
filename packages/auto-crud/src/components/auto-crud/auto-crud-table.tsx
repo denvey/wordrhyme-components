@@ -569,7 +569,7 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   };
   /** 表格配置 */
   table?: {
-    /** Enable named query views using the global viewStorage. */
+    /** Disabled by default. Pass true or a config to enable; requires viewStorage and a stable id. */
     views?: AutoTableProps<TSchema>['views'];
     /** Optional controls; overrides the application registration for this CRUD id. */
     pagination?: TablePaginationOptions;
@@ -2269,7 +2269,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   onExport,
 }: AutoCrudTableProps<TSchema>) {
   const services = useAutoCrudConfig();
-  const viewsEnabled = tableConfig?.views ?? (!!id && !!services?.viewStorage);
+  const viewsEnabled = tableConfig?.views ?? false;
   if (viewsEnabled && !id)
     throw new Error('Saved views require a stable AutoCrudTable id');
   const locale = React.useMemo(() => resolveLocale(localeProp), [localeProp]);

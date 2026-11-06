@@ -1939,7 +1939,7 @@ container resizing and translated text widths, without changing other tables.
 
 ## 保存视图与动态标签
 
-在 `QueryClientProvider` 内配置一次服务，所有带稳定 `id` 的 `AutoCrudTable` 自动显示视图菜单：
+视图默认关闭。在 `QueryClientProvider` 内配置存储服务后，通过 `table={{ views: true }}` 为带稳定 `id` 的 `AutoCrudTable` 开启视图菜单：
 
 ```tsx
 import {
@@ -1959,6 +1959,7 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
   >
     <AutoCrudTable
       id="crm.customers"
+      table={{ views: true }}
       schema={schema}
       resource={resource}
       fields={{
@@ -1969,7 +1970,7 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 </QueryClientProvider>;
 ```
 
-- 视图保存筛选条件、条件间的 AND/OR、搜索词和排序；不保存分页、选中行。支持新建、复制、重命名、删除、保存和放弃修改。`table={{ views: false }}` 可在某个表关闭。
+- 视图保存筛选条件、条件间的 AND/OR、搜索词和排序；不保存分页、选中行。支持新建、复制、重命名、删除、保存和放弃修改。省略 `views` 或传 `false` 时关闭，传 `true` 或配置对象时开启。独立 `AutoTable` 使用 `views={true}`，并提供稳定的 `resourceId`。全局 `viewStorage` 和本地展示偏好不会自动开启视图。之前依赖自动开启的列表需补充 `table={{ views: true }}`。
 - 视图支持下拉与 Tab 两种展示：下拉放在搜索框前，设置收在下拉菜单内；Tab 放在筛选栏上方，末尾仅提供设置图标，新建操作与下拉模式一致，放在设置菜单内。在设置菜单的“展示方式”中切换，当前视图及未保存修改会保留。有修改时显示状态点、“保存修改”和“还原”。无本地偏好时默认使用下拉；`table={{ views: { selector: 'tabs' } }}` 可设置初始展示。独立使用 `AutoTable` 时传 `views={{ selector: 'tabs' }}`。本地记忆优先于 `selector`，展示方式不写入已保存的查询。
 - `scope` 必须包含当前用户与租户；切换时重置组件状态。`createLocalViewStorage` 仅保存当前浏览器中的视图。换用后端时传入 `ViewStorage`，组件调用方式不变。
 - `TagService.list` 接收 `resourceId/field` 和可选的 `query/page/pageSize/signal`，统一返回 `{ options: TagOption[], hasMore: boolean }`，两个字段都必须提供。每个选项包含稳定 ID `value`、名称 `label` 和颜色 `color`。`resolve` 返回指定稳定 ID 对应的名称与颜色。用户新建标签只增加选项，不增加 schema 字段。
