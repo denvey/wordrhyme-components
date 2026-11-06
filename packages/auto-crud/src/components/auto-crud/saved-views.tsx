@@ -29,9 +29,9 @@ import {
 } from '@wordrhyme/shadcn';
 import {
   AppWindow,
+  Bookmark,
   ChevronDown,
   Copy,
-  ListFilter,
   PanelsTopLeft,
   Pencil,
   Plus,
@@ -490,7 +490,7 @@ function ViewMenu<TData>({
                   {selected ? (
                     selected.name
                   ) : (
-                    <ListFilter aria-hidden="true" className="size-4" />
+                    <Bookmark aria-hidden="true" className="size-4" />
                   )}
                   {renderCount(
                     selected
