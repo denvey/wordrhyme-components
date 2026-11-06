@@ -2056,7 +2056,7 @@ Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 使用内�
       },
     },
   }}
-/>;
+/>
 ```
 
 `classNames.list` 作用于 Tab 列表，`trigger` 作用于每个 Tab（含「全部」），`indicator` 作用于选中项的线条，可修改颜色和粗细。类名通过 `cn` 在默认类名之后合并；`trigger` 的选中状态可用 `data-[state=on]` 定制。`linePosition` 和 `indicator` 仅在线条样式中生效。独立 `AutoTable` 使用同样的 `views.tabs` 配置。这些外观配置由使用方提供，不写入本地偏好。
@@ -2079,32 +2079,37 @@ import { Tags } from 'lucide-react';
 import { Button } from '@wordrhyme/shadcn';
 import { TagAssignment, type TagAssignmentProps } from '@wordrhyme/auto-crud';
 
-function EditTags({ entities, onSaved }: {
+function EditTags({
+  entities,
+  onSaved,
+}: {
   entities: TagAssignmentProps['entities'];
   onSaved: () => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
-  return <>
-    <Button
-      type="button"
-      variant="outline"
-      size="icon-sm"
-      aria-label="设置标签"
-      disabled={!entities.length}
-      onClick={() => setOpen(true)}
-    >
-      <Tags aria-hidden="true" className="size-4" />
-    </Button>
-    <TagAssignment
-      resourceId="crm.customers"
-      field="tags"
-      title="标签"
-      entities={entities}
-      open={open}
-      onOpenChange={setOpen}
-      onSaved={onSaved}
-    />
-  </>;
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        aria-label="设置标签"
+        disabled={!entities.length}
+        onClick={() => setOpen(true)}
+      >
+        <Tags aria-hidden="true" className="size-4" />
+      </Button>
+      <TagAssignment
+        resourceId="crm.customers"
+        field="tags"
+        title="标签"
+        entities={entities}
+        open={open}
+        onOpenChange={setOpen}
+        onSaved={onSaved}
+      />
+    </>
+  );
 }
 ```
 
