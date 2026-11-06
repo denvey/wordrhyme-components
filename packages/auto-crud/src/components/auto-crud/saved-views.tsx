@@ -31,6 +31,7 @@ import {
   AppWindow,
   ChevronDown,
   Copy,
+  ListFilter,
   PanelsTopLeft,
   Pencil,
   Plus,
@@ -413,7 +414,7 @@ function ViewMenu<TData>({
       />
     ) : null;
   const triggerLabel =
-    display === 'tabs' ? '视图设置' : selected === null ? '全部' : undefined;
+    display === 'tabs' ? '视图设置' : selected === null ? '切换视图' : undefined;
   const controls = (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
       <div
@@ -473,8 +474,11 @@ function ViewMenu<TData>({
             <Button
               type="button"
               variant={display === 'tabs' ? 'ghost' : 'outline'}
-              size={display === 'tabs' ? 'icon-sm' : 'sm'}
-              className="shrink-0"
+              size={display === 'tabs' || selected === null ? 'icon-sm' : 'sm'}
+              className={cn(
+                'relative shrink-0',
+                display === 'dropdown' && selected === null && counts && 'w-auto px-2',
+              )}
               aria-label={triggerLabel}
               title={triggerLabel}
               disabled={!fieldsReady || views.isPending || mutation.isPending}
@@ -486,7 +490,7 @@ function ViewMenu<TData>({
                   {selected ? (
                     selected.name
                   ) : (
-                    <PanelsTopLeft aria-hidden="true" className="size-4" />
+                    <ListFilter aria-hidden="true" className="size-4" />
                   )}
                   {renderCount(
                     selected
@@ -496,10 +500,13 @@ function ViewMenu<TData>({
                   {dirty && (
                     <span
                       aria-label="有未保存修改"
-                      className="size-1.5 rounded-full bg-current"
+                      className={cn(
+                        'size-1.5 rounded-full bg-current',
+                        selected === null && 'absolute right-1 top-1',
+                      )}
                     />
                   )}
-                  <ChevronDown className="size-4" />
+                  {selected && <ChevronDown className="size-4" />}
                 </>
               )}
             </Button>
