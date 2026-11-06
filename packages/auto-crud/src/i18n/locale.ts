@@ -1,5 +1,7 @@
+import type { BatchSearchLocale } from './batch-search';
 import type { ImportIssue } from '@/hooks/use-auto-crud-resource';
 import { importError } from '@/lib/import-errors';
+import { enUSBatchSearch, zhCNBatchSearch } from './batch-search';
 
 /**
  * AutoCrud 国际化接口及内置语言包
@@ -64,6 +66,7 @@ export interface TableActionBarLocale {
 }
 
 export interface AutoCrudLocale {
+  batchSearch?: BatchSearchLocale;
   /** Sorting and column visibility controls. Optional for existing custom locales. */
   tableControls?: TableControlsLocale;
   pagination?: Partial<TablePaginationLocale>;
@@ -200,6 +203,7 @@ export const enUSTableControls: TableControlsLocale = {
 };
 
 export const zhCN: AutoCrudLocale = {
+  batchSearch: zhCNBatchSearch,
   tableControls: {
     sort: {
       label: '排序',
@@ -322,6 +326,7 @@ export const zhCN: AutoCrudLocale = {
 };
 
 export const enUS: AutoCrudLocale = {
+  batchSearch: enUSBatchSearch,
   tableControls: enUSTableControls,
   pagination: enUSPagination,
   actionBar: enUSActionBar,

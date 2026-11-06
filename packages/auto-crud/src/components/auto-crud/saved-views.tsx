@@ -79,6 +79,7 @@ export interface SavedViewsConfig {
 interface SavedViewsProps<TData> extends SavedViewsConfig {
   resourceId: string;
   table: Table<TData>;
+  onApply?: () => void;
   children: (
     controls: ReactNode,
     display: NonNullable<SavedViewsConfig['selector']>,
@@ -92,6 +93,7 @@ export function SavedViews<TData>({
   selector,
   tabs,
   counts,
+  onApply,
   children,
 }: SavedViewsProps<TData>) {
   const config = useAutoCrudConfig();
@@ -103,6 +105,7 @@ export function SavedViews<TData>({
       resourceId={resourceId}
       table={table}
       fieldsReady={fieldsReady}
+      onApply={onApply}
       selector={selector}
       tabs={tabs}
       counts={counts}
@@ -118,6 +121,7 @@ function ViewMenu<TData>({
   selector = 'dropdown',
   tabs,
   counts,
+  onApply,
   children,
 }: SavedViewsProps<TData>) {
   const config = useAutoCrudConfig()!;
@@ -280,8 +284,9 @@ function ViewMenu<TData>({
       else params.set(keys?.sort ?? 'sort', '');
       params.set(keys?.page ?? 'page', '1');
       setSearchParams(params, { history });
+      onApply?.();
     },
-    [columns, keys, validateQuery],
+    [columns, keys, validateQuery, onApply],
   );
   const preferencesRestored = useRef(false);
   useEffect(() => {

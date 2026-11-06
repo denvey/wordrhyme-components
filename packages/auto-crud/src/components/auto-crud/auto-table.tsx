@@ -1,10 +1,11 @@
 'use client';
 
+import type { BatchSearchLocale } from '@/i18n/batch-search';
 import { z } from 'zod';
 import { SavedViews, type SavedViewsConfig } from './saved-views';
 import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
 import type { TablePaginationOptions } from '@/types/data-table';
-import { useCallback, useContext, useEffect, useMemo } from 'react';
+import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import {
   ChevronRightIcon,
   ChevronsRightIcon,
@@ -32,7 +33,9 @@ import {
   DropdownMenuTrigger,
 } from '@wordrhyme/shadcn';
 import { parseAsStringEnum, useQueryState } from '@/hooks/use-url-state';
+import { enUSBatchSearch } from '@/i18n/batch-search';
 import { enUSTableControls } from '@/i18n/locale';
+import { isBatchSearchFilter } from '@/lib/batch-search';
 import { AutoTableSimpleFilters } from './auto-table-simple-filters';
 import { AutoTableSearch } from './auto-table-search';
 import {
@@ -49,8 +52,17 @@ import {
   type ActionsColumnConfig,
 } from '@/lib/schema-bridge/zod-to-columns';
 import type { TableActionBarLocale, TableControlsLocale } from '@/i18n/locale';
+import type {
+  BatchSearchConfig,
+  BatchSearchField,
+  BatchSearchState,
+} from '@/lib/batch-search';
 import type { ColumnOverrides } from '@/lib/schema-bridge/types';
-import type { DataTableClassNames, QueryKeys } from '@/types/data-table';
+import type {
+  DataTableClassNames,
+  QueryKeys,
+  TableFilterState,
+} from '@/types/data-table';
 
 /** 过滤模式类型 */
 export type FilterMode = 'simple' | 'advanced' | 'command';
@@ -64,12 +76,25 @@ export interface TableSearchProps extends Pick<
   placeholder: string;
   /** Reset pagination when an additional search criterion changes. */
   resetPage: () => void;
+  /** Bind to a custom input's double-click or keyboard shortcut. */
+  openBatchSearch?: () => void;
+  batchSearchHint?: string;
+  /** Applied shared filter for an inline search input adornment. */
+  batchSearch?: { label: string; onRemove: () => void };
+}
+
+export interface TableBatchSearchConfig extends BatchSearchConfig, BatchSearchState {
+  fields: BatchSearchField[];
+  locale?: BatchSearchLocale;
 }
 
 export interface TableSearchConfig {
   placeholder?: string;
   /** Search delay in milliseconds. Defaults to 200; use 0 for immediate queries. */
   debounceMs?: number;
+  /** Content before the default input; preserves built-in search and batch controls. */
+  prefix?: React.ReactNode;
+  /** Replaces the entire search control, including prefix and built-in batch controls. */
   render?: (props: TableSearchProps) => React.ReactNode;
 }
 
@@ -140,6 +165,10 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
   filterMode?: FilterMode | FilterMode[];
   /** 全局搜索框 */
   search?: boolean | TableSearchConfig;
+  /** Controlled batch criteria opened by double-clicking the search input. */
+  batchSearch?: TableBatchSearchConfig;
+  /** Controlled filter state shared with the resource hook. */
+  filterState?: TableFilterState<z.infer<T>>;
   /** Extra table controls rendered between sorting and column visibility. */
   toolbarExtra?: React.ReactNode;
   /** Sorting and column visibility strings. Defaults to English for standalone use. */
@@ -195,6 +224,8 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   pinnedColumns,
   filterMode,
   search = false,
+  batchSearch,
+  filterState,
   toolbarExtra,
   locale = enUSTableControls,
   onDeleteSelected,
@@ -236,8 +267,38 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   );
   const showToggle = modes.length > 1;
   const searchConfig = search && typeof search === 'object' ? search : {};
+  const batchSearchEntryRef = useRef<(() => void) | null>(null);
+  const renderFilterValue = useCallback<
+    NonNullable<
+      import('@tanstack/react-table').TableMeta<z.infer<T>>['renderFilterValue']
+    >
+  >(
+    (filter, props) => {
+      if (!batchSearch || !isBatchSearchFilter(filter)) return undefined;
+      const field = batchSearch.fields.find((item) => item.id === filter.id);
+      const label = (batchSearch.locale ?? enUSBatchSearch).edit(
+        field?.label ?? filter.id,
+        filter.value.length,
+      );
+      return (
+        <Button
+          {...props}
+          type="button"
+          variant="outline"
+          title={label}
+          onClick={() => batchSearchEntryRef.current?.()}
+        >
+          <span className="truncate">{label}</span>
+        </Button>
+      );
+    },
+    [batchSearch],
+  );
+  const clearBatchSearch = useCallback(() => {
+    if (batchSearch?.filter) batchSearch.onFilterChange(null);
+  }, [batchSearch]);
 
-  // 所有模式都使用高级过滤的数据流（filters 数组同步到 URL）
+  // All modes share filters; ordinary values sync to the URL, batch values stay local.
   // 区别只在于 UI 展示方式
   const enableAdvancedFilter = true;
   const { columns, expandColumnId } = useMemo(() => {
@@ -372,6 +433,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     initialState: stableInitialState,
     shallow: false,
     clearOnDefault: true,
+    meta: { filterState, renderFilterValue },
   });
 
   useEffect(() => {
@@ -459,9 +521,17 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     </DropdownMenu>
   ) : null;
 
-  const searchInput = search ? (
-    <AutoTableSearch {...searchConfig} pageKey={queryKeys?.page} />
-  ) : null;
+  const searchInput =
+    search !== false || batchSearch !== undefined ? (
+      <AutoTableSearch
+        {...searchConfig}
+        schema={schema}
+        searchEnabled={Boolean(search)}
+        batchSearch={batchSearch}
+        openRef={batchSearchEntryRef}
+        pageKey={queryKeys?.page}
+      />
+    ) : null;
 
   // 渲染过滤器组件（memoized to avoid recreating on every render）
   const filtersContent = useMemo(() => {
@@ -488,7 +558,16 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           />
         );
     }
-  }, [currentMode, table, columns, shallow, debounceMs, throttleMs]);
+  }, [
+    currentMode,
+    table,
+    columns,
+    shallow,
+    debounceMs,
+    throttleMs,
+    filterState,
+    renderFilterValue,
+  ]);
 
   const renderToolbar = (viewSelector?: React.ReactNode) => (
     <div className="flex w-full items-start justify-between gap-2 p-1">
@@ -572,6 +651,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           <SavedViews
             resourceId={activeResourceId}
             table={table}
+            onApply={clearBatchSearch}
             fieldsReady={typeof views === 'object' ? views.fieldsReady : undefined}
             selector={typeof views === 'object' ? views.selector : undefined}
             tabs={typeof views === 'object' ? views.tabs : undefined}

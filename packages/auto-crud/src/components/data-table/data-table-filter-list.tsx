@@ -119,8 +119,10 @@ export function DataTableFilterList<TData>({
   const [filters, setFilters] = useReadableFilters<TData>(columns, {
     debounceMs,
     resetPageKey: table.options.meta?.queryKeys?.page ?? 'page',
+    state: table.options.meta?.filterState,
   });
   const debouncedSetFilters = useDebouncedCallback(setFilters, debounceMs);
+  const { cancel: cancelPendingFilters } = debouncedSetFilters;
 
   const [joinOperator, setJoinOperator] = useQueryState(
     table.options.meta?.queryKeys?.joinOperator ?? '',
@@ -171,9 +173,10 @@ export function DataTableFilterList<TData>({
   );
 
   const onFiltersReset = React.useCallback(() => {
+    cancelPendingFilters();
     void setFilters([]);
     void setJoinOperator('and');
-  }, [setFilters, setJoinOperator]);
+  }, [setFilters, setJoinOperator, cancelPendingFilters]);
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -271,6 +274,9 @@ export function DataTableFilterList<TData>({
                   <DataTableFilterItem<TData>
                     key={filter.filterId}
                     filter={filter}
+                    customInput={table.options.meta?.renderFilterValue?.(filter, {
+                      className: 'h-8 w-full justify-start',
+                    })}
                     index={index}
                     filterItemId={`${id}-filter-${filter.filterId}`}
                     joinOperator={joinOperator}
@@ -320,6 +326,7 @@ export function DataTableFilterList<TData>({
 }
 
 interface DataTableFilterItemProps<TData> {
+  customInput?: React.ReactNode;
   filter: ExtendedColumnFilter<TData>;
   index: number;
   filterItemId: string;
@@ -334,6 +341,7 @@ interface DataTableFilterItemProps<TData> {
 }
 
 function DataTableFilterItem<TData>({
+  customInput,
   filter,
   index,
   filterItemId,
@@ -360,7 +368,12 @@ function DataTableFilterItem<TData>({
   const inputId = `${filterItemId}-input`;
 
   const columnMeta = column?.columnDef.meta;
-  const filterOperators = getFilterOperators(filter.variant);
+  const filterOperators =
+    customInput != null
+      ? dataTableConfig.multiSelectOperators.filter(
+          (operator) => operator.value === filter.operator,
+        )
+      : getFilterOperators(filter.variant);
 
   const onItemKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -439,6 +452,7 @@ function DataTableFilterItem<TData>({
               variant="outline"
               size="sm"
               className="w-32 justify-between rounded font-normal"
+              disabled={customInput != null}
             >
               <span className="truncate">
                 {columns.find((column) => column.id === filter.id)?.columnDef.meta
@@ -491,6 +505,7 @@ function DataTableFilterItem<TData>({
         </Popover>
         <Select
           open={showOperatorSelector}
+          disabled={customInput != null}
           onOpenChange={setShowOperatorSelector}
           value={filter.operator}
           onValueChange={(value: FilterOperator) =>
@@ -522,16 +537,17 @@ function DataTableFilterItem<TData>({
           </SelectContent>
         </Select>
         <div className="min-w-36 max-w-60 flex-1">
-          {onFilterInputRender({
-            today,
-            filter,
-            inputId,
-            column,
-            columnMeta,
-            onFilterUpdate,
-            showValueSelector,
-            setShowValueSelector,
-          })}
+          {customInput ??
+            onFilterInputRender({
+              today,
+              filter,
+              inputId,
+              column,
+              columnMeta,
+              onFilterUpdate,
+              showValueSelector,
+              setShowValueSelector,
+            })}
         </div>
         <Button
           aria-controls={filterItemId}

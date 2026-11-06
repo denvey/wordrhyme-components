@@ -3,10 +3,10 @@ import { z } from 'zod';
 import { toast as sonnerToast } from 'sonner';
 import { keepPreviousData } from '@tanstack/react-query';
 import {
-  useQueryState,
   parseAsInteger,
   parseAsString,
   parseAsStringEnum,
+  useQueryState,
 } from '@/hooks/use-url-state';
 import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { createTableSchema } from '@/lib/schema-bridge/zod-to-columns';
@@ -15,7 +15,13 @@ import { coerceRowValues } from '@/lib/import';
 import { getDefaultSortingForSchema, type AutoCrudSorting } from '@/lib/default-sorting';
 import { mergeFields } from '@/lib/field-config';
 import type { Fields } from '@/components/auto-crud/auto-crud-table';
-import type { QueryKeys } from '@/types/data-table';
+import type { BatchSearchFilter, BatchSearchState } from '@/lib/batch-search';
+import type { QueryKeys, TableFilterState } from '@/types/data-table';
+import {
+  BATCH_SEARCH_FILTER_ID,
+  BATCH_SEARCH_LOCAL_IDS,
+  isBatchSearchFilter,
+} from '@/lib/batch-search';
 
 /**
  * Toast 适配器接口
@@ -292,6 +298,10 @@ export interface UseAutoCrudResourceReturn<
   TListItem,
 > {
   queryKeys?: Partial<QueryKeys>;
+  /** Page-local criteria; shared by list and export without entering the URL. */
+  batchSearch?: BatchSearchState;
+  /** Shared by all filter controls, list queries, and exports. */
+  filterState?: TableFilterState<z.output<TSchema>>;
   /** 主键字段名（默认: "id"） */
   idKey?: keyof TListItem & string;
   tableData: {
@@ -537,7 +547,11 @@ export function useAutoCrudResource<
             },
           ),
         ),
-      }),
+      }).map((column) => ({
+        id: column.id,
+        accessorKey: 'accessorKey' in column ? String(column.accessorKey) : undefined,
+        meta: column.meta,
+      })),
     [resolvedSchema, fields, metadataFields],
   );
 
@@ -560,10 +574,39 @@ export function useAutoCrudResource<
   });
 
   // 内部 URL 状态：筛选
-  const [filters] = useReadableFilters(columns, {
+  const [filters, setFilters] = useReadableFilters<z.output<TSchema>>(columns, {
     shallow: false,
     resetPageKey: queryKeys?.page ?? 'page',
+    localFilterIds: BATCH_SEARCH_LOCAL_IDS,
   });
+  const filterState = useMemo(
+    () => ({ filters, onFiltersChange: setFilters }),
+    [filters, setFilters],
+  );
+  const batchSearchFilter = filters.find(isBatchSearchFilter) ?? null;
+  const onBatchSearchChange = useCallback(
+    (filter: BatchSearchFilter | null) => {
+      setFilters((previous) => {
+        const next = previous.filter(
+          (item) => item.filterId !== BATCH_SEARCH_FILTER_ID && item.id !== filter?.id,
+        );
+        if (filter)
+          next.push({
+            ...filter,
+            id: filter.id as Extract<keyof z.output<TSchema>, string>,
+          });
+        return next;
+      });
+    },
+    [setFilters],
+  );
+  const batchSearch = useMemo<BatchSearchState>(
+    () => ({
+      filter: batchSearchFilter,
+      onFilterChange: onBatchSearchChange,
+    }),
+    [batchSearchFilter, onBatchSearchChange],
+  );
   // useReadableFilters hydrates newly discovered fields in an effect. Wait for
   // that commit as well as metadata, so the first request includes URL filters.
   const metadataPending = Boolean(metadataQuery?.isPending);
@@ -906,6 +949,8 @@ export function useAutoCrudResource<
   return {
     idKey,
     queryKeys,
+    batchSearch,
+    filterState,
     tableData: {
       data: tableRows as TListItem[],
       pageCount: listData?.pageCount ?? 0,
