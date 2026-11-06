@@ -55,7 +55,10 @@ import type { DataTableClassNames, QueryKeys } from '@/types/data-table';
 /** 过滤模式类型 */
 export type FilterMode = 'simple' | 'advanced' | 'command';
 
-export interface TableSearchProps {
+export interface TableSearchProps extends Pick<
+  React.ComponentPropsWithoutRef<'input'>,
+  'onCompositionStart' | 'onCompositionEnd'
+> {
   value: string;
   onValueChange: (value: string) => void;
   placeholder: string;

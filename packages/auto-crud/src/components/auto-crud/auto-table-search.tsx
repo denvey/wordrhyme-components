@@ -17,6 +17,7 @@ export function AutoTableSearch({
   render,
 }: AutoTableSearchProps) {
   const [value, setValue] = useState(() => getUrlParams().get('search') ?? '');
+  const valueRef = useRef(value);
   const composing = useRef(false);
   const commit = useCallback(
     (next: string, resetPage = false) => {
@@ -36,7 +37,8 @@ export function AutoTableSearch({
   useEffect(() => {
     const sync = () => {
       cancel();
-      setValue(getUrlParams().get('search') ?? '');
+      valueRef.current = getUrlParams().get('search') ?? '';
+      setValue(valueRef.current);
     };
     window.addEventListener('popstate', sync);
     window.addEventListener('urlchange', sync);
@@ -48,6 +50,7 @@ export function AutoTableSearch({
   }, [cancel, pageKey]);
 
   const change = (next: string) => {
+    valueRef.current = next;
     setValue(next);
     cancel();
     if (composing.current) return;
@@ -55,14 +58,25 @@ export function AutoTableSearch({
     else debouncedCommit(next);
   };
 
+  const onCompositionStart = () => {
+    composing.current = true;
+    cancel();
+  };
+  const onCompositionEnd = (event: React.CompositionEvent<HTMLInputElement>) => {
+    composing.current = false;
+    change(event.currentTarget.value);
+  };
+
   if (render) {
     return render({
       value,
       onValueChange: change,
+      onCompositionStart,
+      onCompositionEnd,
       placeholder,
       resetPage: () => {
         cancel();
-        commit(value, true);
+        commit(valueRef.current, true);
       },
     });
   }
@@ -71,14 +85,8 @@ export function AutoTableSearch({
     <Input
       value={value}
       onChange={(event) => change(event.target.value)}
-      onCompositionStart={() => {
-        composing.current = true;
-        cancel();
-      }}
-      onCompositionEnd={(event) => {
-        composing.current = false;
-        change(event.currentTarget.value);
-      }}
+      onCompositionStart={onCompositionStart}
+      onCompositionEnd={onCompositionEnd}
       placeholder={placeholder}
       className="h-8 w-48 shrink-0"
     />

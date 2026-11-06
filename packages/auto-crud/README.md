@@ -2129,11 +2129,27 @@ function EditTags({
 
 `table.search.render` 可替换搜索输入框。回调的 `value` / `onValueChange` 沿用表格文字搜索和分页状态；额外条件变化时调用 `resetPage()`。未提供 `render` 时保留默认输入框。
 
+自定义输入框应转发 `onCompositionStart` / `onCompositionEnd`，以沿用中文等输入法的组合输入保护，避免选词完成前发起搜索：
+
+```tsx
+render: ({ value, onValueChange, onCompositionStart, onCompositionEnd, placeholder }) => (
+  <Input
+    value={value}
+    onChange={(event) => onValueChange(event.target.value)}
+    onCompositionStart={onCompositionStart}
+    onCompositionEnd={onCompositionEnd}
+    placeholder={placeholder}
+  />
+);
+```
+
+同一次操作可以先调用 `onValueChange(next)` 再调用 `resetPage()`；分页重置会提交最新文字，不会恢复旧关键词。
+
 ```tsx
 const resource = useAutoCrudResource({
   router: api.products,
   schema: productSchema,
-  query: params => ({ ...params, image }),
+  query: (params) => ({ ...params, image }),
   queryContext: { methodOverride: 'POST' },
 });
 
@@ -2143,10 +2159,12 @@ const resource = useAutoCrudResource({
   table={{
     search: {
       placeholder: '搜索商品',
-      render: props => <ProductSearch {...props} image={image} onImageChange={setImage} />,
+      render: (props) => (
+        <ProductSearch {...props} image={image} onImageChange={setImage} />
+      ),
     },
   }}
-/>
+/>;
 ```
 
 `TableSearchProps` / `TableSearchConfig` 可从包入口导入。`queryContext` 透传给 tRPC 列表与自动导出；自定义 `exportFetcher` 需自行传递请求上下文。服务端须支持所选传输方式。`resource.tableData.error` 暴露查询失败，调用方可展示具体错误；它不把失败当成无匹配结果。
