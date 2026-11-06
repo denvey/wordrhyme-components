@@ -2079,7 +2079,7 @@ const schema = z.object({
   resource={resource}
   permissions={permissions}
   fields={{ recordTags: { label: '标签', form: false, tags: true } }}
-/>
+/>;
 ```
 
 应用级 `AutoCrudProvider` 提供 `tagService`，页面无需再维护 `TagAssignment`、弹窗状态或选中记录转换。资源 ID 复用表格 `id`，记录主键复用 `resource.idKey`（默认 `id`），保存后调用 `resource.handlers.refresh`。未填写的标签值按空数组处理。
