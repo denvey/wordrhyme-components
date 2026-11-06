@@ -64,6 +64,7 @@ jobs:
           AUTO_CHANGESET: false
 
       - name: Ensure all workspace releases are published with OIDC
+        shell: bash
         env:
           NODE_AUTH_TOKEN: ''
           NPM_TOKEN: ''
@@ -80,8 +81,18 @@ jobs:
             # pnpm rewrites workspace dependencies; npm 11 provides OIDC publishing.
             pnpm --filter "$PACKAGE_NAME" pack --pack-destination "$RUNNER_TEMP"
             TARBALL_NAME="${PACKAGE_NAME#@}"
-            "$RUNNER_TEMP/npm-global/bin/npm" publish "$RUNNER_TEMP/${TARBALL_NAME//\//-}-$PACKAGE_VERSION.tgz" \
-              --access public --provenance --ignore-scripts --registry=https://registry.npmjs.org
+            PUBLISH_LOG=$(mktemp)
+            if ! "$RUNNER_TEMP/npm-global/bin/npm" publish "$RUNNER_TEMP/${TARBALL_NAME//\//-}-$PACKAGE_VERSION.tgz" \
+              --access public --provenance --ignore-scripts --registry=https://registry.npmjs.org 2>&1 | tee "$PUBLISH_LOG"; then
+              # Autopilot may have staged this version before npm view can see it.
+              if ! grep -Fq 'npm error code E409' "$PUBLISH_LOG" ||
+                ! grep -Fq 'Cannot publish over previously staged version' "$PUBLISH_LOG"; then
+                rm -f "$PUBLISH_LOG"
+                exit 1
+              fi
+              echo "$PACKAGE_NAME@$PACKAGE_VERSION is already staged; waiting for registry visibility"
+            fi
+            rm -f "$PUBLISH_LOG"
             # Wait for registry visibility before publishing dependent packages.
             for attempt in $(seq 1 20); do
               if npm view "$PACKAGE_NAME@$PACKAGE_VERSION" version --registry=https://registry.npmjs.org; then
