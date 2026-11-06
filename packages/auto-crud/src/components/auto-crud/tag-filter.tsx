@@ -34,6 +34,8 @@ import { cn } from '@/lib/utils';
 import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
 
 export interface TagFilterProps {
+  /** Required outside a table; otherwise inherits the table's CRUD identity. */
+  resourceId?: string;
   field: string;
   title: string;
   value: TagFilterValue;
@@ -46,8 +48,13 @@ export interface TagFilterProps {
   onOpenChange?: (open: boolean) => void;
 }
 
-export function TagFilter({ field, ...props }: TagFilterProps) {
-  const resourceId = useContext(CrudResourceContext);
+export function TagFilter({
+  resourceId: resourceIdProp,
+  field,
+  ...props
+}: TagFilterProps) {
+  const inheritedResourceId = useContext(CrudResourceContext);
+  const resourceId = resourceIdProp ?? inheritedResourceId;
   const config = useAutoCrudConfig();
   if (resourceId === undefined || resourceId === '' || !config?.tagService)
     throw new Error('Tag fields require a CRUD id and AutoCrudProvider.tagService');
@@ -73,7 +80,7 @@ type TagPickerProps = {
   footer?: (editing: boolean) => ReactNode;
   onDeleted?: (id: string) => unknown | Promise<unknown>;
 } & (
-  | ({ purpose: 'filter' } & Omit<TagFilterProps, 'field' | 'title'>)
+  | ({ purpose: 'filter' } & Omit<TagFilterProps, 'resourceId' | 'field' | 'title'>)
   | { purpose: 'assign'; value: TagSelection; onChange: (value: TagSelection) => void }
 );
 

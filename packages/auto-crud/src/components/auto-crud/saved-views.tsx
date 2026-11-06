@@ -52,6 +52,8 @@ import {
 import { useAutoCrudConfig } from './auto-crud-provider';
 
 export interface SavedViewsConfig {
+  /** Wait for asynchronous field metadata before restoring or selecting a view. */
+  fieldsReady?: boolean;
   /** Initial display mode when no local preference exists. */
   selector?: ViewPreferences['selector'];
   /** Appearance of the tab selector; supplied classes override the defaults. */
@@ -86,6 +88,7 @@ interface SavedViewsProps<TData> extends SavedViewsConfig {
 export function SavedViews<TData>({
   resourceId,
   table,
+  fieldsReady,
   selector,
   tabs,
   counts,
@@ -99,6 +102,7 @@ export function SavedViews<TData>({
       key={`${config.cacheKey}:${resourceId}`}
       resourceId={resourceId}
       table={table}
+      fieldsReady={fieldsReady}
       selector={selector}
       tabs={tabs}
       counts={counts}
@@ -110,6 +114,7 @@ export function SavedViews<TData>({
 function ViewMenu<TData>({
   resourceId,
   table,
+  fieldsReady = true,
   selector = 'dropdown',
   tabs,
   counts,
@@ -150,7 +155,7 @@ function ViewMenu<TData>({
       }
       return result;
     },
-    enabled: Boolean(counts) && views.isSuccess,
+    enabled: Boolean(counts) && views.isSuccess && fieldsReady,
   });
   const data = table.options.data;
   const previousSource = useRef({ data, counts });
@@ -159,13 +164,22 @@ function ViewMenu<TData>({
     const previous = previousSource.current;
     previousSource.current = { data, counts };
     if (previous.data === data && previous.counts === counts) return;
-    if (counts && views.isSuccess)
+    if (counts && views.isSuccess && fieldsReady)
       void client
         .cancelQueries({
           queryKey: ['auto-crud-view-counts', config.cacheKey, resourceId],
         })
         .then(() => refetchCounts());
-  }, [data, counts, views.isSuccess, refetchCounts, client, config.cacheKey, resourceId]);
+  }, [
+    data,
+    counts,
+    views.isSuccess,
+    fieldsReady,
+    refetchCounts,
+    client,
+    config.cacheKey,
+    resourceId,
+  ]);
   const renderCount = (key: string) => {
     if (!counts) return null;
     const value = totals.data?.[key];
@@ -271,36 +285,45 @@ function ViewMenu<TData>({
   );
   const preferencesRestored = useRef(false);
   useEffect(() => {
-    if (preferencesRestored.current || !views.isSuccess) return;
-    preferencesRestored.current = true;
-    const preferences = initialPreferences.current;
-    if (!preferences) return;
-    if (preferences.viewId === null) return;
-    const view = views.data.find((item) => item.id === preferences.viewId);
-    try {
-      if (view) {
-        validateQuery(view.query);
-        const params = getUrlParams();
-        const hasUrlQuery =
-          readQuery().filters.length > 0 ||
-          [
-            'search',
-            keys?.sort ?? 'sort',
-            keys?.joinOperator ?? 'joinOperator',
-            keys?.page ?? 'page',
-            keys?.perPage ?? 'perPage',
-          ].some((key) => params.has(key));
-        if (!hasUrlQuery) apply(view.query, 'replace');
-        setSelected(view);
-        return;
+    if (preferencesRestored.current || !views.isSuccess || !fieldsReady) return;
+    const savedViews = views.data;
+    let cancelled = false;
+    // Cached views can be ready on mount, before ancestor URL hooks subscribe.
+    queueMicrotask(() => {
+      if (cancelled || preferencesRestored.current) return;
+      preferencesRestored.current = true;
+      const preferences = initialPreferences.current;
+      if (!preferences || preferences.viewId === null) return;
+      const view = savedViews.find((item) => item.id === preferences.viewId);
+      try {
+        if (view) {
+          validateQuery(view.query);
+          const params = getUrlParams();
+          const hasUrlQuery =
+            readQuery().filters.length > 0 ||
+            [
+              'search',
+              keys?.sort ?? 'sort',
+              keys?.joinOperator ?? 'joinOperator',
+              keys?.page ?? 'page',
+              keys?.perPage ?? 'perPage',
+            ].some((key) => params.has(key));
+          if (!hasUrlQuery) apply(view.query, 'replace');
+          setSelected(view);
+          return;
+        }
+      } catch (reason) {
+        setError(reason instanceof Error ? reason.message : String(reason));
       }
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
-    }
-    writeViewPreferences(config.scope, resourceId, { ...preferences, viewId: null });
+      writeViewPreferences(config.scope, resourceId, { ...preferences, viewId: null });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [
     views.isSuccess,
     views.data,
+    fieldsReady,
     config.scope,
     resourceId,
     keys,
@@ -404,7 +427,7 @@ function ViewMenu<TData>({
               spacing={1}
               value={selected ? `view:${selected.id}` : 'all'}
               onValueChange={selectValue}
-              disabled={views.isPending || mutation.isPending}
+              disabled={!fieldsReady || views.isPending || mutation.isPending}
               aria-label="已保存的视图"
               className={cn(
                 lineTabs
@@ -447,7 +470,7 @@ function ViewMenu<TData>({
               className="shrink-0"
               aria-label={display === 'tabs' ? '视图设置' : undefined}
               title={display === 'tabs' ? '视图设置' : undefined}
-              disabled={views.isPending || mutation.isPending}
+              disabled={!fieldsReady || views.isPending || mutation.isPending}
             >
               {display === 'tabs' ? (
                 <Settings className="size-4" />

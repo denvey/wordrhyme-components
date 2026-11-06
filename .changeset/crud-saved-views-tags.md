@@ -22,3 +22,5 @@ Remember view selector mode and selected view ID in localStorage by user/tenant 
 Support line-style view tabs with top or bottom active indicators and external class overrides for the list, triggers and indicator. Add Storybook examples for both positions.
 
 Keep the line-tab baseline continuous across the settings control and keep active indicators within the scrollable list.
+
+Restore cached views after URL subscriptions are ready and wait for asynchronous field metadata before validating remembered views. Clear structured tag URL conditions for removed fields, and allow standalone TagFilter usage with an explicit resourceId.

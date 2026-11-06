@@ -2885,7 +2885,17 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         {/* Table */}
         <AutoTable
           resourceId={id}
-          views={viewsEnabled}
+          views={
+            viewsEnabled
+              ? {
+                  ...(typeof viewsEnabled === 'object' ? viewsEnabled : {}),
+                  fieldsReady:
+                    !resource.metadataPending &&
+                    (typeof viewsEnabled !== 'object' ||
+                      viewsEnabled.fieldsReady !== false),
+                }
+              : false
+          }
           data={resource.tableData.data}
           schema={resolvedSchema as TSchema}
           pageCount={resource.tableData.pageCount}

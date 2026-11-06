@@ -149,7 +149,10 @@ export function applyReadableFilters<TData>(
   );
 
   for (const key of Array.from(params.keys())) {
-    if (isFilterKey(key, columnIds)) {
+    if (key.endsWith(OP_SUFFIX) && params.get(key) === 'matches') {
+      params.delete(key.slice(0, -OP_SUFFIX.length));
+      params.delete(key);
+    } else if (isFilterKey(key, columnIds)) {
       params.delete(key);
     }
   }

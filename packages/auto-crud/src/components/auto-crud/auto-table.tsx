@@ -560,6 +560,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           <SavedViews
             resourceId={activeResourceId}
             table={table}
+            fieldsReady={typeof views === 'object' ? views.fieldsReady : undefined}
             selector={typeof views === 'object' ? views.selector : undefined}
             tabs={typeof views === 'object' ? views.tabs : undefined}
             counts={typeof views === 'object' ? views.counts : undefined}

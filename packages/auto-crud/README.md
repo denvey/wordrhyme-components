@@ -2116,4 +2116,6 @@ function EditTags({ entities, onSaved }: {
 
 每个标签始终显示标准 Select 控件，可直接选择「包含」或「不包含」；取消勾选表示该标签不参与筛选，不额外增加「不限」选项。上方的「满足任一／满足全部」仅作用于包含项，排除项始终同时生效。动态搜索、分页、新增和行内编辑在三种模式中共用，普通 select／multiSelect 的行为不变。
 
-独立使用 `TagFilter` 时默认是工具栏按钮。嵌入自有条件行可传 `variant="input"`；`id` 和 `className` 对应输入样式的触发按钮，`open/onOpenChange` 可控制其展开状态。值仍通过 `value/onChange` 控制，不需要转换成普通多选数组。
+独立使用 `TagFilter` 时，在 `AutoCrudProvider` 内传入 `resourceId="crm.customers"` 和 `field="tags"`，默认显示工具栏按钮；表格内部可省略 `resourceId`，自动继承表格的 CRUD id。嵌入自有条件行可传 `variant="input"`；`id` 和 `className` 对应输入样式的触发按钮，`open/onOpenChange` 可控制其展开状态。值仍通过 `value/onChange` 控制，不需要转换成普通多选数组。
+
+`useAutoCrudResource` 返回 `metadataPending`，`AutoCrudTable` 据此等待字段元数据就绪，再恢复上次视图，避免把尚未加载的扩展字段当成已删除字段。自定义资源应在异步字段加载期间提供 `metadataPending: true`；独立 `AutoTable` 使用 `views={{ fieldsReady: false }}` 暂停恢复和视图切换，字段加载完成后改为 `true`。未提供这些状态时沿用同步字段行为。
