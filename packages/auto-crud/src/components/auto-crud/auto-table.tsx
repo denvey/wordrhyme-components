@@ -298,7 +298,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
         ),
         enableHiding: false,
         enableSorting: false,
-        size: 40,
+        size: 48,
       });
     }
 
