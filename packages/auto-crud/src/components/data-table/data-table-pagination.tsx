@@ -126,7 +126,10 @@ export function DataTablePagination<TData>({
         className="flex flex-1 items-center gap-6 whitespace-nowrap text-muted-foreground text-sm"
       >
         <span>
-          {locale.selected(table.getFilteredSelectedRowModel().rows.length, table.getFilteredRowModel().rows.length)}
+          {locale.selected(
+            table.getFilteredSelectedRowModel().rows.length,
+            table.getFilteredRowModel().rows.length,
+          )}
         </span>
         {total !== undefined && <span>{locale.total(total)}</span>}
       </div>
