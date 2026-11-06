@@ -3,7 +3,7 @@
 import type { BatchSearchLocale } from '@/i18n/batch-search';
 import { z } from 'zod';
 import { SavedViews, type SavedViewsConfig } from './saved-views';
-import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
+import { CrudResourceContext } from './auto-crud-provider';
 import type { TablePaginationOptions } from '@/types/data-table';
 import { useCallback, useContext, useEffect, useMemo, useRef } from 'react';
 import {
@@ -128,7 +128,7 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
 > {
   /** Stable CRUD identity for saved views and tag services. */
   resourceId?: string;
-  /** Defaults to enabled when a global viewStorage is configured. */
+  /** Disabled by default. Pass true or a config to enable; requires viewStorage and a resourceId. */
   views?: boolean | SavedViewsConfig;
   schema: T;
   data: z.infer<T>[];
@@ -245,8 +245,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
 }: AutoTableProps<T>) {
   const inheritedResourceId = useContext(CrudResourceContext);
   const activeResourceId = resourceId ?? inheritedResourceId;
-  const services = useAutoCrudConfig();
-  const viewsEnabled = views ?? (!!activeResourceId && !!services?.viewStorage);
+  const viewsEnabled = views ?? false;
   if (viewsEnabled && !activeResourceId)
     throw new Error('Saved views require a stable resourceId');
 

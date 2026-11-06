@@ -30,6 +30,10 @@ import type {
 } from './auto-crud-table';
 import { AutoCrudTable, setToolbarResolver } from './auto-crud-table';
 import { AutoTable } from './auto-table';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AutoCrudProvider } from './auto-crud-provider';
+import { createLocalViewStorage, writeViewPreferences } from '@/lib/saved-views';
+import type { SavedViewsConfig } from './saved-views';
 
 beforeAll(() => {
   Element.prototype.scrollIntoView = vi.fn();
@@ -3261,4 +3265,70 @@ describe('AutoCrudTable Formily detail', () => {
       expect(resource.handlers.submitUpdate).not.toHaveBeenCalled();
     },
   );
+});
+
+describe.each(['AutoCrudTable', 'AutoTable'])('%s saved views opt-in', (component) => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/');
+    const items = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => items.get(key) ?? null,
+      setItem: (key: string, value: string) => items.set(key, value),
+    });
+  });
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it.each<{ name: string; views?: boolean | SavedViewsConfig; enabled: boolean }>([
+    { name: 'omitted', enabled: false },
+    { name: 'false', views: false, enabled: false },
+    { name: 'true', views: true, enabled: true },
+    { name: 'tab config', views: { selector: 'tabs' }, enabled: true },
+  ])('handles $name with global storage configured', async ({ views, enabled }) => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const storage = createLocalViewStorage('views-opt-in');
+    const list = vi.spyOn(storage, 'list');
+    if (!enabled) {
+      writeViewPreferences('views-opt-in', 'customers', {
+        selector: 'tabs',
+        viewId: null,
+      });
+    }
+    const { unmount } = render(
+      <QueryClientProvider client={client}>
+        <AutoCrudProvider scope="views-opt-in" viewStorage={storage}>
+          {component === 'AutoCrudTable' ? (
+            <AutoCrudTable
+              id="customers"
+              schema={schema}
+              resource={createResource()}
+              table={{ views }}
+            />
+          ) : (
+            <AutoTable
+              resourceId="customers"
+              schema={schema}
+              data={[{ id: '1' }]}
+              views={views}
+            />
+          )}
+        </AutoCrudProvider>
+      </QueryClientProvider>,
+    );
+    if (enabled) {
+      await waitFor(() => expect(list).toHaveBeenCalledWith('customers'));
+      expect(
+        screen.getByRole('button', {
+          name: typeof views === 'object' ? '视图设置' : '切换视图',
+        }),
+      ).toBeTruthy();
+    } else {
+      expect(list).not.toHaveBeenCalled();
+      expect(screen.queryByRole('button', { name: /切换视图|视图设置/ })).toBeNull();
+    }
+    unmount();
+    client.clear();
+  });
 });
