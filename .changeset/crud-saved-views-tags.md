@@ -14,3 +14,5 @@ Create tags from the current picker list and edit names and colors inline throug
 Allow switching saved views between a dropdown before search and tabs above the toolbar, with contextual settings and a configurable selector.
 
 Limit TagService.list to resource/field scope and query/page/pageSize/signal inputs, and require a single paginated result with TagOption entries and hasMore.
+
+Add an optional views.counts callback for batched saved-view totals in tabs and dropdowns, with loading, zero and retry states, and an in-memory Storybook example.

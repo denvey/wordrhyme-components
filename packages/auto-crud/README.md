@@ -2001,6 +2001,36 @@ const { options, hasMore } = await tagService.list({
 
 迁移旧的标签适配器时，移除对 `type/values/search` 的依赖，搜索统一使用 `query`；原先返回数组或省略分页字段的实现需要改为上述对象格式，并为选项提供 `color`。
 
+### 视图数量
+
+通过可选的 `views.counts` 回调接入数量，Tab 和下拉选项都会显示。组件提供各视图保存的筛选、AND/OR 与搜索条件，并额外提供不带筛选的「全部」查询；查询不包含排序和分页，也不叠加当前尚未保存的筛选。
+
+```tsx
+import type { SavedViewsConfig } from '@wordrhyme/auto-crud';
+
+// 在组件外定义，或通过 useCallback 保持引用稳定。
+const loadViewCounts: NonNullable<SavedViewsConfig['counts']> = async ({
+  queries,
+  signal,
+}) => {
+  const result = await api.customers.counts.query({ queries }, { signal });
+  return result.counts;
+};
+
+<AutoCrudTable
+  id="crm.customers"
+  schema={schema}
+  resource={resource}
+  table={{ views: { selector: 'tabs', counts: loadViewCounts } }}
+/>;
+```
+
+回调返回以传入 `query.key` 为键的数量对象，键由组件生成，直接原样返回即可。每批最多 100 个查询，更多视图自动分批。使用 `auto-crud-server` 时开启 `counts: true`，数据库适配器须支持受权限和租户范围约束的 `$counts`；其他后端可自行实现相同的回调。
+
+首次加载显示 `…`，零结果显示 `0`，缺失或无效数量显示 `—`；请求失败显示 `—` 和重试入口。保存视图条件后重新统计；表格数据引用或 `counts` 回调引用变化时也会重新获取。数量由查询缓存管理，不写入视图存储。独立 `AutoTable` 使用 `views={{ selector: 'tabs', counts: loadViewCounts }}`。
+
+Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 使用内存视图与标签数据，模拟 300ms 请求延迟，预置数量为 3、2、1、0 的视图。列表和数量共用筛选逻辑，修改客户标签后会重新计算；刷新页面后重置示例数据。
+
 ### 自定义标签编辑入口
 
 `TagAssignment` 是受控弹窗，不包含按钮。打开后直接显示搜索和标签列表，已有标签默认选中，通过勾选／取消勾选编辑，无需选择添加或移除。已选标签的名称、颜色实时显示；清空和保存位于同一行，点击保存后才提交记录的标签关联。

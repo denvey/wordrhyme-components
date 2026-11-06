@@ -1,14 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type {
   SavedViewsConfig,
+  SavedView,
   TagOption,
   TagService,
   UseAutoCrudResourceReturn,
+  ViewQuery,
+  ViewStorage,
 } from '../src';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Button } from '@wordrhyme/shadcn';
 import { Tags } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import {
   AutoCrudProvider,
@@ -28,14 +31,85 @@ const initialTags: TagOption[] = [
   { value: 'review', label: '需要跟进', color: '#f59e0b' },
 ];
 
+function matchesQuery(
+  row: Row,
+  query: Pick<ViewQuery, 'filters' | 'joinOperator' | 'search'>,
+) {
+  if (!row.name.toLowerCase().includes(query.search.toLowerCase())) return false;
+  const matches = query.filters.map((filter) => {
+    if (filter.variant !== 'tags')
+      return row.name.toLowerCase().includes(String(filter.value).toLowerCase());
+    const { include, exclude, match } = filter.value;
+    return (
+      (include.length === 0 ||
+        (match === 'all'
+          ? include.every((id) => row.tags.includes(id))
+          : include.some((id) => row.tags.includes(id)))) &&
+      !exclude.some((id) => row.tags.includes(id))
+    );
+  });
+  return (
+    !matches.length ||
+    (query.joinOperator === 'or' ? matches.some(Boolean) : matches.every(Boolean))
+  );
+}
+
+function createDemoViewStorage(): ViewStorage {
+  let views: SavedView[] = [
+    ...initialTags.map((tag) => ({
+      id: tag.value,
+      name: tag.label,
+      query: {
+        filters: [
+          {
+            id: 'tags',
+            filterId: tag.value,
+            variant: 'tags' as const,
+            operator: 'matches' as const,
+            value: { include: [tag.value], exclude: [], match: 'any' as const },
+          },
+        ],
+        joinOperator: 'and' as const,
+        search: '',
+        sort: [],
+      },
+    })),
+    {
+      id: 'customer-d',
+      name: '客户 D',
+      query: { filters: [], joinOperator: 'and', search: '客户 D', sort: [] },
+    },
+  ];
+  return {
+    async list() {
+      return views;
+    },
+    async create(_resourceId, input) {
+      const view = { ...input, id: crypto.randomUUID() };
+      views = [...views, view];
+      return view;
+    },
+    async update(_resourceId, id, input) {
+      const view = { ...input, id };
+      views = views.map((current) => (current.id === id ? view : current));
+      return view;
+    },
+    async remove(_resourceId, id) {
+      views = views.filter((view) => view.id !== id);
+    },
+  };
+}
+
 function Demo({
   mode,
   tagActionAppearance,
   selector = 'dropdown',
+  showCounts = false,
 }: {
   mode: 'simple' | 'advanced' | 'command';
   tagActionAppearance: 'text' | 'icon' | 'both';
   selector?: SavedViewsConfig['selector'];
+  showCounts?: boolean;
 }) {
   const [client] = useState(() => new QueryClient());
   const [tagTargets, setTagTargets] = useState<Row[] | null>(null);
@@ -54,7 +128,7 @@ function Demo({
       window.removeEventListener('popstate', update);
     };
   }, []);
-  const services = useMemo(() => {
+  const tagService = useMemo(() => {
     let tags = [...initialTags];
     const tagService: TagService = {
       async list({ query = '', page = 1, pageSize = 30 }) {
@@ -101,8 +175,28 @@ function Demo({
         );
       },
     };
-    return { tagService, viewStorage: createLocalViewStorage('storybook:user:tenant') };
+    return tagService;
   }, []);
+  const viewStorage = useMemo(
+    () =>
+      showCounts
+        ? createDemoViewStorage()
+        : createLocalViewStorage('storybook:user:tenant'),
+    [showCounts],
+  );
+  const counts = useCallback<NonNullable<SavedViewsConfig['counts']>>(
+    async ({ queries, signal }) => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      signal.throwIfAborted();
+      return Object.fromEntries(
+        queries.map((query) => [
+          query.key,
+          rows.filter((row) => matchesQuery(row, query)).length,
+        ]),
+      );
+    },
+    [rows],
+  );
   const data = useMemo(() => {
     const params = new URLSearchParams(search);
     const filters = parseReadableFilters<Row>(params, [
@@ -110,28 +204,13 @@ function Demo({
       { id: 'tags', meta: { variant: 'tags' } },
     ]);
     return rows
-      .filter((row) => {
-        if (!row.name.toLowerCase().includes((params.get('search') ?? '').toLowerCase()))
-          return false;
-        const matches = filters.map((filter) => {
-          if (filter.variant !== 'tags')
-            return row.name.toLowerCase().includes(String(filter.value).toLowerCase());
-          const { include, exclude, match } = filter.value;
-          return (
-            (include.length === 0 ||
-              (match === 'all'
-                ? include.every((id) => row.tags.includes(id))
-                : include.some((id) => row.tags.includes(id)))) &&
-            !exclude.some((id) => row.tags.includes(id))
-          );
-        });
-        return (
-          !matches.length ||
-          (params.get('joinOperator') === 'or'
-            ? matches.some(Boolean)
-            : matches.every(Boolean))
-        );
-      })
+      .filter((row) =>
+        matchesQuery(row, {
+          filters,
+          joinOperator: params.get('joinOperator') === 'or' ? 'or' : 'and',
+          search: params.get('search') ?? '',
+        }),
+      )
       .sort((a, b) =>
         params.get('sort') === 'name.desc'
           ? b.name.localeCompare(a.name)
@@ -175,9 +254,15 @@ function Demo({
   };
   return (
     <QueryClientProvider client={client}>
-      <AutoCrudProvider scope="storybook:user:tenant" {...services}>
+      <AutoCrudProvider
+        scope={`storybook:user:tenant${showCounts ? ':counts' : ''}`}
+        tagService={tagService}
+        viewStorage={viewStorage}
+      >
         <p className="mb-4 text-sm text-muted-foreground">
-          通过行操作菜单或多选后的批量操作设置标签。入口位置及文字、图标由业务配置；视图保存在当前浏览器。
+          {showCounts
+            ? '视图数量由模拟接口按保存条件统计，包含加载状态和零结果。修改客户标签或保存视图条件后，数量会刷新；此示例的视图和标签刷新页面后重置。'
+            : '通过行操作菜单或多选后的批量操作设置标签。入口位置及文字、图标由业务配置；视图保存在当前浏览器。'}
         </p>
         <AutoCrudTable
           key={selector}
@@ -220,7 +305,7 @@ function Demo({
             ],
           }}
           table={{
-            views: { selector },
+            views: { selector, counts: showCounts ? counts : undefined },
             filterModes: [
               mode,
               ...(['simple', 'advanced', 'command'] as const).filter(
@@ -258,14 +343,21 @@ function Demo({
 const meta = {
   title: 'Auto CRUD/Saved views and tags',
   component: Demo,
-  args: { mode: 'simple', tagActionAppearance: 'both', selector: 'dropdown' },
+  args: {
+    mode: 'simple',
+    tagActionAppearance: 'both',
+    selector: 'dropdown',
+    showCounts: false,
+  },
   argTypes: {
     mode: { control: 'select', options: ['simple', 'advanced', 'command'] },
     tagActionAppearance: { control: 'select', options: ['text', 'icon', 'both'] },
     selector: { control: 'select', options: ['dropdown', 'tabs'] },
+    showCounts: { control: 'boolean' },
   },
 } satisfies Meta<typeof Demo>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Playground: Story = {};
 export const Tabs: Story = { args: { selector: 'tabs' } };
+export const TabsWithCounts: Story = { args: { selector: 'tabs', showCounts: true } };

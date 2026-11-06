@@ -37,7 +37,7 @@ import {
   Settings,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getUrlParams, setSearchParams } from '@/hooks/use-url-state';
 import { getSortingStateParser } from '@/lib/parsers';
 import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
@@ -47,6 +47,13 @@ import { useAutoCrudConfig } from './auto-crud-provider';
 export interface SavedViewsConfig {
   /** Initial display mode; users can switch modes in the toolbar. */
   selector?: 'dropdown' | 'tabs';
+  /** Count saved queries (including All), in batches of at most 100. Keys are opaque. */
+  counts?: (input: {
+    queries: Array<
+      Pick<ViewQuery, 'filters' | 'joinOperator' | 'search'> & { key: string }
+    >;
+    signal: AbortSignal;
+  }) => Promise<Record<string, number>>;
 }
 
 interface SavedViewsProps<TData> extends SavedViewsConfig {
@@ -62,6 +69,7 @@ export function SavedViews<TData>({
   resourceId,
   table,
   selector,
+  counts,
   children,
 }: SavedViewsProps<TData>) {
   const config = useAutoCrudConfig();
@@ -73,6 +81,7 @@ export function SavedViews<TData>({
       resourceId={resourceId}
       table={table}
       selector={selector}
+      counts={counts}
       children={children}
     />
   );
@@ -82,6 +91,7 @@ function ViewMenu<TData>({
   resourceId,
   table,
   selector = 'dropdown',
+  counts,
   children,
 }: SavedViewsProps<TData>) {
   const config = useAutoCrudConfig()!;
@@ -93,6 +103,69 @@ function ViewMenu<TData>({
     queryFn: async () =>
       (await storage.list(resourceId)).map((view) => savedViewSchema.parse(view)),
   });
+  const countQueries = useMemo(
+    () => [
+      { key: 'all', filters: [], joinOperator: 'and' as const, search: '' },
+      ...(views.data ?? []).map((view, index) => ({
+        key: `view:${index}`,
+        filters: view.query.filters,
+        joinOperator: view.query.joinOperator,
+        search: view.query.search,
+      })),
+    ],
+    [views.data],
+  );
+  const totals = useQuery({
+    queryKey: ['auto-crud-view-counts', config.cacheKey, resourceId, countQueries],
+    queryFn: async ({ signal }) => {
+      if (!counts) throw new Error('View counts require a counts callback');
+      const result: Record<string, number> = {};
+      for (let offset = 0; offset < countQueries.length; offset += 100) {
+        signal.throwIfAborted();
+        Object.assign(
+          result,
+          await counts({ queries: countQueries.slice(offset, offset + 100), signal }),
+        );
+      }
+      return result;
+    },
+    enabled: Boolean(counts) && views.isSuccess,
+  });
+  const data = table.options.data;
+  const previousSource = useRef({ data, counts });
+  const refetchCounts = totals.refetch;
+  useEffect(() => {
+    const previous = previousSource.current;
+    previousSource.current = { data, counts };
+    if (previous.data === data && previous.counts === counts) return;
+    if (counts && views.isSuccess)
+      void client
+        .cancelQueries({
+          queryKey: ['auto-crud-view-counts', config.cacheKey, resourceId],
+        })
+        .then(() => refetchCounts());
+  }, [data, counts, views.isSuccess, refetchCounts, client, config.cacheKey, resourceId]);
+  const renderCount = (key: string) => {
+    if (!counts) return null;
+    const value = totals.data?.[key];
+    const valid = typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
+    const label = totals.isPending
+      ? '数量加载中'
+      : totals.isError
+        ? '统计失败'
+        : valid
+          ? `${value} 条记录`
+          : '暂无统计';
+    return (
+      <span
+        className="text-muted-foreground tabular-nums"
+        aria-label={label}
+        title={label}
+      >
+        {totals.isPending ? '…' : totals.isError || !valid ? '—' : value}
+      </span>
+    );
+  };
   const [selected, setSelected] = useState<SavedView | null>(null);
   const [display, setDisplay] = useState(selector);
   const [dialog, setDialog] = useState<
@@ -225,14 +298,16 @@ function ViewMenu<TData>({
                 className="data-[state=on]:bg-background data-[state=on]:shadow-sm"
               >
                 全部
+                {renderCount('all')}
               </ToggleGroupItem>
-              {views.data?.map((view) => (
+              {views.data?.map((view, index) => (
                 <ToggleGroupItem
                   key={view.id}
                   value={`view:${view.id}`}
                   className="data-[state=on]:bg-background data-[state=on]:shadow-sm"
                 >
                   {view.name}
+                  {renderCount(`view:${index}`)}
                   {selected?.id === view.id && dirty && (
                     <span
                       aria-label="有未保存修改"
@@ -260,6 +335,11 @@ function ViewMenu<TData>({
               ) : (
                 <>
                   {selected?.name ?? '全部'}
+                  {renderCount(
+                    selected
+                      ? `view:${views.data?.findIndex((view) => view.id === selected.id)}`
+                      : 'all',
+                  )}
                   {dirty && (
                     <span
                       aria-label="有未保存修改"
@@ -278,10 +358,14 @@ function ViewMenu<TData>({
                   value={selected ? `view:${selected.id}` : 'all'}
                   onValueChange={selectValue}
                 >
-                  <DropdownMenuRadioItem value="all">全部</DropdownMenuRadioItem>
-                  {views.data?.map((view) => (
+                  <DropdownMenuRadioItem value="all">
+                    全部
+                    {renderCount('all')}
+                  </DropdownMenuRadioItem>
+                  {views.data?.map((view, index) => (
                     <DropdownMenuRadioItem key={view.id} value={`view:${view.id}`}>
                       {view.name}
+                      {renderCount(`view:${index}`)}
                     </DropdownMenuRadioItem>
                   ))}
                 </DropdownMenuRadioGroup>
@@ -376,6 +460,14 @@ function ViewMenu<TData>({
                 );
             }}
           >
+            重试
+          </Button>
+        </span>
+      )}
+      {counts && totals.isError && (
+        <span role="alert" className="text-sm text-destructive">
+          数量统计失败
+          <Button type="button" variant="link" size="sm" onClick={() => totals.refetch()}>
             重试
           </Button>
         </span>
