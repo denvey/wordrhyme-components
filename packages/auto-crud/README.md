@@ -2207,7 +2207,7 @@ const resource = useAutoCrudResource({ router: api.orders, schema: orderSchema, 
     search: { placeholder: '搜索订单' },
     batchSearch: { maxItems: 2000 },
   }}
-/>
+/>;
 ```
 
 `table.batchSearch` 可省略，默认最多 2000 个去重后的有效值；设为 `false` 关闭。`table.search: false` 隐藏整个搜索入口。全局文字搜索能力关闭、但批量筛选可用时，显示只读搜索框作为批量查询入口。候选字段遵循字段权限、筛选能力和隐藏配置；不支持日期、对象、数组等类型。内置 hook 提供统一的 `filterState: { filters, onFiltersChange }`，`batchSearch: { filter, onFilterChange }` 是这份状态的批量录入适配。自定义 resource 应提供同样的共享状态，并用于列表、总数和导出；独立使用 `AutoTable` 时通过 `filterState` 传入。
@@ -2222,15 +2222,15 @@ const resource = useAutoCrudResource({ router: api.orders, schema: orderSchema, 
 render: ({ value, onValueChange, placeholder, openBatchSearch, batchSearchHint }) => (
   <Input
     value={value}
-    onChange={event => onValueChange(event.target.value)}
+    onChange={(event) => onValueChange(event.target.value)}
     onDoubleClick={openBatchSearch}
-    onKeyDown={event => {
+    onKeyDown={(event) => {
       if (event.altKey && event.key === 'Enter') openBatchSearch?.();
     }}
     placeholder={placeholder}
     title={batchSearchHint}
   />
-)
+);
 ```
 
 大量值会增加请求体积。tRPC 消费端应配置支持 POST 查询的 HTTP link，例如 `httpBatchLink({ url, methodOverride: 'POST' })`，并在服务端 HTTP handler 启用 `allowMethodOverride: true`。仅传入 `queryContext: { methodOverride: 'POST' }` 不会自动改变标准 tRPC link 的 HTTP 方法；使用操作上下文时，消费端需要自行将其路由到相应的 POST link。组件库不创建专用批量查询接口，沿用已有的 `filters/inArray` 契约。
