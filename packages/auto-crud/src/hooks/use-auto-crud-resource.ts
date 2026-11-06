@@ -588,7 +588,7 @@ export function useAutoCrudResource<
   // 使用 keepPreviousData 保持旧数据显示，避免分页时的闪烁
   const hasReadyListData = useRef(false);
   const listQuery = router.list.useQuery(queryInput, {
-    trpc: { context: queryContext },
+    ...(queryContext !== undefined ? { trpc: { context: queryContext } } : {}),
     enabled: listReady,
     placeholderData: hasReadyListData.current ? keepPreviousData : undefined,
     staleTime: 0,
@@ -618,7 +618,7 @@ export function useAutoCrudResource<
   }, [queryInput]);
   const exportQuery = router.export?.useQuery(exportInput, {
     enabled: false,
-    trpc: { context: queryContext },
+    ...(queryContext !== undefined ? { trpc: { context: queryContext } } : {}),
   });
 
   // Modal 状态管理
