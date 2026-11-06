@@ -2013,7 +2013,7 @@ reorder?: (resourceId: string, ids: string[]) => Promise<void>;
 
 `ids` 必须包含该资源的全部视图 ID，顺序即新顺序。服务端应在事务中校验并保存，拒绝重复、未知或缺失 ID；并发新增／删除导致列表不一致时返回错误，让用户刷新后重试。成功后组件重新调用 `list()`。排序不修改视图 ID、slug 或查询条件；服务未实现 `reorder` 时不展示排序入口。`createLocalViewStorage` 已实现本地排序持久化。
 
-Storybook 的 **Default View** 演示按 slug 默认选中，“视图设置 → 调整顺序”可体验排序；该示例使用内存存储，刷新后恢复种子数据。
+Storybook 的 **Default View** 演示按 slug 默认选中，“视图设置 → 调整顺序”可体验排序；所有 Saved views and tags 示例共用本地视图存储，首次加载补齐演示视图；视图、删除操作和排列顺序刷新后保留。客户标签仍为刷新后重置的内存数据。
 
 标签列表调用示例：
 
@@ -2063,7 +2063,7 @@ const loadViewCounts: NonNullable<SavedViewsConfig['counts']> = async ({
 
 首次加载显示 `…`，零结果显示 `0`，缺失或无效数量显示 `—`；请求失败显示 `—` 和重试入口。保存视图条件后重新统计；表格数据引用或 `counts` 回调引用变化时也会重新获取。数量由查询缓存管理，不写入视图存储。独立 `AutoTable` 使用 `views={{ selector: 'tabs', counts: loadViewCounts }}`。
 
-Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 使用内存视图与标签数据，模拟 300ms 请求延迟，预置数量为 3、2、1、0 的视图。列表和数量共用筛选逻辑，修改客户标签后会重新计算；刷新页面后重置示例数据。
+Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 与其他视图示例共用本地视图存储，模拟 300ms 统计请求延迟；首次加载预置数量为 3、2、1、0 的视图。列表和数量共用筛选逻辑，修改客户标签后会重新计算。视图与排列顺序刷新后保留，客户标签刷新后重置。
 
 ### 视图 Tab 样式
 
