@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.17.1
+
+### Patch Changes
+
+- 0f4176c: Use a view icon for the default All dropdown trigger, retaining an accessible label and hover title.
+
 ## 1.17.0
 
 ### Minor Changes
