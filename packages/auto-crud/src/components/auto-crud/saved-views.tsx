@@ -875,6 +875,7 @@ function ViewMenu<TData>({
                     value={slug}
                     onChange={(event) => setSlug(event.target.value)}
                     maxLength={80}
+                    required={dialog === 'rename' && selected?.slug !== undefined}
                     placeholder="例如 vip-customers"
                   />
                   <span className="text-sm text-muted-foreground">

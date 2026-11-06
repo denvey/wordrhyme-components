@@ -2001,7 +2001,7 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 
 `defaultView` 接受视图的 slug 或 ID，独立 `AutoTable` 使用 `views={{ defaultView: 'vip-customers' }}`。初始化优先级为 URL 指定、用户本地选中记忆、`defaultView`、全部；本地明确记住“全部”也优先于默认值。默认项不存在时回到全部，不自动选择其他视图。`views` 仍须显式开启，本地偏好与 URL 都不会自动开启视图功能。
 
-视图可包含可选的 `slug`，例如 `{ id: 'view-123', slug: 'vip-customers', name: '重点客户', query }`。新建时按名称建议 slug，可手动修改；重命名保持原 slug。slug 为 1–80 个文字、数字或连接用的短横线，区分大小写。`ViewStorage.create/update` 须保存并返回该字段；已有数据无需迁移，没有 slug 时继续使用 ID。同一资源内 ID 和 slug 必须唯一，slug 也不能与另一视图的 ID 相同。服务端须在用户／租户／资源边界内校验唯一性；修改 slug 后旧 slug 链接失效，稳定 ID 仍可定位。
+视图可包含可选的 `slug`，例如 `{ id: 'view-123', slug: 'vip-customers', name: '重点客户', query }`。新建时按名称建议 slug，可手动修改；重命名保持原 slug。slug 为 1–80 个文字、数字或连接用的短横线，区分大小写。`ViewStorage.create/update` 须保存并返回该字段，`update` 未传 slug 时保留原值；已有数据无需迁移，没有 slug 时继续使用 ID。同一资源内 ID 和 slug 必须唯一，slug 也不能与另一视图的 ID 相同。服务端须在用户／租户／资源边界内校验唯一性；修改 slug 后旧 slug 链接失效，稳定 ID 仍可定位。
 
 默认参数为 `?view=vip-customers`，也接受 `?view=view-123`；若配置上例的 `queryKeys.view`，则使用 `?customerView=vip-customers`。切换视图会同步参数并创建浏览器历史记录，前进／后退恢复 URL 指定的视图。有 slug 时写入规范 slug，只有 ID 的旧链接会以 replace 规范化。`?view=` 明确表示“全部”。仅带视图参数的链接会应用保存条件；若同时带筛选、搜索、排序或分页参数，保留完整 URL 查询，便于分享未保存的调整。无权访问、已删除或查询字段失效时显示错误并保留 URL 查询，不回退到另一个视图。链接接收者仍需有权限读取该视图及资源，URL 不授予访问权限。
 

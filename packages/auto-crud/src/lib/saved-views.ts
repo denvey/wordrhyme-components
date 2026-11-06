@@ -140,8 +140,10 @@ export function createLocalViewStorage(namespace: string): ViewStorage {
     },
     async update(resourceId, id, input) {
       const views = read(resourceId);
-      if (!views.some((view) => view.id === id)) throw new Error('View not found');
-      const view = { ...viewInputSchema.parse(input), id };
+      const current = views.find((view) => view.id === id);
+      if (!current) throw new Error('View not found');
+      const valid = viewInputSchema.parse(input);
+      const view = { ...valid, slug: valid.slug ?? current.slug, id };
       write(
         resourceId,
         views.map((item) => (item.id === id ? view : item)),
