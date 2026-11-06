@@ -24,7 +24,8 @@ export type FilterVariant =
   | 'multiSelect'
   | 'date'
   | 'dateRange'
-  | 'range';
+  | 'range'
+  | 'tags';
 
 /**
  * 解析后的 Zod 字段信息

@@ -31,7 +31,9 @@ export function getColumnPinningStyle<TData>({
     opacity: isPinned ? 0.97 : 1,
     position: isPinned ? 'sticky' : 'relative',
     background: isPinned ? 'var(--background)' : 'var(--background)',
-    width: column.getSize(),
+    // Let data columns absorb spare space so display columns keep their width.
+    width: column.accessorFn && !isPinned ? undefined : column.getSize(),
+    minWidth: column.getSize(),
     zIndex: isPinned ? 1 : undefined,
   };
 }
@@ -46,6 +48,7 @@ export function getFilterOperators(filterVariant: FilterVariant) {
     boolean: dataTableConfig.booleanOperators,
     select: dataTableConfig.selectOperators,
     multiSelect: dataTableConfig.multiSelectOperators,
+    tags: [{ label: '匹配', value: 'matches' }],
   };
 
   return operatorMap[filterVariant] ?? dataTableConfig.textOperators;
@@ -65,12 +68,15 @@ export function getDefaultFilterOperator(filterVariant: FilterVariant) {
 export function getValidFilters<TData>(
   filters: ExtendedColumnFilter<TData>[],
 ): ExtendedColumnFilter<TData>[] {
-  return filters.filter(
-    (filter) =>
+  return filters.filter((filter) => {
+    if (filter.variant === 'tags')
+      return filter.value.include.length + filter.value.exclude.length > 0;
+    return (
       filter.operator === 'isEmpty' ||
       filter.operator === 'isNotEmpty' ||
       (Array.isArray(filter.value)
         ? filter.value.length > 0
-        : filter.value !== '' && filter.value !== null && filter.value !== undefined),
-  );
+        : filter.value !== '' && filter.value !== null && filter.value !== undefined)
+    );
+  });
 }

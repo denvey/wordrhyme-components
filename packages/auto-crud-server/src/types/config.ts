@@ -123,7 +123,10 @@ export interface ListInput {
   search?: string;
   filters?: Array<{
     id: string;
-    value: string | string[];
+    value:
+      | string
+      | string[]
+      | { include: string[]; exclude: string[]; match: 'any' | 'all' };
     variant: string;
     operator: string;
     filterId: string;
@@ -166,7 +169,10 @@ export interface ExportInput {
   search?: string;
   filters?: Array<{
     id: string;
-    value: string | string[];
+    value:
+      | string
+      | string[]
+      | { include: string[]; exclude: string[]; match: 'any' | 'all' };
     variant: string;
     operator: string;
     filterId: string;
@@ -186,7 +192,10 @@ export interface CrudExtensionMetadata {
 
 export interface CrudExtensionFilter {
   id: string;
-  value: string | string[];
+  value:
+    | string
+    | string[]
+    | { include: string[]; exclude: string[]; match: 'any' | 'all' };
   variant: string;
   operator: string;
   filterId?: string | undefined;

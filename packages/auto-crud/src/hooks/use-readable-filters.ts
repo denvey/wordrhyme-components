@@ -4,7 +4,12 @@ import type { UrlStateOptions } from '@/hooks/use-url-state';
 import type { ExtendedColumnFilter, FilterVariant } from '@/types/data-table';
 import * as React from 'react';
 import { getUrlParams, setSearchParams } from '@/hooks/use-url-state';
-import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
+import {
+  applyReadableFilters,
+  getColumnId,
+  getColumnVariant,
+  parseReadableFilters,
+} from '@/lib/readable-filters';
 
 const URL_CHANGE_EVENT = 'urlchange';
 
@@ -22,13 +27,19 @@ type ColumnLike<TData> =
 function filterSignature<TData>(filters: ExtendedColumnFilter<TData>[]): string {
   return JSON.stringify(
     filters
-      .map(({ id, operator, value, variant }) =>
-        JSON.stringify([
-          id,
-          operator,
-          variant === 'multiSelect' && Array.isArray(value) ? [...value].sort() : value,
-        ]),
-      )
+      .map(({ id, operator, value, variant }) => {
+        let normalized = value;
+        if (typeof value === 'object' && !Array.isArray(value) && value !== null) {
+          normalized = {
+            include: [...value.include].sort(),
+            exclude: [...value.exclude].sort(),
+            match: value.match,
+          };
+        } else if (variant === 'multiSelect' && Array.isArray(value)) {
+          normalized = [...value].sort();
+        }
+        return JSON.stringify([id, operator, normalized]);
+      })
       .sort(),
   );
 }
@@ -53,6 +64,10 @@ export function useReadableFilters<TData>(
   const { history = 'replace', scroll = false, resetPageKey = 'page' } = options;
 
   const columnSnapshot = React.useMemo(() => columns, [columns]);
+  const columnSignature = JSON.stringify(
+    columnSnapshot.map((column) => [getColumnId(column), getColumnVariant(column)]),
+  );
+  const hydratedColumnsRef = React.useRef(columnSignature);
 
   // Snapshot of the last URL search string we wrote, used to skip self-triggered urlchange events
   const lastWrittenUrlRef = React.useRef<string | null>(null);
@@ -66,12 +81,15 @@ export function useReadableFilters<TData>(
   // Providers/metadata may introduce fields after the first render. Hydrate them
   // from the URL without writing it or resetting pagination.
   React.useEffect(() => {
+    // Recreated column objects must not discard local, unfinished tag conditions.
+    if (hydratedColumnsRef.current === columnSignature) return;
+    hydratedColumnsRef.current = columnSignature;
     const next = parseReadableFilters(getUrlParams(), columnSnapshot);
     filtersRef.current = next;
     setFilters((previous) =>
       JSON.stringify(previous) === JSON.stringify(next) ? previous : next,
     );
-  }, [columnSnapshot]);
+  }, [columnSignature, columnSnapshot]);
 
   // Listen for external URL changes (popstate, other hooks)
   React.useEffect(() => {

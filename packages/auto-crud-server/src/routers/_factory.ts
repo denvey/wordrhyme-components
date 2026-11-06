@@ -264,13 +264,38 @@ function resolveMetaProcedure(
 // Schema 定义
 // ============================================================
 
-const filterItemSchema = z.object({
+export const tagFilterValueSchema = z
+  .object({
+    include: z.array(z.string().min(1)).max(100),
+    exclude: z.array(z.string().min(1)).max(100),
+    match: z.enum(['any', 'all']),
+  })
+  .strict()
+  .refine(
+    ({ include, exclude }) => !include.some((id) => exclude.includes(id)),
+    'A tag cannot be both included and excluded',
+  );
+
+const ordinaryFilterSchema = z.object({
   id: z.string(),
   value: z.union([z.string(), z.array(z.string())]),
-  variant: z.enum(dataTableConfig.filterVariants),
-  operator: z.enum(dataTableConfig.operators),
+  variant: z.enum(dataTableConfig.filterVariants.filter((variant) => variant !== 'tags')),
+  operator: z.enum(
+    dataTableConfig.operators.filter((operator) => operator !== 'matches'),
+  ),
   filterId: z.string(),
 });
+
+const filterItemSchema = z.union([
+  ordinaryFilterSchema,
+  z.object({
+    id: z.string(),
+    filterId: z.string(),
+    variant: z.literal('tags'),
+    operator: z.literal('matches'),
+    value: tagFilterValueSchema,
+  }),
+]);
 
 export const baseListInputSchema = z.object({
   page: z.number().min(1).default(1),

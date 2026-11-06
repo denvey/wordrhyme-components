@@ -1,5 +1,8 @@
 'use client';
 
+import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
+import { TagCell } from './tag-filter';
+
 import type { TablePaginationOptions } from '@/types/data-table';
 
 import type { CellContext, ColumnMeta, Table } from '@tanstack/react-table';
@@ -93,6 +96,7 @@ export interface FilterConfig {
     | 'dateRange'
     | 'boolean'
     | 'select'
+    | 'tags'
     | 'multiSelect';
   /** select/multiSelect 的选项列表 */
   options?: FieldOption[];
@@ -560,6 +564,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   };
   /** 表格配置 */
   table?: {
+    /** Enable named query views using the global viewStorage. */
+    views?: AutoTableProps<TSchema>['views'];
     /** Optional controls; overrides the application registration for this CRUD id. */
     pagination?: TablePaginationOptions;
     /** 按元素分组的全局表格类名；列级 th/td 类名优先 */
@@ -2255,6 +2261,10 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   onCreate,
   onExport,
 }: AutoCrudTableProps<TSchema>) {
+  const services = useAutoCrudConfig();
+  const viewsEnabled = tableConfig?.views ?? (!!id && !!services?.viewStorage);
+  if (viewsEnabled && !id)
+    throw new Error('Saved views require a stable AutoCrudTable id');
   const locale = React.useMemo(() => resolveLocale(localeProp), [localeProp]);
   const getPagination = React.useCallback(
     () => (id ? tablePagination.get(id) : undefined),
@@ -2267,8 +2277,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   );
   const pagination = tableConfig?.pagination ?? registeredPagination;
   const paginationOptions = React.useMemo(
-    () =>
-      ({ locale: locale.pagination, pageJumpLabel: locale.pagination?.pageJump, ...pagination }),
+    () => ({
+      locale: locale.pagination,
+      pageJumpLabel: locale.pagination?.pageJump,
+      ...pagination,
+    }),
     [pagination, locale.pagination],
   );
   const resolvedSchema = resource.schema ?? schema;
@@ -2616,6 +2629,26 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         };
       }
     }
+    for (const [field, config] of Object.entries(resolvedFields)) {
+      if (
+        !config.filter ||
+        config.filter.variant !== 'tags' ||
+        formattedOverrides[field]?.cell
+      )
+        continue;
+      formattedOverrides[field] = {
+        ...formattedOverrides[field],
+        enableSorting: formattedOverrides[field]?.enableSorting ?? false,
+        cell: ({ row }) => (
+          <TagCell
+            field={field}
+            ids={
+              Array.isArray(row.original[field]) ? (row.original[field] as string[]) : []
+            }
+          />
+        ),
+      };
+    }
     return {
       tableOverrides: formattedOverrides,
       detailTableOverrides: presentationOverrides,
@@ -2832,142 +2865,156 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     .map(renderToolbarAction);
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
-      {(title || description) && (
-        <div className="space-y-2">
-          {title && <h2 className="text-2xl font-bold tracking-tight">{title}</h2>}
-          {description && <p className="text-muted-foreground">{description}</p>}
-        </div>
-      )}
+    <CrudResourceContext.Provider value={id}>
+      <div className="space-y-4">
+        {/* Header */}
+        {(title || description) && (
+          <div className="space-y-2">
+            {title && <h2 className="text-2xl font-bold tracking-tight">{title}</h2>}
+            {description && <p className="text-muted-foreground">{description}</p>}
+          </div>
+        )}
 
-      {/* Toolbar */}
-      {toolbarNodes.length > 0 && (
-        <div className="flex items-center justify-end gap-4">
-          <div className="flex items-center gap-2">{toolbarNodes}</div>
-        </div>
-      )}
+        {/* Toolbar */}
+        {toolbarNodes.length > 0 && (
+          <div className="flex items-center justify-end gap-4">
+            <div className="flex items-center gap-2">{toolbarNodes}</div>
+          </div>
+        )}
 
-      {/* Table */}
-      <AutoTable
-        data={resource.tableData.data}
-        schema={resolvedSchema as TSchema}
-        pageCount={resource.tableData.pageCount}
-        pagination={paginationOptions}
-        {...(resource.tableData.total !== undefined
-          ? { total: resource.tableData.total }
-          : {})}
-        queryKeys={tableConfig?.queryKeys ?? resource.queryKeys}
-        enableRowSelection={tableConfig?.enableRowSelection}
-        initialColumnVisibility={tableConfig?.initialColumnVisibility}
-        getRowId={tableConfig?.getRowId}
-        expandedRow={tableConfig?.expandedRow}
-        defaultExpanded={tableConfig?.defaultExpanded}
-        overrides={tableOverrides as any}
-        classNames={tableConfig?.classNames}
-        exclude={excludedColumns as any}
-        filterOnly={filterOnly}
-        filterMode={tableConfig?.filterModes}
-        search={searchConfig}
-        toolbarExtra={refreshNodes}
-        locale={locale.tableControls}
-        actionBarLocale={locale.actionBar}
-        actions={tableRowActions}
-        onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
-        onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}
-        batchUpdateFields={can.update ? batchFields : undefined}
-        actionBarActions={exportBatchActions}
-        deleteConfirmation={locale.bulkDeleteModal}
-        enableExport={canExport}
-        showDefaultExport={false}
-        initialSorting={defaultSort}
-        onSelectedRowsChange={handleSelectedRowsChange}
-        getSelectedRows={getSelectedRowsRef}
-        {...(onExport ? { exportTableRef } : {})}
-      />
-
-      {/* Custom row dialogs outlive their source menu and row. */}
-      {rowActionDialog}
-
-      {/* Modals */}
-      {/* Create/Edit Modal */}
-      <CrudFormModal
-        open={resource.modal.createOpen || resource.modal.editOpen}
-        onOpenChange={(open) => !open && resource.handlers.closeModals()}
-        mode={resource.modal.createOpen ? 'create' : 'edit'}
-        schema={resolvedSchema}
-        initialValues={formInitialValues}
-        onSubmit={(values) => {
-          if (resource.modal.createOpen) {
-            resource.handlers.submitCreate(values as z.output<TSchema>);
-          } else {
-            resource.handlers.submitUpdate(values as z.output<TSchema>);
+        {/* Table */}
+        <AutoTable
+          resourceId={id}
+          views={
+            viewsEnabled
+              ? {
+                  ...(typeof viewsEnabled === 'object' ? viewsEnabled : {}),
+                  fieldsReady:
+                    !resource.metadataPending &&
+                    (typeof viewsEnabled !== 'object' ||
+                      viewsEnabled.fieldsReady !== false),
+                }
+              : false
           }
-        }}
-        loading={resource.mutations.isCreating || resource.mutations.isUpdating}
-        variant={resource.modal.variant}
-        overrides={formOverrides}
-        scope={formConfig?.scope}
-        locale={locale.formModal}
-        gridColumns={formConfig?.columns}
-        labelAlign={formConfig?.labelAlign}
-        labelWidth={formConfig?.labelWidth}
-        className={formConfig?.className}
-      />
-
-      {/* View Modal */}
-      <ViewModal
-        open={resource.modal.viewOpen}
-        onOpenChange={(open) => !open && resource.handlers.closeModals()}
-        variant={resource.modal.variant}
-        data={resource.modal.selected}
-        schema={resolvedSchema as TSchema}
-        fields={resolvedFields}
-        dynamicOptions={dynamicFilterOptions.labelOptionsByField}
-        denyFields={denyFields}
-        locale={locale}
-        tableOverrides={detailTableOverrides as ColumnOverrides<z.output<TSchema>>}
-        view={viewConfig}
-        form={formConfig}
-      />
-
-      {/* Delete Confirmation */}
-      <AlertDialog
-        open={resource.modal.deleteOpen}
-        onOpenChange={(open) => !open && resource.handlers.closeModals()}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{locale.deleteModal.title}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {locale.deleteModal.description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>{locale.deleteModal.cancel}</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={resource.handlers.confirmDelete}
-              disabled={resource.mutations.isDeleting}
-            >
-              {resource.mutations.isDeleting
-                ? locale.deleteModal.confirming
-                : locale.deleteModal.confirm}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Import Dialog */}
-      {canImport && resource.handlers.import && (
-        <ImportDialog
-          open={importOpen}
-          onOpenChange={setImportOpen}
-          onImport={resource.handlers.import}
-          columns={importColumns}
-          fields={resolvedFields}
-          locale={locale.importDialog}
+          data={resource.tableData.data}
+          schema={resolvedSchema as TSchema}
+          pageCount={resource.tableData.pageCount}
+          pagination={paginationOptions}
+          {...(resource.tableData.total !== undefined
+            ? { total: resource.tableData.total }
+            : {})}
+          queryKeys={tableConfig?.queryKeys ?? resource.queryKeys}
+          enableRowSelection={tableConfig?.enableRowSelection}
+          initialColumnVisibility={tableConfig?.initialColumnVisibility}
+          getRowId={tableConfig?.getRowId}
+          expandedRow={tableConfig?.expandedRow}
+          defaultExpanded={tableConfig?.defaultExpanded}
+          overrides={tableOverrides as any}
+          classNames={tableConfig?.classNames}
+          exclude={excludedColumns as any}
+          filterOnly={filterOnly}
+          filterMode={tableConfig?.filterModes}
+          search={searchConfig}
+          toolbarExtra={refreshNodes}
+          locale={locale.tableControls}
+          actionBarLocale={locale.actionBar}
+          actions={tableRowActions}
+          onDeleteSelected={can.delete ? resource.handlers.deleteMany : undefined}
+          onUpdateSelected={can.update ? resource.handlers.updateMany : undefined}
+          batchUpdateFields={can.update ? batchFields : undefined}
+          actionBarActions={exportBatchActions}
+          deleteConfirmation={locale.bulkDeleteModal}
+          enableExport={canExport}
+          showDefaultExport={false}
+          initialSorting={defaultSort}
+          onSelectedRowsChange={handleSelectedRowsChange}
+          getSelectedRows={getSelectedRowsRef}
+          {...(onExport ? { exportTableRef } : {})}
         />
-      )}
-    </div>
+
+        {/* Custom row dialogs outlive their source menu and row. */}
+        {rowActionDialog}
+
+        {/* Modals */}
+        {/* Create/Edit Modal */}
+        <CrudFormModal
+          open={resource.modal.createOpen || resource.modal.editOpen}
+          onOpenChange={(open) => !open && resource.handlers.closeModals()}
+          mode={resource.modal.createOpen ? 'create' : 'edit'}
+          schema={resolvedSchema}
+          initialValues={formInitialValues}
+          onSubmit={(values) => {
+            if (resource.modal.createOpen) {
+              resource.handlers.submitCreate(values as z.output<TSchema>);
+            } else {
+              resource.handlers.submitUpdate(values as z.output<TSchema>);
+            }
+          }}
+          loading={resource.mutations.isCreating || resource.mutations.isUpdating}
+          variant={resource.modal.variant}
+          overrides={formOverrides}
+          scope={formConfig?.scope}
+          locale={locale.formModal}
+          gridColumns={formConfig?.columns}
+          labelAlign={formConfig?.labelAlign}
+          labelWidth={formConfig?.labelWidth}
+          className={formConfig?.className}
+        />
+
+        {/* View Modal */}
+        <ViewModal
+          open={resource.modal.viewOpen}
+          onOpenChange={(open) => !open && resource.handlers.closeModals()}
+          variant={resource.modal.variant}
+          data={resource.modal.selected}
+          schema={resolvedSchema as TSchema}
+          fields={resolvedFields}
+          dynamicOptions={dynamicFilterOptions.labelOptionsByField}
+          denyFields={denyFields}
+          locale={locale}
+          tableOverrides={detailTableOverrides as ColumnOverrides<z.output<TSchema>>}
+          view={viewConfig}
+          form={formConfig}
+        />
+
+        {/* Delete Confirmation */}
+        <AlertDialog
+          open={resource.modal.deleteOpen}
+          onOpenChange={(open) => !open && resource.handlers.closeModals()}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{locale.deleteModal.title}</AlertDialogTitle>
+              <AlertDialogDescription>
+                {locale.deleteModal.description}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>{locale.deleteModal.cancel}</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={resource.handlers.confirmDelete}
+                disabled={resource.mutations.isDeleting}
+              >
+                {resource.mutations.isDeleting
+                  ? locale.deleteModal.confirming
+                  : locale.deleteModal.confirm}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Import Dialog */}
+        {canImport && resource.handlers.import && (
+          <ImportDialog
+            open={importOpen}
+            onOpenChange={setImportOpen}
+            onImport={resource.handlers.import}
+            columns={importColumns}
+            fields={resolvedFields}
+            locale={locale.importDialog}
+          />
+        )}
+      </div>
+    </CrudResourceContext.Provider>
   );
 }

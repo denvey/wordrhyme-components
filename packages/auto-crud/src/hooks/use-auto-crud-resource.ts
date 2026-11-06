@@ -305,6 +305,8 @@ export interface UseAutoCrudResourceReturn<
   };
   /** Optional schema override from host metadata. */
   schema?: z.ZodObject<z.ZodRawShape>;
+  /** Whether the initial field metadata is still loading. */
+  metadataPending?: boolean;
   /** Optional field config override from host metadata. */
   fields?: Fields;
   /** Query capabilities reported by auto-crud-server metadata. */
@@ -904,6 +906,7 @@ export function useAutoCrudResource<
       isFetching: !listReady || listQuery.isFetching,
     },
     schema: resolvedSchema,
+    metadataPending,
     fields: metadataFields,
     capabilities,
     defaultSort: defaultSorting,

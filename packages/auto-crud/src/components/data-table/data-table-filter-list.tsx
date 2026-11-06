@@ -9,6 +9,8 @@ import {
   ListFilter,
   Trash2,
 } from 'lucide-react';
+import { TagFilter } from '@/components/auto-crud/tag-filter';
+import { createColumnFilter, emptyTagFilter } from '@/lib/tag-filter';
 import { useReadableFilters } from '@/hooks/use-readable-filters';
 import { parseAsStringEnum, useQueryState } from '@/hooks/use-url-state';
 import * as React from 'react';
@@ -62,7 +64,6 @@ import {
   useCalendarToday,
 } from '@/lib/calendar-date';
 import { getDefaultFilterOperator, getFilterOperators } from '@/lib/data-table';
-import { generateId } from '@/lib/id';
 import { cn } from '@/lib/utils';
 import type {
   ExtendedColumnFilter,
@@ -133,13 +134,10 @@ export function DataTableFilterList<TData>({
 
     debouncedSetFilters([
       ...filters,
-      {
-        id: column.id as Extract<keyof TData, string>,
-        value: '',
-        variant: column.columnDef.meta?.variant ?? 'text',
-        operator: getDefaultFilterOperator(column.columnDef.meta?.variant ?? 'text'),
-        filterId: generateId({ length: 8 }),
-      },
+      createColumnFilter<TData>(
+        column.id as Extract<keyof TData, string>,
+        column.columnDef.meta?.variant ?? 'text',
+      ),
     ]);
   }, [columns, filters, debouncedSetFilters]);
 
@@ -218,7 +216,7 @@ export function DataTableFilterList<TData>({
     <Sortable
       value={filters}
       onValueChange={setFilters}
-      getItemValue={(item) => item.filterId}
+      getItemValue={(item: ExtendedColumnFilter<TData>) => item.filterId}
     >
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
@@ -348,7 +346,11 @@ function DataTableFilterItem<TData>({
   const today = useCalendarToday();
   const [showFieldSelector, setShowFieldSelector] = React.useState(false);
   const [showOperatorSelector, setShowOperatorSelector] = React.useState(false);
-  const [showValueSelector, setShowValueSelector] = React.useState(false);
+  const [showValueSelector, setShowValueSelector] = React.useState(
+    filter.variant === 'tags' &&
+      !filter.value.include.length &&
+      !filter.value.exclude.length,
+  );
 
   const column = columns.find((column) => column.id === filter.id);
 
@@ -462,10 +464,15 @@ function DataTableFilterItem<TData>({
                           operator: getDefaultFilterOperator(
                             column.columnDef.meta?.variant ?? 'text',
                           ),
-                          value: '',
+                          value:
+                            column.columnDef.meta?.variant === 'tags'
+                              ? emptyTagFilter()
+                              : '',
                         });
 
                         setShowFieldSelector(false);
+                        if (column.columnDef.meta?.variant === 'tags')
+                          setShowValueSelector(true);
                       }}
                     >
                       <span className="truncate">{column.columnDef.meta?.label}</span>
@@ -584,6 +591,19 @@ function onFilterInputRender<TData>({
   }
 
   switch (filter.variant) {
+    case 'tags':
+      return (
+        <TagFilter
+          id={inputId}
+          variant="input"
+          open={showValueSelector}
+          onOpenChange={setShowValueSelector}
+          field={String(filter.id)}
+          title={column.columnDef.meta?.label ?? String(filter.id)}
+          value={filter.value}
+          onChange={(value) => onFilterUpdate(filter.filterId, { value })}
+        />
+      );
     case 'text':
     case 'number':
     case 'range': {

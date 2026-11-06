@@ -1936,3 +1936,186 @@ In `AutoCrudTable`, the jump label follows the existing `locale` unless explicit
 Set `responsive: true` alongside these options to hide the extra controls when
 their measured content does not fit the pagination container. This responds to
 container resizing and translated text widths, without changing other tables.
+
+## 保存视图与动态标签
+
+在 `QueryClientProvider` 内配置一次服务，所有带稳定 `id` 的 `AutoCrudTable` 自动显示视图菜单：
+
+```tsx
+import {
+  AutoCrudProvider,
+  AutoCrudTable,
+  createLocalViewStorage,
+} from '@wordrhyme/auto-crud';
+
+// 服务对象应保持引用稳定。后端存储只需实现 ViewStorage 的四个方法。
+const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
+
+<QueryClientProvider client={queryClient}>
+  <AutoCrudProvider
+    scope={`${organizationId}:${userId}`}
+    viewStorage={viewStorage}
+    tagService={tagService}
+  >
+    <AutoCrudTable
+      id="crm.customers"
+      schema={schema}
+      resource={resource}
+      fields={{
+        tags: { label: '分类', filter: { variant: 'tags' }, form: false },
+      }}
+    />
+  </AutoCrudProvider>
+</QueryClientProvider>;
+```
+
+- 视图保存筛选条件、条件间的 AND/OR、搜索词和排序；不保存分页、选中行。支持新建、复制、重命名、删除、保存和放弃修改。`table={{ views: false }}` 可在某个表关闭。
+- 视图支持下拉与 Tab 两种展示：下拉放在搜索框前，设置收在下拉菜单内；Tab 放在筛选栏上方，末尾仅提供设置图标，新建操作与下拉模式一致，放在设置菜单内。在设置菜单的“展示方式”中切换，当前视图及未保存修改会保留。有修改时显示状态点、“保存修改”和“还原”。无本地偏好时默认使用下拉；`table={{ views: { selector: 'tabs' } }}` 可设置初始展示。独立使用 `AutoTable` 时传 `views={{ selector: 'tabs' }}`。本地记忆优先于 `selector`，展示方式不写入已保存的查询。
+- `scope` 必须包含当前用户与租户；切换时重置组件状态。`createLocalViewStorage` 仅保存当前浏览器中的视图。换用后端时传入 `ViewStorage`，组件调用方式不变。
+- `TagService.list` 接收 `resourceId/field` 和可选的 `query/page/pageSize/signal`，统一返回 `{ options: TagOption[], hasMore: boolean }`，两个字段都必须提供。每个选项包含稳定 ID `value`、名称 `label` 和颜色 `color`。`resolve` 返回指定稳定 ID 对应的名称与颜色。用户新建标签只增加选项，不增加 schema 字段。
+- `create/update/remove/assign` 是可选能力。`assign` 必须只添加或移除指定标签，保留其他关联；单条编辑和选中行批量设置共用此方法。权限必须由服务端校验。
+- 标签列默认只展示标签，不自动添加行内或批量编辑按钮。入口由业务通过 `actions.row`、`actions.batch`、工具栏或自定义单元格配置；文字、图标及样式使用现有按钮组件控制。
+- 标签查询条件形如 `{ include: ['vip'], exclude: ['blocked'], match: 'any' }`。`any/all` 只作用于正选标签，反选始终要求全部不包含；整个标签条件再参与外层 AND/OR。空条件不进入 URL。
+- 标签 ID 通过 JSON 和 `__op=matches` 写入 URL；普通条件沿用现有可读格式。标签重命名不会破坏视图。失效 ID 保留在界面，服务端应拒绝失效条件，避免查询范围意外扩大。
+- 后端保存视图须按用户、租户和 CRUD `id` 隔离；标签及其数据关联按租户、CRUD `id` 和字段隔离。视图不是权限凭证。
+
+`ViewStorage` 和 `TagService` 的完整 TypeScript 接口由包导出。完整交互示例见 Storybook 的 **Auto CRUD / Saved views and tags**；可切换 simple、advanced、command 三种模式。
+
+展示方式与当前选中视图的 ID 自动存入浏览器 `localStorage`，键为 `auto-crud:view-preferences:${encodeURIComponent(scope)}:${encodeURIComponent(resourceId)}`，按用户／租户和资源隔离，独立于 `ViewStorage` 的本地或服务端实现。刷新或重新进入时恢复展示方式；视图列表加载成功后恢复选中项。URL 已有筛选、搜索、排序或分页参数时保留 URL 查询，否则应用上次视图的保存条件，使用 replace 更新 URL。上次视图已删除或字段不可用时清除其选中记忆，保留 URL 查询。本地数据损坏或存储不可用时使用配置的初始展示方式，仍可在当前页面切换。未保存的查询不另存到本地偏好中。
+
+标签列表调用示例：
+
+```ts
+const controller = new AbortController();
+const { options, hasMore } = await tagService.list({
+  resourceId: 'crm.customers',
+  field: 'tags',
+  query: '重点',
+  page: 1,
+  pageSize: 30,
+  signal: controller.signal,
+});
+// options: [{ value: 'vip', label: '重点客户', color: '#3b82f6' }]
+// hasMore: false
+```
+
+标签选择器从第 1 页开始，每页请求 30 项，搜索为空时传 `query: ''`；搜索变化后重新请求第 1 页。服务应将 `signal` 传给底层请求以支持取消，读取失败时抛出异常，由组件显示错误。无结果时返回 `{ options: [], hasMore: false }`，最后一页仍返回当前页的选项并设置 `hasMore: false`。
+
+迁移旧的标签适配器时，移除对 `type/values/search` 的依赖，搜索统一使用 `query`；原先返回数组或省略分页字段的实现需要改为上述对象格式，并为选项提供 `color`。
+
+### 视图数量
+
+通过可选的 `views.counts` 回调接入数量，Tab 和下拉选项都会显示。组件提供各视图保存的筛选、AND/OR 与搜索条件，并额外提供不带筛选的「全部」查询；查询不包含排序和分页，也不叠加当前尚未保存的筛选。
+
+```tsx
+import type { SavedViewsConfig } from '@wordrhyme/auto-crud';
+
+// 在组件外定义，或通过 useCallback 保持引用稳定。
+const loadViewCounts: NonNullable<SavedViewsConfig['counts']> = async ({
+  queries,
+  signal,
+}) => {
+  const result = await api.customers.counts.query({ queries }, { signal });
+  return result.counts;
+};
+
+<AutoCrudTable
+  id="crm.customers"
+  schema={schema}
+  resource={resource}
+  table={{ views: { selector: 'tabs', counts: loadViewCounts } }}
+/>;
+```
+
+回调返回以传入 `query.key` 为键的数量对象，键由组件生成，直接原样返回即可。每批最多 100 个查询，更多视图自动分批。使用 `auto-crud-server` 时开启 `counts: true`，数据库适配器须支持受权限和租户范围约束的 `$counts`；其他后端可自行实现相同的回调。
+
+首次加载显示 `…`，零结果显示 `0`，缺失或无效数量显示 `—`；请求失败显示 `—` 和重试入口。保存视图条件后重新统计；表格数据引用或 `counts` 回调引用变化时也会重新获取。数量由查询缓存管理，不写入视图存储。独立 `AutoTable` 使用 `views={{ selector: 'tabs', counts: loadViewCounts }}`。
+
+Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 使用内存视图与标签数据，模拟 300ms 请求延迟，预置数量为 3、2、1、0 的视图。列表和数量共用筛选逻辑，修改客户标签后会重新计算；刷新页面后重置示例数据。
+
+### 视图 Tab 样式
+
+`views.tabs` 控制 Tab 外观。默认使用现有的分段样式；`variant: 'line'` 显示选中项的强调线，`linePosition` 支持 `bottom`（默认）和 `top`。下拉展示不受此配置影响。
+
+```tsx
+<AutoCrudTable
+  id="crm.customers"
+  schema={schema}
+  resource={resource}
+  table={{
+    views: {
+      selector: 'tabs',
+      tabs: {
+        variant: 'line',
+        linePosition: 'bottom',
+        classNames: {
+          list: 'gap-2',
+          trigger: 'text-base data-[state=on]:text-blue-700',
+          indicator: 'h-1 bg-blue-600',
+        },
+      },
+    },
+  }}
+/>;
+```
+
+`classNames.list` 作用于 Tab 列表，`trigger` 作用于每个 Tab（含「全部」），`indicator` 作用于选中项的线条，可修改颜色和粗细。类名通过 `cn` 在默认类名之后合并；`trigger` 的选中状态可用 `data-[state=on]` 定制。`linePosition` 和 `indicator` 仅在线条样式中生效。独立 `AutoTable` 使用同样的 `views.tabs` 配置。这些外观配置由使用方提供，不写入本地偏好。
+
+Storybook 提供 **Line Tabs**（下方蓝色强调线）和 **Top Line Tabs**（上方强调线）示例，均带视图数量；可通过 Controls 切换样式和线条位置。已有本地展示偏好时，仍可在视图设置中切换到 Tab。
+
+### 自定义标签编辑入口
+
+`TagAssignment` 是受控弹窗，不包含按钮。打开后直接显示搜索和标签列表，已有标签默认选中，通过勾选／取消勾选编辑，无需选择添加或移除。已选标签的名称、颜色实时显示；清空和保存位于同一行，点击保存后才提交记录的标签关联。
+
+筛选列表和赋值列表均在底部提供「添加标签」，每个标签后的编辑图标直接在当前行编辑名称、颜色。编辑区使用确认／取消图标，并在有删除权限时提供删除和行内确认；没有独立的管理弹窗。新建、重命名、改色、删除标签定义会立即调用对应服务并刷新标签缓存，与底部保存记录勾选结果分别提交。仅配置服务已提供的能力对应的入口；编辑标签定义期间暂停勾选和保存记录，避免未完成的编辑丢失。
+
+在同一个 `AutoCrudProvider` 和 `QueryClientProvider` 内渲染，`resourceId` 与表格 `id` 一致。`entities` 传入 `{ id, tagIds }` 数组，组件在打开时保存当前标签快照：单条记录默认勾选已有标签；多条记录的共同标签全选，部分记录才有的标签半选。未操作的半选标签保持原样，勾选后给所有记录设置，取消勾选后从所有记录移除；清空会清除所选记录的所有已有标签。只有存在实际变化时才能保存，底层仍通过 `TagService.assign` 提交增删差异，保留其他标签。
+
+保存成功后刷新标签缓存，调用 `onSaved`，最后通过 `onOpenChange(false)` 请求关闭；失败时保留弹窗并显示错误，提交期间禁用选择操作。关闭后放弃未提交选择，再次打开使用新的当前标签；打开期间切换资源、字段或目标记录时重建编辑状态。未提供 `tagService.assign` 时不渲染弹窗。
+
+```tsx
+import { useState } from 'react';
+import { Tags } from 'lucide-react';
+import { Button } from '@wordrhyme/shadcn';
+import { TagAssignment, type TagAssignmentProps } from '@wordrhyme/auto-crud';
+
+function EditTags({ entities, onSaved }: {
+  entities: TagAssignmentProps['entities'];
+  onSaved: () => void | Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  return <>
+    <Button
+      type="button"
+      variant="outline"
+      size="icon-sm"
+      aria-label="设置标签"
+      disabled={!entities.length}
+      onClick={() => setOpen(true)}
+    >
+      <Tags aria-hidden="true" className="size-4" />
+    </Button>
+    <TagAssignment
+      resourceId="crm.customers"
+      field="tags"
+      title="标签"
+      entities={entities}
+      open={open}
+      onOpenChange={setOpen}
+      onSaved={onSaved}
+    />
+  </>;
+}
+```
+
+按钮内容可换成文字或文字加图标；纯图标入口应提供 `aria-label`。调用方根据更新权限和字段权限决定是否展示入口，服务端仍须校验赋值权限。放入行菜单时，可在菜单项点击后打开表格层的受控弹窗，或复用 `open({ type: 'custom', component: ... })` 托管弹窗，避免菜单关闭时卸载编辑状态。Storybook 示例通过 `tagActionAppearance` 演示三种外观。
+
+### 三种模式中的标签筛选
+
+`filter.variant: 'tags'` 在简单、高级、命令模式中复用同一标签选择器、结构化条件和 URL。简单模式使用工具栏按钮；高级、命令模式使用条件行内的值输入框，命令模式选择标签字段后直接展开选择器，不需要占位条件。切换模式保留包含项、排除项及任一／全部设置。
+
+每个标签始终显示标准 Select 控件，可直接选择「包含」或「不包含」；取消勾选表示该标签不参与筛选，不额外增加「不限」选项。上方的「满足任一／满足全部」仅作用于包含项，排除项始终同时生效。动态搜索、分页、新增和行内编辑在三种模式中共用，普通 select／multiSelect 的行为不变。
+
+独立使用 `TagFilter` 时，在 `AutoCrudProvider` 内传入 `resourceId="crm.customers"` 和 `field="tags"`，默认显示工具栏按钮；表格内部可省略 `resourceId`，自动继承表格的 CRUD id。嵌入自有条件行可传 `variant="input"`；`id` 和 `className` 对应输入样式的触发按钮，`open/onOpenChange` 可控制其展开状态。值仍通过 `value/onChange` 控制，不需要转换成普通多选数组。
+
+`useAutoCrudResource` 返回 `metadataPending`，`AutoCrudTable` 据此等待字段元数据就绪，再恢复上次视图，避免把尚未加载的扩展字段当成已删除字段。自定义资源应在异步字段加载期间提供 `metadataPending: true`；独立 `AutoTable` 使用 `views={{ fieldsReady: false }}` 暂停恢复和视图切换，字段加载完成后改为 `true`。未提供这些状态时沿用同步字段行为。
