@@ -2168,3 +2168,53 @@ const resource = useAutoCrudResource({
 ```
 
 `TableSearchProps` / `TableSearchConfig` 可从包入口导入。`queryContext` 透传给 tRPC 列表与自动导出；自定义 `exportFetcher` 需自行传递请求上下文。服务端须支持所选传输方式。`resource.tableData.error` 暴露查询失败，调用方可展示具体错误；它不把失败当成无匹配结果。
+
+## 双击搜索框批量查询
+
+在字符串或数值字段上声明 `filter.batch: true` 后，默认搜索框右侧显示批量查询图标，点击可打开弹窗，也支持双击搜索框或按 `Alt+Enter`。图标悬停显示“批量查询”，辅助技术可读取按钮名称。
+
+```tsx
+const fields = {
+  orderNo: { label: '订单编号', search: true, filter: { batch: true } },
+  trackingNo: { label: '物流单号', filter: { batch: true } },
+  customerId: { label: '客户 ID', filter: { batch: true } },
+};
+const resource = useAutoCrudResource({ router: api.orders, schema: orderSchema, fields });
+
+<AutoCrudTable
+  schema={orderSchema}
+  resource={resource}
+  fields={fields}
+  table={{
+    search: { placeholder: '搜索订单' },
+    batchSearch: { maxItems: 2000 },
+  }}
+/>
+```
+
+`table.batchSearch` 可省略，默认最多 2000 个去重后的有效值；设为 `false` 关闭。`table.search: false` 隐藏整个搜索入口。全局文字搜索能力关闭、但批量筛选可用时，显示只读搜索框作为批量查询入口。候选字段遵循字段权限、筛选能力和隐藏配置；不支持日期、对象、数组等类型。内置 hook 提供统一的 `filterState: { filters, onFiltersChange }`，`batchSearch: { filter, onFilterChange }` 是这份状态的批量录入适配。自定义 resource 应提供同样的共享状态，并用于列表、总数和导出；独立使用 `AutoTable` 时通过 `filterState` 传入。
+
+每行一个值，支持 Excel 单列粘贴。输入会去空白行、去除首尾空白并去重，保留字符串编号的前导零和内部逗号。多列粘贴、超限和不符合字段 schema 的值会阻止提交并提示问题行。数值字段先验证再规范化；同一批值按 `inArray` 精确匹配，与已有条件沿用当前 AND / OR 设置。点击查询或按 `Ctrl/Cmd+Enter` 应用并回到第一页，分页、总数和全量导出共享该条件。
+
+提交时将当前批量条件写入统一 `filters`，替换该字段原有条件。搜索框内部右侧的图标替换为“字段 · N 项”，点击可编辑，点 × 通过共享筛选状态移除并恢复图标；仍可在左侧输入普通搜索。标签依据已应用的条件显示，即使查询结果为 0 条也保留。简单筛选不重复展示同一字段的批量摘要，高级筛选和命令筛选仍将其计为普通条件，原有重置操作同样生效。搜索框下方不展示额外标签或说明，弹窗不提供独立重置按钮。取消弹窗不改变已提交条件；切换已保存视图会清除批量条件。批量值只保存在当前 resource 的筛选状态中，不进入 URL，也不保存到视图。`locale.batchSearch` 可覆盖弹窗和提示文案，内置中文、英文。
+
+自定义搜索框通过 `TableSearchProps.openBatchSearch` 接入双击行为，并可用 `batchSearchHint` 展示提示；回调只在批量功能可用时提供。生效条件通过 `batchSearch: { label, onRemove }` 提供，可放入自定义输入框的后缀区，点击标签时调用 `openBatchSearch`：
+
+```tsx
+render: ({ value, onValueChange, placeholder, openBatchSearch, batchSearchHint }) => (
+  <Input
+    value={value}
+    onChange={event => onValueChange(event.target.value)}
+    onDoubleClick={openBatchSearch}
+    onKeyDown={event => {
+      if (event.altKey && event.key === 'Enter') openBatchSearch?.();
+    }}
+    placeholder={placeholder}
+    title={batchSearchHint}
+  />
+)
+```
+
+大量值会增加请求体积。tRPC 消费端应配置支持 POST 查询的 HTTP link，例如 `httpBatchLink({ url, methodOverride: 'POST' })`，并在服务端 HTTP handler 启用 `allowMethodOverride: true`。仅传入 `queryContext: { methodOverride: 'POST' }` 不会自动改变标准 tRPC link 的 HTTP 方法；使用操作上下文时，消费端需要自行将其路由到相应的 POST link。组件库不创建专用批量查询接口，沿用已有的 `filters/inArray` 契约。
+
+Storybook：`Auto CRUD / Batch Search / Double Click Search`。

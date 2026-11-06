@@ -87,6 +87,8 @@ import { createTableSchema } from '@/lib/schema-bridge/zod-to-columns';
 export interface FilterConfig {
   /** 是否启用筛选（默认跟随 table.meta.variant 推断） */
   enabled?: boolean;
+  /** Allow exact batch matching from the search input's double-click dialog. */
+  batch?: boolean;
   /** 筛选器类型 */
   variant?:
     | 'text'
@@ -582,6 +584,8 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
     filterModes?: FilterMode | FilterMode[];
     /** 全局搜索框；默认在存在 search: true 字段时显示 */
     search?: AutoTableProps<TSchema>['search'];
+    /** Page-local batch search. Enabled by filter.batch fields; false disables it. */
+    batchSearch?: false | import('@/lib/batch-search').BatchSearchConfig;
     /**
      * 批量更新字段配置
      * - 只需传字段名数组，options 自动从 schema enum 推导
@@ -2689,6 +2693,67 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
       ? true
       : false;
   }, [resolvedFields, resource.capabilities?.search, tableConfig?.search]);
+  const batchSearch = React.useMemo<AutoTableProps<TSchema>['batchSearch']>(() => {
+    if (
+      !resource.batchSearch ||
+      !resource.filterState ||
+      resource.metadataPending ||
+      tableConfig?.batchSearch === false ||
+      tableConfig?.search === false ||
+      resource.capabilities?.filters?.enabled === false
+    )
+      return undefined;
+    const { fields: allowed } = resource.capabilities?.filters ?? {};
+    const batchSearchFields = Object.entries(resolvedFields).flatMap(([key, field]) => {
+      const { filter } = field;
+      const fieldSchema = resolvedSchema.shape[key] as z.ZodType | undefined;
+      if (
+        !filter ||
+        !filter.batch ||
+        filter.enabled === false ||
+        filter.hidden ||
+        field.hidden ||
+        denyFields?.includes(key) ||
+        excludedColumns.includes(key) ||
+        (allowed && !allowed.includes(key)) ||
+        !fieldSchema
+      )
+        return [];
+      const { type } = parseZodField(fieldSchema);
+      return type === 'string' || type === 'number'
+        ? [{ id: key, label: field.label ?? humanize(key) }]
+        : [];
+    });
+    if (!batchSearchFields.length) return undefined;
+    return {
+      ...resource.batchSearch,
+      ...tableConfig?.batchSearch,
+      fields: batchSearchFields,
+      locale: locale.batchSearch,
+    };
+  }, [
+    resource.batchSearch,
+    resource.filterState,
+    resource.metadataPending,
+    resource.capabilities?.filters,
+    resolvedFields,
+    resolvedSchema,
+    denyFields,
+    excludedColumns,
+    tableConfig?.batchSearch,
+    tableConfig?.search,
+    locale.batchSearch,
+  ]);
+  const batchFilter = resource.batchSearch?.filter;
+  const changeBatchFilter = resource.batchSearch?.onFilterChange;
+  React.useEffect(() => {
+    if (
+      batchFilter &&
+      !batchSearch?.fields.some((field) => field.id === batchFilter.id)
+    ) {
+      changeBatchFilter?.(null);
+    }
+  }, [batchFilter, batchSearch?.fields, changeBatchFilter]);
   const batchFields = React.useMemo(
     () =>
       buildBatchUpdateFields(resolvedSchema, tableConfig?.batchFields, resolvedFields),
@@ -2915,6 +2980,8 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
           filterOnly={filterOnly}
           filterMode={tableConfig?.filterModes}
           search={searchConfig}
+          batchSearch={batchSearch}
+          filterState={batchSearch ? resource.filterState : undefined}
           toolbarExtra={refreshNodes}
           locale={locale.tableControls}
           actionBarLocale={locale.actionBar}

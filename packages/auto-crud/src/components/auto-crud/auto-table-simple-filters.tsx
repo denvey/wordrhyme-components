@@ -10,10 +10,6 @@ import {
   XCircle,
 } from 'lucide-react';
 import * as React from 'react';
-interface DateRange {
-  from: Date | undefined;
-  to?: Date | undefined;
-}
 
 import { Badge } from '@wordrhyme/shadcn';
 import { Button } from '@wordrhyme/shadcn';
@@ -24,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@wordrhyme/shadcn';
 import { Separator } from '@wordrhyme/shadcn';
 import { Slider } from '@wordrhyme/shadcn';
 import { Select } from '@wordrhyme/shadcn-ui';
+import { isBatchSearchFilter } from '@/lib/batch-search';
 import {
   calendarMaxDate,
   calendarPresentation,
@@ -39,6 +36,11 @@ import { TagFilter } from './tag-filter';
 import { isTagFilterValue, type TagFilterValue } from '@/lib/tag-filter';
 import { cn } from '@/lib/utils';
 import type { ExtendedColumnFilter, Option } from '@/types/data-table';
+
+interface DateRange {
+  from: Date | undefined;
+  to?: Date | undefined;
+}
 
 function mergeSelectedFilterOptions(
   currentOptions: Option[],
@@ -99,6 +101,7 @@ export function AutoTableSimpleFilters<TData>({
     ...queryStateOptions,
     resetPageKey: table.options.meta?.queryKeys?.page ?? 'page',
     shallow,
+    state: table.options.meta?.filterState,
   });
 
   const filters = externalFilters ?? queryFilters;
@@ -199,6 +202,8 @@ export function AutoTableSimpleFilters<TData>({
   const filterColumns = React.useMemo(
     () =>
       columns.filter((col) => {
+        const activeFilter = filterMap.get(col.id as Extract<keyof TData, string>);
+        if (activeFilter && isBatchSearchFilter(activeFilter)) return false;
         const meta = col.columnDef.meta;
         const enableFilter = col.columnDef.enableColumnFilter !== false;
 
@@ -215,7 +220,7 @@ export function AutoTableSimpleFilters<TData>({
 
         return true;
       }),
-    [columns],
+    [columns, filterMap],
   );
 
   // 自动折叠：计算第一行能放多少个项
@@ -374,7 +379,6 @@ export function AutoTableSimpleFilters<TData>({
         const meta = column.columnDef.meta!;
         const value = getFilterValue(column.id);
         const isHidden = !expanded && visibleCount !== null && index >= visibleCount;
-
         switch (meta.variant) {
           case 'tags':
             return (

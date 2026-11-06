@@ -31,6 +31,7 @@ export type { RowActionDialogProps } from './lib/row-action-dialog';
 export { setToolbarResolver } from './components/auto-crud/auto-crud-table';
 
 // i18n
+export type { BatchSearchLocale } from './i18n/batch-search';
 export { zhCN, enUS, jaJP, koKR, frFR, deDE, esES, resolveLocale } from './i18n/locale';
 export type {
   AutoCrudLocale,
@@ -42,8 +43,9 @@ export type {
 export { AutoForm, type AutoFormProps } from './components/auto-crud/auto-form';
 export { AutoTable, type AutoTableProps } from './components/auto-crud/auto-table';
 export type {
-  TableSearchProps,
+  TableBatchSearchConfig,
   TableSearchConfig,
+  TableSearchProps,
 } from './components/auto-crud/auto-table';
 export { AutoTableActionBar } from './components/auto-crud/auto-table-action-bar';
 export type {
@@ -73,6 +75,13 @@ export {
   DataTableViewOptions,
   type DataTableViewOptionsProps,
 } from './components/data-table/data-table-view-options';
+export type {
+  BatchSearchConfig,
+  BatchSearchField,
+  BatchSearchFilter,
+  BatchSearchState,
+} from './lib/batch-search';
+export type { TableFilterState } from './types/data-table';
 export { MultiCombobox, Select } from '@wordrhyme/shadcn-ui';
 export type {
   MultiComboboxOption,

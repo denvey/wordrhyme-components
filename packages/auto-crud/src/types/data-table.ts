@@ -30,6 +30,12 @@ declare module '@tanstack/react-table' {
   interface TableMeta<TData extends RowData> {
     queryKeys?: QueryKeys;
     queryStateOptions?: import('@/hooks/use-url-state').UrlStateOptions;
+    filterState?: TableFilterState<TData>;
+    /** @internal Renders the batch value using the existing filter controls. */
+    renderFilterValue?: (
+      filter: ExtendedColumnFilter<TData>,
+      props: { className?: string },
+    ) => React.ReactNode;
   }
 
   // biome-ignore lint/correctness/noUnusedVariables: TData and TValue are used in the ColumnMeta interface
@@ -95,6 +101,15 @@ export interface ExtendedColumnSort<TData> extends Omit<ColumnSort, 'id'> {
 export type ExtendedColumnFilter<TData> = FilterItemSchema & {
   id: Extract<keyof TData, string>;
 };
+
+export interface TableFilterState<TData> {
+  filters: ExtendedColumnFilter<TData>[];
+  onFiltersChange: (
+    updater:
+      | ExtendedColumnFilter<TData>[]
+      | ((previous: ExtendedColumnFilter<TData>[]) => ExtendedColumnFilter<TData>[]),
+  ) => void;
+}
 
 export interface DataTableRowAction<TData> {
   row: Row<TData>;

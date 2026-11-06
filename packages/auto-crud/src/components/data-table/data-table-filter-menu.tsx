@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@wordrhyme/shadcn';
+import { dataTableConfig } from '@/config/data-table';
 import { useDebouncedCallback } from '@/hooks/use-debounced-callback';
 import {
   calendarMaxDate,
@@ -122,8 +123,10 @@ export function DataTableFilterMenu<TData>({
   const [filters, setFilters] = useReadableFilters<TData>(columns, {
     debounceMs,
     resetPageKey: table.options.meta?.queryKeys?.page ?? 'page',
+    state: table.options.meta?.filterState,
   });
   const debouncedSetFilters = useDebouncedCallback(setFilters, debounceMs);
+  const { cancel: cancelPendingFilters } = debouncedSetFilters;
 
   const onFilterAdd = React.useCallback(
     (column: Column<TData>, value: string) => {
@@ -185,8 +188,9 @@ export function DataTableFilterMenu<TData>({
   );
 
   const onFiltersReset = React.useCallback(() => {
-    debouncedSetFilters([]);
-  }, [debouncedSetFilters]);
+    cancelPendingFilters();
+    setFilters([]);
+  }, [cancelPendingFilters, setFilters]);
 
   React.useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -244,6 +248,9 @@ export function DataTableFilterMenu<TData>({
         <DataTableFilterItem
           key={filter.filterId}
           filter={filter}
+          customInput={table.options.meta?.renderFilterValue?.(filter, {
+            className: 'h-full max-w-48 justify-start rounded-none border-r-0 px-2.5',
+          })}
           filterItemId={`${id}-filter-${filter.filterId}`}
           columns={columns}
           onFilterUpdate={onFilterUpdate}
@@ -363,6 +370,7 @@ export function DataTableFilterMenu<TData>({
 }
 
 interface DataTableFilterItemProps<TData> {
+  customInput?: React.ReactNode;
   filter: ExtendedColumnFilter<TData>;
   filterItemId: string;
   columns: Column<TData>[];
@@ -374,6 +382,7 @@ interface DataTableFilterItemProps<TData> {
 }
 
 function DataTableFilterItem<TData>({
+  customInput,
   filter,
   filterItemId,
   columns,
@@ -396,7 +405,12 @@ function DataTableFilterItem<TData>({
     const inputId = `${filterItemId}-input`;
 
     const columnMeta = column?.columnDef.meta;
-    const filterOperators = getFilterOperators(filter.variant);
+    const filterOperators =
+      customInput != null
+        ? dataTableConfig.multiSelectOperators.filter(
+            (operator) => operator.value === filter.operator,
+          )
+        : getFilterOperators(filter.variant);
 
     const onItemKeyDown = React.useCallback(
       (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -441,6 +455,7 @@ function DataTableFilterItem<TData>({
               variant="ghost"
               size="sm"
               className="rounded-none rounded-l-md border border-r-0 font-normal dark:bg-input/30"
+              disabled={customInput != null}
             >
               {columnMeta?.icon && <columnMeta.icon className="text-muted-foreground" />}
               {columnMeta?.label ?? column.id}
@@ -493,6 +508,7 @@ function DataTableFilterItem<TData>({
         </Popover>
         <Select
           open={showOperatorSelector}
+          disabled={customInput != null}
           onOpenChange={setShowOperatorSelector}
           value={filter.operator}
           onValueChange={(value: FilterOperator) =>
@@ -521,15 +537,16 @@ function DataTableFilterItem<TData>({
             ))}
           </SelectContent>
         </Select>
-        {onFilterInputRender({
-          today,
-          filter,
-          column,
-          inputId,
-          onFilterUpdate,
-          showValueSelector,
-          setShowValueSelector,
-        })}
+        {customInput ??
+          onFilterInputRender({
+            today,
+            filter,
+            column,
+            inputId,
+            onFilterUpdate,
+            showValueSelector,
+            setShowValueSelector,
+          })}
         <Button
           aria-controls={filterItemId}
           variant="ghost"
