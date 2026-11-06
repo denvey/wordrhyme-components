@@ -746,6 +746,15 @@ export interface CrudRouterConfig<
    */
   exportInputSchema?: z.ZodType<TExportInput>;
 
+  /** Additional request conditions, ANDed before count/pagination/export limits.
+   * orderBy, when provided, replaces the normal ordering. Scope and guards still apply.
+   */
+  query?: (params: {
+    ctx: TContext;
+    input: TListInput | TExportInput;
+    operation: 'list' | 'export';
+  }) => { where?: SQL; orderBy?: SQL[] } | Promise<{ where?: SQL; orderBy?: SQL[] }>;
+
   /**
    * Procedure 配置（统一字段）
    *

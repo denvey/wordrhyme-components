@@ -302,6 +302,7 @@ export interface UseAutoCrudResourceReturn<
     isLoading: boolean;
     /** 是否正在获取数据（用于显示微妙的加载指示器） */
     isFetching: boolean;
+    error?: Error | null;
   };
   /** Optional schema override from host metadata. */
   schema?: z.ZodObject<z.ZodRawShape>;
@@ -454,6 +455,8 @@ export interface UseAutoCrudResourceParams<
    * ```
    */
   query?: (params: AutoQueryParams) => Record<string, unknown>;
+  /** tRPC operation context shared by list and automatic export requests. */
+  queryContext?: Record<string, unknown>;
   /** 其他配置选项 */
   options?: UseAutoCrudResourceOptions<TSchema, TListItem>;
 }
@@ -469,6 +472,7 @@ export function useAutoCrudResource<
   queryKeys,
   schema,
   query: queryTransform,
+  queryContext,
   fields,
   options = {},
 }: UseAutoCrudResourceParams<TSchema, TListItem>): UseAutoCrudResourceReturn<
@@ -584,6 +588,7 @@ export function useAutoCrudResource<
   // 使用 keepPreviousData 保持旧数据显示，避免分页时的闪烁
   const hasReadyListData = useRef(false);
   const listQuery = router.list.useQuery(queryInput, {
+    ...(queryContext !== undefined ? { trpc: { context: queryContext } } : {}),
     enabled: listReady,
     placeholderData: hasReadyListData.current ? keepPreviousData : undefined,
     staleTime: 0,
@@ -611,7 +616,10 @@ export function useAutoCrudResource<
     const { page: _p, perPage: _pp, ...rest } = queryInput;
     return rest;
   }, [queryInput]);
-  const exportQuery = router.export?.useQuery(exportInput, { enabled: false });
+  const exportQuery = router.export?.useQuery(exportInput, {
+    enabled: false,
+    ...(queryContext !== undefined ? { trpc: { context: queryContext } } : {}),
+  });
 
   // Modal 状态管理
   const [modal, dispatch] = useReducer(modalReducer<TListItem>, {
@@ -904,6 +912,7 @@ export function useAutoCrudResource<
       ...(typeof listData?.total === 'number' ? { total: listData.total } : {}),
       isLoading: !listReady || listQuery.isLoading,
       isFetching: !listReady || listQuery.isFetching,
+      error: listQuery.error,
     },
     schema: resolvedSchema,
     metadataPending,

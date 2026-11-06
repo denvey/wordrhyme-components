@@ -55,6 +55,24 @@ import type { DataTableClassNames, QueryKeys } from '@/types/data-table';
 /** 过滤模式类型 */
 export type FilterMode = 'simple' | 'advanced' | 'command';
 
+export interface TableSearchProps extends Pick<
+  React.ComponentPropsWithoutRef<'input'>,
+  'onCompositionStart' | 'onCompositionEnd'
+> {
+  value: string;
+  onValueChange: (value: string) => void;
+  placeholder: string;
+  /** Reset pagination when an additional search criterion changes. */
+  resetPage: () => void;
+}
+
+export interface TableSearchConfig {
+  placeholder?: string;
+  /** Search delay in milliseconds. Defaults to 200; use 0 for immediate queries. */
+  debounceMs?: number;
+  render?: (props: TableSearchProps) => React.ReactNode;
+}
+
 const DEFAULT_MODES: FilterMode[] = ['simple', 'advanced', 'command'];
 
 /** 过滤模式配置 */
@@ -121,13 +139,7 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
    */
   filterMode?: FilterMode | FilterMode[];
   /** 全局搜索框 */
-  search?:
-    | boolean
-    | {
-        placeholder?: string;
-        /** Search delay in milliseconds. Defaults to 200; use 0 for immediate queries. */
-        debounceMs?: number;
-      };
+  search?: boolean | TableSearchConfig;
   /** Extra table controls rendered between sorting and column visibility. */
   toolbarExtra?: React.ReactNode;
   /** Sorting and column visibility strings. Defaults to English for standalone use. */
