@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type {
   SavedViewsConfig,
-  SavedView,
   TagOption,
   TagService,
   UseAutoCrudResourceReturn,
+  ViewInput,
   ViewQuery,
   ViewStorage,
 } from '../src';
@@ -55,9 +55,9 @@ function matchesQuery(
 }
 
 function createDemoViewStorage(): ViewStorage {
-  let views: SavedView[] = [
+  const initialViews: ViewInput[] = [
     ...initialTags.map((tag) => ({
-      id: tag.value,
+      slug: tag.value === 'vip' ? 'vip-customers' : 'follow-up',
       name: tag.label,
       query: {
         filters: [
@@ -75,36 +75,54 @@ function createDemoViewStorage(): ViewStorage {
       },
     })),
     {
-      id: 'customer-d',
+      slug: 'customer-d',
       name: '客户 D',
       query: { filters: [], joinOperator: 'and', search: '客户 D', sort: [] },
     },
   ];
+  const namespace = 'storybook:user:tenant';
+  const storage = createLocalViewStorage(namespace);
+  const initializations = new Map<string, Promise<void>>();
+  const seed = async (resourceId: string) => {
+    const marker = `${namespace}:seeded-views:v1:${resourceId}`;
+    if (localStorage.getItem(marker) === '1') return;
+    const existing = await storage.list(resourceId);
+    await Promise.all(
+      initialViews
+        .filter(
+          (input) =>
+            !existing.some((view) => view.slug === input.slug || view.id === input.slug),
+        )
+        .map((input) => storage.create(resourceId, input)),
+    );
+    localStorage.setItem(marker, '1');
+  };
   return {
-    async list() {
-      return views;
-    },
-    async create(_resourceId, input) {
-      const view = { ...input, id: crypto.randomUUID() };
-      views = [...views, view];
-      return view;
-    },
-    async update(_resourceId, id, input) {
-      const view = { ...input, id };
-      views = views.map((current) => (current.id === id ? view : current));
-      return view;
-    },
-    async remove(_resourceId, id) {
-      views = views.filter((view) => view.id !== id);
+    ...storage,
+    async list(resourceId) {
+      let initialization = initializations.get(resourceId);
+      if (initialization === undefined) {
+        initialization = seed(resourceId).catch((reason: unknown) => {
+          initializations.delete(resourceId);
+          throw reason;
+        });
+        initializations.set(resourceId, initialization);
+      }
+      await initialization;
+      return storage.list(resourceId);
     },
   };
 }
+
+// All stories describe the same resource, so links and controls share one store.
+const demoViewStorage = createDemoViewStorage();
 
 function Demo({
   mode,
   tagActionAppearance,
   automaticTags = false,
   enableViews = true,
+  defaultView,
   selector = 'dropdown',
   showCounts = false,
   tabVariant = 'default',
@@ -114,6 +132,7 @@ function Demo({
   tagActionAppearance: 'text' | 'icon' | 'both';
   automaticTags?: boolean;
   enableViews?: boolean;
+  defaultView?: string;
   selector?: SavedViewsConfig['selector'];
   showCounts?: boolean;
   tabVariant?: NonNullable<SavedViewsConfig['tabs']>['variant'];
@@ -185,13 +204,6 @@ function Demo({
     };
     return tagService;
   }, []);
-  const viewStorage = useMemo(
-    () =>
-      showCounts
-        ? createDemoViewStorage()
-        : createLocalViewStorage('storybook:user:tenant'),
-    [showCounts],
-  );
   const counts = useCallback<NonNullable<SavedViewsConfig['counts']>>(
     async ({ queries, signal }) => {
       await new Promise((resolve) => setTimeout(resolve, 300));
@@ -264,20 +276,20 @@ function Demo({
     '通过行操作菜单或多选后的批量操作设置标签。入口位置及文字、图标由业务配置；视图保存在当前浏览器。';
   if (showCounts) {
     description =
-      '视图数量由模拟接口按保存条件统计，包含加载状态和零结果。修改客户标签或保存视图条件后，数量会刷新；此示例的视图和标签刷新页面后重置。';
+      '视图数量由模拟接口按保存条件统计，包含加载状态和零结果。修改客户标签或保存视图条件后，数量会刷新；视图和排列顺序保存在当前浏览器，客户标签刷新页面后重置。';
   } else if (automaticTags) {
     description = '字段配置 tags: true 后自动提供标签展示、筛选和单条／批量设置入口。';
   }
   return (
     <QueryClientProvider client={client}>
       <AutoCrudProvider
-        scope={`storybook:user:tenant${showCounts ? ':counts' : ''}`}
+        scope={`storybook:user:tenant${defaultView !== undefined && defaultView !== '' ? `:default:${defaultView}` : ''}`}
         tagService={tagService}
-        viewStorage={viewStorage}
+        viewStorage={demoViewStorage}
       >
         <p className="mb-4 text-sm text-muted-foreground">{description}</p>
         <AutoCrudTable
-          key={selector}
+          key={`${selector}:${defaultView ?? ''}`}
           id="demo.customers"
           schema={schema}
           resource={resource}
@@ -327,6 +339,7 @@ function Demo({
             views: enableViews
               ? {
                   selector,
+                  defaultView,
                   counts: showCounts ? counts : undefined,
                   tabs: {
                     variant: tabVariant,
@@ -398,6 +411,7 @@ const meta = {
     tagActionAppearance: { control: 'select', options: ['text', 'icon', 'both'] },
     automaticTags: { control: 'boolean' },
     enableViews: { control: 'boolean' },
+    defaultView: { control: 'text' },
     selector: { control: 'select', options: ['dropdown', 'tabs'] },
     showCounts: { control: 'boolean' },
     tabVariant: { control: 'select', options: ['default', 'line'] },
@@ -409,6 +423,9 @@ type Story = StoryObj<typeof meta>;
 export const Playground: Story = {};
 export const AutomaticTags: Story = { args: { automaticTags: true } };
 export const DefaultDisabled: Story = { args: { enableViews: false } };
+export const DefaultView: Story = {
+  args: { defaultView: 'vip-customers', selector: 'tabs', showCounts: true },
+};
 export const Tabs: Story = { args: { selector: 'tabs' } };
 export const TabsWithCounts: Story = { args: { selector: 'tabs', showCounts: true } };
 export const LineTabs: Story = {

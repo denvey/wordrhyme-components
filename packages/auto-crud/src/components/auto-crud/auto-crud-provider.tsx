@@ -10,6 +10,8 @@ export interface ViewStorage {
   create: (resourceId: string, input: ViewInput) => Promise<SavedView>;
   update: (resourceId: string, id: string, input: ViewInput) => Promise<SavedView>;
   remove: (resourceId: string, id: string) => Promise<void>;
+  /** Atomically persist all view IDs in order; reject duplicates, missing or unknown IDs. */
+  reorder?: (resourceId: string, ids: string[]) => Promise<void>;
 }
 
 export interface TagScope {

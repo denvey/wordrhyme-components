@@ -74,6 +74,8 @@ declare module '@tanstack/react-table' {
 }
 
 export interface QueryKeys {
+  /** Saved view slug or ID. Defaults to "view". */
+  view?: string;
   page: string;
   perPage: string;
   sort: string;

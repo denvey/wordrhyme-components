@@ -305,6 +305,7 @@ export function useDataTable<TData>(props: UseDataTableProps<TData>) {
     meta: {
       ...tableProps.meta,
       queryKeys: {
+        view: queryKeys?.view ?? 'view',
         page: pageKey,
         perPage: perPageKey,
         sort: sortKey,
