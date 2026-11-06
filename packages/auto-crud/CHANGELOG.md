@@ -1,5 +1,40 @@
 # @wordrhyme/auto-crud
 
+## 1.15.0
+
+### Minor Changes
+
+- 9974482: Add globally configured saved query views and dynamic tags with inclusion, exclusion, any/all matching, tag management and record assignment. Support structured tag filters through the existing correlated extension SQL conditions on the server.
+
+  Keep tag columns read-only by default and expose a controlled assignment dialog so consumers can place text or icon triggers in existing row, toolbar, cell or batch action slots.
+
+  Initialize tag selection from current record tags, preserve untouched mixed selections in batch editing and submit only the resulting additions and removals. Place editor actions in a single row.
+
+  Create tags from the current picker list and edit names and colors inline through per-tag icons, with inline deletion confirmation and no separate management dialog.
+
+  Allow switching saved views between a dropdown before search and tabs above the toolbar, with contextual settings and a configurable selector.
+
+  Limit TagService.list to resource/field scope and query/page/pageSize/signal inputs, and require a single paginated result with TagOption entries and hasMore.
+
+  Add an optional views.counts callback for batched saved-view totals in tabs and dropdowns, with loading, zero and retry states, and an in-memory Storybook example.
+
+  Remember view selector mode and selected view ID in localStorage by user/tenant scope and resource. Restore saved queries only when no explicit URL query is present, and discard unavailable selections without blocking the table.
+
+  Support line-style view tabs with top or bottom active indicators and external class overrides for the list, triggers and indicator. Add Storybook examples for both positions.
+
+  Keep the line-tab baseline continuous across the settings control and keep active indicators within the scrollable list.
+
+  Restore cached views after URL subscriptions are ready and wait for asynchronous field metadata before validating remembered views. Clear structured tag URL conditions for removed fields, and allow standalone TagFilter usage with an explicit resourceId.
+
+- f2257e7: Localize pagination and batch action bars through the existing seven built-in locale packs. Keep English defaults for direct low-level component consumers and support partial custom locale overrides.
+
+### Patch Changes
+
+- 832637b: Keep import dialog actions outside the scrollable body so wide previews and long error lists do not move the header or footer.
+- 4336509: Add a UTF-8 BOM to downloaded CSV import templates so Excel correctly displays non-ASCII column headers.
+- 4d490ba: Localize structured import validation errors with the active table locale and field labels, while preserving string errors and custom business messages.
+- 5bf1c89: Add an expand/collapse all icon to the row expansion column header.
+
 ## 1.14.3
 
 ### Patch Changes
