@@ -19,9 +19,9 @@ describe('multi-combobox', () => {
         />,
       );
 
-      expect(screen.getByRole('combobox')).toHaveTextContent('cn-east');
+      expect(screen.getByRole('combobox').textContent).toContain('cn-east');
       if (selectionMode === 'multiple') {
-        expect(screen.getByRole('combobox')).toHaveTextContent('North');
+        expect(screen.getByRole('combobox').textContent).toContain('North');
       }
 
       rerender(
@@ -35,8 +35,8 @@ describe('multi-combobox', () => {
         />,
       );
 
-      expect(screen.getByRole('combobox')).toHaveTextContent('华东');
-      expect(screen.getByRole('combobox')).not.toHaveTextContent('cn-east');
+      expect(screen.getByRole('combobox').textContent).toContain('华东');
+      expect(screen.getByRole('combobox').textContent).not.toContain('cn-east');
     },
   );
 
