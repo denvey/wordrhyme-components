@@ -2127,7 +2127,25 @@ function EditTags({
 
 ## 自定义全局搜索
 
-`table.search.render` 可替换搜索输入框。回调的 `value` / `onValueChange` 沿用表格文字搜索和分页状态；额外条件变化时调用 `resetPage()`。未提供 `render` 时保留默认输入框。
+仅需在默认输入框前添加图片搜索等入口时，使用 `table.search.prefix`，无需整体替换搜索控件：
+
+```tsx
+<AutoCrudTable
+  schema={schema}
+  resource={resource}
+  fields={fields}
+  table={{
+    search: {
+      placeholder: '搜索商品',
+      prefix: <ImageSearchTrigger />,
+    },
+  }}
+/>
+```
+
+`prefix` 接收 React 内容，放在输入框内部左侧，启用批量查询时右侧图标、条件标签和快捷键仍由组件维护。未启用批量查询时也可单独使用前缀。图片搜索入口及其业务状态由调用方实现；图标按钮应提供可访问名称并设置 `type="button"`。
+
+`table.search.render` 可替换整个搜索控件，优先于 `prefix`，此时前缀和批量查询入口均由自定义渲染负责。回调的 `value` / `onValueChange` 沿用表格文字搜索和分页状态；额外条件变化时调用 `resetPage()`。未提供 `render` 时保留默认输入框。
 
 自定义输入框应转发 `onCompositionStart` / `onCompositionEnd`，以沿用中文等输入法的组合输入保护，避免选词完成前发起搜索：
 

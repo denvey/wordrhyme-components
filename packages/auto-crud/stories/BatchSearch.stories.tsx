@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import type { ReactNode } from 'react';
 import type { AutoQueryParams, Fields } from '../src';
 import { z } from 'zod';
 import { AutoCrudTable, useAutoCrudResource } from '../src';
@@ -116,7 +117,7 @@ const router = {
   delete: { useMutation: mutation },
 };
 
-function BatchSearchExample() {
+function BatchSearchExample({ searchPrefix }: { searchPrefix?: ReactNode }) {
   const resource = useAutoCrudResource({
     router,
     schema,
@@ -140,7 +141,7 @@ function BatchSearchExample() {
           can: { create: false, update: false, delete: false, import: false },
         }}
         table={{
-          search: { placeholder: '搜索订单、客户或 SKU' },
+          search: { placeholder: '搜索订单、客户或 SKU', prefix: searchPrefix },
           batchSearch: { maxItems: 2000 },
         }}
       />
@@ -156,3 +157,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const DoubleClickSearch: Story = {};
+export const WithPrefix: Story = {
+  args: { searchPrefix: <span className="text-xs">订单</span> },
+};

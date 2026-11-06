@@ -92,6 +92,9 @@ export interface TableSearchConfig {
   placeholder?: string;
   /** Search delay in milliseconds. Defaults to 200; use 0 for immediate queries. */
   debounceMs?: number;
+  /** Content before the default input; preserves built-in search and batch controls. */
+  prefix?: React.ReactNode;
+  /** Replaces the entire search control, including prefix and built-in batch controls. */
   render?: (props: TableSearchProps) => React.ReactNode;
 }
 

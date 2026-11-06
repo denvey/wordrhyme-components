@@ -36,6 +36,7 @@ export function AutoTableSearch({
   debounceMs = 200,
   pageKey = 'page',
   render,
+  prefix,
   schema,
   searchEnabled = true,
   batchSearch,
@@ -133,7 +134,9 @@ export function AutoTableSearch({
           },
         }
       : undefined;
-  const SearchInput = batchEnabled ? InputGroupInput : Input;
+  const hasPrefix = prefix != null && prefix !== false;
+  const grouped = batchEnabled || hasPrefix;
+  const SearchInput = grouped ? InputGroupInput : Input;
   const searchControl = (
     <SearchInput
       ref={inputRef}
@@ -154,11 +157,16 @@ export function AutoTableSearch({
       title={batchEnabled ? batchHint : undefined}
       aria-haspopup={batchEnabled ? 'dialog' : undefined}
       aria-keyshortcuts={batchEnabled ? 'Alt+Enter' : undefined}
-      className={batchEnabled ? 'h-8 min-w-16' : 'h-8 w-48 shrink-0'}
+      className={grouped ? 'h-8 min-w-16' : 'h-8 w-48 shrink-0'}
     />
   );
-  const defaultInput = batchEnabled ? (
+  const defaultInput = grouped ? (
     <InputGroup className={`h-8 max-w-full shrink-0 ${appliedBatch ? 'w-80' : 'w-48'}`}>
+      {hasPrefix && (
+        <InputGroupAddon align="inline-start" className="shrink-0 py-0">
+          {prefix}
+        </InputGroupAddon>
+      )}
       {searchControl}
       {appliedBatch ? (
         <InputGroupAddon align="inline-end" className="shrink-0 gap-0 py-0 pr-1">
@@ -187,7 +195,7 @@ export function AutoTableSearch({
             </InputGroupButton>
           </div>
         </InputGroupAddon>
-      ) : (
+      ) : batchEnabled ? (
         <InputGroupAddon align="inline-end" className="shrink-0 py-0">
           <InputGroupButton
             size="icon-xs"
@@ -199,7 +207,7 @@ export function AutoTableSearch({
             <List aria-hidden="true" />
           </InputGroupButton>
         </InputGroupAddon>
-      )}
+      ) : null}
     </InputGroup>
   ) : (
     searchControl
