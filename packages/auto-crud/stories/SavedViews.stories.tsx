@@ -103,6 +103,7 @@ function createDemoViewStorage(): ViewStorage {
 function Demo({
   mode,
   tagActionAppearance,
+  automaticTags = false,
   enableViews = true,
   selector = 'dropdown',
   showCounts = false,
@@ -111,6 +112,7 @@ function Demo({
 }: {
   mode: 'simple' | 'advanced' | 'command';
   tagActionAppearance: 'text' | 'icon' | 'both';
+  automaticTags?: boolean;
   enableViews?: boolean;
   selector?: SavedViewsConfig['selector'];
   showCounts?: boolean;
@@ -258,6 +260,14 @@ function Demo({
       refresh: async () => undefined,
     },
   };
+  let description =
+    '通过行操作菜单或多选后的批量操作设置标签。入口位置及文字、图标由业务配置；视图保存在当前浏览器。';
+  if (showCounts) {
+    description =
+      '视图数量由模拟接口按保存条件统计，包含加载状态和零结果。修改客户标签或保存视图条件后，数量会刷新；此示例的视图和标签刷新页面后重置。';
+  } else if (automaticTags) {
+    description = '字段配置 tags: true 后自动提供标签展示、筛选和单条／批量设置入口。';
+  }
   return (
     <QueryClientProvider client={client}>
       <AutoCrudProvider
@@ -265,51 +275,54 @@ function Demo({
         tagService={tagService}
         viewStorage={viewStorage}
       >
-        <p className="mb-4 text-sm text-muted-foreground">
-          {showCounts
-            ? '视图数量由模拟接口按保存条件统计，包含加载状态和零结果。修改客户标签或保存视图条件后，数量会刷新；此示例的视图和标签刷新页面后重置。'
-            : '通过行操作菜单或多选后的批量操作设置标签。入口位置及文字、图标由业务配置；视图保存在当前浏览器。'}
-        </p>
+        <p className="mb-4 text-sm text-muted-foreground">{description}</p>
         <AutoCrudTable
           key={selector}
           id="demo.customers"
           schema={schema}
           resource={resource}
           permissions={{ can: { create: false, delete: false } }}
-          actions={{
-            row: [
-              {
-                type: 'custom',
-                component: ({ row, MenuItem }) => (
-                  <MenuItem aria-label="设置标签" onSelect={() => setTagTargets([row])}>
-                    {tagActionAppearance !== 'text' && (
-                      <Tags aria-hidden="true" className="size-4" />
-                    )}
-                    {tagActionAppearance !== 'icon' && '设置标签'}
-                  </MenuItem>
-                ),
-              },
-            ],
-            batch: [
-              {
-                type: 'custom',
-                component: ({ rows: selectedRows }) => (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size={tagActionAppearance === 'icon' ? 'icon-sm' : 'sm'}
-                    aria-label="批量设置标签"
-                    onClick={() => setTagTargets(selectedRows)}
-                  >
-                    {tagActionAppearance !== 'text' && (
-                      <Tags aria-hidden="true" className="size-4" />
-                    )}
-                    {tagActionAppearance !== 'icon' && '批量设置标签'}
-                  </Button>
-                ),
-              },
-            ],
-          }}
+          actions={
+            automaticTags
+              ? undefined
+              : {
+                  row: [
+                    {
+                      type: 'custom',
+                      component: ({ row, MenuItem }) => (
+                        <MenuItem
+                          aria-label="设置标签"
+                          onSelect={() => setTagTargets([row])}
+                        >
+                          {tagActionAppearance !== 'text' && (
+                            <Tags aria-hidden="true" className="size-4" />
+                          )}
+                          {tagActionAppearance !== 'icon' && '设置标签'}
+                        </MenuItem>
+                      ),
+                    },
+                  ],
+                  batch: [
+                    {
+                      type: 'custom',
+                      component: ({ rows: selectedRows }) => (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size={tagActionAppearance === 'icon' ? 'icon-sm' : 'sm'}
+                          aria-label="批量设置标签"
+                          onClick={() => setTagTargets(selectedRows)}
+                        >
+                          {tagActionAppearance !== 'text' && (
+                            <Tags aria-hidden="true" className="size-4" />
+                          )}
+                          {tagActionAppearance !== 'icon' && '批量设置标签'}
+                        </Button>
+                      ),
+                    },
+                  ],
+                }
+          }
           table={{
             views: enableViews
               ? {
@@ -341,23 +354,27 @@ function Demo({
             name: { label: '客户', filter: { variant: 'text' } },
             tags: {
               label: '分类',
-              filter: { variant: 'tags' },
+              ...(automaticTags
+                ? { tags: true }
+                : { filter: { variant: 'tags' as const } }),
               form: false,
               table: { enableSorting: false },
             },
           }}
         />
-        <TagAssignment
-          resourceId="demo.customers"
-          field="tags"
-          title="标签"
-          entities={(tagTargets ?? []).map((row) => ({ id: row.id, tagIds: row.tags }))}
-          open={tagTargets !== null}
-          onOpenChange={(open) => {
-            if (!open) setTagTargets(null);
-          }}
-          onSaved={resource.handlers.refresh}
-        />
+        {!automaticTags && (
+          <TagAssignment
+            resourceId="demo.customers"
+            field="tags"
+            title="标签"
+            entities={(tagTargets ?? []).map((row) => ({ id: row.id, tagIds: row.tags }))}
+            open={tagTargets !== null}
+            onOpenChange={(open) => {
+              if (!open) setTagTargets(null);
+            }}
+            onSaved={resource.handlers.refresh}
+          />
+        )}
       </AutoCrudProvider>
     </QueryClientProvider>
   );
@@ -369,6 +386,7 @@ const meta = {
   args: {
     mode: 'simple',
     tagActionAppearance: 'both',
+    automaticTags: false,
     enableViews: true,
     selector: 'dropdown',
     showCounts: false,
@@ -378,6 +396,7 @@ const meta = {
   argTypes: {
     mode: { control: 'select', options: ['simple', 'advanced', 'command'] },
     tagActionAppearance: { control: 'select', options: ['text', 'icon', 'both'] },
+    automaticTags: { control: 'boolean' },
     enableViews: { control: 'boolean' },
     selector: { control: 'select', options: ['dropdown', 'tabs'] },
     showCounts: { control: 'boolean' },
@@ -388,6 +407,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Playground: Story = {};
+export const AutomaticTags: Story = { args: { automaticTags: true } };
 export const DefaultDisabled: Story = { args: { enableViews: false } };
 export const Tabs: Story = { args: { selector: 'tabs' } };
 export const TabsWithCounts: Story = { args: { selector: 'tabs', showCounts: true } };

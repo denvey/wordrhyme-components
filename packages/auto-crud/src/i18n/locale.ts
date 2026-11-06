@@ -66,6 +66,8 @@ export interface TableActionBarLocale {
 }
 
 export interface AutoCrudLocale {
+  /** Label shared by automatic tag assignment actions and their dialog. */
+  tagAssignment?: (fieldLabel: string) => string;
   batchSearch?: BatchSearchLocale;
   /** Sorting and column visibility controls. Optional for existing custom locales. */
   tableControls?: TableControlsLocale;
@@ -203,6 +205,7 @@ export const enUSTableControls: TableControlsLocale = {
 };
 
 export const zhCN: AutoCrudLocale = {
+  tagAssignment: (label) => `设置${label}`,
   batchSearch: zhCNBatchSearch,
   tableControls: {
     sort: {
@@ -326,6 +329,7 @@ export const zhCN: AutoCrudLocale = {
 };
 
 export const enUS: AutoCrudLocale = {
+  tagAssignment: (label) => `Set ${label}`,
   batchSearch: enUSBatchSearch,
   tableControls: enUSTableControls,
   pagination: enUSPagination,

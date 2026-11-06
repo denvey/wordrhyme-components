@@ -30,7 +30,7 @@ export function mergeFieldPart<T>(
 }
 
 function mergeFieldConfig(base: Field | undefined, override: Field | undefined): Field {
-  return {
+  const config: Field = {
     ...base,
     ...override,
     enum: override?.enum ?? base?.enum,
@@ -39,6 +39,10 @@ function mergeFieldConfig(base: Field | undefined, override: Field | undefined):
     filter: mergeFieldPart(base?.filter, override?.filter),
     form: mergeFieldPart(base?.form, override?.form),
   };
+  if (config.tags && config.filter !== false) {
+    config.filter = { variant: 'tags', ...config.filter };
+  }
+  return config;
 }
 
 export function mergeFields(

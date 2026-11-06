@@ -1,7 +1,8 @@
 'use client';
 
-import { CrudResourceContext } from './auto-crud-provider';
-import { TagCell } from './tag-filter';
+import type { TagAssignmentProps } from './tag-filter';
+import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
+import { TagAssignment, TagCell } from './tag-filter';
 
 import type { TablePaginationOptions } from '@/types/data-table';
 
@@ -140,6 +141,8 @@ export type FieldTableDisplay = 'auto' | 'text' | 'badge' | 'date' | 'datetime';
 export interface Field {
   /** 字段标签（表格和表单共用） */
   label?: string;
+  /** Enable tag display, filtering and assignment actions using the table id and resource idKey. */
+  tags?: boolean;
   /** Format default table/detail text and CSV values; undefined keeps the default. */
   format?: (
     value: unknown,
@@ -2265,6 +2268,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   onCreate,
   onExport,
 }: AutoCrudTableProps<TSchema>) {
+  const services = useAutoCrudConfig();
   const viewsEnabled = tableConfig?.views ?? false;
   if (viewsEnabled && !id)
     throw new Error('Saved views require a stable AutoCrudTable id');
@@ -2355,6 +2359,64 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     hiddenColumns,
   );
   const resourceIdKey = resource.idKey ?? 'id';
+  const tagFields = React.useMemo(
+    () =>
+      Object.entries(resolvedFields)
+        .filter(
+          ([field, config]) =>
+            config.tags && !config.hidden && !denyFields?.includes(field),
+        )
+        .map(([field, config]) => {
+          const label = config.label ?? humanize(field);
+          return {
+            field,
+            actionId: `tags:${field}`,
+            label: locale.tagAssignment?.(label) ?? `${locale.rowActions.edit} ${label}`,
+          };
+        }),
+    [resolvedFields, denyFields, locale],
+  );
+  if (tagFields.length && (!id || !services?.tagService)) {
+    throw new Error('Tag fields require a CRUD id and AutoCrudProvider.tagService');
+  }
+  const [tagAssignment, setTagAssignment] = React.useState<Pick<
+    TagAssignmentProps,
+    'resourceId' | 'field' | 'title' | 'entities'
+  > | null>(null);
+  const canAssignTags = can.update && Boolean(services?.tagService?.assign);
+  const tagAssignmentVisible =
+    canAssignTags &&
+    tagAssignment?.resourceId === id &&
+    tagFields.some(({ field }) => field === tagAssignment?.field);
+  React.useEffect(() => {
+    if (!tagAssignmentVisible) setTagAssignment(null);
+  }, [tagAssignmentVisible]);
+  const openTagAssignment = React.useCallback(
+    (field: string, dialogTitle: string, rows: z.output<TSchema>[]) => {
+      if (!id || !canAssignTags || !rows.length) return;
+      const entities: TagAssignmentProps['entities'] = [];
+      for (const row of rows) {
+        const rowId = readRowId(row, resourceIdKey);
+        const tagIds = (row as Record<string, unknown>)[field] ?? [];
+        if (
+          !rowId ||
+          !Array.isArray(tagIds) ||
+          !tagIds.every((tagId): tagId is string => typeof tagId === 'string')
+        ) {
+          toast.error('Tag assignment requires a record id and an array of tag ids');
+          return;
+        }
+        entities.push({ id: rowId, tagIds: [...tagIds] });
+      }
+      setTagAssignment({
+        resourceId: id,
+        field,
+        title: dialogTitle,
+        entities,
+      });
+    },
+    [id, canAssignTags, resourceIdKey],
+  );
   const actionRegistryVersion = useCrudActionsVersion();
   const unifiedActions = React.useMemo<AutoCrudActionsConfig<z.output<TSchema>>>(() => {
     if (isUnifiedActionsConfig<z.output<TSchema>>(actionItems)) {
@@ -2371,12 +2433,36 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     [ownerToolbarConfig],
   );
   const ownerRowActions = React.useMemo(
-    () => resolveOwnerRowActions(ownerRowConfig),
-    [ownerRowConfig],
+    () => [
+      ...resolveOwnerRowActions(ownerRowConfig),
+      ...(canAssignTags
+        ? tagFields.map(
+            ({ field, actionId, label }): RowCustomActionItem<z.output<TSchema>> => ({
+              type: 'custom',
+              id: actionId,
+              label,
+              onClick: (row) => openTagAssignment(field, label, [row]),
+            }),
+          )
+        : []),
+    ],
+    [ownerRowConfig, canAssignTags, tagFields, openTagAssignment],
   );
   const ownerBatchActions = React.useMemo(
-    () => resolveOwnerBatchActions(ownerBatchConfig),
-    [ownerBatchConfig],
+    () => [
+      ...resolveOwnerBatchActions(ownerBatchConfig),
+      ...(canAssignTags
+        ? tagFields.map(
+            ({ field, actionId, label }): BatchActionItem<z.output<TSchema>> => ({
+              type: 'custom',
+              id: actionId,
+              label,
+              onClick: (rows) => openTagAssignment(field, label, rows),
+            }),
+          )
+        : []),
+    ],
+    [ownerBatchConfig, canAssignTags, tagFields, openTagAssignment],
   );
   const registryToolbarActions = React.useMemo(
     () => crudActions.resolve<ToolbarActionItem>(id, 'toolbar', ownerToolbarActions),
@@ -2634,8 +2720,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     }
     for (const [field, config] of Object.entries(resolvedFields)) {
       if (
-        !config.filter ||
-        config.filter.variant !== 'tags' ||
+        (!config.tags && (!config.filter || config.filter.variant !== 'tags')) ||
         formattedOverrides[field]?.cell
       )
         continue;
@@ -3000,6 +3085,16 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
 
         {/* Custom row dialogs outlive their source menu and row. */}
         {rowActionDialog}
+        {tagAssignmentVisible && tagAssignment && (
+          <TagAssignment
+            {...tagAssignment}
+            open
+            onOpenChange={(open) => {
+              if (!open) setTagAssignment(null);
+            }}
+            onSaved={resource.handlers.refresh}
+          />
+        )}
 
         {/* Modals */}
         {/* Create/Edit Modal */}

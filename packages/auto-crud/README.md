@@ -2064,6 +2064,31 @@ Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 使用内�
 
 Storybook 提供 **Line Tabs**（下方蓝色强调线）和 **Top Line Tabs**（上方强调线）示例，均带视图数量；可通过 Controls 切换样式和线条位置。已有本地展示偏好时，仍可在视图设置中切换到 Tab。
 
+### 自动标签接入
+
+字段声明 `tags: true` 后，`AutoCrudTable` 自动展示标签、启用标签筛选，并生成行操作和批量操作的设置入口：
+
+```tsx
+const schema = z.object({
+  id: z.string(),
+  recordTags: z.array(z.string()).optional(),
+});
+
+<AutoCrudTable
+  id="crm.customers"
+  schema={schema}
+  resource={resource}
+  permissions={permissions}
+  fields={{ recordTags: { label: '标签', form: false, tags: true } }}
+/>;
+```
+
+应用级 `AutoCrudProvider` 提供 `tagService`，页面无需再维护 `TagAssignment`、弹窗状态或选中记录转换。资源 ID 复用表格 `id`，记录主键复用 `resource.idKey`（默认 `id`），保存后调用 `resource.handlers.refresh`。未填写的标签值按空数组处理。
+
+自动入口跟随 `permissions.can.update`，字段 `hidden: true` 或被 `permissions.deny` 禁止时不生成入口；服务未提供 `assign` 时只展示和筛选。已有行操作、批量操作和注册扩展仍会保留。自动操作的稳定 ID 为 `tags:<字段名>`，可通过现有操作注册机制调整。`locale.tagAssignment` 可覆盖入口与弹窗标题。
+
+`tags: true` 默认补充 `filter.variant: 'tags'`，显式筛选配置优先，`filter: false` 仍可禁用筛选且保留标签展示和设置入口。省略或设置 `tags: false` 不生成自动入口，已有 `filter.variant: 'tags'` 和手动弹窗接入方式保持兼容。标签仍由现有服务读写，无需新增页面接口或业务表。
+
 ### 自定义标签编辑入口
 
 `TagAssignment` 是受控弹窗，不包含按钮。打开后直接显示搜索和标签列表，已有标签默认选中，通过勾选／取消勾选编辑，无需选择添加或移除。已选标签的名称、颜色实时显示；清空和保存位于同一行，点击保存后才提交记录的标签关联。
