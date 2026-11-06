@@ -1,7 +1,7 @@
 'use client';
 
 import { z } from 'zod';
-import { SavedViews } from './saved-views';
+import { SavedViews, type SavedViewsConfig } from './saved-views';
 import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
 import type { TablePaginationOptions } from '@/types/data-table';
 import { useCallback, useContext, useEffect, useMemo } from 'react';
@@ -86,7 +86,7 @@ export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pi
   /** Stable CRUD identity for saved views and tag services. */
   resourceId?: string;
   /** Defaults to enabled when a global viewStorage is configured. */
-  views?: boolean;
+  views?: boolean | SavedViewsConfig;
   schema: T;
   data: z.infer<T>[];
   /** Stable row identity; required when expandedRow is provided. */
@@ -455,9 +455,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   const filtersContent = useMemo(() => {
     switch (currentMode) {
       case 'simple':
-        return (
-          <AutoTableSimpleFilters table={table} shallow={shallow} leading={searchInput} />
-        );
+        return null;
       case 'command':
         return (
           <DataTableFilterMenu
@@ -478,7 +476,43 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
           />
         );
     }
-  }, [currentMode, table, columns, shallow, searchInput, debounceMs, throttleMs]);
+  }, [currentMode, table, columns, shallow, debounceMs, throttleMs]);
+
+  const renderToolbar = (viewSelector?: React.ReactNode) => (
+    <div className="flex w-full items-start justify-between gap-2 p-1">
+      <div
+        className="flex min-h-[40px] min-w-0 flex-1 items-start gap-2"
+        data-filter-parent
+      >
+        {currentMode === 'simple' ? (
+          <AutoTableSimpleFilters
+            table={table}
+            shallow={shallow}
+            leading={
+              viewSelector || searchInput ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {viewSelector}
+                  {searchInput}
+                </div>
+              ) : undefined
+            }
+          />
+        ) : (
+          <>
+            {viewSelector}
+            {searchInput}
+            {filtersContent}
+          </>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        {FilterModeSelect}
+        <DataTableSortList table={table} align="end" locale={locale.sort} />
+        {toolbarExtra}
+        <DataTableViewOptions table={table} align="end" locale={locale.columns} />
+      </div>
+    </div>
+  );
 
   const state = table.getState();
   // Parent selection callbacks can render AutoTable again without changing its inputs.
@@ -522,24 +556,26 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   return (
     <CrudResourceContext.Provider value={activeResourceId}>
       <div className="space-y-4">
-        <div className="flex w-full items-start justify-between gap-2 p-1">
-          <div
-            className="flex min-h-[40px] min-w-0 flex-1 items-start gap-2"
-            data-filter-parent
+        {viewsEnabled && activeResourceId ? (
+          <SavedViews
+            resourceId={activeResourceId}
+            table={table}
+            selector={typeof views === 'object' ? views.selector : undefined}
           >
-            {viewsEnabled && activeResourceId && (
-              <SavedViews resourceId={activeResourceId} table={table} />
-            )}
-            {currentMode !== 'simple' && searchInput}
-            {filtersContent}
-          </div>
-          <div className="flex items-center gap-2">
-            {FilterModeSelect}
-            <DataTableSortList table={table} align="end" locale={locale.sort} />
-            {toolbarExtra}
-            <DataTableViewOptions table={table} align="end" locale={locale.columns} />
-          </div>
-        </div>
+            {(controls, display) =>
+              display === 'tabs' ? (
+                <div className="space-y-2">
+                  {controls}
+                  {renderToolbar()}
+                </div>
+              ) : (
+                renderToolbar(controls)
+              )
+            }
+          </SavedViews>
+        ) : (
+          renderToolbar()
+        )}
         {tableContent}
         {enableRowSelection && (
           <AutoTableActionBar

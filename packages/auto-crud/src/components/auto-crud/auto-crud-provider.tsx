@@ -1,10 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import type {
-  AutoCrudDataSourceContext,
-  AutoCrudDataSourceResult,
-} from '@/lib/registries';
+import type { AutoCrudDataSourceContext } from '@/lib/registries';
 import type { SavedView, ViewInput } from '@/lib/saved-views';
 import { createContext, useContext, useId, useMemo } from 'react';
 
@@ -31,9 +28,11 @@ export interface TagOption extends TagInput {
 }
 
 export interface TagService {
+  /** Search a page of tags; set hasMore to false on the last page. */
   list: (
-    input: AutoCrudDataSourceContext & TagScope,
-  ) => Promise<AutoCrudDataSourceResult>;
+    input: TagScope &
+      Pick<AutoCrudDataSourceContext, 'query' | 'page' | 'pageSize' | 'signal'>,
+  ) => Promise<{ options: TagOption[]; hasMore: boolean }>;
   /** Resolve all selected IDs; missing IDs remain visible as invalid selections. */
   resolve: (input: TagScope & { ids: string[] }) => Promise<TagOption[]>;
   create?: (input: TagScope & TagInput) => Promise<TagOption>;

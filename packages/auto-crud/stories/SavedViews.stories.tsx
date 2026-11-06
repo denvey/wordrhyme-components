@@ -1,5 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import type { TagOption, TagService, UseAutoCrudResourceReturn } from '../src';
+import type {
+  SavedViewsConfig,
+  TagOption,
+  TagService,
+  UseAutoCrudResourceReturn,
+} from '../src';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Button } from '@wordrhyme/shadcn';
 import { Tags } from 'lucide-react';
@@ -26,9 +31,11 @@ const initialTags: TagOption[] = [
 function Demo({
   mode,
   tagActionAppearance,
+  selector = 'dropdown',
 }: {
   mode: 'simple' | 'advanced' | 'command';
   tagActionAppearance: 'text' | 'icon' | 'both';
+  selector?: SavedViewsConfig['selector'];
 }) {
   const [client] = useState(() => new QueryClient());
   const [tagTargets, setTagTargets] = useState<Row[] | null>(null);
@@ -173,6 +180,7 @@ function Demo({
           通过行操作菜单或多选后的批量操作设置标签。入口位置及文字、图标由业务配置；视图保存在当前浏览器。
         </p>
         <AutoCrudTable
+          key={selector}
           id="demo.customers"
           schema={schema}
           resource={resource}
@@ -212,6 +220,7 @@ function Demo({
             ],
           }}
           table={{
+            views: { selector },
             filterModes: [
               mode,
               ...(['simple', 'advanced', 'command'] as const).filter(
@@ -249,12 +258,14 @@ function Demo({
 const meta = {
   title: 'Auto CRUD/Saved views and tags',
   component: Demo,
-  args: { mode: 'simple', tagActionAppearance: 'both' },
+  args: { mode: 'simple', tagActionAppearance: 'both', selector: 'dropdown' },
   argTypes: {
     mode: { control: 'select', options: ['simple', 'advanced', 'command'] },
     tagActionAppearance: { control: 'select', options: ['text', 'icon', 'both'] },
+    selector: { control: 'select', options: ['dropdown', 'tabs'] },
   },
 } satisfies Meta<typeof Demo>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const Playground: Story = {};
+export const Tabs: Story = { args: { selector: 'tabs' } };

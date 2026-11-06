@@ -1,6 +1,7 @@
 'use client';
 
 import type { Table } from '@tanstack/react-table';
+import type { ReactNode } from 'react';
 import type { SavedView, ViewInput, ViewQuery } from '@/lib/saved-views';
 import type { ExtendedColumnFilter } from '@/types/data-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -14,11 +15,28 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Input,
+  ToggleGroup,
+  ToggleGroupItem,
 } from '@wordrhyme/shadcn';
-import { ChevronDown } from 'lucide-react';
+import {
+  AppWindow,
+  ChevronDown,
+  Copy,
+  PanelsTopLeft,
+  Pencil,
+  Plus,
+  Settings,
+  Trash2,
+} from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getUrlParams, setSearchParams } from '@/hooks/use-url-state';
 import { getSortingStateParser } from '@/lib/parsers';
@@ -26,13 +44,26 @@ import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filte
 import { queryFingerprint, savedViewSchema, viewInputSchema } from '@/lib/saved-views';
 import { useAutoCrudConfig } from './auto-crud-provider';
 
+export interface SavedViewsConfig {
+  /** Initial display mode; users can switch modes in the toolbar. */
+  selector?: 'dropdown' | 'tabs';
+}
+
+interface SavedViewsProps<TData> extends SavedViewsConfig {
+  resourceId: string;
+  table: Table<TData>;
+  children: (
+    controls: ReactNode,
+    display: NonNullable<SavedViewsConfig['selector']>,
+  ) => ReactNode;
+}
+
 export function SavedViews<TData>({
   resourceId,
   table,
-}: {
-  resourceId: string;
-  table: Table<TData>;
-}) {
+  selector,
+  children,
+}: SavedViewsProps<TData>) {
   const config = useAutoCrudConfig();
   if (!config?.viewStorage)
     throw new Error('Saved views require AutoCrudProvider.viewStorage');
@@ -41,6 +72,8 @@ export function SavedViews<TData>({
       key={`${config.cacheKey}:${resourceId}`}
       resourceId={resourceId}
       table={table}
+      selector={selector}
+      children={children}
     />
   );
 }
@@ -48,10 +81,9 @@ export function SavedViews<TData>({
 function ViewMenu<TData>({
   resourceId,
   table,
-}: {
-  resourceId: string;
-  table: Table<TData>;
-}) {
+  selector = 'dropdown',
+  children,
+}: SavedViewsProps<TData>) {
   const config = useAutoCrudConfig()!;
   const storage = config.viewStorage!;
   const client = useQueryClient();
@@ -62,6 +94,7 @@ function ViewMenu<TData>({
       (await storage.list(resourceId)).map((view) => savedViewSchema.parse(view)),
   });
   const [selected, setSelected] = useState<SavedView | null>(null);
+  const [display, setDisplay] = useState(selector);
   const [dialog, setDialog] = useState<
     'create' | 'rename' | 'duplicate' | 'delete' | null
   >(null);
@@ -165,49 +198,148 @@ function ViewMenu<TData>({
     setError(null);
     setDialog(operation);
   };
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={views.isPending || mutation.isPending}
-          >
-            {selected?.name ?? '全部'}
-            {dirty ? ' *' : ''}
-            <ChevronDown className="size-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          <DropdownMenuItem onSelect={() => select(null)}>全部</DropdownMenuItem>
-          {views.data?.map((view) => (
-            <DropdownMenuItem key={view.id} onSelect={() => select(view)}>
-              {view.name}
+  const selectValue = (value: string) => {
+    if (value === 'all') select(null);
+    else {
+      const view = views.data?.find((item) => `view:${item.id}` === value);
+      if (view) select(view);
+    }
+  };
+  const controls = (
+    <div className="flex min-w-0 flex-wrap items-center gap-2">
+      <div className="flex min-w-0 max-w-full items-center gap-1">
+        {display === 'tabs' && (
+          <div className="min-w-0 max-w-full overflow-x-auto">
+            <ToggleGroup
+              type="single"
+              size="sm"
+              spacing={1}
+              value={selected ? `view:${selected.id}` : 'all'}
+              onValueChange={selectValue}
+              disabled={views.isPending || mutation.isPending}
+              aria-label="已保存的视图"
+              className="rounded-lg bg-muted p-1"
+            >
+              <ToggleGroupItem
+                value="all"
+                className="data-[state=on]:bg-background data-[state=on]:shadow-sm"
+              >
+                全部
+              </ToggleGroupItem>
+              {views.data?.map((view) => (
+                <ToggleGroupItem
+                  key={view.id}
+                  value={`view:${view.id}`}
+                  className="data-[state=on]:bg-background data-[state=on]:shadow-sm"
+                >
+                  {view.name}
+                  {selected?.id === view.id && dirty && (
+                    <span
+                      aria-label="有未保存修改"
+                      className="size-1.5 rounded-full bg-current"
+                    />
+                  )}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant={display === 'tabs' ? 'ghost' : 'outline'}
+              size={display === 'tabs' ? 'icon-sm' : 'sm'}
+              className="shrink-0"
+              aria-label={display === 'tabs' ? '视图设置' : undefined}
+              title={display === 'tabs' ? '视图设置' : undefined}
+              disabled={views.isPending || mutation.isPending}
+            >
+              {display === 'tabs' ? (
+                <Settings className="size-4" />
+              ) : (
+                <>
+                  {selected?.name ?? '全部'}
+                  {dirty && (
+                    <span
+                      aria-label="有未保存修改"
+                      className="size-1.5 rounded-full bg-current"
+                    />
+                  )}
+                  <ChevronDown className="size-4" />
+                </>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {display === 'dropdown' && (
+              <>
+                <DropdownMenuRadioGroup
+                  value={selected ? `view:${selected.id}` : 'all'}
+                  onValueChange={selectValue}
+                >
+                  <DropdownMenuRadioItem value="all">全部</DropdownMenuRadioItem>
+                  {views.data?.map((view) => (
+                    <DropdownMenuRadioItem key={view.id} value={`view:${view.id}`}>
+                      {view.name}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuLabel>视图设置</DropdownMenuLabel>
+            <DropdownMenuItem disabled={views.isError} onSelect={() => open('create')}>
+              <Plus className="size-4" />
+              另存为新视图
             </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem disabled={views.isError} onSelect={() => open('create')}>
-            视图另存为
-          </DropdownMenuItem>
-          {selected && (
-            <>
-              <DropdownMenuItem onSelect={() => open('rename')}>
-                重命名视图
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => open('duplicate')}>
-                复制视图
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => open('delete')}>
-                删除视图
-              </DropdownMenuItem>
-            </>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {selected && (
+              <>
+                <DropdownMenuItem onSelect={() => open('rename')}>
+                  <Pencil className="size-4" />
+                  重命名视图
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => open('duplicate')}>
+                  <Copy className="size-4" />
+                  复制视图
+                </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => open('delete')}>
+                  <Trash2 className="size-4" />
+                  删除视图
+                </DropdownMenuItem>
+              </>
+            )}
+            {selected && <DropdownMenuSeparator />}
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <PanelsTopLeft className="size-4" />
+                展示方式
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuRadioGroup
+                  value={display}
+                  onValueChange={(value) => {
+                    if (value === 'dropdown' || value === 'tabs') setDisplay(value);
+                  }}
+                >
+                  <DropdownMenuRadioItem value="dropdown">
+                    <ChevronDown className="size-4" />
+                    下拉
+                  </DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="tabs">
+                    <AppWindow className="size-4" />
+                    Tab
+                  </DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       {dirty && (
         <>
           <Button
+            type="button"
             size="sm"
             disabled={mutation.isPending}
             onClick={() =>
@@ -220,12 +352,13 @@ function ViewMenu<TData>({
             保存修改
           </Button>
           <Button
+            type="button"
             size="sm"
             variant="ghost"
             disabled={mutation.isPending}
             onClick={() => select(selected)}
           >
-            放弃修改
+            还原
           </Button>
         </>
       )}
@@ -247,6 +380,11 @@ function ViewMenu<TData>({
           </Button>
         </span>
       )}
+    </div>
+  );
+  return (
+    <>
+      {children(controls, display)}
       <Dialog
         open={dialog !== null}
         onOpenChange={(isOpen) => {
@@ -261,7 +399,7 @@ function ViewMenu<TData>({
                 : {
                     delete: '删除视图',
                     rename: '重命名视图',
-                    create: '视图另存为',
+                    create: '另存为新视图',
                     duplicate: '复制视图',
                   }[dialog]}
             </DialogTitle>
@@ -323,6 +461,6 @@ function ViewMenu<TData>({
           </form>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

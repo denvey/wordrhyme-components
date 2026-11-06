@@ -232,4 +232,5 @@ export {
   type ViewInput,
   type ViewQuery,
 } from './lib/saved-views';
+export type { SavedViewsConfig } from './components/auto-crud/saved-views';
 export { tagFilterValueSchema, type TagFilterValue } from './lib/tag-filter';

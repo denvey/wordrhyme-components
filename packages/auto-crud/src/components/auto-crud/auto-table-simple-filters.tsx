@@ -491,13 +491,13 @@ export function AutoTableSimpleFilters<TData>({
       {hasFilters && (
         <Button
           data-filter-reset
-          variant="outline"
+          variant="ghost"
           size="sm"
-          className="h-8 border-dashed shrink-0"
+          className="h-8 shrink-0 text-muted-foreground"
           onClick={() => setFilters([])}
         >
           <X className="size-4" />
-          Reset
+          清除筛选
         </Button>
       )}
     </div>

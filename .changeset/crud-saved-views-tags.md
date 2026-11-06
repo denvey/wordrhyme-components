@@ -10,3 +10,7 @@ Keep tag columns read-only by default and expose a controlled assignment dialog 
 Initialize tag selection from current record tags, preserve untouched mixed selections in batch editing and submit only the resulting additions and removals. Place editor actions in a single row.
 
 Create tags from the current picker list and edit names and colors inline through per-tag icons, with inline deletion confirmation and no separate management dialog.
+
+Allow switching saved views between a dropdown before search and tabs above the toolbar, with contextual settings and a configurable selector.
+
+Limit TagService.list to resource/field scope and query/page/pageSize/signal inputs, and require a single paginated result with TagOption entries and hasMore.

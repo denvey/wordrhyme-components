@@ -565,7 +565,7 @@ export interface AutoCrudTableProps<TSchema extends z.ZodObject<z.ZodRawShape>> 
   /** 表格配置 */
   table?: {
     /** Enable named query views using the global viewStorage. */
-    views?: boolean;
+    views?: AutoTableProps<TSchema>['views'];
     /** Optional controls; overrides the application registration for this CRUD id. */
     pagination?: TablePaginationOptions;
     /** 按元素分组的全局表格类名；列级 th/td 类名优先 */

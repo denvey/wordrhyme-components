@@ -29,7 +29,6 @@ import {
 } from '@wordrhyme/shadcn';
 import { Check, Pencil, Plus, Trash2, X } from 'lucide-react';
 import { useContext, useEffect, useState } from 'react';
-import { normalizeHasMore, normalizeOptions } from '@/lib/registries';
 import { emptyTagFilter, tagFilterIds } from '@/lib/tag-filter';
 import { cn } from '@/lib/utils';
 import { CrudResourceContext, useAutoCrudConfig } from './auto-crud-provider';
@@ -111,14 +110,12 @@ function TagPicker(props: TagPickerProps) {
     queryFn: ({ pageParam, signal }) =>
       service.list({
         ...scope,
-        type: 'filter',
         page: pageParam,
         pageSize: 30,
         query: debouncedQuery,
         signal,
       }),
-    getNextPageParam: (last, pages) =>
-      normalizeHasMore(last) ? pages.length + 1 : undefined,
+    getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
     enabled: purpose === 'assign' || open,
   });
   const selected = useQuery({
@@ -129,7 +126,7 @@ function TagPicker(props: TagPickerProps) {
   const merged = new Map(
     [
       ...(selected.data ?? []),
-      ...(options.data?.pages.flatMap(normalizeOptions) ?? []),
+      ...(options.data?.pages.flatMap((page) => page.options) ?? []),
     ].map((option) => [option.value, option]),
   );
   let unresolvedLabel = '已失效标签';
@@ -140,6 +137,7 @@ function TagPicker(props: TagPickerProps) {
       merged.set(id, {
         value: id,
         label: `${unresolvedLabel} (${id})`,
+        color: 'var(--muted-foreground)',
         disabled: true,
       });
   if (editing && !merged.has(editing.value)) merged.set(editing.value, editing);
@@ -185,6 +183,23 @@ function TagPicker(props: TagPickerProps) {
           .filter(Boolean)
           .join('；')
       : '';
+  const filterValue = props.purpose === 'filter' ? props.value : null;
+  const hasFilter = filterValue !== null && ids.length > 0;
+  const firstId = ids[0];
+  const firstLabel = firstId ? (merged.get(firstId)?.label ?? firstId) : '';
+  const summary = firstId
+    ? `${filterValue?.exclude.includes(firstId) ? '排除 ' : ''}${firstLabel}`
+    : '';
+  const filterDescription = [
+    (filterValue?.include.length ?? 0) > 0
+      ? `包含${filterValue?.match === 'all' ? '全部' : '任一'}：${filterValue?.include.map((id) => merged.get(id)?.label ?? id).join('、')}`
+      : '',
+    (filterValue?.exclude.length ?? 0) > 0
+      ? `排除：${filterValue?.exclude.map((id) => merged.get(id)?.label ?? id).join('、')}`
+      : '',
+  ]
+    .filter(Boolean)
+    .join('；');
   const picker = (
     <>
       <Input
@@ -209,7 +224,7 @@ function TagPicker(props: TagPickerProps) {
             <SelectTrigger
               aria-label={`${title}包含项匹配方式`}
               size="sm"
-              className="h-8 w-auto font-normal"
+              className="h-8 w-auto border-0 bg-transparent font-normal shadow-none hover:bg-accent hover:text-accent-foreground dark:bg-transparent dark:hover:bg-accent/50"
             >
               <SelectValue />
             </SelectTrigger>
@@ -331,9 +346,9 @@ function TagPicker(props: TagPickerProps) {
                   <SelectTrigger
                     aria-label={`${option.label}筛选方式`}
                     size="sm"
-                    className="h-7 w-24 shrink-0 font-normal"
+                    className="h-7 w-24 shrink-0 border-0 bg-transparent font-normal shadow-none hover:bg-accent hover:text-accent-foreground dark:bg-transparent dark:hover:bg-accent/50"
                   >
-                    <SelectValue placeholder="筛选方式" />
+                    <SelectValue placeholder="不筛选" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="include">包含</SelectItem>
@@ -434,20 +449,44 @@ function TagPicker(props: TagPickerProps) {
               </Button>
             </PopoverTrigger>
           ) : (
-            <PopoverTrigger asChild>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 border-dashed"
-              >
-                <Plus className="size-4" />
-                {title}
-                {ids.length > 0 && (
-                  <span className="text-muted-foreground">{ids.length}</span>
-                )}
-              </Button>
-            </PopoverTrigger>
+            <div className="inline-flex items-center">
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={disabled}
+                  className={`h-8 border-dashed font-normal ${hasFilter ? 'rounded-r-none border-r-0 pr-1' : ''}`}
+                  title={hasFilter ? `${title}：${filterDescription}` : undefined}
+                  aria-label={hasFilter ? `${title}：${filterDescription}` : title}
+                >
+                  {!hasFilter && <Plus className="size-4" />}
+                  <span className="max-w-56 truncate">
+                    {title}
+                    {hasFilter ? `：${summary}` : ''}
+                  </span>
+                  {hasFilter && ids.length > 1 && (
+                    <span className="text-muted-foreground">+{ids.length - 1}</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              {hasFilter && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon-sm"
+                  className="h-8 rounded-l-none border-l-0 border-dashed"
+                  aria-label={`清除${title}筛选`}
+                  title={`清除${title}筛选`}
+                  disabled={disabled}
+                  onClick={() => {
+                    if (props.purpose === 'filter') props.onChange(emptyTagFilter());
+                  }}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              )}
+            </div>
           )}
           <PopoverContent align="start" className="w-88 max-w-[calc(100vw-2rem)] p-3">
             {picker}
