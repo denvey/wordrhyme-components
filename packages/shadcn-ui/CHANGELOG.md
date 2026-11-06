@@ -1,5 +1,11 @@
 # @pixpilot/shadcn-ui
 
+## 2.1.3
+
+### Patch Changes
+
+- 1cc9e99: Display selected values while their options are loading, then use the resolved labels when available.
+
 ## 2.1.2
 
 ### Patch Changes

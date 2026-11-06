@@ -1,5 +1,17 @@
 # @wordrhyme/auto-crud
 
+## 1.16.0
+
+### Minor Changes
+
+- 1cc9e99: Add custom table search rendering and tRPC query context forwarding, expose list errors, and support request conditions before list/export counts and limits.
+
+### Patch Changes
+
+- Updated dependencies [1cc9e99]
+  - @wordrhyme/shadcn-ui@2.1.3
+  - @wordrhyme/formily-shadcn@2.1.3
+
 ## 1.15.0
 
 ### Minor Changes

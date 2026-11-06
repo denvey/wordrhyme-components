@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 2.3.0
+
+### Minor Changes
+
+- 1cc9e99: Add custom table search rendering and tRPC query context forwarding, expose list errors, and support request conditions before list/export counts and limits.
+
 ## 2.2.0
 
 ### Minor Changes
