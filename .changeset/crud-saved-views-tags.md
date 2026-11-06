@@ -20,3 +20,5 @@ Add an optional views.counts callback for batched saved-view totals in tabs and 
 Remember view selector mode and selected view ID in localStorage by user/tenant scope and resource. Restore saved queries only when no explicit URL query is present, and discard unavailable selections without blocking the table.
 
 Support line-style view tabs with top or bottom active indicators and external class overrides for the list, triggers and indicator. Add Storybook examples for both positions.
+
+Keep the line-tab baseline continuous across the settings control and keep active indicators within the scrollable list.

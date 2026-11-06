@@ -379,7 +379,7 @@ function ViewMenu<TData>({
         aria-hidden="true"
         className={cn(
           'pointer-events-none absolute inset-x-0 h-1 bg-primary',
-          linePosition === 'top' ? '-top-px' : '-bottom-px',
+          linePosition === 'top' ? 'top-0' : 'bottom-0',
           tabs?.classNames?.indicator,
         )}
       />
@@ -389,7 +389,11 @@ function ViewMenu<TData>({
       <div
         className={cn(
           'flex min-w-0 max-w-full items-center gap-1',
-          display === 'tabs' && lineTabs && 'w-full',
+          display === 'tabs' &&
+            lineTabs && [
+              'relative w-full before:pointer-events-none before:absolute before:inset-x-0 before:h-px before:bg-border',
+              linePosition === 'top' ? 'before:top-0' : 'before:bottom-0',
+            ],
         )}
       >
         {display === 'tabs' && (
@@ -404,9 +408,8 @@ function ViewMenu<TData>({
               aria-label="已保存的视图"
               className={cn(
                 lineTabs
-                  ? 'min-w-full justify-start gap-0 rounded-none border-border bg-transparent p-0'
+                  ? 'min-w-full justify-start gap-0 rounded-none bg-transparent p-0'
                   : 'rounded-lg bg-muted p-1',
-                lineTabs && (linePosition === 'top' ? 'border-t' : 'border-b'),
                 tabs?.classNames?.list,
               )}
             >
