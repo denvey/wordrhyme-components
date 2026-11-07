@@ -1982,7 +1982,7 @@ const viewStorage = createLocalViewStorage(`${organizationId}:${userId}`);
 
 `ViewStorage` 和 `TagService` 的完整 TypeScript 接口由包导出。完整交互示例见 Storybook 的 **Auto CRUD / Saved views and tags**；可切换 simple、advanced、command 三种模式。
 
-展示方式与当前选中视图的 ID 自动存入浏览器 `localStorage`，键为 `auto-crud:view-preferences:${encodeURIComponent(scope)}:${encodeURIComponent(resourceId)}`，按用户／租户和资源隔离，独立于 `ViewStorage` 的本地或服务端实现。刷新或重新进入时恢复展示方式；视图列表加载成功后恢复选中项。URL 已有筛选、搜索、排序或分页参数时保留 URL 查询，否则应用上次视图的保存条件，使用 replace 更新 URL。上次视图已删除或字段不可用时清除其选中记忆，保留 URL 查询。本地数据损坏或存储不可用时使用配置的初始展示方式，仍可在当前页面切换。未保存的查询不另存到本地偏好中。
+展示方式、当前选中视图的 ID、显示顺序 `viewOrder` 和隐藏视图 ID `hiddenViewIds` 自动存入浏览器 `localStorage`，键为 `auto-crud:view-preferences:${encodeURIComponent(scope)}:${encodeURIComponent(resourceId)}`，按用户／租户和资源隔离，独立于 `ViewStorage` 的本地或服务端实现。旧偏好无需手动迁移：缺少的新字段表示使用配置顺序、不隐藏视图；浏览器内旧的 `hiddenPresetIds` 会自动转换为 `hiddenViewIds`，已有新字段时以新字段为准。刷新或重新进入时恢复展示偏好；视图列表加载成功后恢复选中项。URL 已有筛选、搜索、排序或分页参数时保留 URL 查询，否则应用上次视图的保存条件，使用 replace 更新 URL。上次视图已删除、已隐藏或字段不可用时清除其选中记忆，保留 URL 查询。本地数据损坏或存储不可用时使用配置的初始展示方式，仍可在当前页面调整显示偏好。未保存的查询不另存到本地偏好中。
 
 ### 代码预设与 Host 保存范围
 
@@ -2008,7 +2008,6 @@ const viewStorage: ViewStorage = {
   create: (resourceId, input) => api.views.create({ resourceId, ...input }),
   update: (resourceId, id, input) => api.views.update({ resourceId, id, ...input }),
   remove: (resourceId, id) => api.views.remove({ resourceId, id }),
-  reorder: (resourceId, ids) => api.views.reorder({ resourceId, ids }),
 };
 
 <AutoCrudProvider scope={`${organizationId}:${userId}`} viewStorage={viewStorage}>
@@ -2021,7 +2020,31 @@ const viewStorage: ViewStorage = {
 </AutoCrudProvider>;
 ```
 
-合并顺序为“全部 → presets 数组顺序 → storage.list 返回顺序”。ID、slug 在合并后的所有来源间共用命名空间：重复 ID、重复 slug 或 slug 与另一项 ID 相同均报错，禁止静默覆盖。预设 schema 不接受 `scope` 或 `capabilities`；其来源由组件根据配置入口识别。预设不可保存覆盖、重命名、删除或参与存储排序，修改查询后可另存；另存为普通持久化视图并取得新的 ID / slug。Host 应在服务端预留代码预设的 ID / slug，防止其他调用方或并发写入产生冲突。
+默认合并顺序为“全部 → presets 数组顺序 → storage.list 返回顺序”，随后应用个人显示顺序和隐藏偏好。ID、slug 在合并后的所有来源间共用命名空间：重复 ID、重复 slug 或 slug 与另一项 ID 相同均报错，禁止静默覆盖。预设 schema 不接受 `scope` 或 `capabilities`；其来源由组件根据配置入口识别。预设可隐藏、恢复和调整本地显示顺序；其查询仍由代码维护，不可保存覆盖、重命名、删除或参与存储排序，修改查询后可另存为普通持久化视图并取得新的 ID / slug。隐藏项仍参与 ID / slug 冲突校验。Host 应在服务端预留代码预设的 ID / slug，防止其他调用方或并发写入产生冲突。
+
+复用基础页面时，可通过 `views.hiddenViews?: readonly string[]` 按 ID 或 slug 隐藏任意来源的视图，无需修改查询定义。例如通过已知 slug 提前隐藏 WordRhyme 订单预设「已付款」：
+
+```tsx
+<AutoCrudTable
+  id="shop.orders"
+  schema={schema}
+  resource={resource}
+  table={{
+    views: {
+      presets,
+      hiddenViews: ['shop-orders-paid'],
+      selector: 'tabs',
+      tabs: { variant: 'line' },
+    },
+  }}
+/>
+```
+
+独立 `AutoTable` 同样使用 `views={{ presets, hiddenViews }}`。省略或传空数组表示页面不额外隐藏；数组可混用 ID 与 slug，按大小写精确匹配，不按显示名称匹配。ID 与 slug 已在同一资源内共用唯一命名空间，不会歧义匹配。重复项被忽略，暂未匹配的项不影响加载，视图之后注册或创建并出现在可见集合时自动应用配置；没有 slug 的视图仍可用 ID。修改 slug 后需同步更新对应配置，用户在界面上隐藏时继续按稳定 ID 保存本地偏好。预设、个人及只读共享视图均可隐藏，“全部”仍固定可见。页面配置的隐藏与用户本地隐藏取并集，配置项不进入“恢复隐藏视图”菜单；移除配置后，若用户未自行隐藏该项，就会重新显示。配置本身不写入本地偏好、不修改查询定义、不调用 `ViewStorage` 写入方法，也不是访问权限控制。
+
+运行时新增配置使当前选中项被隐藏时，会切换到“全部”并重置查询；初始化时不会选中已隐藏的默认项或本地记忆项。显式 URL 指向配置隐藏项时提示页面已隐藏该视图并保留 URL 查询，不提供用户恢复入口。隐藏项不参与可见视图的数量统计，但仍参与 ID / slug 冲突校验。Storybook 的 **Configured Hidden Views** 可通过 `hiddenViews` 控件体验 ID / slug 混用及移除配置后的显示。
+
+基础页面必须将消费侧配置传入 `table.views`。WordRhyme 当前的 `registerViews(id, views)` 只追加预设数组；仅在 OmniDS 插件侧传入隐藏视图的 ID 或 slug 尚不会生效，需由 WordRhyme 的扩展配置入口接收并透传到此处，查询定义继续留在基础项目。
 
 公共 schema 和对应类型均从包导出：`viewQuerySchema` / `ViewQuery`、`viewInputSchema` / `ViewInput`、`savedViewSchema` / `SavedView`、`presetViewSchema` / `PresetView`、`viewScopeSchema` / `ViewScope`、`viewCapabilitiesSchema` / `ViewCapabilities`、`viewStorageCapabilitiesSchema` / `ViewStorageCapabilities`。
 
@@ -2062,7 +2085,7 @@ const capabilities: ViewStorageCapabilities = {
 - `scope` 是 Host 的不透明存储标识，组件不内置个人／组织枚举、展示文案或权限推断。个人／组织的可见性、归属及服务端授权由 Host 实现。`AutoCrudProvider.scope` 仍是用户／租户缓存及偏好命名空间，与视图保存范围不同。
 - 创建省略 `scope` 使用存储适配器默认值；更新省略时保留原范围。更新不能迁移范围，要改变范围请另存。提供 `getCapabilities` 时，组件默认选择返回列表的第一项。Host 可继续使用 `personal` / `organization`，通过返回顺序定义默认行为。
 - 保存弹窗默认只显示名称和 slug。业务需要让用户选择保存范围时，配置 `views.scopeOptions: [{ value, label }]`；值与 `createScopes` 取交集，只有多个可用选项时才展示选择器，文案完全由调用方提供。配置后以首个可用配置项为默认；未配置或只有一个选项时隐藏选择器，仍向适配器传入选定范围。
-- `capabilities.update` 同时控制保存查询、重命名和修改 slug；`delete` 控制删除；`reorder` 控制参与排序。提供 capabilities 时三个布尔值都必须返回。省略时保留旧适配器的可管理行为；Host 必须为有权限差异的项显式返回能力。组件不根据 scope、角色或身份猜权限。
+- `capabilities.update` 同时控制保存查询、重命名和修改 slug；`delete` 控制删除；`reorder` 表示适配器层面的持久化排序权限，不限制个人本地显示顺序。提供 capabilities 时三个布尔值都必须返回。省略时保留旧适配器的可管理行为；Host 必须为有权限差异的项显式返回能力。组件不根据 scope、角色或身份猜权限。
 - `getCapabilities?: (resourceId: string) => Promise<ViewStorageCapabilities>` 为独立异步读取，不影响 list 的返回形状。旧适配器省略时允许创建且不指定范围；已实现时加载或失败均禁用创建，失败提供重试。Host 需返回当前资源实际允许的范围，在每次写入时再次校验权限。组件成功写入后刷新列表和创建能力。
 - 所有来源共用现有 URL、默认选中、本地偏好、`fieldsReady`、Tab 和异步 counts 机制；范围不写入查询。`createLocalViewStorage` 在给定的浏览器命名空间内保存视图，scope 如有提供则原样保存，不实现跨用户共享。
 
@@ -2078,7 +2101,7 @@ table={{ views: {
 
 之前通过 scope 自动推断只读的适配器，需改为显式返回 `capabilities`。既有 Host 的 list / create / update / remove / reorder 和 `getCapabilities` 形状保持不变；未配置 `scopeOptions` 时不展示范围选择器。
 
-Storybook 的 **Presets And Shared Views** 展示两组固定预设、只读项和可编辑项；**Organization Administrator** 演示由 Host 注入“仅自己／共享”选项和权限。示例 Host 使用内存存储，刷新重置，不代表浏览器本地存储提供共享能力。
+Storybook 的 **Presets And Shared Views** 展示两组代码预设、只读项和可编辑项，可体验任意项隐藏／恢复与混合排序；**Organization Administrator** 演示由 Host 注入“仅自己／共享”选项和权限。示例 Host 的查询定义使用内存存储，刷新重置；个人显示偏好在当前浏览器保留，不代表浏览器本地存储提供共享能力。
 
 共享视图示例使用 `queryKeys.view: 'sharedView'`，普通示例继续使用 `view`。切换这两组数据源时，示例会清理另一组的视图参数及关联查询，避免 Storybook 保留的旧 URL 指向不同存储中的视图；同组刷新与分享链接仍保留当前查询。
 
@@ -2103,13 +2126,19 @@ Storybook 的 **Presets And Shared Views** 展示两组固定预设、只读项�
 
 默认参数为 `?view=vip-customers`，也接受 `?view=view-123`；若配置上例的 `queryKeys.view`，则使用 `?customerView=vip-customers`。切换视图会同步参数并创建浏览器历史记录，前进／后退恢复 URL 指定的视图。有 slug 时写入规范 slug，只有 ID 的旧链接会以 replace 规范化。`?view=` 明确表示“全部”。仅带视图参数的链接会应用保存条件；若同时带筛选、搜索、排序或分页参数，保留完整 URL 查询，便于分享未保存的调整。无权访问、已删除或查询字段失效时显示错误并保留 URL 查询，不回退到另一个视图。链接接收者仍需有权限读取该视图及资源，URL 不授予访问权限。
 
-下拉和 Tab 都按预设数组顺序、`ViewStorage.list()` 的返回顺序展示，“全部”固定在最前。存储提供可选方法后，设置菜单显示“调整顺序”，拖动手柄（也支持键盘）后点击保存；取消或保存失败不会改变显示顺序或当前选中项：
+下拉和 Tab 共用个人显示偏好，“全部”固定在最前，不参与隐藏或排序。设置菜单始终提供“调整顺序”：至少有两个可见视图且列表加载成功后可用，拖动手柄（也支持键盘）后点击保存，取消不会改变顺序或当前选中项。预设与所有已保存项（包括只读共享项）均可混合调整显示顺序，无需实现 `ViewStorage.reorder`，也不受 `capabilities.reorder` 限制；操作仅写本地偏好，不调用服务端排序、不改变他人的顺序、共享查询或存储权限。列表加载失败或配置冲突时禁用；创建权限加载失败仅禁用创建，不阻止已成功加载列表的本地排序。
+
+选择任意视图后，在“视图设置 → 隐藏视图”中隐藏；隐藏当前项会切换到“全部”，清空筛选、搜索和排序并重置分页。通过“恢复隐藏视图”子菜单逐项恢复，不自动选中。隐藏项的位置在调整其他视图时保留，恢复后回到该位置。本地隐藏适用于预设、个人和只读共享视图，不受 `capabilities.update/delete/reorder` 限制；共享查询定义及编辑／删除权限保持原有语义。`defaultView` 或上次选中记忆不会重新选择隐藏项；显式 URL 指向用户隐藏项时显示恢复提示并保留 URL 查询，恢复后可继续使用该链接。
+
+顺序按稳定 ID 记录；重复或不在当前集合中的 ID 被忽略，新增项按代码／存储默认顺序追加。暂时不可见或插件移除的项不阻止加载，隐藏 ID 会保留供插件恢复时使用。排序弹窗打开后若可见集合变化，保存会提示重新调整，避免漏掉新项。切换展示方式、选中视图或保存查询均保留显示顺序与隐藏偏好。本地存储不可用时，本轮页面内的调整仍然有效，刷新后可能丢失。
+
+`ViewStorage` 保留可选的适配器排序接口，供需要管理持久化顺序的调用方使用；视图选择器的“调整顺序”不再调用它：
 
 ```ts
 reorder?: (resourceId: string, ids: string[]) => Promise<void>;
 ```
 
-`ids` 必须为该资源当前允许排序的持久化项的完整排列，只包含 `capabilities.reorder` 为 true 的项（旧适配器省略 capabilities 时仍允许排序）。预设和不可排序项从不传入，Host 必须保留其他项在持久化列表中的位置，将新顺序填入可排序项原有位置。例如 list 为 `[只读 A, 可排序 B, 可排序 C]`，提交 `[C, B]` 后应为 `[A, C, B]`。服务端应在事务中校验权限并保存，拒绝重复、未知、无权或缺失 ID；并发新增／删除或权限变化导致集合不一致时返回错误，让用户刷新后重试。旧的全个人列表仍提交全部 ID。成功后组件重新调用 `list()`。排序不修改视图 ID、slug 或查询条件；服务未实现 `reorder` 时不展示排序入口。`createLocalViewStorage` 已实现本地排序持久化。
+直接调用该接口时，`ids` 仍必须为该资源当前允许排序的持久化项的完整排列，只包含 `capabilities.reorder` 为 true 的项（旧适配器省略 capabilities 时仍允许排序）。预设和不可排序项从不传入，Host 必须保留其他项在持久化列表中的位置，将新顺序填入可排序项原有位置。例如 list 为 `[只读 A, 可排序 B, 可排序 C]`，提交 `[C, B]` 后应为 `[A, C, B]`。服务端应在事务中校验权限并保存，拒绝重复、未知、无权或缺失 ID；并发新增／删除或权限变化导致集合不一致时返回错误。该接口及 `createLocalViewStorage` 的实现保持兼容，既有存储顺序仍作为没有个人排列偏好时的默认顺序。
 
 Storybook 的 **Default View** 演示按 slug 默认选中，“视图设置 → 调整顺序”可体验排序；所有 Saved views and tags 示例共用本地视图存储，首次加载补齐演示视图；视图、删除操作和排列顺序刷新后保留。客户标签仍为刷新后重置的内存数据。
 
@@ -2135,7 +2164,7 @@ const { options, hasMore } = await tagService.list({
 
 ### 视图数量
 
-通过可选的 `views.counts` 回调接入数量，Tab 和下拉选项都会显示。组件提供全部预设、组织和个人视图保存的筛选、AND/OR 与搜索条件，并额外提供不带筛选的「全部」查询；查询不包含排序和分页，也不叠加当前尚未保存的筛选。统计独立异步执行，列表不等待统计完成。
+通过可选的 `views.counts` 回调接入数量，Tab 和下拉选项都会显示。组件提供所有可见视图（预设、组织和个人项）保存的筛选、AND/OR 与搜索条件，并额外提供不带筛选的「全部」查询；查询不包含排序和分页，也不叠加当前尚未保存的筛选。统计独立异步执行，列表不等待统计完成。
 
 ```tsx
 import type { SavedViewsConfig } from '@wordrhyme/auto-crud';
@@ -2177,7 +2206,6 @@ Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 与其他�
       selector: 'tabs',
       tabs: {
         variant: 'line',
-        linePosition: 'bottom',
         classNames: {
           list: 'gap-2',
           trigger: 'text-base data-[state=on]:text-blue-700',
@@ -2191,7 +2219,7 @@ Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 与其他�
 
 `classNames.list` 作用于 Tab 列表，`trigger` 作用于每个 Tab（含「全部」），`indicator` 作用于选中项的线条，可修改颜色和粗细。类名通过 `cn` 在默认类名之后合并；`trigger` 的选中状态可用 `data-[state=on]` 定制。`linePosition` 和 `indicator` 仅在线条样式中生效。独立 `AutoTable` 使用同样的 `views.tabs` 配置。这些外观配置由使用方提供，不写入本地偏好。
 
-Storybook 提供 **Line Tabs**（下方蓝色强调线）和 **Top Line Tabs**（上方强调线）示例，均带视图数量；可通过 Controls 切换样式和线条位置。已有本地展示偏好时，仍可在视图设置中切换到 Tab。
+Storybook 提供 **Line Tabs**（下方蓝色强调线）和 **Top Line Tabs**（上方强调线）示例，均带预设、共享视图和数量；选中后可在齿轮菜单隐藏、恢复或调整顺序，也可通过 Controls 切换样式和线条位置。已有本地展示偏好时，仍可在视图设置中切换到 Tab。
 
 ### 自动标签接入
 
@@ -2278,7 +2306,7 @@ function EditTags({
 
 独立使用 `TagFilter` 时，在 `AutoCrudProvider` 内传入 `resourceId="crm.customers"` 和 `field="tags"`，默认显示工具栏按钮；表格内部可省略 `resourceId`，自动继承表格的 CRUD id。嵌入自有条件行可传 `variant="input"`；`id` 和 `className` 对应输入样式的触发按钮，`open/onOpenChange` 可控制其展开状态。值仍通过 `value/onChange` 控制，不需要转换成普通多选数组。
 
-`useAutoCrudResource` 返回 `metadataPending`，`AutoCrudTable` 据此等待字段元数据就绪，再恢复上次视图，避免把尚未加载的扩展字段当成已删除字段。自定义资源应在异步字段加载期间提供 `metadataPending: true`；独立 `AutoTable` 使用 `views={{ fieldsReady: false }}` 暂停恢复和视图切换，字段加载完成后改为 `true`。未提供这些状态时沿用同步字段行为。
+`useAutoCrudResource` 返回 `metadataPending`，`AutoCrudTable` 据此自动等待字段元数据就绪，再恢复上次视图，通常无需配置 `fieldsReady`。自定义资源应在异步字段加载期间提供 `metadataPending: true`，避免把尚未加载的扩展字段当成已删除字段。独立 `AutoTable` 没有资源元数据状态，异步加载字段时使用 `views={{ fieldsReady: false }}` 暂停恢复和视图切换，字段加载完成后改为 `true`。未提供这些状态时沿用同步字段行为。
 
 ## 自定义全局搜索
 

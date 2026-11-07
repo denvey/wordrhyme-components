@@ -122,11 +122,40 @@ export function reorderSavedViews(views: SavedView[], ids: string[]): SavedView[
   return views.map((view) => (byId.has(view.id) ? byId.get(ids[index++]!)! : view));
 }
 
-const viewPreferencesSchema = z.object({
-  selector: z.enum(['dropdown', 'tabs']),
-  viewId: z.string().min(1).nullable(),
-});
+const viewPreferenceIdsSchema = z.array(z.string().min(1)).optional().catch(undefined);
+const viewPreferencesSchema = z
+  .object({
+    selector: z.enum(['dropdown', 'tabs']),
+    viewId: z.string().min(1).nullable(),
+    /** Personal display order across all sources, independent of storage permissions. */
+    viewOrder: viewPreferenceIdsSchema,
+    hiddenViewIds: viewPreferenceIdsSchema,
+    /** Migrate older browser preferences; new writes use hiddenViewIds only. */
+    hiddenPresetIds: viewPreferenceIdsSchema,
+  })
+  .transform(({ hiddenPresetIds, ...preferences }) => {
+    if (preferences.hiddenViewIds === undefined && hiddenPresetIds !== undefined)
+      return { ...preferences, hiddenViewIds: hiddenPresetIds };
+    return preferences;
+  });
 export type ViewPreferences = z.infer<typeof viewPreferencesSchema>;
+
+/** Ignore removed/duplicate IDs and append new views in their configured order. */
+export function orderViews(
+  views: ResolvedView[],
+  ids: readonly string[] = [],
+): ResolvedView[] {
+  const remaining = new Map(views.map((view) => [view.id, view]));
+  const ordered: ResolvedView[] = [];
+  for (const id of ids) {
+    const view = remaining.get(id);
+    if (view) {
+      ordered.push(view);
+      remaining.delete(id);
+    }
+  }
+  return [...ordered, ...remaining.values()];
+}
 
 function viewPreferencesKey(scope: string, resourceId: string): string {
   return `auto-crud:view-preferences:${encodeURIComponent(scope)}:${encodeURIComponent(resourceId)}`;
