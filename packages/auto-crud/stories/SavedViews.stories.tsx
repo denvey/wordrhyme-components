@@ -250,6 +250,7 @@ function Demo({
   automaticTags = false,
   enableViews = true,
   defaultView,
+  hiddenViews,
   selector = 'dropdown',
   showCounts = false,
   tabVariant = 'default',
@@ -262,6 +263,7 @@ function Demo({
   automaticTags?: boolean;
   enableViews?: boolean;
   defaultView?: string;
+  hiddenViews?: SavedViewsConfig['hiddenViews'];
   selector?: SavedViewsConfig['selector'];
   showCounts?: boolean;
   tabVariant?: NonNullable<SavedViewsConfig['tabs']>['variant'];
@@ -446,7 +448,10 @@ function Demo({
   }
   if (sharedViews)
     description =
-      '组合固定预设、只读视图和可编辑视图。Host 提供权限及保存位置文案，只有多个可选位置时才展示选择器。开启 organizationAdmin 体验共享保存；数据刷新后重置。';
+      '组合代码预设、只读视图和可编辑视图。选中任意视图后，可在右侧齿轮菜单中隐藏，再通过「恢复隐藏视图」恢复；所有视图均可调整显示顺序，显示偏好在当前浏览器保留。Host 提供权限及保存位置文案，开启 organizationAdmin 体验共享保存；查询定义刷新后重置。';
+  if ((hiddenViews?.length ?? 0) > 0)
+    description =
+      '页面通过 hiddenViews 按 ID 或 slug 隐藏指定视图，不区分预设或已保存项；它们不会出现在视图列表或恢复菜单中。清空此配置后可重新显示，用户自行隐藏的视图仍可从齿轮菜单恢复。';
   if (readyViewKey !== viewKey) return null;
   return (
     <QueryClientProvider client={client}>
@@ -510,6 +515,7 @@ function Demo({
                   selector,
                   defaultView,
                   presets: sharedViews ? combinedPresets : undefined,
+                  hiddenViews,
                   scopeOptions: sharedViews
                     ? [
                         { value: 'personal', label: '仅自己' },
@@ -590,6 +596,7 @@ const meta = {
     automaticTags: { control: 'boolean' },
     enableViews: { control: 'boolean' },
     defaultView: { control: 'text' },
+    hiddenViews: { control: 'object' },
     selector: { control: 'select', options: ['dropdown', 'tabs'] },
     showCounts: { control: 'boolean' },
     tabVariant: { control: 'select', options: ['default', 'line'] },
@@ -609,14 +616,22 @@ export const DefaultView: Story = {
 export const Tabs: Story = { args: { selector: 'tabs' } };
 export const TabsWithCounts: Story = { args: { selector: 'tabs', showCounts: true } };
 export const LineTabs: Story = {
-  args: { selector: 'tabs', showCounts: true, tabVariant: 'line' },
+  args: {
+    sharedViews: true,
+    selector: 'tabs',
+    showCounts: true,
+    tabVariant: 'line',
+    defaultView: 'shop-customer-a',
+  },
 };
 export const TopLineTabs: Story = {
   args: {
+    sharedViews: true,
     selector: 'tabs',
     showCounts: true,
     tabVariant: 'line',
     linePosition: 'top',
+    defaultView: 'shop-customer-a',
   },
 };
 export const PresetsAndSharedViews: Story = {
@@ -626,6 +641,16 @@ export const PresetsAndSharedViews: Story = {
     showCounts: true,
     tabVariant: 'line',
     defaultView: 'shop-customer-a',
+  },
+};
+export const ConfiguredHiddenViews: Story = {
+  args: {
+    sharedViews: true,
+    selector: 'tabs',
+    showCounts: true,
+    tabVariant: 'line',
+    defaultView: 'extension-customer-b',
+    hiddenViews: ['shop-customer-a', 'org:fixed'],
   },
 };
 export const OrganizationAdministrator: Story = {

@@ -51,6 +51,8 @@ import {
   ArrowDownUp,
   ChevronDown,
   Copy,
+  Eye,
+  EyeOff,
   GripVertical,
   Layers,
   PanelsTopLeft,
@@ -63,29 +65,31 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { getUrlParams, setSearchParams } from '@/hooks/use-url-state';
 import { getSortingStateParser } from '@/lib/parsers';
 import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
-import { cn } from '@/lib/utils';
 import {
-  parseSavedViews,
   getViewCapabilities,
+  orderViews,
+  parseSavedViews,
   queryFingerprint,
   readViewPreferences,
-  reorderSavedViews,
   resolveViews,
   savedViewSchema,
   viewInputSchema,
   viewStorageCapabilitiesSchema,
   writeViewPreferences,
 } from '@/lib/saved-views';
+import { cn } from '@/lib/utils';
 import { useAutoCrudConfig } from './auto-crud-provider';
 
 export interface SavedViewsConfig {
-  /** Immutable code views, in display order, followed by storage.list results. IDs/slugs must be unique across both. */
+  /** Code-defined queries; users may hide/reorder their display locally. IDs/slugs must be unique across sources. */
   presets?: readonly PresetView[];
+  /** Page-hidden view IDs or slugs from any source. Overrides personal preferences; excluded from restore. */
+  hiddenViews?: readonly string[];
   /** Opt into scope selection with Host-defined values and labels. Single options stay hidden. */
   scopeOptions?: readonly { value: ViewScope; label: string }[];
   /** Initial view slug or ID when the URL and local preferences do not select a view. */
   defaultView?: string;
-  /** Wait for asynchronous field metadata before restoring or selecting a view. */
+  /** Wait for async fields in standalone AutoTable; AutoCrudTable derives readiness from resource metadata. */
   fieldsReady?: boolean;
   /** Initial display mode when no local preference exists. */
   selector?: ViewPreferences['selector'];
@@ -136,38 +140,11 @@ function suggestSlug(name: string, views: SavedView[]): string {
   return slug;
 }
 
-export function SavedViews<TData>({
-  resourceId,
-  table,
-  fieldsReady,
-  defaultView,
-  presets,
-  scopeOptions,
-  selector,
-  tabs,
-  counts,
-  onApply,
-  children,
-}: SavedViewsProps<TData>) {
+export function SavedViews<TData>(props: SavedViewsProps<TData>) {
   const config = useAutoCrudConfig();
   if (!config?.viewStorage)
     throw new Error('Saved views require AutoCrudProvider.viewStorage');
-  return (
-    <ViewMenu
-      key={`${config.cacheKey}:${resourceId}`}
-      resourceId={resourceId}
-      table={table}
-      fieldsReady={fieldsReady}
-      defaultView={defaultView}
-      presets={presets}
-      scopeOptions={scopeOptions}
-      onApply={onApply}
-      selector={selector}
-      tabs={tabs}
-      counts={counts}
-      children={children}
-    />
-  );
+  return <ViewMenu {...props} key={`${config.cacheKey}:${props.resourceId}`} />;
 }
 
 function ViewMenu<TData>({
@@ -176,6 +153,7 @@ function ViewMenu<TData>({
   fieldsReady = true,
   defaultView,
   presets,
+  hiddenViews,
   scopeOptions,
   selector = 'dropdown',
   tabs,
@@ -187,6 +165,29 @@ function ViewMenu<TData>({
   const storage = config.viewStorage!;
   const client = useQueryClient();
   const scopeLabelId = useId();
+  const [display, setDisplay] = useState(selector);
+  const [preferences, setPreferences] = useState<ViewPreferences | null>();
+  const preferencesRef = useRef<ViewPreferences | null>(null);
+  useEffect(() => {
+    const stored = readViewPreferences(config.scope, resourceId);
+    preferencesRef.current = stored;
+    setPreferences(stored);
+    if (stored) setDisplay(stored.selector);
+  }, [config.scope, resourceId]);
+  const savePreferences = useCallback(
+    (patch: Partial<ViewPreferences>) => {
+      const next = {
+        selector,
+        viewId: null,
+        ...preferencesRef.current,
+        ...patch,
+      };
+      preferencesRef.current = next;
+      setPreferences(next);
+      writeViewPreferences(config.scope, resourceId, next);
+    },
+    [config.scope, resourceId, selector],
+  );
   const queryKey = ['auto-crud-views', config.cacheKey, resourceId];
   const views = useQuery({
     queryKey,
@@ -217,16 +218,47 @@ function ViewMenu<TData>({
       };
     }
   }, [presets, views.data]);
-  const viewItems = collection.items;
+  const allViewItems = useMemo(
+    () => orderViews(collection.items, preferences?.viewOrder),
+    [collection.items, preferences?.viewOrder],
+  );
+  const configuredHiddenIds = useMemo(() => {
+    const references = new Set(hiddenViews);
+    return new Set(
+      allViewItems
+        .filter(
+          (view) =>
+            references.has(view.id) ||
+            (view.slug !== undefined && references.has(view.slug)),
+        )
+        .map((view) => view.id),
+    );
+  }, [allViewItems, hiddenViews]);
+  const hiddenItems = useMemo(
+    () =>
+      allViewItems.filter(
+        (view) =>
+          configuredHiddenIds.has(view.id) ||
+          preferences?.hiddenViewIds?.includes(view.id),
+      ),
+    [allViewItems, configuredHiddenIds, preferences?.hiddenViewIds],
+  );
+  const restorableViews = useMemo(
+    () => hiddenItems.filter((view) => !configuredHiddenIds.has(view.id)),
+    [hiddenItems, configuredHiddenIds],
+  );
+  const viewItems = useMemo(
+    () => allViewItems.filter((view) => !hiddenItems.includes(view)),
+    [allViewItems, hiddenItems],
+  );
   const savedItems = useMemo(
     () =>
-      viewItems.filter(
+      collection.items.filter(
         (view): view is SavedView & { source: 'saved' } => view.source === 'saved',
       ),
-    [viewItems],
+    [collection.items],
   );
-  const reorderableViews = savedItems.filter((view) => getViewCapabilities(view).reorder);
-  const ready = views.isSuccess && collection.error === null;
+  const ready = views.isSuccess && collection.error === null && preferences !== undefined;
   const countQueries = useMemo(
     () => [
       { key: 'all', filters: [], joinOperator: 'and' as const, search: '' },
@@ -291,7 +323,7 @@ function ViewMenu<TData>({
           : '暂无统计';
     return (
       <span
-        className="text-muted-foreground tabular-nums"
+        className="text-xs text-muted-foreground tabular-nums"
         aria-label={label}
         title={label}
       >
@@ -305,20 +337,13 @@ function ViewMenu<TData>({
     setSelectedId(view?.id ?? null);
   const canUpdate = selected?.source === 'saved' && getViewCapabilities(selected).update;
   const canDelete = selected?.source === 'saved' && getViewCapabilities(selected).delete;
-  const [display, setDisplay] = useState(selector);
-  const initialPreferences = useRef<ViewPreferences | null>(null);
-  useEffect(() => {
-    const preferences = readViewPreferences(config.scope, resourceId);
-    initialPreferences.current = preferences;
-    if (preferences) setDisplay(preferences.selector);
-  }, [config.scope, resourceId]);
   const [dialog, setDialog] = useState<
     'create' | 'rename' | 'duplicate' | 'delete' | 'reorder' | null
   >(null);
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
   const [scope, setScope] = useState<ViewScope>();
-  const [orderedViews, setOrderedViews] = useState<SavedView[]>([]);
+  const [orderedViews, setOrderedViews] = useState<ResolvedView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(() => getUrlParams().toString());
   useEffect(() => {
@@ -396,12 +421,35 @@ function ViewMenu<TData>({
     },
     [columns, keys, validateQuery, onApply, viewKey],
   );
+  useEffect(() => {
+    if (
+      !ready ||
+      !fieldsReady ||
+      selectedId === null ||
+      !hiddenItems.some((view) => view.id === selectedId)
+    )
+      return;
+    try {
+      apply({ filters: [], joinOperator: 'and', search: '', sort: [] }, 'replace', '');
+      setSelectedId(null);
+      savePreferences({ viewId: null });
+      setError(null);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    }
+  }, [ready, fieldsReady, selectedId, hiddenItems, apply, savePreferences]);
   const preferencesRestored = useRef(false);
   useEffect(() => {
-    if (!ready || !fieldsReady) return;
+    if (!ready || !fieldsReady || preferences === undefined) return;
     const first = !preferencesRestored.current;
     const urlReference = getUrlParams().get(viewKey);
-    if (!first && urlReference === lastViewParam.current) return;
+    if (
+      !first &&
+      urlReference === lastViewParam.current &&
+      (selectedId !== null ||
+        !viewItems.some((view) => view.id === urlReference || view.slug === urlReference))
+    )
+      return;
     const savedViews = viewItems;
     let cancelled = false;
     // Cached views can be ready on mount, before ancestor URL hooks subscribe.
@@ -409,15 +457,15 @@ function ViewMenu<TData>({
       if (cancelled) return;
       preferencesRestored.current = true;
       lastViewParam.current = urlReference;
-      const preferences = initialPreferences.current;
+      const storedPreferences = preferencesRef.current;
       let reference = urlReference;
       if (first && urlReference === null)
-        reference = preferences ? preferences.viewId : (defaultView ?? null);
+        reference = storedPreferences ? storedPreferences.viewId : (defaultView ?? null);
       if (reference === null || reference === '') {
         setSelected(null);
         setError(null);
         if (!first || urlReference !== null)
-          writeViewPreferences(config.scope, resourceId, {
+          savePreferences({
             selector: display,
             viewId: null,
           });
@@ -447,21 +495,30 @@ function ViewMenu<TData>({
             setSearchParams(params, { history: 'replace' });
           }
           setSelected(view);
-          writeViewPreferences(config.scope, resourceId, {
+          savePreferences({
             selector: display,
             viewId: view.id,
           });
           setError(null);
           return;
         }
-        if (urlReference !== null && urlReference !== '')
-          setError('链接指定的视图不存在或不可用');
+        if (urlReference !== null && urlReference !== '') {
+          const hiddenView = hiddenItems.find(
+            (item) => item.id === reference || item.slug === reference,
+          );
+          let message = '链接指定的视图不存在或不可用';
+          if (hiddenView)
+            message = configuredHiddenIds.has(hiddenView.id)
+              ? '此视图已由页面配置隐藏'
+              : '此视图已隐藏，请在视图设置中恢复';
+          setError(message);
+        }
       } catch (reason) {
         setError(reason instanceof Error ? reason.message : String(reason));
       }
       setSelected(null);
-      if (first && urlReference === null && preferences)
-        writeViewPreferences(config.scope, resourceId, { ...preferences, viewId: null });
+      if (first && urlReference === null && storedPreferences)
+        savePreferences({ viewId: null });
     });
     return () => {
       cancelled = true;
@@ -480,21 +537,19 @@ function ViewMenu<TData>({
     viewKey,
     defaultView,
     display,
+    preferences,
+    selectedId,
+    hiddenItems,
+    configuredHiddenIds,
+    savePreferences,
   ]);
   const mutation = useMutation({
     mutationFn: async (
       request:
         | { operation: 'create' | 'update'; input: ViewInput }
-        | { operation: 'delete' }
-        | { operation: 'reorder'; ids: string[] },
+        | { operation: 'delete' },
     ) => {
       if (!ready) throw new Error('请等待视图列表加载成功');
-      if (request.operation === 'reorder') {
-        if (!storage.reorder) throw new Error('存储服务不支持视图排序');
-        reorderSavedViews(savedItems, request.ids);
-        await storage.reorder(resourceId, request.ids);
-        return null;
-      }
       if (request.operation === 'delete') {
         if (!canDelete || selected?.source !== 'saved') throw new Error('无权删除此视图');
         await storage.remove(resourceId, selected!.id);
@@ -530,7 +585,7 @@ function ViewMenu<TData>({
       resolveViews(presets ?? [], [...remaining, result]);
       return result;
     },
-    onSuccess: async (view, request) => {
+    onSuccess: async (view) => {
       if (view) {
         client.setQueryData<SavedView[]>(queryKey, (cached = []) =>
           cached.some((item) => item.id === view.id)
@@ -538,22 +593,20 @@ function ViewMenu<TData>({
             : [...cached, view],
         );
       }
-      if (request.operation !== 'reorder') {
-        if (!view)
-          apply({ filters: [], joinOperator: 'and', search: '', sort: [] }, 'push', '');
-        else {
-          const reference = view.slug ?? view.id;
-          const params = getUrlParams();
-          params.set(viewKey, reference);
-          lastViewParam.current = reference;
-          setSearchParams(params, { history: 'replace' });
-        }
-        setSelected(view);
-        writeViewPreferences(config.scope, resourceId, {
-          selector: display,
-          viewId: view?.id ?? null,
-        });
+      if (!view)
+        apply({ filters: [], joinOperator: 'and', search: '', sort: [] }, 'push', '');
+      else {
+        const reference = view.slug ?? view.id;
+        const params = getUrlParams();
+        params.set(viewKey, reference);
+        lastViewParam.current = reference;
+        setSearchParams(params, { history: 'replace' });
       }
+      setSelected(view);
+      savePreferences({
+        selector: display,
+        viewId: view?.id ?? null,
+      });
       setDialog(null);
       setError(null);
       await Promise.all([
@@ -573,24 +626,55 @@ function ViewMenu<TData>({
         view?.slug ?? view?.id ?? '',
       );
       setSelected(view);
-      writeViewPreferences(config.scope, resourceId, {
+      savePreferences({
         selector: display,
         viewId: view?.id ?? null,
       });
       setError(null);
+      return true;
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
+      return false;
     }
+  };
+  const hideView = () => {
+    if (!ready || !selected) return;
+    const { id } = selected;
+    if (!select(null)) return;
+    savePreferences({
+      hiddenViewIds: [...new Set([...(preferencesRef.current?.hiddenViewIds ?? []), id])],
+    });
+  };
+  const saveOrder = () => {
+    const ids = orderedViews.map((view) => view.id);
+    if (
+      !ready ||
+      ids.length !== viewItems.length ||
+      new Set(ids).size !== ids.length ||
+      ids.some((id) => !viewItems.some((view) => view.id === id))
+    ) {
+      setError('视图列表已变化，请取消后重新调整顺序');
+      return;
+    }
+    let index = 0;
+    savePreferences({
+      // Keep hidden views in their slots so restoring one retains its position.
+      viewOrder: allViewItems.map((view) =>
+        hiddenItems.includes(view) ? view.id : ids[index++]!,
+      ),
+    });
+    setDialog(null);
+    setError(null);
   };
   const open = (operation: NonNullable<typeof dialog>) => {
     setName(operation === 'create' ? '' : (selected?.name ?? ''));
     let nextSlug = '';
     if (operation === 'rename') nextSlug = selected?.slug ?? '';
     else if (operation === 'duplicate')
-      nextSlug = suggestSlug(selected?.name ?? '', viewItems);
+      nextSlug = suggestSlug(selected?.name ?? '', allViewItems);
     setSlug(nextSlug);
     setScope(availableScopeOptions[0]?.value ?? createScopes[0]);
-    if (operation === 'reorder') setOrderedViews(reorderableViews);
+    if (operation === 'reorder') setOrderedViews(viewItems);
     setError(null);
     setDialog(operation);
   };
@@ -661,7 +745,7 @@ function ViewMenu<TData>({
                   key={view.id}
                   value={`view:${view.id}`}
                   title={
-                    view.source === 'preset' ? `${view.name}（固定视图）` : view.name
+                    view.source === 'preset' ? `${view.name}（预设视图）` : view.name
                   }
                   className={tabClassName}
                 >
@@ -771,17 +855,46 @@ function ViewMenu<TData>({
                     删除视图
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem disabled={!ready} onSelect={hideView}>
+                  <EyeOff className="size-4" />
+                  隐藏视图
+                </DropdownMenuItem>
               </>
             )}
             {selected && <DropdownMenuSeparator />}
-            {storage.reorder && (
-              <DropdownMenuItem
-                disabled={!ready || reorderableViews.length < 2}
-                onSelect={() => open('reorder')}
-              >
-                <ArrowDownUp className="size-4" />
-                调整顺序
-              </DropdownMenuItem>
+            <DropdownMenuItem
+              disabled={!ready || viewItems.length < 2}
+              onSelect={() => open('reorder')}
+            >
+              <ArrowDownUp className="size-4" />
+              调整顺序
+            </DropdownMenuItem>
+            {restorableViews.length > 0 && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger disabled={!ready}>
+                  <Eye className="size-4" />
+                  恢复隐藏视图
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {restorableViews.map((view) => (
+                    <DropdownMenuItem
+                      key={view.id}
+                      onSelect={() => {
+                        preferencesRestored.current = false;
+                        savePreferences({
+                          hiddenViewIds: preferencesRef.current?.hiddenViewIds?.filter(
+                            (id) => id !== view.id,
+                          ),
+                        });
+                        setError(null);
+                      }}
+                    >
+                      <Eye className="size-4" />
+                      {view.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             )}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
@@ -794,7 +907,7 @@ function ViewMenu<TData>({
                   onValueChange={(value) => {
                     if (value === 'dropdown' || value === 'tabs') {
                       setDisplay(value);
-                      writeViewPreferences(config.scope, resourceId, {
+                      savePreferences({
                         selector: value,
                         viewId: selected?.id ?? null,
                       });
@@ -936,10 +1049,7 @@ function ViewMenu<TData>({
                 return;
               }
               if (dialog === 'reorder') {
-                mutation.mutate({
-                  operation: 'reorder',
-                  ids: orderedViews.map((view) => view.id),
-                });
+                saveOrder();
                 return;
               }
               if (dialog === 'delete') {
@@ -970,12 +1080,12 @@ function ViewMenu<TData>({
             ) : dialog === 'reorder' ? (
               <div className="grid gap-3">
                 <p className="text-sm text-muted-foreground">
-                  拖动手柄调整可排序的已保存视图；预设和其他视图保持原位。保存后生效。
+                  拖动手柄调整所有可见视图的显示顺序，仅对自己生效。“全部”固定在最前。保存后生效。
                 </p>
                 <Sortable
                   value={orderedViews}
                   onValueChange={setOrderedViews}
-                  getItemValue={(view) => view.id}
+                  getItemValue={(view: ResolvedView) => view.id}
                 >
                   <SortableContent className="grid max-h-80 gap-2 overflow-y-auto">
                     {orderedViews.map((view) => (
@@ -1036,8 +1146,8 @@ function ViewMenu<TData>({
                     value={name}
                     onChange={(event) => {
                       const { value } = event.target;
-                      if (dialog !== 'rename' && slug === suggestSlug(name, viewItems))
-                        setSlug(suggestSlug(value, viewItems));
+                      if (dialog !== 'rename' && slug === suggestSlug(name, allViewItems))
+                        setSlug(suggestSlug(value, allViewItems));
                       setName(value);
                     }}
                     maxLength={40}

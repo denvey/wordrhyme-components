@@ -12,7 +12,7 @@ export interface ViewStorage {
   remove: (resourceId: string, id: string) => Promise<void>;
   /** Omit to use the adapter's default scope. Empty createScopes disables creation. */
   getCapabilities?: (resourceId: string) => Promise<ViewStorageCapabilities>;
-  /** Complete permutation of reorderable persisted IDs only; all other rows keep their slots. */
+  /** Complete permutation of permitted persisted IDs; other rows keep their slots. The selector uses local preferences. */
   reorder?: (resourceId: string, ids: string[]) => Promise<void>;
 }
 
