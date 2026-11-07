@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import type {
   SavedViewsConfig,
+  PresetView,
+  SavedView,
   TagOption,
   TagService,
   UseAutoCrudResourceReturn,
@@ -11,15 +13,22 @@ import type {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Button } from '@wordrhyme/shadcn';
 import { Tags } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import {
   AutoCrudProvider,
   AutoCrudTable,
   createLocalViewStorage,
   TagAssignment,
+  viewInputSchema,
 } from '../src';
 import { parseReadableFilters } from '../src/lib/readable-filters';
+import { getUrlParams, setSearchParams } from '../src/hooks/use-url-state';
+import {
+  getViewCapabilities,
+  parseSavedViews,
+  reorderSavedViews,
+} from '../src/lib/saved-views';
 
 const schema = z.object({ id: z.string(), name: z.string(), tags: z.array(z.string()) });
 type Row = z.output<typeof schema>;
@@ -117,6 +126,124 @@ function createDemoViewStorage(): ViewStorage {
 // All stories describe the same resource, so links and controls share one store.
 const demoViewStorage = createDemoViewStorage();
 
+const shopPresets: PresetView[] = [
+  {
+    id: 'shop:customer-a',
+    name: '客户 A',
+    slug: 'shop-customer-a',
+    query: { filters: [], joinOperator: 'and', search: '客户 A', sort: [] },
+  },
+];
+const extensionPresets: PresetView[] = [
+  {
+    id: 'extension:customer-b',
+    name: '客户 B',
+    slug: 'extension-customer-b',
+    query: { filters: [], joinOperator: 'and', search: '客户 B', sort: [] },
+  },
+];
+const combinedPresets = [...shopPresets, ...extensionPresets];
+
+/** In-memory Host mock: capabilities are supplied by the service, not inferred by the UI. */
+function createScopedDemoViewStorage(organizationAdmin: boolean): ViewStorage {
+  const resources = new Map<string, SavedView[]>();
+  const read = (resourceId: string) => {
+    if (!resources.has(resourceId))
+      resources.set(resourceId, [
+        {
+          id: 'org:fixed',
+          name: '只读客户',
+          slug: 'organization-readonly',
+          scope: 'organization',
+          capabilities: { update: false, delete: false, reorder: false },
+          query: { filters: [], joinOperator: 'and', search: '客户 C', sort: [] },
+        },
+        {
+          id: 'org:managed',
+          name: '共享客户',
+          slug: 'organization-shared',
+          scope: 'organization',
+          capabilities: {
+            update: organizationAdmin,
+            delete: organizationAdmin,
+            reorder: organizationAdmin,
+          },
+          query: { filters: [], joinOperator: 'and', search: '', sort: [] },
+        },
+        {
+          id: 'personal:mine',
+          name: '我的客户',
+          slug: 'my-customers',
+          scope: 'personal',
+          capabilities: { update: true, delete: true, reorder: true },
+          query: { filters: [], joinOperator: 'and', search: '客户 B', sort: [] },
+        },
+      ]);
+    return resources.get(resourceId)!;
+  };
+  const write = (resourceId: string, views: SavedView[]) => {
+    resources.set(resourceId, parseSavedViews(views));
+  };
+  const find = (resourceId: string, id: string) => {
+    const view = read(resourceId).find((item) => item.id === id);
+    if (!view) throw new Error('视图不存在');
+    return view;
+  };
+  return {
+    async getCapabilities() {
+      return {
+        createScopes: organizationAdmin ? ['personal', 'organization'] : ['personal'],
+      };
+    },
+    async list(resourceId) {
+      return read(resourceId);
+    },
+    async create(resourceId, input) {
+      const valid = viewInputSchema.parse(input);
+      const scope = valid.scope ?? 'personal';
+      if (scope === 'organization' && !organizationAdmin)
+        throw new Error('无权创建组织视图');
+      const view = { ...valid, scope, id: crypto.randomUUID() };
+      // New organization views created by the mock administrator are manageable.
+      const saved = {
+        ...view,
+        capabilities: { update: true, delete: true, reorder: true },
+      };
+      write(resourceId, [...read(resourceId), saved]);
+      return saved;
+    },
+    async update(resourceId, id, input) {
+      const current = find(resourceId, id);
+      if (!getViewCapabilities(current).update) throw new Error('无权修改此视图');
+      const valid = viewInputSchema.parse(input);
+      if (valid.scope !== undefined && valid.scope !== (current.scope ?? 'personal'))
+        throw new Error('不能变更保存范围');
+      const view = {
+        ...current,
+        ...valid,
+        scope: current.scope,
+        slug: valid.slug ?? current.slug,
+      };
+      write(
+        resourceId,
+        read(resourceId).map((item) => (item.id === id ? view : item)),
+      );
+      return view;
+    },
+    async remove(resourceId, id) {
+      if (!getViewCapabilities(find(resourceId, id)).delete)
+        throw new Error('无权删除此视图');
+      write(
+        resourceId,
+        read(resourceId).filter((view) => view.id !== id),
+      );
+    },
+    async reorder(resourceId, ids) {
+      write(resourceId, reorderSavedViews(read(resourceId), ids));
+    },
+  };
+}
+
 function Demo({
   mode,
   tagActionAppearance,
@@ -127,6 +254,8 @@ function Demo({
   showCounts = false,
   tabVariant = 'default',
   linePosition = 'bottom',
+  sharedViews = false,
+  organizationAdmin = false,
 }: {
   mode: 'simple' | 'advanced' | 'command';
   tagActionAppearance: 'text' | 'icon' | 'both';
@@ -137,8 +266,14 @@ function Demo({
   showCounts?: boolean;
   tabVariant?: NonNullable<SavedViewsConfig['tabs']>['variant'];
   linePosition?: NonNullable<SavedViewsConfig['tabs']>['linePosition'];
+  sharedViews?: boolean;
+  organizationAdmin?: boolean;
 }) {
   const [client] = useState(() => new QueryClient());
+  const scopedStorage = useMemo(
+    () => createScopedDemoViewStorage(organizationAdmin),
+    [organizationAdmin],
+  );
   const [tagTargets, setTagTargets] = useState<Row[] | null>(null);
   const [rows, setRows] = useState<Row[]>([
     { id: '1', name: '客户 A', tags: ['vip', 'review'] },
@@ -146,6 +281,35 @@ function Demo({
     { id: '3', name: '客户 C', tags: [] },
   ]);
   const [search, setSearch] = useState(() => window.location.search);
+  const viewKey = sharedViews ? 'sharedView' : 'view';
+  const [readyViewKey, setReadyViewKey] = useState<string | null>(null);
+  useLayoutEffect(() => {
+    const params = getUrlParams();
+    const otherViewKey = viewKey === 'view' ? 'sharedView' : 'view';
+    // Storybook keeps the preview URL when changing stories or controls. These
+    // two stores contain different views, so discard the outgoing store's query.
+    if (params.has(otherViewKey)) {
+      if (!params.has(viewKey)) {
+        for (const key of [
+          'search',
+          'sort',
+          'page',
+          'perPage',
+          'joinOperator',
+          'name',
+          'name__op',
+          'tags',
+          'tags__op',
+        ])
+          params.delete(key);
+      }
+      params.delete(otherViewKey);
+      setSearchParams(params, { history: 'replace' });
+      setSearch(params.toString());
+    }
+    // Mount URL consumers only after the incoming store's URL is ready.
+    setReadyViewKey(viewKey);
+  }, [viewKey]);
   useEffect(() => {
     const update = () => setSearch(window.location.search);
     window.addEventListener('urlchange', update);
@@ -280,12 +444,16 @@ function Demo({
   } else if (automaticTags) {
     description = '字段配置 tags: true 后自动提供标签展示、筛选和单条／批量设置入口。';
   }
+  if (sharedViews)
+    description =
+      '组合固定预设、只读视图和可编辑视图。Host 提供权限及保存位置文案，只有多个可选位置时才展示选择器。开启 organizationAdmin 体验共享保存；数据刷新后重置。';
+  if (readyViewKey !== viewKey) return null;
   return (
     <QueryClientProvider client={client}>
       <AutoCrudProvider
-        scope={`storybook:user:tenant${defaultView !== undefined && defaultView !== '' ? `:default:${defaultView}` : ''}`}
+        scope={`storybook:user:tenant${sharedViews ? `:shared:${organizationAdmin}` : ''}${defaultView !== undefined && defaultView !== '' ? `:default:${defaultView}` : ''}`}
         tagService={tagService}
-        viewStorage={demoViewStorage}
+        viewStorage={sharedViews ? scopedStorage : demoViewStorage}
       >
         <p className="mb-4 text-sm text-muted-foreground">{description}</p>
         <AutoCrudTable
@@ -336,10 +504,18 @@ function Demo({
                 }
           }
           table={{
+            queryKeys: { view: viewKey },
             views: enableViews
               ? {
                   selector,
                   defaultView,
+                  presets: sharedViews ? combinedPresets : undefined,
+                  scopeOptions: sharedViews
+                    ? [
+                        { value: 'personal', label: '仅自己' },
+                        { value: 'organization', label: '共享' },
+                      ]
+                    : undefined,
                   counts: showCounts ? counts : undefined,
                   tabs: {
                     variant: tabVariant,
@@ -405,6 +581,8 @@ const meta = {
     showCounts: false,
     tabVariant: 'default',
     linePosition: 'bottom',
+    sharedViews: false,
+    organizationAdmin: false,
   },
   argTypes: {
     mode: { control: 'select', options: ['simple', 'advanced', 'command'] },
@@ -416,6 +594,8 @@ const meta = {
     showCounts: { control: 'boolean' },
     tabVariant: { control: 'select', options: ['default', 'line'] },
     linePosition: { control: 'select', options: ['bottom', 'top'] },
+    sharedViews: { control: 'boolean' },
+    organizationAdmin: { control: 'boolean' },
   },
 } satisfies Meta<typeof Demo>;
 export default meta;
@@ -437,5 +617,22 @@ export const TopLineTabs: Story = {
     showCounts: true,
     tabVariant: 'line',
     linePosition: 'top',
+  },
+};
+export const PresetsAndSharedViews: Story = {
+  args: {
+    sharedViews: true,
+    selector: 'tabs',
+    showCounts: true,
+    tabVariant: 'line',
+    defaultView: 'shop-customer-a',
+  },
+};
+export const OrganizationAdministrator: Story = {
+  args: {
+    sharedViews: true,
+    organizationAdmin: true,
+    selector: 'dropdown',
+    showCounts: true,
   },
 };

@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react';
 import type { AutoCrudDataSourceContext } from '@/lib/registries';
-import type { SavedView, ViewInput } from '@/lib/saved-views';
+import type { SavedView, ViewInput, ViewStorageCapabilities } from '@/lib/saved-views';
 import { createContext, useContext, useId, useMemo } from 'react';
 
 export interface ViewStorage {
@@ -10,7 +10,9 @@ export interface ViewStorage {
   create: (resourceId: string, input: ViewInput) => Promise<SavedView>;
   update: (resourceId: string, id: string, input: ViewInput) => Promise<SavedView>;
   remove: (resourceId: string, id: string) => Promise<void>;
-  /** Atomically persist all view IDs in order; reject duplicates, missing or unknown IDs. */
+  /** Omit to use the adapter's default scope. Empty createScopes disables creation. */
+  getCapabilities?: (resourceId: string) => Promise<ViewStorageCapabilities>;
+  /** Complete permutation of reorderable persisted IDs only; all other rows keep their slots. */
   reorder?: (resourceId: string, ids: string[]) => Promise<void>;
 }
 

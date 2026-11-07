@@ -241,7 +241,18 @@ export {
 } from './components/auto-crud/tag-filter';
 export {
   createLocalViewStorage,
+  viewQuerySchema,
+  viewInputSchema,
+  savedViewSchema,
+  presetViewSchema,
+  viewScopeSchema,
+  viewCapabilitiesSchema,
+  viewStorageCapabilitiesSchema,
   type SavedView,
+  type PresetView,
+  type ViewScope,
+  type ViewCapabilities,
+  type ViewStorageCapabilities,
   type ViewInput,
   type ViewQuery,
 } from './lib/saved-views';

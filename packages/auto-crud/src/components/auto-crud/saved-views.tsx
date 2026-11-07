@@ -2,7 +2,15 @@
 
 import type { Table } from '@tanstack/react-table';
 import type { ReactNode } from 'react';
-import type { SavedView, ViewInput, ViewPreferences, ViewQuery } from '@/lib/saved-views';
+import type {
+  PresetView,
+  ResolvedView,
+  SavedView,
+  ViewInput,
+  ViewPreferences,
+  ViewQuery,
+  ViewScope,
+} from '@/lib/saved-views';
 import type { ExtendedColumnFilter } from '@/types/data-table';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -24,6 +32,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   ToggleGroup,
   ToggleGroupItem,
 } from '@wordrhyme/shadcn';
@@ -46,23 +59,30 @@ import {
   Settings,
   Trash2,
 } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { getUrlParams, setSearchParams } from '@/hooks/use-url-state';
 import { getSortingStateParser } from '@/lib/parsers';
 import { applyReadableFilters, parseReadableFilters } from '@/lib/readable-filters';
 import { cn } from '@/lib/utils';
 import {
   parseSavedViews,
+  getViewCapabilities,
   queryFingerprint,
   readViewPreferences,
   reorderSavedViews,
+  resolveViews,
   savedViewSchema,
   viewInputSchema,
+  viewStorageCapabilitiesSchema,
   writeViewPreferences,
 } from '@/lib/saved-views';
 import { useAutoCrudConfig } from './auto-crud-provider';
 
 export interface SavedViewsConfig {
+  /** Immutable code views, in display order, followed by storage.list results. IDs/slugs must be unique across both. */
+  presets?: readonly PresetView[];
+  /** Opt into scope selection with Host-defined values and labels. Single options stay hidden. */
+  scopeOptions?: readonly { value: ViewScope; label: string }[];
   /** Initial view slug or ID when the URL and local preferences do not select a view. */
   defaultView?: string;
   /** Wait for asynchronous field metadata before restoring or selecting a view. */
@@ -121,6 +141,8 @@ export function SavedViews<TData>({
   table,
   fieldsReady,
   defaultView,
+  presets,
+  scopeOptions,
   selector,
   tabs,
   counts,
@@ -137,6 +159,8 @@ export function SavedViews<TData>({
       table={table}
       fieldsReady={fieldsReady}
       defaultView={defaultView}
+      presets={presets}
+      scopeOptions={scopeOptions}
       onApply={onApply}
       selector={selector}
       tabs={tabs}
@@ -151,6 +175,8 @@ function ViewMenu<TData>({
   table,
   fieldsReady = true,
   defaultView,
+  presets,
+  scopeOptions,
   selector = 'dropdown',
   tabs,
   counts,
@@ -160,22 +186,58 @@ function ViewMenu<TData>({
   const config = useAutoCrudConfig()!;
   const storage = config.viewStorage!;
   const client = useQueryClient();
+  const scopeLabelId = useId();
   const queryKey = ['auto-crud-views', config.cacheKey, resourceId];
   const views = useQuery({
     queryKey,
     queryFn: async () => parseSavedViews(await storage.list(resourceId)),
   });
+  const capabilities = useQuery({
+    queryKey: ['auto-crud-view-capabilities', config.cacheKey, resourceId],
+    queryFn: async () =>
+      storage.getCapabilities
+        ? viewStorageCapabilitiesSchema.parse(await storage.getCapabilities(resourceId))
+        : null,
+  });
+  const createScopes = capabilities.isSuccess
+    ? (capabilities.data?.createScopes ?? [])
+    : [];
+  const canCreate =
+    capabilities.isSuccess && (capabilities.data === null || createScopes.length > 0);
+  const availableScopeOptions = (scopeOptions ?? []).filter((option) =>
+    createScopes.includes(option.value),
+  );
+  const collection = useMemo(() => {
+    try {
+      return { items: resolveViews(presets ?? [], views.data ?? []), error: null };
+    } catch (reason) {
+      return {
+        items: [],
+        error: reason instanceof Error ? reason.message : String(reason),
+      };
+    }
+  }, [presets, views.data]);
+  const viewItems = collection.items;
+  const savedItems = useMemo(
+    () =>
+      viewItems.filter(
+        (view): view is SavedView & { source: 'saved' } => view.source === 'saved',
+      ),
+    [viewItems],
+  );
+  const reorderableViews = savedItems.filter((view) => getViewCapabilities(view).reorder);
+  const ready = views.isSuccess && collection.error === null;
   const countQueries = useMemo(
     () => [
       { key: 'all', filters: [], joinOperator: 'and' as const, search: '' },
-      ...(views.data ?? []).map((view, index) => ({
+      ...viewItems.map((view, index) => ({
         key: `view:${index}`,
         filters: view.query.filters,
         joinOperator: view.query.joinOperator,
         search: view.query.search,
       })),
     ],
-    [views.data],
+    [viewItems],
   );
   const totals = useQuery({
     queryKey: ['auto-crud-view-counts', config.cacheKey, resourceId, countQueries],
@@ -191,7 +253,7 @@ function ViewMenu<TData>({
       }
       return result;
     },
-    enabled: Boolean(counts) && views.isSuccess && fieldsReady,
+    enabled: Boolean(counts) && ready && fieldsReady,
   });
   const data = table.options.data;
   const previousSource = useRef({ data, counts });
@@ -200,7 +262,7 @@ function ViewMenu<TData>({
     const previous = previousSource.current;
     previousSource.current = { data, counts };
     if (previous.data === data && previous.counts === counts) return;
-    if (counts && views.isSuccess && fieldsReady)
+    if (counts && ready && fieldsReady)
       void client
         .cancelQueries({
           queryKey: ['auto-crud-view-counts', config.cacheKey, resourceId],
@@ -209,7 +271,7 @@ function ViewMenu<TData>({
   }, [
     data,
     counts,
-    views.isSuccess,
+    ready,
     fieldsReady,
     refetchCounts,
     client,
@@ -237,7 +299,12 @@ function ViewMenu<TData>({
       </span>
     );
   };
-  const [selected, setSelected] = useState<SavedView | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const selected = viewItems.find((view) => view.id === selectedId) ?? null;
+  const setSelected = (view: Pick<ResolvedView, 'id'> | null) =>
+    setSelectedId(view?.id ?? null);
+  const canUpdate = selected?.source === 'saved' && getViewCapabilities(selected).update;
+  const canDelete = selected?.source === 'saved' && getViewCapabilities(selected).delete;
   const [display, setDisplay] = useState(selector);
   const initialPreferences = useRef<ViewPreferences | null>(null);
   useEffect(() => {
@@ -250,6 +317,7 @@ function ViewMenu<TData>({
   >(null);
   const [name, setName] = useState('');
   const [slug, setSlug] = useState('');
+  const [scope, setScope] = useState<ViewScope>();
   const [orderedViews, setOrderedViews] = useState<SavedView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(() => getUrlParams().toString());
@@ -330,11 +398,11 @@ function ViewMenu<TData>({
   );
   const preferencesRestored = useRef(false);
   useEffect(() => {
-    if (!views.isSuccess || !fieldsReady) return;
+    if (!ready || !fieldsReady) return;
     const first = !preferencesRestored.current;
     const urlReference = getUrlParams().get(viewKey);
     if (!first && urlReference === lastViewParam.current) return;
-    const savedViews = views.data;
+    const savedViews = viewItems;
     let cancelled = false;
     // Cached views can be ready on mount, before ancestor URL hooks subscribe.
     queueMicrotask(() => {
@@ -399,8 +467,8 @@ function ViewMenu<TData>({
       cancelled = true;
     };
   }, [
-    views.isSuccess,
-    views.data,
+    ready,
+    viewItems,
     fieldsReady,
     config.scope,
     resourceId,
@@ -420,33 +488,56 @@ function ViewMenu<TData>({
         | { operation: 'delete' }
         | { operation: 'reorder'; ids: string[] },
     ) => {
+      if (!ready) throw new Error('请等待视图列表加载成功');
       if (request.operation === 'reorder') {
         if (!storage.reorder) throw new Error('存储服务不支持视图排序');
-        reorderSavedViews(views.data ?? [], request.ids);
+        reorderSavedViews(savedItems, request.ids);
         await storage.reorder(resourceId, request.ids);
         return null;
       }
       if (request.operation === 'delete') {
+        if (!canDelete || selected?.source !== 'saved') throw new Error('无权删除此视图');
         await storage.remove(resourceId, selected!.id);
         return null;
       }
       const valid = viewInputSchema.parse(request.input);
-      parseSavedViews([
-        ...(views.data ?? []).filter(
-          (view) => request.operation === 'create' || view.id !== selected!.id,
-        ),
+      if (request.operation === 'create') {
+        if (
+          !canCreate ||
+          (capabilities.data !== null && !createScopes.includes(valid.scope ?? ''))
+        )
+          throw new Error('无权在此范围创建视图');
+      } else {
+        if (!canUpdate || selected?.source !== 'saved') throw new Error('无权修改此视图');
+        if (valid.scope !== undefined && valid.scope !== selected.scope)
+          throw new Error('修改视图不能变更保存范围，请另存为新视图');
+      }
+      const remaining = savedItems.filter(
+        (view) => request.operation === 'create' || view.id !== selected!.id,
+      );
+      resolveViews(presets ?? [], [
+        ...remaining,
         {
           ...valid,
           id: request.operation === 'create' ? crypto.randomUUID() : selected!.id,
         },
       ]);
-      return savedViewSchema.parse(
+      const result = savedViewSchema.parse(
         request.operation === 'create'
           ? await storage.create(resourceId, valid)
           : await storage.update(resourceId, selected!.id, valid),
       );
+      resolveViews(presets ?? [], [...remaining, result]);
+      return result;
     },
     onSuccess: async (view, request) => {
+      if (view) {
+        client.setQueryData<SavedView[]>(queryKey, (cached = []) =>
+          cached.some((item) => item.id === view.id)
+            ? cached.map((item) => (item.id === view.id ? view : item))
+            : [...cached, view],
+        );
+      }
       if (request.operation !== 'reorder') {
         if (!view)
           apply({ filters: [], joinOperator: 'and', search: '', sort: [] }, 'push', '');
@@ -465,11 +556,16 @@ function ViewMenu<TData>({
       }
       setDialog(null);
       setError(null);
-      await client.invalidateQueries({ queryKey });
+      await Promise.all([
+        client.invalidateQueries({ queryKey }),
+        client.invalidateQueries({
+          queryKey: ['auto-crud-view-capabilities', config.cacheKey, resourceId],
+        }),
+      ]);
     },
     onError: (reason) => setError(reason.message),
   });
-  const select = (view: SavedView | null) => {
+  const select = (view: ResolvedView | null) => {
     try {
       apply(
         view?.query ?? { filters: [], joinOperator: 'and', search: '', sort: [] },
@@ -491,16 +587,17 @@ function ViewMenu<TData>({
     let nextSlug = '';
     if (operation === 'rename') nextSlug = selected?.slug ?? '';
     else if (operation === 'duplicate')
-      nextSlug = suggestSlug(selected?.name ?? '', views.data ?? []);
+      nextSlug = suggestSlug(selected?.name ?? '', viewItems);
     setSlug(nextSlug);
-    if (operation === 'reorder') setOrderedViews(views.data ?? []);
+    setScope(availableScopeOptions[0]?.value ?? createScopes[0]);
+    if (operation === 'reorder') setOrderedViews(reorderableViews);
     setError(null);
     setDialog(operation);
   };
   const selectValue = (value: string) => {
     if (value === 'all') select(null);
     else {
-      const view = views.data?.find((item) => `view:${item.id}` === value);
+      const view = viewItems.find((item) => `view:${item.id}` === value);
       if (view) select(view);
     }
   };
@@ -559,10 +656,13 @@ function ViewMenu<TData>({
                 {renderCount('all')}
                 {renderIndicator(selected === null)}
               </ToggleGroupItem>
-              {views.data?.map((view, index) => (
+              {viewItems.map((view, index) => (
                 <ToggleGroupItem
                   key={view.id}
                   value={`view:${view.id}`}
+                  title={
+                    view.source === 'preset' ? `${view.name}（固定视图）` : view.name
+                  }
                   className={tabClassName}
                 >
                   {view.name}
@@ -604,7 +704,7 @@ function ViewMenu<TData>({
                   )}
                   {renderCount(
                     selected
-                      ? `view:${views.data?.findIndex((view) => view.id === selected.id)}`
+                      ? `view:${viewItems.findIndex((view) => view.id === selected.id)}`
                       : 'all',
                   )}
                   {dirty && (
@@ -632,7 +732,7 @@ function ViewMenu<TData>({
                     全部
                     {renderCount('all')}
                   </DropdownMenuRadioItem>
-                  {views.data?.map((view, index) => (
+                  {viewItems.map((view, index) => (
                     <DropdownMenuRadioItem key={view.id} value={`view:${view.id}`}>
                       {view.name}
                       {renderCount(`view:${index}`)}
@@ -643,30 +743,40 @@ function ViewMenu<TData>({
               </>
             )}
             <DropdownMenuLabel>视图设置</DropdownMenuLabel>
-            <DropdownMenuItem disabled={views.isError} onSelect={() => open('create')}>
+            <DropdownMenuItem
+              disabled={!ready || !canCreate}
+              onSelect={() => open('create')}
+            >
               <Plus className="size-4" />
               另存为新视图
             </DropdownMenuItem>
             {selected && (
               <>
-                <DropdownMenuItem onSelect={() => open('rename')}>
-                  <Pencil className="size-4" />
-                  重命名视图
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => open('duplicate')}>
+                {canUpdate && (
+                  <DropdownMenuItem onSelect={() => open('rename')}>
+                    <Pencil className="size-4" />
+                    重命名视图
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem
+                  disabled={!ready || !canCreate}
+                  onSelect={() => open('duplicate')}
+                >
                   <Copy className="size-4" />
                   复制视图
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => open('delete')}>
-                  <Trash2 className="size-4" />
-                  删除视图
-                </DropdownMenuItem>
+                {canDelete && (
+                  <DropdownMenuItem onSelect={() => open('delete')}>
+                    <Trash2 className="size-4" />
+                    删除视图
+                  </DropdownMenuItem>
+                )}
               </>
             )}
             {selected && <DropdownMenuSeparator />}
             {storage.reorder && (
               <DropdownMenuItem
-                disabled={views.isError || (views.data?.length ?? 0) < 2}
+                disabled={!ready || reorderableViews.length < 2}
                 onSelect={() => open('reorder')}
               >
                 <ArrowDownUp className="size-4" />
@@ -707,19 +817,37 @@ function ViewMenu<TData>({
       </div>
       {dirty && (
         <>
-          <Button
-            type="button"
-            size="sm"
-            disabled={mutation.isPending}
-            onClick={() =>
-              mutation.mutate({
-                operation: 'update',
-                input: { name: selected.name, slug: selected.slug, query: current },
-              })
-            }
-          >
-            保存修改
-          </Button>
+          {canUpdate ? (
+            <Button
+              type="button"
+              size="sm"
+              disabled={mutation.isPending}
+              onClick={() =>
+                mutation.mutate({
+                  operation: 'update',
+                  input: {
+                    name: selected.name,
+                    slug: selected.slug,
+                    scope: selected.source === 'saved' ? selected.scope : undefined,
+                    query: current,
+                  },
+                })
+              }
+            >
+              保存修改
+            </Button>
+          ) : (
+            canCreate && (
+              <Button
+                type="button"
+                size="sm"
+                disabled={mutation.isPending}
+                onClick={() => open('create')}
+              >
+                另存为新视图
+              </Button>
+            )
+          )}
           <Button
             type="button"
             size="sm"
@@ -731,9 +859,9 @@ function ViewMenu<TData>({
           </Button>
         </>
       )}
-      {(error !== null || views.error !== null) && (
+      {(error !== null || views.error !== null || collection.error !== null) && (
         <span role="alert" className="text-sm text-destructive">
-          {error ?? views.error?.message}
+          {error ?? collection.error ?? views.error?.message}
           <Button
             variant="link"
             size="sm"
@@ -745,6 +873,19 @@ function ViewMenu<TData>({
                   setError(reason instanceof Error ? reason.message : String(reason)),
                 );
             }}
+          >
+            重试
+          </Button>
+        </span>
+      )}
+      {capabilities.isError && (
+        <span role="alert" className="text-sm text-destructive">
+          创建权限加载失败
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            onClick={() => capabilities.refetch()}
           >
             重试
           </Button>
@@ -787,6 +928,13 @@ function ViewMenu<TData>({
             onSubmit={(event) => {
               event.preventDefault();
               if (mutation.isPending) return;
+              if (
+                (dialog === 'rename' || dialog === 'duplicate' || dialog === 'delete') &&
+                !selected
+              ) {
+                setError('视图已不存在或不可用，请关闭后重试');
+                return;
+              }
               if (dialog === 'reorder') {
                 mutation.mutate({
                   operation: 'reorder',
@@ -805,6 +953,10 @@ function ViewMenu<TData>({
                 input: {
                   name,
                   slug: slug.trim() || undefined,
+                  scope:
+                    dialog === 'rename' && selected?.source === 'saved'
+                      ? selected.scope
+                      : scope,
                   query:
                     dialog === 'rename' || dialog === 'duplicate'
                       ? selected!.query
@@ -818,7 +970,7 @@ function ViewMenu<TData>({
             ) : dialog === 'reorder' ? (
               <div className="grid gap-3">
                 <p className="text-sm text-muted-foreground">
-                  拖动手柄调整顺序，“全部”固定在最前。保存后生效。
+                  拖动手柄调整可排序的已保存视图；预设和其他视图保持原位。保存后生效。
                 </p>
                 <Sortable
                   value={orderedViews}
@@ -851,17 +1003,41 @@ function ViewMenu<TData>({
               </div>
             ) : (
               <div className="grid gap-4">
+                {(dialog === 'create' || dialog === 'duplicate') &&
+                  availableScopeOptions.length > 1 && (
+                    <div className="grid gap-2">
+                      <span id={scopeLabelId}>保存范围</span>
+                      <Select
+                        value={scope ?? ''}
+                        onValueChange={(value) => {
+                          if (
+                            availableScopeOptions.some((option) => option.value === value)
+                          )
+                            setScope(value);
+                        }}
+                        disabled={mutation.isPending || !canCreate}
+                      >
+                        <SelectTrigger aria-labelledby={scopeLabelId}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {availableScopeOptions.map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 <label className="grid gap-2">
                   视图名称
                   <Input
                     value={name}
                     onChange={(event) => {
                       const { value } = event.target;
-                      if (
-                        dialog !== 'rename' &&
-                        slug === suggestSlug(name, views.data ?? [])
-                      )
-                        setSlug(suggestSlug(value, views.data ?? []));
+                      if (dialog !== 'rename' && slug === suggestSlug(name, viewItems))
+                        setSlug(suggestSlug(value, viewItems));
                       setName(value);
                     }}
                     maxLength={40}
