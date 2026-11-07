@@ -653,6 +653,8 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
             onApply={clearBatchSearch}
             fieldsReady={typeof views === 'object' ? views.fieldsReady : undefined}
             defaultView={typeof views === 'object' ? views.defaultView : undefined}
+            presets={typeof views === 'object' ? views.presets : undefined}
+            scopeOptions={typeof views === 'object' ? views.scopeOptions : undefined}
             selector={typeof views === 'object' ? views.selector : undefined}
             tabs={typeof views === 'object' ? views.tabs : undefined}
             counts={typeof views === 'object' ? views.counts : undefined}

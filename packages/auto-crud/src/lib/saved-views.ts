@@ -8,6 +8,18 @@ export const viewQuerySchema = z.object({
   search: z.string().max(1000),
   sort: z.array(z.object({ id: z.string(), desc: z.boolean() })).max(20),
 });
+/** Opaque storage scope; its meaning and authorization belong to the adapter. */
+export const viewScopeSchema = z.string().min(1).max(80);
+export const viewCapabilitiesSchema = z.object({
+  update: z.boolean(),
+  delete: z.boolean(),
+  reorder: z.boolean(),
+});
+export const viewStorageCapabilitiesSchema = z.object({
+  createScopes: z
+    .array(viewScopeSchema)
+    .refine((scopes) => new Set(scopes).size === scopes.length, '创建范围不能重复'),
+});
 export const viewInputSchema = z.object({
   name: z.string().trim().min(1).max(40),
   slug: z
@@ -21,15 +33,46 @@ export const viewInputSchema = z.object({
     )
     .optional(),
   query: viewQuerySchema,
+  /** Omitted on create uses the adapter default; omitted on update preserves the scope. */
+  scope: viewScopeSchema.optional(),
 });
-export const savedViewSchema = viewInputSchema.extend({ id: z.string().min(1) });
+export const savedViewSchema = viewInputSchema.extend({
+  id: z.string().min(1),
+  capabilities: viewCapabilitiesSchema.optional(),
+});
+/** Code presets have no persistence scope or storage capabilities. */
+export const presetViewSchema = viewInputSchema
+  .omit({ scope: true })
+  .extend({
+    id: savedViewSchema.shape.id,
+  })
+  .strict();
 export type ViewQuery = z.infer<typeof viewQuerySchema>;
+export type ViewScope = z.infer<typeof viewScopeSchema>;
+export type ViewCapabilities = z.infer<typeof viewCapabilitiesSchema>;
+export type ViewStorageCapabilities = z.infer<typeof viewStorageCapabilitiesSchema>;
 export type ViewInput = z.infer<typeof viewInputSchema>;
 export type SavedView = z.infer<typeof savedViewSchema>;
+export type PresetView = z.infer<typeof presetViewSchema>;
+export type ResolvedView =
+  | (PresetView & { source: 'preset' })
+  | (SavedView & { source: 'saved' });
+
+/** Preserve legacy adapters; scoped permissions must be supplied by the Host. */
+export function getViewCapabilities(view: SavedView): ViewCapabilities {
+  return (
+    view.capabilities ?? {
+      update: true,
+      delete: true,
+      reorder: true,
+    }
+  );
+}
 
 /** IDs and slugs share a lookup namespace within a resource. */
-export function parseSavedViews(value: unknown): SavedView[] {
-  const views = z.array(savedViewSchema).parse(value);
+function validateViewReferences<T extends Pick<SavedView, 'id' | 'slug'>>(
+  views: T[],
+): T[] {
   const ids = new Set<string>();
   const references = new Map<string, string>();
   for (const view of views) {
@@ -45,16 +88,38 @@ export function parseSavedViews(value: unknown): SavedView[] {
   return views;
 }
 
+export function parseSavedViews(value: unknown): SavedView[] {
+  return validateViewReferences(z.array(savedViewSchema).parse(value));
+}
+
+export function resolveViews(
+  presets: readonly PresetView[],
+  views: SavedView[],
+): ResolvedView[] {
+  return validateViewReferences([
+    ...z
+      .array(presetViewSchema)
+      .parse(presets)
+      .map((view) => ({ ...view, source: 'preset' as const })),
+    ...views.map((view) => ({ ...view, source: 'saved' as const })),
+  ]);
+}
+
 /** Require a complete permutation so stale lists cannot silently drop views. */
 export function reorderSavedViews(views: SavedView[], ids: string[]): SavedView[] {
-  const byId = new Map(views.map((view) => [view.id, view]));
+  const byId = new Map(
+    views
+      .filter((view) => getViewCapabilities(view).reorder)
+      .map((view) => [view.id, view]),
+  );
   if (
-    ids.length !== views.length ||
+    ids.length !== byId.size ||
     new Set(ids).size !== ids.length ||
     ids.some((id) => !byId.has(id))
   )
     throw new Error('视图列表已变化，请取消后重新调整顺序');
-  return ids.map((id) => byId.get(id)!);
+  let index = 0;
+  return views.map((view) => (byId.has(view.id) ? byId.get(ids[index++]!)! : view));
 }
 
 const viewPreferencesSchema = z.object({
@@ -134,7 +199,8 @@ export function createLocalViewStorage(namespace: string): ViewStorage {
       return read(resourceId);
     },
     async create(resourceId, input) {
-      const view = { ...viewInputSchema.parse(input), id: crypto.randomUUID() };
+      const valid = viewInputSchema.parse(input);
+      const view = { ...valid, id: crypto.randomUUID() };
       write(resourceId, [...read(resourceId), view]);
       return view;
     },
@@ -142,8 +208,17 @@ export function createLocalViewStorage(namespace: string): ViewStorage {
       const views = read(resourceId);
       const current = views.find((view) => view.id === id);
       if (!current) throw new Error('View not found');
+      if (!getViewCapabilities(current).update) throw new Error('无权修改此视图');
       const valid = viewInputSchema.parse(input);
-      const view = { ...valid, slug: valid.slug ?? current.slug, id };
+      if (valid.scope !== undefined && valid.scope !== current.scope)
+        throw new Error('修改视图不能变更保存范围，请另存为新视图');
+      const view = {
+        ...current,
+        ...valid,
+        scope: current.scope,
+        slug: valid.slug ?? current.slug,
+        id,
+      };
       write(
         resourceId,
         views.map((item) => (item.id === id ? view : item)),
@@ -151,9 +226,13 @@ export function createLocalViewStorage(namespace: string): ViewStorage {
       return view;
     },
     async remove(resourceId, id) {
+      const views = read(resourceId);
+      const current = views.find((view) => view.id === id);
+      if (!current) return;
+      if (!getViewCapabilities(current).delete) throw new Error('无权删除此视图');
       write(
         resourceId,
-        read(resourceId).filter((view) => view.id !== id),
+        views.filter((view) => view.id !== id),
       );
     },
     async reorder(resourceId, ids) {
