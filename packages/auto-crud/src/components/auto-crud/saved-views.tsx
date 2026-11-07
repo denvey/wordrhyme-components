@@ -301,7 +301,8 @@ function ViewMenu<TData>({
   };
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = viewItems.find((view) => view.id === selectedId) ?? null;
-  const setSelected = (view: ResolvedView | null) => setSelectedId(view?.id ?? null);
+  const setSelected = (view: Pick<ResolvedView, 'id'> | null) =>
+    setSelectedId(view?.id ?? null);
   const canUpdate = selected?.source === 'saved' && getViewCapabilities(selected).update;
   const canDelete = selected?.source === 'saved' && getViewCapabilities(selected).delete;
   const [display, setDisplay] = useState(selector);
@@ -527,9 +528,16 @@ function ViewMenu<TData>({
           : await storage.update(resourceId, selected!.id, valid),
       );
       resolveViews(presets ?? [], [...remaining, result]);
-      return { ...result, source: 'saved' as const };
+      return result;
     },
     onSuccess: async (view, request) => {
+      if (view) {
+        client.setQueryData<SavedView[]>(queryKey, (cached = []) =>
+          cached.some((item) => item.id === view.id)
+            ? cached.map((item) => (item.id === view.id ? view : item))
+            : [...cached, view],
+        );
+      }
       if (request.operation !== 'reorder') {
         if (!view)
           apply({ filters: [], joinOperator: 'and', search: '', sort: [] }, 'push', '');
