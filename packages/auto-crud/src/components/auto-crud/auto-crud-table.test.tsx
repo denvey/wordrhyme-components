@@ -1515,7 +1515,9 @@ describe('auto-crud table toolbar resolver', () => {
 
       await waitFor(() => {
         expect(
-          within(screen.getByRole('table')).getByText('Effective owner'),
+          within(screen.getByRole('table', { hidden: true })).getByText(
+            'Effective owner',
+          ),
         ).toBeTruthy();
         expect(
           within(screen.getByRole('dialog')).getByText('Effective owner'),
