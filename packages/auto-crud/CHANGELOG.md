@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.21.3
+
+### Patch Changes
+
+- ebf7fc9: 修复列表加载和数据更新时视图统计请求被反复取消的问题，合并执行中产生的统计刷新。
+
 ## 1.21.2
 
 ### Patch Changes
