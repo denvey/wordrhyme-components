@@ -1814,6 +1814,11 @@ This provides a real **separate single-row** TanStack context, not the original
 list's pagination, selection or row index. Reused custom cells retain their own
 truncation and interaction behavior.
 
+When `fields[field].table.component` declares a component and the caller resolves it
+into a `table.overrides[field].cell`, that cell is preserved alongside `display`,
+`options` and `dataSource`. Without a resolved cell, default presentation still
+applies. Fields without `table.component` keep their existing presentation priority.
+
 ### 状态徽标颜色
 
 对于 `table.display: "badge"`，标量字段的 `table.options` 可设置 `badgeTone`，支持 `neutral`、`success`、`warning`、`info`。徽标保留文字标签并附带装饰圆点，未配置颜色时沿用原有徽标样式，纯文本展示不受影响。业务状态与颜色的对应关系由调用方配置。

@@ -1487,6 +1487,68 @@ describe('auto-crud table toolbar resolver', () => {
     expect(screen.queryByText('owner cell')).toBeNull();
   });
 
+  it.each([
+    { display: 'text' as const },
+    { options: [{ label: 'West Region', value: 'west' }] },
+    { dataSource: 'test.component-labels' },
+    { display: 'text' as const, dataSource: 'test.component-labels' },
+  ])(
+    'preserves a resolved field component with presentation %j',
+    async (presentation) => {
+      dataSources.register('test.component-labels', () => [
+        { label: 'West Region', value: 'west' },
+      ]);
+      const cell = () => 'Effective owner';
+      render(
+        <AutoCrudTable
+          schema={schema}
+          resource={createResource({
+            fields: {
+              region: { table: { ...presentation, component: 'test.owner' } },
+            },
+            modal: { viewOpen: true, selected: { id: '1', region: 'west' } },
+          })}
+          table={{ overrides: { region: { cell } } }}
+          view={{ overrides: { region: { cell } } }}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(
+          within(screen.getByRole('table', { hidden: true })).getByText(
+            'Effective owner',
+          ),
+        ).toBeTruthy();
+        expect(
+          within(screen.getByRole('dialog')).getByText('Effective owner'),
+        ).toBeTruthy();
+      });
+    },
+  );
+
+  it('keeps default labels when a declared field component has no resolved cell', async () => {
+    dataSources.register('test.component-labels', () => [
+      { label: 'West Region', value: 'west' },
+    ]);
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({
+          fields: {
+            region: {
+              table: {
+                component: 'test.unavailable',
+                dataSource: 'test.component-labels',
+              },
+            },
+          },
+        })}
+      />,
+    );
+
+    expect(await screen.findByText('West Region')).toBeTruthy();
+  });
+
   it('shares field presentation in details by default while preserving denied fields', async () => {
     dataSources.register('test.view-labels', () => [
       { label: '中文名称', value: 'west' },

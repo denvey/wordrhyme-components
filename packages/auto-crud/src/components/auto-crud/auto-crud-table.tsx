@@ -180,7 +180,7 @@ export interface Field {
         options?: FieldOption[];
         /** 仅用于表格展示的动态值标签源 */
         dataSource?: AutoCrudDataSourceConfig;
-        /** 声明式单元格展示模式；非 auto 模式会覆盖拥有方自定义 cell */
+        /** 声明式展示模式；覆盖普通 cell，保留调用方已解析的 table.component 单元格 */
         display?: FieldTableDisplay;
         /** 该列的类名；th 应用于表头，td 应用于正文单元格 */
         classNames?: ColumnMeta<unknown, unknown>['classNames'];
@@ -1665,7 +1665,10 @@ function buildTableOverrides(
 
         const hasTableLabels =
           config.table.options !== undefined || config.table.dataSource !== undefined;
-        if ((display && display !== 'auto') || hasTableLabels) {
+        // The caller resolves declared components into cells; labels remain their fallback.
+        const hasComponentCell =
+          typeof config.table.component === 'string' && result[key]?.cell !== undefined;
+        if (!hasComponentCell && ((display && display !== 'auto') || hasTableLabels)) {
           const options = tableConfig?.dataSource
             ? mergeFieldOptions(dynamicResolveOptions, presentationOptions)
             : (presentationOptions ?? mergedSharedDynamicOptions);
