@@ -290,27 +290,25 @@ function ViewMenu<TData>({
   });
   const data = table.options.data;
   const previousSource = useRef({ data, counts });
+  const refreshPending = useRef(false);
   const refetchCounts = totals.refetch;
   useEffect(() => {
     const previous = previousSource.current;
     previousSource.current = { data, counts };
-    if (previous.data === data && previous.counts === counts) return;
-    if (counts && ready && fieldsReady)
-      void client
-        .cancelQueries({
-          queryKey: ['auto-crud-view-counts', config.cacheKey, resourceId],
-        })
-        .then(() => refetchCounts());
-  }, [
-    data,
-    counts,
-    ready,
-    fieldsReady,
-    refetchCounts,
-    client,
-    config.cacheKey,
-    resourceId,
-  ]);
+    if (previous.data !== data || previous.counts !== counts)
+      refreshPending.current = true;
+    if (
+      !counts ||
+      !ready ||
+      !fieldsReady ||
+      totals.fetchStatus !== 'idle' ||
+      !refreshPending.current
+    )
+      return;
+    // Finish the current read, then coalesce intervening data changes into one refresh.
+    refreshPending.current = false;
+    void refetchCounts({ cancelRefetch: false });
+  }, [data, counts, ready, fieldsReady, totals.fetchStatus, refetchCounts]);
   const renderCount = (key: string) => {
     if (!counts) return null;
     const value = totals.data?.[key];
