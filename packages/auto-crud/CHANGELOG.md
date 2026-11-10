@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.21.1
+
+### Patch Changes
+
+- c599065: Preserve caller-resolved field component cells when declarative display or label sources are also configured, while retaining existing presentation priority for other fields.
+
 ## 1.21.0
 
 ### Minor Changes
