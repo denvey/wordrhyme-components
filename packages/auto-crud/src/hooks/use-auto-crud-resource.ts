@@ -42,6 +42,8 @@ const defaultToastAdapter: ToastAdapter = {
   warning: sonnerToast.warning,
 };
 
+const EMPTY_ROWS: never[] = [];
+
 /** 空 toast 适配器（禁用通知） */
 export const noopToastAdapter: ToastAdapter = {
   success: () => {},
@@ -644,7 +646,7 @@ export function useAutoCrudResource<
   }, [listReady, listQuery.data]);
   // A disabled query may still expose cached rows for the incomplete input.
   const listData = listReady ? listQuery.data : undefined;
-  const tableRows = listData?.data ?? [];
+  const tableRows = listData?.data ?? EMPTY_ROWS;
 
   const createMutation = router.create.useMutation();
   const updateMutation = router.update.useMutation();
