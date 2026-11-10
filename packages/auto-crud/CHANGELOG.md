@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.21.2
+
+### Patch Changes
+
+- beb687c: Apply asynchronously registered default views when no URL query, personal preference, intervening navigation, or toolbar interaction has taken precedence, preserving local batch conditions and unfinished search input.
+
 ## 1.21.1
 
 ### Patch Changes
