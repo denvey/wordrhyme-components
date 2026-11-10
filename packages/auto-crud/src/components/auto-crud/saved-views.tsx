@@ -120,6 +120,7 @@ interface SavedViewsProps<TData> extends SavedViewsConfig {
   children: (
     controls: ReactNode,
     display: NonNullable<SavedViewsConfig['selector']>,
+    onInteract: () => void,
   ) => ReactNode;
 }
 
@@ -346,8 +347,17 @@ function ViewMenu<TData>({
   const [orderedViews, setOrderedViews] = useState<ResolvedView[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(() => getUrlParams().toString());
+  const defaultPending = useRef(search === '');
+  const onInteract = () => {
+    // Batch conditions and unfinished search input may not be reflected in the URL.
+    defaultPending.current = false;
+  };
   useEffect(() => {
-    const update = () => setSearch(getUrlParams().toString());
+    const update = (event: Event) => {
+      const next = getUrlParams().toString();
+      if (next !== '' || event.type === 'popstate') defaultPending.current = false;
+      setSearch(next);
+    };
     window.addEventListener('urlchange', update);
     window.addEventListener('popstate', update);
     return () => {
@@ -443,8 +453,17 @@ function ViewMenu<TData>({
     if (!ready || !fieldsReady || preferences === undefined) return;
     const first = !preferencesRestored.current;
     const urlReference = getUrlParams().get(viewKey);
+    // Extensions may register the default and its preset after initial restoration.
+    const lateDefault =
+      !first &&
+      defaultPending.current &&
+      preferencesRef.current === null &&
+      getUrlParams().toString() === '' &&
+      !!defaultView &&
+      viewItems.some((view) => view.id === defaultView || view.slug === defaultView);
     if (
       !first &&
+      !lateDefault &&
       urlReference === lastViewParam.current &&
       (selectedId !== null ||
         !viewItems.some((view) => view.id === urlReference || view.slug === urlReference))
@@ -455,11 +474,18 @@ function ViewMenu<TData>({
     // Cached views can be ready on mount, before ancestor URL hooks subscribe.
     queueMicrotask(() => {
       if (cancelled) return;
+      if (
+        lateDefault &&
+        (!defaultPending.current ||
+          preferencesRef.current !== null ||
+          getUrlParams().toString() !== '')
+      )
+        return;
       preferencesRestored.current = true;
       lastViewParam.current = urlReference;
       const storedPreferences = preferencesRef.current;
       let reference = urlReference;
-      if (first && urlReference === null)
+      if ((first || lateDefault) && urlReference === null)
         reference = storedPreferences ? storedPreferences.viewId : (defaultView ?? null);
       if (reference === null || reference === '') {
         setSelected(null);
@@ -495,6 +521,7 @@ function ViewMenu<TData>({
             setSearchParams(params, { history: 'replace' });
           }
           setSelected(view);
+          defaultPending.current = false;
           savePreferences({
             selector: display,
             viewId: view.id,
@@ -1016,7 +1043,7 @@ function ViewMenu<TData>({
   );
   return (
     <>
-      {children(controls, display)}
+      {children(controls, display, onInteract)}
       <Dialog
         open={dialog !== null}
         onOpenChange={(isOpen) => {
