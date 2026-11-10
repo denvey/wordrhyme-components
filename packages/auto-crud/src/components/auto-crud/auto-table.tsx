@@ -568,8 +568,14 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     renderFilterValue,
   ]);
 
-  const renderToolbar = (viewSelector?: React.ReactNode) => (
-    <div className="flex w-full items-start justify-between gap-2 p-1">
+  const renderToolbar = (viewSelector?: React.ReactNode, onInteract?: () => void) => (
+    <div
+      className="flex w-full items-start justify-between gap-2 p-1"
+      onPointerDownCapture={onInteract}
+      onClickCapture={onInteract}
+      onKeyDownCapture={onInteract}
+      onChangeCapture={onInteract}
+    >
       <div
         className="flex min-h-[40px] min-w-0 flex-1 items-start gap-2"
         data-filter-parent
@@ -653,14 +659,20 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
             table={table}
             onApply={clearBatchSearch}
           >
-            {(controls, display) =>
+            {(controls, display, onInteract) =>
               display === 'tabs' ? (
-                <div className="space-y-2">
+                <div
+                  className="space-y-2"
+                  onPointerDownCapture={onInteract}
+                  onClickCapture={onInteract}
+                  onKeyDownCapture={onInteract}
+                  onChangeCapture={onInteract}
+                >
                   {controls}
                   {renderToolbar()}
                 </div>
               ) : (
-                renderToolbar(controls)
+                renderToolbar(controls, onInteract)
               )
             }
           </SavedViews>

@@ -120,6 +120,7 @@ interface SavedViewsProps<TData> extends SavedViewsConfig {
   children: (
     controls: ReactNode,
     display: NonNullable<SavedViewsConfig['selector']>,
+    onInteract: () => void,
   ) => ReactNode;
 }
 
@@ -347,6 +348,10 @@ function ViewMenu<TData>({
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState(() => getUrlParams().toString());
   const defaultPending = useRef(search === '');
+  const onInteract = () => {
+    // Batch conditions and unfinished search input may not be reflected in the URL.
+    defaultPending.current = false;
+  };
   useEffect(() => {
     const update = (event: Event) => {
       const next = getUrlParams().toString();
@@ -1038,7 +1043,7 @@ function ViewMenu<TData>({
   );
   return (
     <>
-      {children(controls, display)}
+      {children(controls, display, onInteract)}
       <Dialog
         open={dialog !== null}
         onOpenChange={(isOpen) => {
