@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.22.0
+
+### Minor Changes
+
+- 510ae31: Add an optional rowFooter renderer to DataTable, AutoTable, and AutoCrudTable for full-width row content that remains visible when collapsed.
+
 ## 1.21.3
 
 ### Patch Changes
