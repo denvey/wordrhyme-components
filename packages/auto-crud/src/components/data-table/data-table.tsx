@@ -121,7 +121,8 @@ export function DataTable<TData>({
                       data-state={row.getIsSelected() && 'selected'}
                     >
                       {row.getVisibleCells().map((cell) => {
-                        const columnClassName = cell.column.columnDef.meta?.classNames?.td;
+                        const columnClassName =
+                          cell.column.columnDef.meta?.classNames?.td;
 
                         return (
                           <TableCell
