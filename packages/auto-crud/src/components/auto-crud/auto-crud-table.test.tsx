@@ -2888,6 +2888,79 @@ describe('AutoCrudTable expandedRow', () => {
   });
   afterEach(cleanup);
 
+  it('shows a full-width footer while collapsed and keeps it before expanded details', () => {
+    const rows: Row[] = [{ id: 'order-001', region: 'west' }];
+    render(
+      <AutoCrudTable
+        schema={schema}
+        resource={createResource({ data: rows })}
+        table={{
+          hidden: ['spuId', 'region'],
+          getRowId: (row) => row.id,
+          rowFooter: (record, row) => (
+            <div data-testid="footer">
+              {record.id}:{row.id}
+            </div>
+          ),
+          expandedRow: () => <div data-testid="details">Details</div>,
+        }}
+      />,
+    );
+    const footer = screen.getByTestId('footer');
+    expect(footer.textContent).toBe('order-001:order-001');
+    expect(footer.closest('td')?.colSpan).toBe(
+      screen.getAllByRole('columnheader').length,
+    );
+    expect(screen.queryByTestId('details')).toBeNull();
+    const checkboxes = screen.getAllByRole('checkbox').length;
+    fireEvent.click(screen.getByRole('button', { name: 'Expand row' }));
+    expect(footer.closest('tr')?.nextElementSibling).toBe(
+      screen.getByTestId('details').closest('tr'),
+    );
+    expect(screen.getAllByRole('checkbox')).toHaveLength(checkboxes);
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse row' }));
+    expect(screen.queryByTestId('details')).toBeNull();
+    expect(screen.getByTestId('footer')).toBe(footer);
+  });
+
+  it.each([null, undefined, false] as const)(
+    'does not add rows for an empty footer (%s)',
+    (empty) => {
+      const view = render(
+        <AutoCrudTable
+          schema={schema}
+          resource={createResource()}
+          table={{ rowFooter: () => empty }}
+        />,
+      );
+      expect(view.container.querySelectorAll('tbody > tr')).toHaveLength(1);
+    },
+  );
+
+  it('updates and removes footer content when its renderer changes', () => {
+    const resource = createResource();
+    const view = render(
+      <AutoCrudTable
+        schema={schema}
+        resource={resource}
+        table={{ rowFooter: () => <span>First remark</span> }}
+      />,
+    );
+    expect(screen.getByText('First remark')).toBeTruthy();
+    view.rerender(
+      <AutoCrudTable
+        schema={schema}
+        resource={resource}
+        table={{ rowFooter: () => <span>Saved remark</span> }}
+      />,
+    );
+    expect(screen.queryByText('First remark')).toBeNull();
+    expect(screen.getByText('Saved remark')).toBeTruthy();
+    view.rerender(<AutoCrudTable schema={schema} resource={resource} />);
+    expect(screen.queryByText('Saved remark')).toBeNull();
+    expect(view.container.querySelectorAll('tbody > tr')).toHaveLength(1);
+  });
+
   it('starts expanded and keeps a collapsed order collapsed after data refresh', () => {
     const rows: Row[] = [
       { id: 'order-001', region: 'west' },
