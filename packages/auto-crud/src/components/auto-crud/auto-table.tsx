@@ -124,7 +124,7 @@ const filterModeConfig: Record<
 
 export interface AutoTableProps<T extends z.ZodObject<z.ZodRawShape>> extends Pick<
   DataTableProps<z.infer<T>>,
-  'expandedRow'
+  'expandedRow' | 'rowFooter'
 > {
   /** Stable CRUD identity for saved views and tag services. */
   resourceId?: string;
@@ -209,6 +209,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
   data,
   getRowId,
   expandedRow,
+  rowFooter,
   defaultExpanded = false,
   pageCount = 1,
   pagination,
@@ -620,6 +621,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
         table={table}
         classNames={classNames}
         expandedRow={expandedRow}
+        rowFooter={rowFooter}
       />
     ),
     [
@@ -633,6 +635,7 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
       pagination,
       classNames,
       expandedRow,
+      rowFooter,
       state.columnFilters,
       state.columnOrder,
       state.columnPinning,

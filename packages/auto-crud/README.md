@@ -269,6 +269,10 @@ interface AutoCrudTableProps<TSchema> {
       record: z.output<TSchema>,
       row: Row<z.output<TSchema>>,
     ) => React.ReactNode; // 展开行内容，row 提供已解析的单元格上下文
+    rowFooter?: (
+      record: z.output<TSchema>,
+      row: Row<z.output<TSchema>>,
+    ) => React.ReactNode; // 跨全部可见列的行尾内容，与展开状态无关
     filterModes?: FilterMode | FilterMode[]; // 过滤模式
     batchFields?: (string | BatchUpdateField)[]; // 批量更新字段
     /** @deprecated 新代码请使用 actions.batch */
@@ -327,6 +331,13 @@ interface AutoCrudTableProps<TSchema> {
 `AutoTable` 同样支持 `getRowId` 和 `expandedRow`；直接使用 `DataTable` 时，需自行配置 TanStack 展开能力及触发按钮。
 
 `expandedRow` 的第二个参数是当前 TanStack `Row`，可通过 `row.getAllCells()` 读取已解析的列和单元格上下文，复用字段渲染器及数据源标签。只接收订单数据的单参数回调仍可使用。
+
+#### 行尾内容
+
+`table.rowFooter(record, row)` 在每行主内容下方、展开详情上方渲染跨全部可见列的内容，收起时仍显示；它不要求配置 `getRowId` 或启用展开。
+每次渲染对当前行调用一次，返回 `null`、`undefined` 或 `false` 时不创建额外表格行。其他返回值（包括 `0`）按 React 内容渲染。
+行尾沿用 `classNames.tr` 和 `classNames.td`，消费侧可通过内容类名配合 `classNames.td` 的 `:has()` 选择器单独调整内边距。
+`AutoTable` 和 `DataTable` 通过直接传入 `rowFooter` 使用同一契约；未配置时保留原有 DOM。
 
 #### 表格状态与 URL 参数
 
