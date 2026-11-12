@@ -15,6 +15,11 @@ export const meta: ComponentMeta<PaginationDocumentedProps> = {
   props: defineProps<PaginationDocumentedProps>({
     id: 'Optional id attribute applied to the pagination navigation element.',
     className: 'Additional CSS class applied to the pagination navigation element.',
+    locale: {
+      description:
+        'Partial overrides for visible navigation labels, accessible labels, and page-info text. Omitted entries use English defaults.',
+      type: 'Partial<PaginationLocale>',
+    },
     page: {
       description: 'Current page number (1-indexed).',
       type: 'number',
