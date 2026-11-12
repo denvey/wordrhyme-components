@@ -1,5 +1,13 @@
 # @pixpilot/formily-shadcn
 
+## 2.1.4
+
+### Patch Changes
+
+- Updated dependencies [a256253]
+  - @wordrhyme/shadcn@2.0.3
+  - @wordrhyme/shadcn-ui@2.1.4
+
 ## 2.1.3
 
 ### Patch Changes

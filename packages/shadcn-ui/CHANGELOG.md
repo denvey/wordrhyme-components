@@ -1,5 +1,13 @@
 # @pixpilot/shadcn-ui
 
+## 2.1.4
+
+### Patch Changes
+
+- a256253: Allow pagination labels, page summaries, and accessible text to follow the consuming application's locale while preserving English defaults.
+- Updated dependencies [a256253]
+  - @wordrhyme/shadcn@2.0.3
+
 ## 2.1.3
 
 ### Patch Changes

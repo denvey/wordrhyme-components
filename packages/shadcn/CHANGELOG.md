@@ -1,5 +1,11 @@
 # @pixpilot/shadcn
 
+## 2.0.3
+
+### Patch Changes
+
+- a256253: Allow pagination labels, page summaries, and accessible text to follow the consuming application's locale while preserving English defaults.
+
 ## 2.0.2
 
 ### Patch Changes
