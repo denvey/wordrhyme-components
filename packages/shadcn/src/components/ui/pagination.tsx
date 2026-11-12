@@ -64,6 +64,7 @@ function PaginationLink({
 }
 
 function PaginationPrevious({
+  children = 'Previous',
   className,
   ...props
 }: React.ComponentProps<typeof PaginationLink>) {
@@ -75,12 +76,13 @@ function PaginationPrevious({
       {...props}
     >
       <ChevronLeftIcon />
-      <span className="hidden sm:block">Previous</span>
+      <span className="hidden sm:block">{children}</span>
     </PaginationLink>
   );
 }
 
 function PaginationNext({
+  children = 'Next',
   className,
   ...props
 }: React.ComponentProps<typeof PaginationLink>) {
@@ -91,13 +93,17 @@ function PaginationNext({
       className={cn('gap-1 px-2.5 sm:pr-2.5', className)}
       {...props}
     >
-      <span className="hidden sm:block">Next</span>
+      <span className="hidden sm:block">{children}</span>
       <ChevronRightIcon />
     </PaginationLink>
   );
 }
 
-function PaginationEllipsis({ className, ...props }: React.ComponentProps<'span'>) {
+function PaginationEllipsis({
+  children = 'More pages',
+  className,
+  ...props
+}: React.ComponentProps<'span'>) {
   return (
     <span
       aria-hidden
@@ -106,7 +112,7 @@ function PaginationEllipsis({ className, ...props }: React.ComponentProps<'span'
       {...props}
     >
       <MoreHorizontalIcon className="size-4" />
-      <span className="sr-only">More pages</span>
+      <span className="sr-only">{children}</span>
     </span>
   );
 }

@@ -11,8 +11,34 @@ import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import React from 'react';
 import { getId } from '../utils';
 
+export interface PaginationLocale {
+  previous: string;
+  next: string;
+  previousPage: string;
+  nextPage: string;
+  firstPage: string;
+  lastPage: string;
+  navigation: string;
+  morePages: string;
+  pageInfo: (page: number, totalPages: number) => string;
+}
+
+const defaultLocale: PaginationLocale = {
+  previous: 'Previous',
+  next: 'Next',
+  previousPage: 'Go to previous page',
+  nextPage: 'Go to next page',
+  firstPage: 'Go to first page',
+  lastPage: 'Go to last page',
+  navigation: 'pagination',
+  morePages: 'More pages',
+  pageInfo: (page, totalPages) => `Page ${page} of ${totalPages}`,
+};
+
 export interface PaginationProps {
   id?: string;
+  /** Override visible and accessible text using the consuming application locale. */
+  locale?: Partial<PaginationLocale>;
   /**
    * Current page number (1-indexed)
    */
@@ -113,7 +139,9 @@ export const Pagination: React.FC<PaginationProps> = ({
   size = 'medium',
   showPageInfo = false,
   className,
+  locale: localeProp,
 }) => {
+  const locale = { ...defaultLocale, ...localeProp };
   // Don't render if there's only one page or no pages
   if (totalPages <= 1) {
     return null;
@@ -218,13 +246,13 @@ export const Pagination: React.FC<PaginationProps> = ({
   // Compact variant: << < 2/10 > >>
   if (variant === 'compact') {
     return (
-      <OrgPagination className={className}>
+      <OrgPagination className={className} aria-label={locale.navigation}>
         <PaginationContent>
           <PaginationItem>
             <PaginationLink
               id={getId(id, 'first-page-button')}
               onClick={handlePageClick(1)}
-              aria-label="Go to first page"
+              aria-label={locale.firstPage}
               size={linkSize}
               className="gap-1 px-2"
             >
@@ -233,10 +261,13 @@ export const Pagination: React.FC<PaginationProps> = ({
           </PaginationItem>
           <PaginationItem>
             <PaginationPrevious
+              aria-label={locale.previousPage}
               id={getId(id, 'previous-page-button')}
               onClick={handlePageClick(Math.max(1, page - 1))}
               size={navSize}
-            />
+            >
+              {locale.previous}
+            </PaginationPrevious>
           </PaginationItem>
           <PaginationItem>
             <span className="flex h-9 items-center justify-center px-4 text-sm font-medium">
@@ -245,16 +276,19 @@ export const Pagination: React.FC<PaginationProps> = ({
           </PaginationItem>
           <PaginationItem>
             <PaginationNext
+              aria-label={locale.nextPage}
               id={getId(id, 'next-page-button')}
               onClick={handlePageClick(Math.min(totalPages, page + 1))}
               size={navSize}
-            />
+            >
+              {locale.next}
+            </PaginationNext>
           </PaginationItem>
           <PaginationItem>
             <PaginationLink
               id={getId(id, 'last-page-button')}
               onClick={handlePageClick(totalPages)}
-              aria-label="Go to last page"
+              aria-label={locale.lastPage}
               size={linkSize}
               className="gap-1 px-2"
             >
@@ -272,24 +306,30 @@ export const Pagination: React.FC<PaginationProps> = ({
       <div className={`flex items-center justify-center gap-4 ${className ?? ''}`}>
         {showPageInfo && (
           <span className="text-sm whitespace-nowrap">
-            Page {page} of {totalPages}
+            {locale.pageInfo(page, totalPages)}
           </span>
         )}
-        <OrgPagination>
+        <OrgPagination aria-label={locale.navigation}>
           <PaginationContent>
             <PaginationItem>
               <PaginationPrevious
+                aria-label={locale.previousPage}
                 id={id}
                 onClick={handlePageClick(Math.max(1, page - 1))}
                 size={navSize}
-              />
+              >
+                {locale.previous}
+              </PaginationPrevious>
             </PaginationItem>
             <PaginationItem>
               <PaginationNext
+                aria-label={locale.nextPage}
                 id={getId(id, 'next-page-button')}
                 onClick={handlePageClick(Math.min(totalPages, page + 1))}
                 size={navSize}
-              />
+              >
+                {locale.next}
+              </PaginationNext>
             </PaginationItem>
           </PaginationContent>
         </OrgPagination>
@@ -302,22 +342,25 @@ export const Pagination: React.FC<PaginationProps> = ({
     <div className={`flex items-center justify-center gap-4 ${className ?? ''}`}>
       {showPageInfo && (
         <span className="text-sm whitespace-nowrap">
-          Page {page} of {totalPages}
+          {locale.pageInfo(page, totalPages)}
         </span>
       )}
-      <OrgPagination>
+      <OrgPagination aria-label={locale.navigation}>
         <PaginationContent>
           <PaginationItem>
             <PaginationPrevious
+              aria-label={locale.previousPage}
               id={getId(id, 'previous-page-button')}
               onClick={handlePageClick(Math.max(1, page - 1))}
               size={navSize}
-            />
+            >
+              {locale.previous}
+            </PaginationPrevious>
           </PaginationItem>
           {pages.map((p) =>
             typeof p === 'string' ? (
               <PaginationItem key={p}>
-                <PaginationEllipsis />
+                <PaginationEllipsis>{locale.morePages}</PaginationEllipsis>
               </PaginationItem>
             ) : (
               <PaginationItem key={p}>
@@ -334,10 +377,13 @@ export const Pagination: React.FC<PaginationProps> = ({
           )}
           <PaginationItem>
             <PaginationNext
+              aria-label={locale.nextPage}
               id={getId(id, 'next-page-button')}
               onClick={handlePageClick(Math.min(totalPages, page + 1))}
               size={navSize}
-            />
+            >
+              {locale.next}
+            </PaginationNext>
           </PaginationItem>
         </PaginationContent>
       </OrgPagination>
