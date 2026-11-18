@@ -2322,6 +2322,25 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
 
   // Import dialog state
   const [importOpen, setImportOpen] = React.useState(false);
+  const [confirmingDelete, setConfirmingDelete] = React.useState(false);
+  const deleteBusyRef = React.useRef(false);
+  const deleting = confirmingDelete || resource.mutations.isDeleting;
+
+  const confirmDelete = async () => {
+    if (deleteBusyRef.current || deleting) return;
+    deleteBusyRef.current = true;
+    setConfirmingDelete(true);
+    try {
+      await resource.handlers.confirmDelete();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      resource.handlers.closeModals();
+      deleteBusyRef.current = false;
+      setConfirmingDelete(false);
+    }
+  };
+
   const [selectedRows, setSelectedRows] = React.useState<z.output<TSchema>[]>([]);
   const [exporting, setExporting] = React.useState(false);
   const exportBusyRef = React.useRef(false);
@@ -3146,9 +3165,11 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         {/* Delete Confirmation */}
         <AlertDialog
           open={resource.modal.deleteOpen}
-          onOpenChange={(open) => !open && resource.handlers.closeModals()}
+          onOpenChange={(open) => {
+            if (!open && !deleteBusyRef.current && !deleting) resource.handlers.closeModals();
+          }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent aria-busy={deleting}>
             <AlertDialogHeader>
               <AlertDialogTitle>{locale.deleteModal.title}</AlertDialogTitle>
               <AlertDialogDescription>
@@ -3156,12 +3177,16 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>{locale.deleteModal.cancel}</AlertDialogCancel>
+              <AlertDialogCancel disabled={deleting}>{locale.deleteModal.cancel}</AlertDialogCancel>
               <AlertDialogAction
-                onClick={resource.handlers.confirmDelete}
-                disabled={resource.mutations.isDeleting}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void confirmDelete();
+                }}
+                disabled={deleting}
               >
-                {resource.mutations.isDeleting
+                {deleting && <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />}
+                {deleting
                   ? locale.deleteModal.confirming
                   : locale.deleteModal.confirm}
               </AlertDialogAction>

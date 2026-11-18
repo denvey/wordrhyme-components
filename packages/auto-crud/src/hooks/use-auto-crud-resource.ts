@@ -342,7 +342,7 @@ export interface UseAutoCrudResourceReturn<
     closeModals: () => void;
     submitCreate: (values: z.infer<TSchema>) => void;
     submitUpdate: (values: z.infer<TSchema>) => void;
-    confirmDelete: () => void;
+    confirmDelete: () => void | Promise<void>;
     deleteMany: (rows: TListItem[]) => void;
     updateMany: (rows: TListItem[], data: Record<string, unknown>) => void;
     setVariant: (variant: ModalVariant) => void;
@@ -809,7 +809,6 @@ export function useAutoCrudResource<
         if (typeof result === 'boolean') {
           if (result) {
             toast.success('删除成功');
-            closeModals();
             listQuery.refetch();
             currentHooks?.onSuccess?.('delete', modal.selected);
           }
@@ -819,25 +818,16 @@ export function useAutoCrudResource<
       }
 
       const id = modal.selected[idKey];
-      deleteMutation.mutate(id as string, {
-        onSuccess: (data: unknown) => {
-          toast.success('删除成功');
-          closeModals();
-          listQuery.refetch();
-          currentHooks?.onSuccess?.('delete', data);
-        },
-        onError: (error: unknown) => {
-          const err = error as Error;
-          toast.error(`删除失败: ${err.message}`);
-          currentHooks?.onError?.('delete', err);
-        },
-      });
+      const data: unknown = await deleteMutation.mutateAsync(id as string);
+      toast.success('删除成功');
+      listQuery.refetch();
+      currentHooks?.onSuccess?.('delete', data);
     } catch (error) {
       const err = error as Error;
       toast.error(`删除失败: ${err.message}`);
       currentHooks?.onError?.('delete', err);
     }
-  }, [modal.selected, idKey, deleteMutation, closeModals, listQuery]);
+  }, [modal.selected, idKey, deleteMutation, listQuery, toast]);
 
   // Handlers: Delete Many
   const deleteMany = useCallback(
