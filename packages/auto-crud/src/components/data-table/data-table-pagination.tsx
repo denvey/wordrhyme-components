@@ -45,6 +45,7 @@ export function DataTablePagination<TData>({
     : undefined;
   const pageIndex = table.getState().pagination.pageIndex;
   const pageCount = table.getPageCount();
+  const knownPageCount = pageCount >= 0;
   const canJump = Number.isFinite(pageCount) && pageCount > 0;
   const total =
     table.options.rowCount ??
@@ -163,7 +164,7 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
         <div className="flex items-center justify-center font-medium text-sm">
-          {locale.page(pageIndex + 1, pageCount)}
+          {knownPageCount ? locale.page(pageIndex + 1, pageCount) : pageIndex + 1}
         </div>
         {showPageJump && (
           <div
@@ -258,7 +259,7 @@ export function DataTablePagination<TData>({
               hiddenClass,
             )}
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage() || (alwaysShowFirstLast && !canJump)}
+            disabled={!canJump || !table.getCanNextPage()}
           >
             <ChevronsRight />
           </Button>

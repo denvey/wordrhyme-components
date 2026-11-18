@@ -154,6 +154,12 @@ export interface ListResult<TSelect> {
   pageCount: number;
 }
 
+/** A list input schema may opt in to omitting the total with `includeTotal: false`. */
+export type ListPageResult<TSelect, TInput extends ListInput> =
+  'includeTotal' extends keyof TInput
+    ? Omit<ListResult<TSelect>, 'total'> & { total?: number }
+    : ListResult<TSelect>;
+
 /**
  * 单条查询输入类型
  * - string: 兼容旧的 get(id) 调用
@@ -346,7 +352,7 @@ export interface ListMiddlewareParams<
 > {
   ctx: TContext;
   input: TListInput;
-  next: (input?: TListInput) => Promise<ListResult<TSelect>>;
+  next: (input?: TListInput) => Promise<ListPageResult<TSelect, TListInput>>;
 }
 
 export interface GetMiddlewareParams<
@@ -466,7 +472,7 @@ export interface CrudMiddleware<
    */
   list?: (
     params: ListMiddlewareParams<TContext, TSelect, TListInput>,
-  ) => Promise<ListResult<TSelect>>;
+  ) => Promise<ListPageResult<TSelect, TListInput>>;
 
   /** Batch counts use list authorization, but do not run row enrichment. */
   counts?: (params: {

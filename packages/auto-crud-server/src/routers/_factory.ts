@@ -43,7 +43,7 @@ import type {
   CrudProcedures,
   GetInput,
   ListInput,
-  ListResult,
+  ListPageResult,
   CountsInput,
   CountsResult,
   ExportInput,
@@ -1455,7 +1455,7 @@ export function createCrudRouter<
 
   const listOutputSchema = z.object({
     data: z.array(entityOutputSchema),
-    total: z.number(),
+    total: z.number().optional(),
     page: z.number(),
     perPage: z.number(),
     pageCount: z.number(),
@@ -1833,10 +1833,12 @@ export function createCrudRouter<
           await withGuard(ctx, 'list');
 
           // 核心查询逻辑
-          const doList = async (listInput: ListInput): Promise<ListResult<TSelect>> => {
+          const doList = async (
+            listInput: TListInput,
+          ): Promise<ListPageResult<TSelect, TListInput>> => {
             const extra = await config.query?.({
               ctx,
-              input: listInput as TListInput,
+              input: listInput,
               operation: 'list',
             });
             const { effectiveInput, where: baseWhere } = await queryWhere(ctx, listInput);
@@ -1854,39 +1856,31 @@ export function createCrudRouter<
               query = query.orderBy(...orderByExpressions);
             }
 
-            let countQuery = ctx.db
-              .select({ count: sql<number>`count(*)::int` })
-              .from(table)
-              .$dynamic();
-            if (where) {
-              countQuery = countQuery.where(where);
-            }
-
-            const dataPromise = Promise.resolve(
+            const data = Promise.resolve(
               query.limit(effectiveInput.perPage).offset(offset),
+            ).then((rows) =>
+              enrichCrudRows(ctx, config, idField, rows as Array<Record<string, unknown>>),
             );
-            const countPromise = Promise.resolve(countQuery);
-            const enrichedDataPromise = dataPromise.then(async (data) =>
-              enrichCrudRows(
-                ctx,
-                config,
-                idField,
-                data as Array<Record<string, unknown>>,
-              ),
-            );
-            const [enrichedData, countResult] = await Promise.all([
-              enrichedDataPromise,
-              countPromise,
-            ]);
-            const count = countResult[0]?.count ?? 0;
+            const count = async () => {
+              if ('includeTotal' in listInput && listInput.includeTotal === false) {
+                return undefined;
+              }
+              let countQuery = ctx.db
+                .select({ count: sql<number>`count(*)::int` })
+                .from(table)
+                .$dynamic();
+              if (where) countQuery = countQuery.where(where);
+              return (await countQuery)[0]?.count ?? 0;
+            };
+            const [rows, total] = await Promise.all([data, count()]);
 
             return {
-              data: enrichedData as TSelect[],
-              total: count,
+              data: rows as TSelect[],
+              ...(total === undefined ? {} : { total }),
               page: effectiveInput.page,
               perPage: effectiveInput.perPage,
-              pageCount: Math.ceil(count / effectiveInput.perPage),
-            };
+              pageCount: total === undefined ? -1 : Math.ceil(total / effectiveInput.perPage),
+            } as ListPageResult<TSelect, TListInput>;
           };
 
           const listInput = input;
