@@ -3042,6 +3042,9 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
             viewsEnabled
               ? {
                   ...(typeof viewsEnabled === 'object' ? viewsEnabled : {}),
+                  ...(resource.tableData.listResultKey !== undefined
+                    ? { listResultKey: resource.tableData.listResultKey }
+                    : {}),
                   fieldsReady:
                     !resource.metadataPending &&
                     (typeof viewsEnabled !== 'object' ||

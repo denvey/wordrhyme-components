@@ -104,6 +104,8 @@ export interface SavedViewsConfig {
       indicator?: string;
     };
   };
+  /** @internal Identity of the list result, or null for placeholder rows. */
+  listResultKey?: string | null;
   /** Count saved queries (including All), in batches of at most 100. Keys are opaque. */
   counts?: (input: {
     queries: Array<
@@ -159,6 +161,7 @@ function ViewMenu<TData>({
   selector = 'dropdown',
   tabs,
   counts,
+  listResultKey,
   onApply,
   children,
 }: SavedViewsProps<TData>) {
@@ -289,14 +292,16 @@ function ViewMenu<TData>({
     enabled: Boolean(counts) && ready && fieldsReady,
   });
   const data = table.options.data;
-  const previousSource = useRef({ data, counts });
+  const previousSource = useRef({ data, counts, listResultKey });
   const refreshPending = useRef(false);
   const refetchCounts = totals.refetch;
   useEffect(() => {
     const previous = previousSource.current;
-    previousSource.current = { data, counts };
-    if (previous.data !== data || previous.counts !== counts)
-      refreshPending.current = true;
+    previousSource.current = { data, counts, listResultKey };
+    // A new page, sort, or view brings different rows without changing counts.
+    const changed = listResultKey !== null && previous.listResultKey === listResultKey &&
+      previous.data !== data;
+    if (changed || previous.counts !== counts) refreshPending.current = true;
     if (
       !counts ||
       !ready ||
@@ -308,7 +313,7 @@ function ViewMenu<TData>({
     // Finish the current read, then coalesce intervening data changes into one refresh.
     refreshPending.current = false;
     void refetchCounts({ cancelRefetch: false });
-  }, [data, counts, ready, fieldsReady, totals.fetchStatus, refetchCounts]);
+  }, [data, counts, listResultKey, ready, fieldsReady, totals.fetchStatus, refetchCounts]);
   const renderCount = (key: string) => {
     if (!counts) return null;
     const value = totals.data?.[key];

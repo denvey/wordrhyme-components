@@ -1,7 +1,7 @@
 import { useReducer, useCallback, useMemo, useRef, useEffect, useState } from 'react';
 import { z } from 'zod';
 import { toast as sonnerToast } from 'sonner';
-import { keepPreviousData } from '@tanstack/react-query';
+import { hashKey, keepPreviousData } from '@tanstack/react-query';
 import {
   parseAsInteger,
   parseAsString,
@@ -308,6 +308,8 @@ export interface UseAutoCrudResourceReturn<
   idKey?: keyof TListItem & string;
   tableData: {
     data: TListItem[];
+    /** @internal Query identity for real rows; null while waiting for the selected query. */
+    listResultKey?: string | null;
     pageCount: number;
     /** Total rows matching the current search and filters. */
     total?: number;
@@ -647,6 +649,7 @@ export function useAutoCrudResource<
   // A disabled query may still expose cached rows for the incomplete input.
   const listData = listReady ? listQuery.data : undefined;
   const tableRows = listData?.data ?? EMPTY_ROWS;
+  const listResultKey = listData && !listQuery.isPlaceholderData ? hashKey([queryInput]) : null;
 
   const createMutation = router.create.useMutation();
   const updateMutation = router.update.useMutation();
@@ -955,6 +958,7 @@ export function useAutoCrudResource<
     filterState,
     tableData: {
       data: tableRows as TListItem[],
+      listResultKey,
       pageCount: listData?.pageCount ?? 0,
       ...(typeof listData?.total === 'number' ? { total: listData.total } : {}),
       isLoading: !listReady || listQuery.isLoading,
