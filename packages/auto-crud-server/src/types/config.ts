@@ -154,6 +154,14 @@ export interface ListResult<TSelect> {
   pageCount: number;
 }
 
+/** A passthrough index signature alone does not declare a total field. */
+type DeclaredListTotal<TInput> = Extract<Required<TInput>, { total: unknown }>['total'];
+
+export type ListPageResult<TSelect, TInput extends ListInput> =
+  false extends DeclaredListTotal<TInput>
+    ? Omit<ListResult<TSelect>, 'total'> & { total?: number }
+    : ListResult<TSelect>;
+
 /**
  * 单条查询输入类型
  * - string: 兼容旧的 get(id) 调用
@@ -346,7 +354,7 @@ export interface ListMiddlewareParams<
 > {
   ctx: TContext;
   input: TListInput;
-  next: (input?: TListInput) => Promise<ListResult<TSelect>>;
+  next: (input?: TListInput) => Promise<ListPageResult<TSelect, TListInput>>;
 }
 
 export interface GetMiddlewareParams<
@@ -466,7 +474,7 @@ export interface CrudMiddleware<
    */
   list?: (
     params: ListMiddlewareParams<TContext, TSelect, TListInput>,
-  ) => Promise<ListResult<TSelect>>;
+  ) => Promise<ListPageResult<TSelect, TListInput>>;
 
   /** Batch counts use list authorization, but do not run row enrichment. */
   counts?: (params: {
@@ -720,14 +728,17 @@ export interface CrudRouterConfig<
    * 列表查询输入 Schema（可选）
    * - 默认使用内置基础列表输入：page、perPage、sort、filters、joinOperator
    * - 业务侧可以基于 baseListInputSchema.extend(...) 增加自定义参数
-   * - 默认查询逻辑只读取基础字段，额外字段会保留给 middleware.list 使用
+   * - 声明 total: z.boolean().optional() 后，list({ total: false }) 会跳过计数
+   * - 自定义字段会保留给 middleware.list 使用
    *
    * @example
    * listInputSchema: baseListInputSchema.extend({
    *   include: z.object({ skus: z.boolean().optional() }).optional(),
    * })
    */
-  listInputSchema?: z.ZodType<TListInput>;
+  listInputSchema?: z.ZodType<
+    TListInput & { total?: DeclaredListTotal<NoInfer<TListInput>> }
+  >;
 
   /**
    * 单条查询输入 Schema（可选）

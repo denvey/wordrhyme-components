@@ -43,9 +43,12 @@ export function DataTablePagination<TData>({
   const hiddenClass = hideExtras
     ? 'absolute invisible pointer-events-none left-0 top-0'
     : undefined;
-  const pageIndex = table.getState().pagination.pageIndex;
+  const { pageIndex, pageSize } = table.getState().pagination;
   const pageCount = table.getPageCount();
+  const knownPageCount = pageCount >= 0;
   const canJump = Number.isFinite(pageCount) && pageCount > 0;
+  const canGoNext =
+    table.getCanNextPage() && (knownPageCount || table.options.data.length >= pageSize);
   const total =
     table.options.rowCount ??
     (table.options.manualPagination ? undefined : table.getRowCount());
@@ -163,7 +166,7 @@ export function DataTablePagination<TData>({
           </Select>
         </div>
         <div className="flex items-center justify-center font-medium text-sm">
-          {locale.page(pageIndex + 1, pageCount)}
+          {knownPageCount ? locale.page(pageIndex + 1, pageCount) : pageIndex + 1}
         </div>
         {showPageJump && (
           <div
@@ -244,7 +247,7 @@ export function DataTablePagination<TData>({
             size="icon"
             className="size-8"
             onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
+            disabled={!canGoNext}
           >
             <ChevronRight />
           </Button>
@@ -258,7 +261,7 @@ export function DataTablePagination<TData>({
               hiddenClass,
             )}
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-            disabled={!table.getCanNextPage() || (alwaysShowFirstLast && !canJump)}
+            disabled={!canJump || !canGoNext}
           >
             <ChevronsRight />
           </Button>

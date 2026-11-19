@@ -1,5 +1,6 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, expectTypeOf, vi } from 'vitest';
 import { z } from 'zod';
+import { z as z3 } from 'zod/v3';
 import { sql } from 'drizzle-orm';
 import {
   PgDialect,
@@ -572,6 +573,12 @@ describe('createCrudRouter', () => {
   });
 
   describe('可扩展 list 输入', () => {
+    const listConfig = {
+      table: mockTable,
+      schema: insertTaskSchema,
+      selectSchema: taskSchema,
+    };
+
     it('should keep default list input behavior without custom listInputSchema', async () => {
       const db = createListMockDb([
         { id: '1', title: 'Task 1', status: 'todo', createdAt: new Date() },
@@ -595,6 +602,186 @@ describe('createCrudRouter', () => {
       });
       expect(result.data).toHaveLength(1);
       expect(result.data[0]?.id).toBe('1');
+    });
+
+    it('keeps counting when a default route passes through an extra total field', async () => {
+      const db = createListMockDb([{ id: '1', title: 'Task 1', status: 'todo' }]);
+      const crudRouter = createCrudRouter({
+        ...listConfig,
+        listInputSchema: baseListInputSchema.passthrough(),
+        middleware: {
+          list: async ({ next }) => {
+            const result = await next();
+            expectTypeOf(result.total).toEqualTypeOf<number>();
+            return result;
+          },
+        },
+      });
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+
+      await expect(caller.list({ total: false })).resolves.toMatchObject({
+        total: 1,
+        pageCount: 1,
+      });
+      expect(db.select).toHaveBeenCalledTimes(2);
+    });
+
+    it('requires explicitly typed list inputs to declare total before opting in', () => {
+      const schema = baseListInputSchema.extend({ total: z.boolean().optional() });
+      expectTypeOf(schema).not.toMatchTypeOf<
+        NonNullable<CrudRouterConfig['listInputSchema']>
+      >();
+    });
+
+    it('skips only the count for an opted-in request with a union input schema', async () => {
+      const rows: Task[] = [
+        { id: '1', title: 'Task 1', status: 'todo' },
+        { id: '2', title: 'Task 2', status: 'done' },
+      ];
+      const db = createListMockDb(rows);
+      const listInputSchema = z.discriminatedUnion('mode', [
+        baseListInputSchema.extend({ mode: z.literal('simple') }).passthrough(),
+        baseListInputSchema.extend({
+          mode: z.literal('detailed'),
+          total: z.boolean().optional(),
+        }),
+      ]);
+      const crudRouter = createCrudRouter({
+        ...listConfig,
+        listInputSchema,
+        middleware: {
+          list: async ({ input: { page, perPage, joinOperator }, next }) => {
+            const result = await next({ page, perPage, joinOperator, mode: 'simple' });
+            expectTypeOf(result.total).toEqualTypeOf<number | undefined>();
+            return result;
+          },
+        },
+      });
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+      const page = { mode: 'detailed', page: 2, perPage: 1 };
+
+      const result = await caller.list({ ...page, total: false });
+      expect(result).toEqual({ data: [rows[1]], page: 2, perPage: 1, pageCount: -1 });
+      expect(result).not.toHaveProperty('total');
+      expect(db.select).toHaveBeenCalledTimes(1);
+
+      await expect(caller.list({ ...page, total: 'false' })).rejects.toMatchObject({
+        code: 'BAD_REQUEST',
+      });
+
+      for (const request of [
+        page,
+        { ...page, total: true },
+        { ...page, mode: 'simple', total: false },
+      ]) {
+        await expect(caller.list(request)).resolves.toMatchObject({
+          data: [rows[1]],
+          total: 2,
+          pageCount: 2,
+        });
+      }
+      expect(db.select).toHaveBeenCalledTimes(7);
+    });
+
+    it.each(['union', 'discriminated union'])(
+      'honors the selected Zod 3 %s branch',
+      async (kind) => {
+        const pagination = z3.object({
+          page: z3.number().default(1),
+          perPage: z3.number().default(10),
+          joinOperator: z3.enum(['and', 'or']).default('and'),
+        });
+        const branches = [
+          pagination.extend({ mode: z3.literal('legacy') }).passthrough(),
+          pagination.extend({ mode: z3.literal('rows'), total: z3.boolean().optional() }),
+        ] as const;
+        const schema =
+          kind === 'union' ? z3.union(branches) : z3.discriminatedUnion('mode', branches);
+        const db = createListMockDb([]);
+        const router = createCrudRouter({
+          ...listConfig,
+          listInputSchema: schema as unknown as z.ZodType<z3.infer<typeof schema>>,
+        });
+        const caller = router.createCaller({ db } as any) as ListCaller;
+
+        await expect(
+          caller.list({ mode: 'legacy', total: false }),
+        ).resolves.toMatchObject({ total: 0, pageCount: 0 });
+        await expect(caller.list({ mode: 'rows', total: false })).resolves.toMatchObject({
+          pageCount: -1,
+        });
+        expect(db.select).toHaveBeenCalledTimes(3);
+      },
+    );
+
+    it('uses the first matching union branch and skips only for an explicit false', async () => {
+      const check = vi.fn(() => true);
+      const listInputSchema = z
+        .union([
+          baseListInputSchema.extend({ mode: z.literal('legacy') }).passthrough(),
+          baseListInputSchema.extend({ total: z.boolean().default(false) }),
+        ])
+        .refine(check);
+      const db = createListMockDb([]);
+      const router = createCrudRouter({ ...listConfig, listInputSchema });
+      const caller = router.createCaller({ db } as any) as ListCaller;
+
+      for (const input of [{ mode: 'legacy', total: false }, {}]) {
+        await expect(caller.list(input)).resolves.toMatchObject({
+          total: 0,
+          pageCount: 0,
+        });
+      }
+      const result = await caller.list({ total: false });
+      expect(result).not.toHaveProperty('total');
+      expect(result.pageCount).toBe(-1);
+      expect(db.select).toHaveBeenCalledTimes(5);
+      expect(check).toHaveBeenCalledTimes(3);
+    });
+
+    it.each<
+      [string, z.ZodType<z.infer<typeof baseListInputSchema> & { total?: boolean }>]
+    >([
+      ['default', baseListInputSchema],
+      ['optional total', baseListInputSchema.extend({ total: z.boolean().optional() })],
+    ])(
+      'rejects a missing total on an ordinary request (%s)',
+      async (_name, listInputSchema) => {
+        const db = createListMockDb([]);
+        const crudRouter = createCrudRouter({
+          ...listConfig,
+          listInputSchema,
+          middleware: {
+            list: async ({ next }) => {
+              const result = await next();
+              Reflect.deleteProperty(result, 'total');
+              return result;
+            },
+          },
+        });
+        const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+
+        await expect(caller.list({})).rejects.toMatchObject({
+          code: 'INTERNAL_SERVER_ERROR',
+        });
+      },
+    );
+
+    it('rejects middleware output with a known page count when the total was skipped', async () => {
+      const db = createListMockDb([]);
+      const crudRouter = createCrudRouter({
+        ...listConfig,
+        listInputSchema: baseListInputSchema.extend({ total: z.boolean().optional() }),
+        middleware: {
+          list: async ({ next }) => ({ ...(await next()), pageCount: 0 }),
+        },
+      });
+      const caller = crudRouter.createCaller({ db } as any) as ListCaller;
+
+      await expect(caller.list({ total: false })).rejects.toMatchObject({
+        code: 'INTERNAL_SERVER_ERROR',
+      });
+      expect(db.select).toHaveBeenCalledTimes(1);
     });
 
     it('should start list data and count queries concurrently', async () => {
