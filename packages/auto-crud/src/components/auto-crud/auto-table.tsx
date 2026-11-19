@@ -428,7 +428,8 @@ export function AutoTable<T extends z.ZodObject<z.ZodRawShape>>({
     getExpandedRowModel: enableExpansion ? expandedRowModel : undefined,
     autoResetExpanded: defaultExpanded ? false : undefined,
     pageCount,
-    ...(total !== undefined ? { rowCount: total } : {}),
+    // Pass undefined to clear the previous count when the total is unknown.
+    rowCount: total,
     enableAdvancedFilter,
     initialState: stableInitialState,
     shallow: false,
