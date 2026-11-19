@@ -551,8 +551,7 @@ const ordersRouter = createCrudRouter({
 ```
 
 业务侧可以用 `baseListInputSchema.extend(...)` 增加自定义参数，不需要覆盖
-`list` procedure。默认查询逻辑仍只读取分页、排序、过滤和 `joinOperator`，
-额外字段会保留在 `middleware.list` 的 `input` 中。
+`list` procedure。自定义字段会保留在 `middleware.list` 的 `input` 中。
 
 ```typescript
 import { baseListInputSchema, createCrudRouter } from '@wordrhyme/auto-crud-server';
@@ -564,6 +563,7 @@ const productsRouter = createCrudRouter({
   schema: createProductSchema,
   updateSchema: updateProductSchema,
   listInputSchema: baseListInputSchema.extend({
+    total: z.boolean().optional(),
     include: z
       .object({
         skus: z.boolean().optional(),
@@ -587,12 +587,10 @@ await trpc.products.list.query({
 });
 ```
 
-列表需要先加载当前页、再独立统计总数时，可在路由配置中设置
-`allowSkippingListTotal: true`，调用 `list.query({ includeTotal: false })`。
-响应省略 `total`，并以 `pageCount: -1` 表示总页数未知。省略
-`includeTotal` 或显式传入 `true` 时，列表仍返回精确总数。
-如果自定义 `listInputSchema` 拒绝未知字段，请在 schema 中声明
-`includeTotal: z.boolean().optional()`。
+列表默认查询总数，响应的 `total` 是符合筛选条件的总条数。按上例在列表输入中声明
+`total` 后，调用 `list.query({ total: false })` 会跳过计数，响应省略 `total`，
+并以 `pageCount: -1` 表示总页数未知。省略参数或传入 `total: true` 时仍返回精确总数。
+如果使用联合输入，只有命中的对象分支显式声明了 `total` 才支持跳过计数。
 
 `get` 也可以扩展。默认仍兼容 `get("spu_1")`，业务侧如需详情页按需挂载关联数据，可以改成对象输入：
 

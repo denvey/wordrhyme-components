@@ -313,6 +313,42 @@ export const baseListInputSchema = z.object({
   joinOperator: z.enum(['and', 'or']).default('and'),
 });
 
+const skipListTotal = Symbol('skipListTotal');
+
+// Mark the output of the branch that Zod actually selects. A loose branch may
+// also return total: false, but it never receives the mark by passing it through.
+function listSchemaWithOptionalTotal(schema: z.ZodTypeAny): z.ZodTypeAny {
+  if (isZodObject(schema)) {
+    return Object.hasOwn(schema.shape, 'total')
+      ? schema.transform((input) =>
+          input.total === false ? { ...input, [skipListTotal]: true } : input,
+        )
+      : schema;
+  }
+  if (!('options' in schema) || !Array.isArray(schema.options)) return schema;
+  const options: z.ZodTypeAny[] = schema.options;
+  if (!options.every((option) => typeof option?.parseAsync === 'function')) return schema;
+  const marked = options.map(listSchemaWithOptionalTotal);
+  if (marked.every((option, index) => option === options[index])) return schema;
+  const def = { ...schema._def, options: marked };
+  if (typeof schema.clone === 'function') return schema.clone(def);
+
+  // Zod 3 unions have no clone(). Their discriminated variant also stores a
+  // lookup table pointing at the original branches.
+  if ('optionsMap' in schema && schema.optionsMap instanceof Map) {
+    Object.assign(def, {
+      optionsMap: new Map(
+        Array.from(schema.optionsMap, ([key, option]) => [
+          key,
+          marked[options.indexOf(option)],
+        ]),
+      ),
+    });
+  }
+  const Union = schema.constructor as new (definition: typeof def) => z.ZodTypeAny;
+  return new Union(def);
+}
+
 export const baseGetInputSchema = z.object({
   id: z.string(),
 });
@@ -1405,7 +1441,6 @@ export function createCrudRouter<
   TListInput extends ListInput = ListInput,
   TGetInput extends GetInput = GetInput,
   TExportInput extends ExportInput = ExportInput,
-  TAllowSkippingTotal extends boolean = false,
 >(
   config: CrudRouterConfig<
     TTable,
@@ -1415,8 +1450,7 @@ export function createCrudRouter<
     TUpdate,
     TListInput,
     TGetInput,
-    TExportInput,
-    TAllowSkippingTotal
+    TExportInput
   >,
 ): CrudRouterReturn {
   const {
@@ -1424,7 +1458,6 @@ export function createCrudRouter<
     idField = 'id',
     maxBatchSize = 100,
     maxExportSize = 5000,
-    allowSkippingListTotal = false,
     softDelete: softDeleteOption,
     middleware = {},
   } = config;
@@ -1455,10 +1488,20 @@ export function createCrudRouter<
   // .output() 让 tRPC 使用 Zod schema 推导的输出类型，
   // 而非从 Drizzle 查询实现推导，切断深层泛型链
   const entityOutputSchema = withCrudExtensionInput(selectSchema, config) as z.ZodTypeAny;
+  const listInputSchema = config.listInputSchema ?? baseListInputSchema;
+  const rowsOnlySchema = listSchemaWithOptionalTotal(listInputSchema);
+  const optionalTotal = rowsOnlySchema !== listInputSchema;
+  const resolvedListInputSchema = optionalTotal
+    ? (raw: unknown) =>
+        (raw && typeof raw === 'object' && 'total' in raw && raw.total === false
+          ? rowsOnlySchema
+          : listInputSchema
+        ).parseAsync(raw)
+    : listInputSchema;
 
   const listOutputSchema = z.object({
     data: z.array(entityOutputSchema),
-    total: allowSkippingListTotal ? z.number().optional() : z.number(),
+    total: optionalTotal ? z.number().optional() : z.number(),
     page: z.number(),
     perPage: z.number(),
     pageCount: z.number(),
@@ -1547,10 +1590,6 @@ export function createCrudRouter<
     __crudOperation: 'list',
   } satisfies CrudResourceMetadata<TTable>);
   const softDelete = resolveSoftDelete(softDeleteOption);
-  const listInputSchema = config.listInputSchema ?? baseListInputSchema;
-  const resolvedListInputSchema = allowSkippingListTotal
-    ? z.intersection(listInputSchema, z.object({ includeTotal: z.boolean().optional() }))
-    : listInputSchema;
   const resolvedGetInputSchema = config.getInputSchema
     ? (z.union([
         z.string(),
@@ -1568,8 +1607,7 @@ export function createCrudRouter<
     TUpdate,
     TListInput,
     TGetInput,
-    TExportInput,
-    TAllowSkippingTotal
+    TExportInput
   >;
 
   // 辅助函数
@@ -1840,15 +1878,16 @@ export function createCrudRouter<
           input,
         }: {
           ctx: TContext & { db: any };
-          input: TListInput & { includeTotal?: boolean };
+          input: TListInput & { [skipListTotal]?: boolean };
         }) => {
           await withGuard(ctx, 'list');
-          const skipTotal = allowSkippingListTotal && input.includeTotal === false;
+          const skipTotal = input[skipListTotal] === true;
+          if (skipTotal) delete input[skipListTotal];
 
           // 核心查询逻辑
           const doList = async (
             listInput: TListInput,
-          ): Promise<ListPageResult<TSelect, TAllowSkippingTotal>> => {
+          ): Promise<ListPageResult<TSelect, TListInput>> => {
             const extra = await config.query?.({
               ctx,
               input: listInput,
@@ -1897,7 +1936,7 @@ export function createCrudRouter<
               perPage: effectiveInput.perPage,
               pageCount:
                 total === undefined ? -1 : Math.ceil(total / effectiveInput.perPage),
-            } as ListPageResult<TSelect, TAllowSkippingTotal>;
+            } as ListPageResult<TSelect, TListInput>;
           };
 
           if (!m.list) return doList(input);
@@ -1908,7 +1947,7 @@ export function createCrudRouter<
             next: (modifiedInput) => doList(modifiedInput ?? input),
           });
           if (
-            allowSkippingListTotal &&
+            optionalTotal &&
             (skipTotal
               ? result.total !== undefined || result.pageCount !== -1
               : result.total === undefined || result.pageCount === -1)
@@ -1916,7 +1955,7 @@ export function createCrudRouter<
             throw new TRPCError({
               code: 'INTERNAL_SERVER_ERROR',
               message:
-                'List middleware returned pagination inconsistent with includeTotal',
+                'List middleware returned pagination inconsistent with the requested total',
             });
           }
           return result;

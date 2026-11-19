@@ -154,12 +154,13 @@ export interface ListResult<TSelect> {
   pageCount: number;
 }
 
-export type ListPageResult<
-  TSelect,
-  TAllowSkippingTotal extends boolean,
-> = true extends TAllowSkippingTotal
-  ? Omit<ListResult<TSelect>, 'total'> & { total?: number }
-  : ListResult<TSelect>;
+/** A passthrough index signature alone does not declare a total field. */
+type DeclaredListTotal<TInput> = Extract<Required<TInput>, { total: unknown }>['total'];
+
+export type ListPageResult<TSelect, TInput extends ListInput> =
+  false extends DeclaredListTotal<TInput>
+    ? Omit<ListResult<TSelect>, 'total'> & { total?: number }
+    : ListResult<TSelect>;
 
 /**
  * 单条查询输入类型
@@ -350,11 +351,10 @@ export interface ListMiddlewareParams<
   TContext,
   TSelect,
   TListInput extends ListInput = ListInput,
-  TAllowSkippingTotal extends boolean = false,
 > {
   ctx: TContext;
   input: TListInput;
-  next: (input?: TListInput) => Promise<ListPageResult<TSelect, TAllowSkippingTotal>>;
+  next: (input?: TListInput) => Promise<ListPageResult<TSelect, TListInput>>;
 }
 
 export interface GetMiddlewareParams<
@@ -468,14 +468,13 @@ export interface CrudMiddleware<
   TListInput extends ListInput = ListInput,
   TGetInput extends GetInput = GetInput,
   TExportInput extends ExportInput = ExportInput,
-  TAllowSkippingTotal extends boolean = false,
 > {
   /**
    * 列表查询包装器
    */
   list?: (
-    params: ListMiddlewareParams<TContext, TSelect, TListInput, TAllowSkippingTotal>,
-  ) => Promise<ListPageResult<TSelect, TAllowSkippingTotal>>;
+    params: ListMiddlewareParams<TContext, TSelect, TListInput>,
+  ) => Promise<ListPageResult<TSelect, TListInput>>;
 
   /** Batch counts use list authorization, but do not run row enrichment. */
   counts?: (params: {
@@ -659,7 +658,6 @@ export interface CrudRouterConfig<
   TListInput extends ListInput = ListInput,
   TGetInput extends GetInput = GetInput,
   TExportInput extends ExportInput = ExportInput,
-  TAllowSkippingTotal extends boolean = false,
 > {
   // ========== 必填配置 ==========
 
@@ -692,9 +690,6 @@ export interface CrudRouterConfig<
 
   /** Opt in after supplying any list-specific filter transformations in middleware.counts. */
   counts?: boolean;
-
-  /** Allow `list({ includeTotal: false })` to omit the total and return `pageCount: -1`. */
-  allowSkippingListTotal?: TAllowSkippingTotal;
 
   // ========== Schema 配置 ==========
 
@@ -733,14 +728,17 @@ export interface CrudRouterConfig<
    * 列表查询输入 Schema（可选）
    * - 默认使用内置基础列表输入：page、perPage、sort、filters、joinOperator
    * - 业务侧可以基于 baseListInputSchema.extend(...) 增加自定义参数
-   * - 默认查询逻辑只读取基础字段，额外字段会保留给 middleware.list 使用
+   * - 声明 total: z.boolean().optional() 后，list({ total: false }) 会跳过计数
+   * - 自定义字段会保留给 middleware.list 使用
    *
    * @example
    * listInputSchema: baseListInputSchema.extend({
    *   include: z.object({ skus: z.boolean().optional() }).optional(),
    * })
    */
-  listInputSchema?: z.ZodType<TListInput>;
+  listInputSchema?: z.ZodType<
+    TListInput & { total?: DeclaredListTotal<NoInfer<TListInput>> }
+  >;
 
   /**
    * 单条查询输入 Schema（可选）
@@ -959,8 +957,7 @@ export interface CrudRouterConfig<
     TUpdate,
     TListInput,
     TGetInput,
-    TExportInput,
-    TAllowSkippingTotal
+    TExportInput
   >;
 }
 
