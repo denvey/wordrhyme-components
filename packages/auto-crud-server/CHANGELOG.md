@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud-server
 
+## 2.4.0
+
+### Minor Changes
+
+- 6c8d6a4: Declare `total: z.boolean().optional()` in a router's list input schema to support `list({ total: false })`. This skips the count, omits `total` from the response, and returns `pageCount: -1`. Requests that omit the flag or pass `true` receive the exact count. While the total is unknown, the pager disables last-page navigation and stops advancing once the current page contains fewer rows than requested.
+
 ## 2.3.0
 
 ### Minor Changes
