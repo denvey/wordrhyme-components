@@ -15,6 +15,7 @@ import { coerceRowValues } from '@/lib/import';
 import { getDefaultSortingForSchema, type AutoCrudSorting } from '@/lib/default-sorting';
 import { mergeFields } from '@/lib/field-config';
 import type { Fields } from '@/components/auto-crud/auto-crud-table';
+import type { ViewCountSource } from '@/components/auto-crud/saved-views';
 import type { BatchSearchFilter, BatchSearchState } from '@/lib/batch-search';
 import type { QueryKeys, TableFilterState } from '@/types/data-table';
 import {
@@ -308,8 +309,8 @@ export interface UseAutoCrudResourceReturn<
   idKey?: keyof TListItem & string;
   tableData: {
     data: TListItem[];
-    /** @internal Query identity for real rows; null while waiting for the selected query. */
-    listResultKey?: string | null;
+    /** @internal Used by AutoCrudTable to refresh saved-view counts. */
+    countSource?: ViewCountSource;
     pageCount: number;
     /** Total rows matching the current search and filters. */
     total?: number;
@@ -649,7 +650,19 @@ export function useAutoCrudResource<
   // A disabled query may still expose cached rows for the incomplete input.
   const listData = listReady ? listQuery.data : undefined;
   const tableRows = listData?.data ?? EMPTY_ROWS;
-  const listResultKey = listData && !listQuery.isPlaceholderData ? hashKey([queryInput]) : null;
+  // Only table navigation affects this comparison. The router owns the identity of transformed inputs.
+  const navigationKey = useMemo(
+    () => hashKey([page, perPage, sort, filters, joinOperator, search.trim()]),
+    [page, perPage, sort, filters, joinOperator, search],
+  );
+  const [refreshVersion, requestCountsRefresh] = useReducer(
+    (version: number) => version + 1,
+    0,
+  );
+  const refreshResource = useCallback(() => {
+    requestCountsRefresh();
+    return listQuery.refetch();
+  }, [listQuery]);
 
   const createMutation = router.create.useMutation();
   const updateMutation = router.update.useMutation();
@@ -714,7 +727,7 @@ export function useAutoCrudResource<
             if (result) {
               toast.success('创建成功');
               closeModals();
-              listQuery.refetch();
+              refreshResource();
               currentHooks?.onSuccess?.('create', values);
             }
             return;
@@ -728,7 +741,7 @@ export function useAutoCrudResource<
           onSuccess: (data: unknown) => {
             toast.success('创建成功');
             closeModals();
-            listQuery.refetch();
+            refreshResource();
             currentHooks?.onSuccess?.('create', data);
           },
           onError: (error: unknown) => {
@@ -743,7 +756,7 @@ export function useAutoCrudResource<
         currentHooks?.onError?.('create', err);
       }
     },
-    [createMutation, closeModals, listQuery],
+    [createMutation, closeModals, refreshResource],
   );
 
   // Handlers: Update
@@ -762,7 +775,7 @@ export function useAutoCrudResource<
             if (result) {
               toast.success('更新成功');
               closeModals();
-              listQuery.refetch();
+              refreshResource();
               currentHooks?.onSuccess?.('update', values);
             }
             return;
@@ -779,7 +792,7 @@ export function useAutoCrudResource<
             onSuccess: (data: unknown) => {
               toast.success('更新成功');
               closeModals();
-              listQuery.refetch();
+              refreshResource();
               currentHooks?.onSuccess?.('update', data);
             },
             onError: (error: unknown) => {
@@ -795,7 +808,7 @@ export function useAutoCrudResource<
         currentHooks?.onError?.('update', err);
       }
     },
-    [modal.selected, idKey, updateMutation, closeModals, listQuery],
+    [modal.selected, idKey, updateMutation, closeModals, refreshResource],
   );
 
   // Handlers: Delete
@@ -813,7 +826,7 @@ export function useAutoCrudResource<
           if (result) {
             toast.success('删除成功');
             closeModals();
-            listQuery.refetch();
+            refreshResource();
             currentHooks?.onSuccess?.('delete', modal.selected);
           }
           return;
@@ -826,7 +839,7 @@ export function useAutoCrudResource<
         onSuccess: (data: unknown) => {
           toast.success('删除成功');
           closeModals();
-          listQuery.refetch();
+          refreshResource();
           currentHooks?.onSuccess?.('delete', data);
         },
         onError: (error: unknown) => {
@@ -840,7 +853,7 @@ export function useAutoCrudResource<
       toast.error(`删除失败: ${err.message}`);
       currentHooks?.onError?.('delete', err);
     }
-  }, [modal.selected, idKey, deleteMutation, closeModals, listQuery]);
+  }, [modal.selected, idKey, deleteMutation, closeModals, refreshResource]);
 
   // Handlers: Delete Many
   const deleteMany = useCallback(
@@ -854,7 +867,7 @@ export function useAutoCrudResource<
       deleteManyMutation.mutate(ids, {
         onSuccess: (data: unknown) => {
           toast.success(`成功删除 ${ids.length} 条记录`);
-          listQuery.refetch();
+          refreshResource();
           currentHooks?.onSuccess?.('delete', data);
         },
         onError: (error: unknown) => {
@@ -864,7 +877,7 @@ export function useAutoCrudResource<
         },
       });
     },
-    [deleteManyMutation, idKey, listQuery],
+    [deleteManyMutation, idKey, refreshResource],
   );
 
   // Handlers: Update Many
@@ -881,7 +894,7 @@ export function useAutoCrudResource<
         {
           onSuccess: (result: unknown) => {
             toast.success(`成功更新 ${ids.length} 条记录`);
-            listQuery.refetch();
+            refreshResource();
             currentHooks?.onSuccess?.('update', result);
           },
           onError: (error: unknown) => {
@@ -892,7 +905,7 @@ export function useAutoCrudResource<
         },
       );
     },
-    [updateManyMutation, idKey, listQuery],
+    [updateManyMutation, idKey, refreshResource],
   );
 
   // Handlers: Copy Row (复制行并打开创建弹窗)
@@ -912,10 +925,10 @@ export function useAutoCrudResource<
         rows: coercedRows,
         onConflict: 'upsert',
       });
-      listQuery.refetch();
+      refreshResource();
       return result as ImportResult;
     },
-    [importMutation, listQuery, schema],
+    [importMutation, refreshResource, schema],
   );
 
   // Handlers: Export — 导出筛选结果
@@ -947,8 +960,8 @@ export function useAutoCrudResource<
 
   const refresh = useCallback(async (): Promise<unknown> => {
     if (!listReady) return;
-    return listQuery.refetch();
-  }, [listQuery, listReady]);
+    return refreshResource();
+  }, [refreshResource, listReady]);
 
   // 返回值
   return {
@@ -958,7 +971,11 @@ export function useAutoCrudResource<
     filterState,
     tableData: {
       data: tableRows as TListItem[],
-      listResultKey,
+      countSource: {
+        navigationKey: listData && !listQuery.isPlaceholderData ? navigationKey : null,
+        refreshVersion,
+        isFetching: listQuery.isFetching,
+      },
       pageCount: listData?.pageCount ?? 0,
       ...(typeof listData?.total === 'number' ? { total: listData.total } : {}),
       isLoading: !listReady || listQuery.isLoading,
