@@ -1,7 +1,9 @@
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { getCoreRowModel, useReactTable } from '@tanstack/react-table';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { formatDate, setDateFormatter } from '@/lib/format';
 import { DataTable } from './data-table';
+import { DataTablePagination } from './data-table-pagination';
 
 const DATE = '2026-01-01T00:30:00.000Z';
 
@@ -59,6 +61,41 @@ function makeTable(total: number | null = 394) {
     nextPage: vi.fn(),
   };
 }
+
+describe('data table pagination with an unknown total', () => {
+  function Pager({ rowCount }: { rowCount: number }) {
+    const table = useReactTable({
+      data: Array.from({ length: rowCount }, (_, id) => ({ id })),
+      columns: [{ accessorKey: 'id' }],
+      getCoreRowModel: getCoreRowModel(),
+      manualPagination: true,
+      pageCount: -1,
+      initialState: { pagination: { pageIndex: 0, pageSize: 10 } },
+    });
+    return <DataTablePagination table={table} />;
+  }
+
+  it('advances from a full page and stops on a short page', () => {
+    const { rerender } = render(<Pager rowCount={10} />);
+    const next = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Go to next page',
+    });
+    const last = screen.getByRole<HTMLButtonElement>('button', {
+      name: 'Go to last page',
+    });
+
+    expect(next.disabled).toBe(false);
+    expect(last.disabled).toBe(true);
+    fireEvent.click(next);
+    expect(screen.getByText('2')).toBeTruthy();
+
+    rerender(<Pager rowCount={1} />);
+    expect(next.disabled).toBe(true);
+    fireEvent.click(next);
+    expect(screen.getByText('2')).toBeTruthy();
+    expect(screen.queryByText('3')).toBeNull();
+  });
+});
 
 describe('data table date formatter', () => {
   it('rerenders existing cells when the effective formatter changes', () => {

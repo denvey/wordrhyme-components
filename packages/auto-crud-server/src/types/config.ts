@@ -154,11 +154,12 @@ export interface ListResult<TSelect> {
   pageCount: number;
 }
 
-/** A list input schema may opt in to omitting the total with `includeTotal: false`. */
-export type ListPageResult<TSelect, TInput extends ListInput> =
-  'includeTotal' extends keyof TInput
-    ? Omit<ListResult<TSelect>, 'total'> & { total?: number }
-    : ListResult<TSelect>;
+export type ListPageResult<
+  TSelect,
+  TAllowSkippingTotal extends boolean,
+> = true extends TAllowSkippingTotal
+  ? Omit<ListResult<TSelect>, 'total'> & { total?: number }
+  : ListResult<TSelect>;
 
 /**
  * 单条查询输入类型
@@ -349,10 +350,11 @@ export interface ListMiddlewareParams<
   TContext,
   TSelect,
   TListInput extends ListInput = ListInput,
+  TAllowSkippingTotal extends boolean = false,
 > {
   ctx: TContext;
   input: TListInput;
-  next: (input?: TListInput) => Promise<ListPageResult<TSelect, TListInput>>;
+  next: (input?: TListInput) => Promise<ListPageResult<TSelect, TAllowSkippingTotal>>;
 }
 
 export interface GetMiddlewareParams<
@@ -466,13 +468,14 @@ export interface CrudMiddleware<
   TListInput extends ListInput = ListInput,
   TGetInput extends GetInput = GetInput,
   TExportInput extends ExportInput = ExportInput,
+  TAllowSkippingTotal extends boolean = false,
 > {
   /**
    * 列表查询包装器
    */
   list?: (
-    params: ListMiddlewareParams<TContext, TSelect, TListInput>,
-  ) => Promise<ListPageResult<TSelect, TListInput>>;
+    params: ListMiddlewareParams<TContext, TSelect, TListInput, TAllowSkippingTotal>,
+  ) => Promise<ListPageResult<TSelect, TAllowSkippingTotal>>;
 
   /** Batch counts use list authorization, but do not run row enrichment. */
   counts?: (params: {
@@ -656,6 +659,7 @@ export interface CrudRouterConfig<
   TListInput extends ListInput = ListInput,
   TGetInput extends GetInput = GetInput,
   TExportInput extends ExportInput = ExportInput,
+  TAllowSkippingTotal extends boolean = false,
 > {
   // ========== 必填配置 ==========
 
@@ -688,6 +692,9 @@ export interface CrudRouterConfig<
 
   /** Opt in after supplying any list-specific filter transformations in middleware.counts. */
   counts?: boolean;
+
+  /** Allow `list({ includeTotal: false })` to omit the total and return `pageCount: -1`. */
+  allowSkippingListTotal?: TAllowSkippingTotal;
 
   // ========== Schema 配置 ==========
 
@@ -952,7 +959,8 @@ export interface CrudRouterConfig<
     TUpdate,
     TListInput,
     TGetInput,
-    TExportInput
+    TExportInput,
+    TAllowSkippingTotal
   >;
 }
 

@@ -1405,6 +1405,7 @@ export function createCrudRouter<
   TListInput extends ListInput = ListInput,
   TGetInput extends GetInput = GetInput,
   TExportInput extends ExportInput = ExportInput,
+  TAllowSkippingTotal extends boolean = false,
 >(
   config: CrudRouterConfig<
     TTable,
@@ -1414,7 +1415,8 @@ export function createCrudRouter<
     TUpdate,
     TListInput,
     TGetInput,
-    TExportInput
+    TExportInput,
+    TAllowSkippingTotal
   >,
 ): CrudRouterReturn {
   const {
@@ -1422,6 +1424,7 @@ export function createCrudRouter<
     idField = 'id',
     maxBatchSize = 100,
     maxExportSize = 5000,
+    allowSkippingListTotal = false,
     softDelete: softDeleteOption,
     middleware = {},
   } = config;
@@ -1455,7 +1458,7 @@ export function createCrudRouter<
 
   const listOutputSchema = z.object({
     data: z.array(entityOutputSchema),
-    total: z.number().optional(),
+    total: allowSkippingListTotal ? z.number().optional() : z.number(),
     page: z.number(),
     perPage: z.number(),
     pageCount: z.number(),
@@ -1544,8 +1547,10 @@ export function createCrudRouter<
     __crudOperation: 'list',
   } satisfies CrudResourceMetadata<TTable>);
   const softDelete = resolveSoftDelete(softDeleteOption);
-  const resolvedListInputSchema = (config.listInputSchema ??
-    baseListInputSchema) as z.ZodType<TListInput>;
+  const listInputSchema = config.listInputSchema ?? baseListInputSchema;
+  const resolvedListInputSchema = allowSkippingListTotal
+    ? z.intersection(listInputSchema, z.object({ includeTotal: z.boolean().optional() }))
+    : listInputSchema;
   const resolvedGetInputSchema = config.getInputSchema
     ? (z.union([
         z.string(),
@@ -1563,7 +1568,8 @@ export function createCrudRouter<
     TUpdate,
     TListInput,
     TGetInput,
-    TExportInput
+    TExportInput,
+    TAllowSkippingTotal
   >;
 
   // 辅助函数
@@ -1829,13 +1835,20 @@ export function createCrudRouter<
       .output(listOutputSchema)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .query(
-        async ({ ctx, input }: { ctx: TContext & { db: any }; input: TListInput }) => {
+        async ({
+          ctx,
+          input,
+        }: {
+          ctx: TContext & { db: any };
+          input: TListInput & { includeTotal?: boolean };
+        }) => {
           await withGuard(ctx, 'list');
+          const skipTotal = allowSkippingListTotal && input.includeTotal === false;
 
           // 核心查询逻辑
           const doList = async (
             listInput: TListInput,
-          ): Promise<ListPageResult<TSelect, TListInput>> => {
+          ): Promise<ListPageResult<TSelect, TAllowSkippingTotal>> => {
             const extra = await config.query?.({
               ctx,
               input: listInput,
@@ -1859,12 +1872,15 @@ export function createCrudRouter<
             const data = Promise.resolve(
               query.limit(effectiveInput.perPage).offset(offset),
             ).then((rows) =>
-              enrichCrudRows(ctx, config, idField, rows as Array<Record<string, unknown>>),
+              enrichCrudRows(
+                ctx,
+                config,
+                idField,
+                rows as Array<Record<string, unknown>>,
+              ),
             );
             const count = async () => {
-              if ('includeTotal' in listInput && listInput.includeTotal === false) {
-                return undefined;
-              }
+              if (skipTotal) return undefined;
               let countQuery = ctx.db
                 .select({ count: sql<number>`count(*)::int` })
                 .from(table)
@@ -1879,23 +1895,31 @@ export function createCrudRouter<
               ...(total === undefined ? {} : { total }),
               page: effectiveInput.page,
               perPage: effectiveInput.perPage,
-              pageCount: total === undefined ? -1 : Math.ceil(total / effectiveInput.perPage),
-            } as ListPageResult<TSelect, TListInput>;
+              pageCount:
+                total === undefined ? -1 : Math.ceil(total / effectiveInput.perPage),
+            } as ListPageResult<TSelect, TAllowSkippingTotal>;
           };
 
-          const listInput = input;
+          if (!m.list) return doList(input);
 
-          // middleware 模式
-          if (m.list) {
-            return m.list({
-              ctx,
-              input: listInput,
-              next: async (modifiedInput?: TListInput) =>
-                doList(modifiedInput ?? listInput),
+          const result = await m.list({
+            ctx,
+            input,
+            next: (modifiedInput) => doList(modifiedInput ?? input),
+          });
+          if (
+            allowSkippingListTotal &&
+            (skipTotal
+              ? result.total !== undefined || result.pageCount !== -1
+              : result.total === undefined || result.pageCount === -1)
+          ) {
+            throw new TRPCError({
+              code: 'INTERNAL_SERVER_ERROR',
+              message:
+                'List middleware returned pagination inconsistent with includeTotal',
             });
           }
-
-          return doList(listInput);
+          return result;
         },
       ),
 

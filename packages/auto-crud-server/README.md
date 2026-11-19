@@ -587,6 +587,13 @@ await trpc.products.list.query({
 });
 ```
 
+列表需要先加载当前页、再独立统计总数时，可在路由配置中设置
+`allowSkippingListTotal: true`，调用 `list.query({ includeTotal: false })`。
+响应省略 `total`，并以 `pageCount: -1` 表示总页数未知。省略
+`includeTotal` 或显式传入 `true` 时，列表仍返回精确总数。
+如果自定义 `listInputSchema` 拒绝未知字段，请在 schema 中声明
+`includeTotal: z.boolean().optional()`。
+
 `get` 也可以扩展。默认仍兼容 `get("spu_1")`，业务侧如需详情页按需挂载关联数据，可以改成对象输入：
 
 ```typescript
