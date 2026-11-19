@@ -113,7 +113,18 @@ export interface SavedViewsConfig {
   }) => Promise<Record<string, number>>;
 }
 
-interface SavedViewsProps<TData> extends SavedViewsConfig {
+/** Internal list state supplied by useAutoCrudResource. */
+export interface ViewCountSource {
+  navigationKey: string | null;
+  refreshVersion: number;
+  isFetching: boolean;
+}
+
+export interface ResolvedSavedViewsConfig extends SavedViewsConfig {
+  countSource?: ViewCountSource;
+}
+
+interface SavedViewsProps<TData> extends ResolvedSavedViewsConfig {
   resourceId: string;
   table: Table<TData>;
   onApply?: () => void;
@@ -159,6 +170,7 @@ function ViewMenu<TData>({
   selector = 'dropdown',
   tabs,
   counts,
+  countSource,
   onApply,
   children,
 }: SavedViewsProps<TData>) {
@@ -289,26 +301,49 @@ function ViewMenu<TData>({
     enabled: Boolean(counts) && ready && fieldsReady,
   });
   const data = table.options.data;
-  const previousSource = useRef({ data, counts });
+  const navigationKey = countSource?.navigationKey;
+  const refreshVersion = countSource?.refreshVersion;
+  const listFetching = countSource?.isFetching;
+  const previousSource = useRef({ data, counts, navigationKey });
+  const countedVersion = useRef(refreshVersion);
   const refreshPending = useRef(false);
   const refetchCounts = totals.refetch;
   useEffect(() => {
     const previous = previousSource.current;
-    previousSource.current = { data, counts };
-    if (previous.data !== data || previous.counts !== counts)
-      refreshPending.current = true;
+    // Keep the last real result while the new list is showing placeholder rows.
+    previousSource.current =
+      navigationKey === null ? { ...previous, counts } : { data, counts, navigationKey };
+    const rowsChanged =
+      navigationKey !== null &&
+      previous.navigationKey === navigationKey &&
+      previous.data !== data;
+    if (rowsChanged || previous.counts !== counts) refreshPending.current = true;
+    // Combine a successful write and its list refresh, even if the user navigates in between.
+    const resourceRefresh = countedVersion.current !== refreshVersion;
     if (
       !counts ||
       !ready ||
       !fieldsReady ||
       totals.fetchStatus !== 'idle' ||
-      !refreshPending.current
+      (resourceRefresh && listFetching) ||
+      (!refreshPending.current && !resourceRefresh)
     )
       return;
     // Finish the current read, then coalesce intervening data changes into one refresh.
     refreshPending.current = false;
+    countedVersion.current = refreshVersion;
     void refetchCounts({ cancelRefetch: false });
-  }, [data, counts, ready, fieldsReady, totals.fetchStatus, refetchCounts]);
+  }, [
+    data,
+    counts,
+    navigationKey,
+    refreshVersion,
+    listFetching,
+    ready,
+    fieldsReady,
+    totals.fetchStatus,
+    refetchCounts,
+  ]);
   const renderCount = (key: string) => {
     if (!counts) return null;
     const value = totals.data?.[key];

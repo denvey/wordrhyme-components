@@ -18,6 +18,7 @@ import type { ModalVariant } from './form-modal';
 import type { CrudPermissions } from '@/types/permissions';
 import type { DataTableClassNames } from '@/types/data-table';
 import { AutoTable, type AutoTableProps, type FilterMode } from './auto-table';
+import type { ResolvedSavedViewsConfig } from './saved-views';
 import type {
   BatchActionConfig,
   BatchActionItem,
@@ -3058,6 +3059,15 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
   const refreshNodes = normalizedToolbarActions
     .filter((action) => action.type === 'refresh')
     .map(renderToolbarAction);
+  const views: ResolvedSavedViewsConfig | false = viewsEnabled
+    ? {
+        ...(typeof viewsEnabled === 'object' ? viewsEnabled : {}),
+        countSource: resource.tableData.countSource,
+        fieldsReady:
+          !resource.metadataPending &&
+          (typeof viewsEnabled !== 'object' || viewsEnabled.fieldsReady !== false),
+      }
+    : false;
 
   return (
     <CrudResourceContext.Provider value={id}>
@@ -3080,17 +3090,7 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         {/* Table */}
         <AutoTable
           resourceId={id}
-          views={
-            viewsEnabled
-              ? {
-                  ...(typeof viewsEnabled === 'object' ? viewsEnabled : {}),
-                  fieldsReady:
-                    !resource.metadataPending &&
-                    (typeof viewsEnabled !== 'object' ||
-                      viewsEnabled.fieldsReady !== false),
-                }
-              : false
-          }
+          views={views}
           data={resource.tableData.data}
           schema={resolvedSchema as TSchema}
           pageCount={resource.tableData.pageCount}

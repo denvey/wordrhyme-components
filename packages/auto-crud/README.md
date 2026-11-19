@@ -2204,7 +2204,7 @@ const loadViewCounts: NonNullable<SavedViewsConfig['counts']> = async ({
 
 回调返回以传入 `query.key` 为键的数量对象，键由组件生成，直接原样返回即可。每批最多 100 个查询，更多视图自动分批。使用 `auto-crud-server` 时开启 `counts: true`，数据库适配器须支持受权限和租户范围约束的 `$counts`；其他后端可自行实现相同的回调。
 
-首次加载显示 `…`，零结果显示 `0`，缺失或无效数量显示 `—`；请求失败显示 `—` 和重试入口。保存视图条件后重新统计；表格数据引用或 `counts` 回调引用变化时也会重新获取。数量由查询缓存管理，不写入视图存储。独立 `AutoTable` 使用 `views={{ selector: 'tabs', counts: loadViewCounts }}`。
+首次加载显示 `…`，零结果显示 `0`，缺失或无效数量显示 `—`，请求失败显示 `—` 和重试入口。保存视图条件或更换 `counts` 回调会重新统计。配合 `useAutoCrudResource` 时，翻页、排序和切换视图复用已有数量。成功写入、显式刷新资源或当前列表的行数据更新后，角标会刷新。独立 `AutoTable` 使用 `views={{ selector: 'tabs', counts: loadViewCounts }}`，行数组引用变化时刷新。数量保存在查询缓存中。
 
 Storybook 的 **Auto CRUD / Saved views and tags / Tabs With Counts** 与其他视图示例共用本地视图存储，模拟 300ms 统计请求延迟；首次加载预置数量为 3、2、1、0 的视图。列表和数量共用筛选逻辑，修改客户标签后会重新计算。视图与排列顺序刷新后保留，客户标签刷新后重置。
 
