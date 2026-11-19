@@ -2323,6 +2323,49 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
 
   // Import dialog state
   const [importOpen, setImportOpen] = React.useState(false);
+  const resourceIdKey = resource.idKey ?? 'id';
+  const modal = resource.modal;
+  const deleteTarget =
+    modal.selected && (readRowId(modal.selected, resourceIdKey) ?? modal.selected);
+  const deleteRequest = React.useRef<{
+    target: typeof deleteTarget;
+    modal: typeof modal;
+  } | null>(null);
+  const [deletePhase, setDeletePhase] = React.useState<'idle' | 'pending' | 'settled'>(
+    'idle',
+  );
+  const deleting = deletePhase !== 'idle' || resource.mutations.isDeleting;
+
+  // Read the committed modal state after a handler has had a chance to open another dialog.
+  React.useEffect(() => {
+    if (deletePhase !== 'settled' || !deleteRequest.current) return;
+    const submitted = deleteRequest.current;
+    deleteRequest.current = null;
+    setDeletePhase('idle');
+    if (
+      modal.deleteOpen &&
+      submitted.target === deleteTarget &&
+      submitted.modal.viewOpen === modal.viewOpen &&
+      submitted.modal.editOpen === modal.editOpen &&
+      submitted.modal.createOpen === modal.createOpen
+    ) {
+      resource.handlers.closeModals();
+    }
+  }, [deletePhase, deleteTarget, modal, resource.handlers]);
+
+  const confirmDelete = async () => {
+    if (deleteRequest.current || deleting) return;
+    deleteRequest.current = { target: deleteTarget, modal };
+    setDeletePhase('pending');
+    try {
+      await resource.handlers.confirmDelete();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setDeletePhase('settled');
+    }
+  };
+
   const [selectedRows, setSelectedRows] = React.useState<z.output<TSchema>[]>([]);
   const [exporting, setExporting] = React.useState(false);
   const exportBusyRef = React.useRef(false);
@@ -2363,7 +2406,6 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
     resource.tableData.data as readonly Record<string, unknown>[],
     hiddenColumns,
   );
-  const resourceIdKey = resource.idKey ?? 'id';
   const tagFields = React.useMemo(
     () =>
       Object.entries(resolvedFields)
@@ -3146,9 +3188,12 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
         {/* Delete Confirmation */}
         <AlertDialog
           open={resource.modal.deleteOpen}
-          onOpenChange={(open) => !open && resource.handlers.closeModals()}
+          onOpenChange={(open) => {
+            if (!open && !deleteRequest.current && !deleting)
+              resource.handlers.closeModals();
+          }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent aria-busy={deleting}>
             <AlertDialogHeader>
               <AlertDialogTitle>{locale.deleteModal.title}</AlertDialogTitle>
               <AlertDialogDescription>
@@ -3156,14 +3201,20 @@ export function AutoCrudTable<TSchema extends z.ZodObject<z.ZodRawShape>>({
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>{locale.deleteModal.cancel}</AlertDialogCancel>
+              <AlertDialogCancel disabled={deleting}>
+                {locale.deleteModal.cancel}
+              </AlertDialogCancel>
               <AlertDialogAction
-                onClick={resource.handlers.confirmDelete}
-                disabled={resource.mutations.isDeleting}
+                onClick={(event) => {
+                  event.preventDefault();
+                  void confirmDelete();
+                }}
+                disabled={deleting}
               >
-                {resource.mutations.isDeleting
-                  ? locale.deleteModal.confirming
-                  : locale.deleteModal.confirm}
+                {deleting && (
+                  <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin" />
+                )}
+                {deleting ? locale.deleteModal.confirming : locale.deleteModal.confirm}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

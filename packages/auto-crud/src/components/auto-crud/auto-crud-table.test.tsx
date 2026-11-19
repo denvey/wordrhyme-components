@@ -8,6 +8,7 @@ import {
   within,
 } from '@testing-library/react';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useState } from 'react';
 import type { CellContext } from '@tanstack/react-table';
 import { z } from 'zod';
 import { DropdownMenuItem } from '@wordrhyme/ui';
@@ -240,6 +241,91 @@ function createAuditResource(
     },
   };
 }
+
+describe('AutoCrudTable delete confirmation', () => {
+  afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+  });
+
+  it.each(['success', 'failure'])('waits for %s before closing', async (outcome) => {
+    const resource = createResource({
+      modal: { deleteOpen: true, selected: { id: '1' } },
+    });
+    let finish!: () => void;
+    const confirm = vi.fn(
+      () =>
+        new Promise<Row>((resolve, reject) => {
+          finish = () =>
+            outcome === 'success'
+              ? resolve({ id: '1' })
+              : reject(new Error('Store has orders'));
+        }),
+    );
+    resource.handlers.confirmDelete = confirm;
+    const notify = vi.spyOn(toast, 'error').mockImplementation(() => 'error');
+    render(<AutoCrudTable schema={schema} resource={resource} locale="zh-CN" />);
+
+    const dialog = screen.getByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: '确认删除' }));
+    const busy = within(dialog).getByRole<HTMLButtonElement>('button', {
+      name: '删除中...',
+    });
+    expect(busy.disabled).toBe(true);
+    expect(
+      within(dialog).getByRole<HTMLButtonElement>('button', { name: '取消' }).disabled,
+    ).toBe(true);
+    fireEvent.click(busy);
+    fireEvent.keyDown(dialog, { key: 'Escape' });
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(resource.handlers.closeModals).not.toHaveBeenCalled();
+
+    await act(async () => finish());
+    expect(resource.handlers.closeModals).toHaveBeenCalledTimes(1);
+    if (outcome === 'failure') expect(notify).toHaveBeenCalledWith('Store has orders');
+  });
+
+  it.each(['view', 'delete'] as const)(
+    'preserves the next row’s %s dialog',
+    async (next) => {
+      const initial = createResource({
+        modal: { deleteOpen: true, selected: { id: '1' } },
+      });
+      function StoreTable() {
+        const [modal, setModal] = useState(initial.modal);
+        const handlers = {
+          ...initial.handlers,
+          confirmDelete: () => {
+            setModal({
+              ...modal,
+              deleteOpen: next === 'delete',
+              viewOpen: next === 'view',
+              selected: { id: '2' },
+            });
+            return true;
+          },
+        };
+        return (
+          <AutoCrudTable
+            schema={schema}
+            resource={{ ...initial, modal, handlers }}
+            locale="zh-CN"
+          />
+        );
+      }
+      render(<StoreTable />);
+      await act(async () => {
+        fireEvent.click(
+          within(screen.getByRole('alertdialog')).getByRole('button', {
+            name: '确认删除',
+          }),
+        );
+      });
+      expect(screen.getByRole(next === 'view' ? 'dialog' : 'alertdialog')).toBeTruthy();
+      expect(initial.handlers.closeModals).not.toHaveBeenCalled();
+    },
+  );
+});
 
 describe('AutoCrudTable dynamic filter dataSource', () => {
   beforeEach(() => {

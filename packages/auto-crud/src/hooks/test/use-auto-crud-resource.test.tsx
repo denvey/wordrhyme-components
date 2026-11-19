@@ -180,6 +180,123 @@ describe('export results', () => {
   );
 });
 
+describe('useAutoCrudResource single deletion', () => {
+  const row: Row = { id: '1', status: 'draft' };
+  afterEach(cleanup);
+
+  it.each(['success', 'failure'])(
+    'waits for callback-style mutation %s',
+    async (outcome) => {
+      const router = createRouter();
+      const refetch = vi.fn();
+      router.list.useQuery.mockReturnValue({
+        data: { data: [], pageCount: 0, total: 0 },
+        isLoading: false,
+        isFetching: false,
+        refetch,
+      });
+      let finish!: () => void;
+      const deleted = { id: row.id };
+      const error = new Error('Store has orders');
+      const mutate = vi.fn(
+        (
+          _id: string,
+          callbacks: {
+            onSuccess: (data: unknown) => void;
+            onError: (error: Error) => void;
+          },
+        ) => {
+          finish = () =>
+            outcome === 'success'
+              ? callbacks.onSuccess(deleted)
+              : callbacks.onError(error);
+        },
+      );
+      const hooks = { onSuccess: vi.fn(), onError: vi.fn() };
+      const { result } = renderHook(() =>
+        useAutoCrudResource({
+          schema,
+          router: {
+            ...router,
+            delete: { useMutation: () => ({ mutate, isPending: false }) },
+          },
+          options: { hooks },
+        }),
+      );
+      act(() => result.current.handlers.openDelete(row));
+      const settled = vi.fn();
+      const confirmation = Promise.resolve(result.current.handlers.confirmDelete()).then(
+        settled,
+      );
+      await act(async () => {});
+      expect(settled).not.toHaveBeenCalled();
+      expect(result.current.modal.deleteOpen).toBe(true);
+      expect(mutate).toHaveBeenCalledWith(row.id, expect.any(Object));
+
+      await act(async () => {
+        finish();
+        await confirmation;
+      });
+      if (outcome === 'success') {
+        expect(result.current.modal).toMatchObject({ deleteOpen: false, selected: null });
+        expect(refetch).toHaveBeenCalledOnce();
+        expect(hooks.onSuccess).toHaveBeenCalledWith('delete', deleted);
+      } else {
+        expect(result.current.modal).toMatchObject({ deleteOpen: true, selected: row });
+        expect(refetch).not.toHaveBeenCalled();
+        expect(hooks.onError).toHaveBeenCalledWith('delete', error);
+      }
+    },
+  );
+
+  it('closes a successful custom deletion before its callback opens the next detail', async () => {
+    const router = createRouter();
+    const beforeDelete = vi.fn(() => true);
+    const next = { ...row, id: '2' };
+    const onSuccess = vi.fn(() => result.current.handlers.openView(next));
+    const { result } = renderHook(() =>
+      useAutoCrudResource({
+        router,
+        schema,
+        options: { hooks: { beforeDelete, onSuccess } },
+      }),
+    );
+    act(() => result.current.handlers.openDelete(row));
+    await act(async () => {
+      await result.current.handlers.confirmDelete();
+    });
+    expect(beforeDelete).toHaveBeenCalledWith(row);
+    expect(onSuccess).toHaveBeenCalledWith('delete', row);
+    expect(result.current.modal).toMatchObject({
+      deleteOpen: false,
+      viewOpen: true,
+      selected: next,
+    });
+  });
+
+  it('preserves the next delete confirmation when an earlier request completes', async () => {
+    let finish!: () => void;
+    const mutateAsync = () =>
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      });
+    const router = {
+      ...createRouter(),
+      delete: { useMutation: () => ({ mutateAsync }) },
+    };
+    const { result } = renderHook(() => useAutoCrudResource({ router, schema }));
+    act(() => result.current.handlers.openDelete(row));
+    const confirmation = result.current.handlers.confirmDelete();
+    const next = { ...row, id: '2' };
+    act(() => result.current.handlers.openDelete(next));
+    await act(async () => {
+      finish();
+      await confirmation;
+    });
+    expect(result.current.modal).toMatchObject({ deleteOpen: true, selected: next });
+  });
+});
+
 describe('useAutoCrudResource', () => {
   let cleanup: (() => void) | undefined;
 

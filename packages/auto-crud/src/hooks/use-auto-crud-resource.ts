@@ -188,6 +188,7 @@ type ModalAction<T> =
   | { type: 'OPEN_CREATE_WITH_COPY'; payload: T }
   | { type: 'OPEN_EDIT'; payload: T }
   | { type: 'OPEN_DELETE'; payload: T }
+  | { type: 'DELETE_SUCCEEDED'; payload: T }
   | { type: 'OPEN_VIEW'; payload: T }
   | { type: 'CLOSE_ALL' }
   | { type: 'SET_VARIANT'; payload: ModalVariant };
@@ -345,6 +346,7 @@ export interface UseAutoCrudResourceReturn<
     closeModals: () => void;
     submitCreate: (values: z.infer<TSchema>) => void;
     submitUpdate: (values: z.infer<TSchema>) => void;
+    /** The table waits for a returned promise and ignores its resolved value. */
     confirmDelete: () => void;
     deleteMany: (rows: TListItem[]) => void;
     updateMany: (rows: TListItem[], data: Record<string, unknown>) => void;
@@ -364,15 +366,36 @@ export interface UseAutoCrudResourceReturn<
 function modalReducer<T>(state: ModalState<T>, action: ModalAction<T>): ModalState<T> {
   switch (action.type) {
     case 'OPEN_CREATE':
-      return { ...state, createOpen: true, selected: null, copySource: null };
+      return {
+        ...state,
+        createOpen: true,
+        deleteOpen: false,
+        selected: null,
+        copySource: null,
+      };
     case 'OPEN_CREATE_WITH_COPY':
-      return { ...state, createOpen: true, selected: null, copySource: action.payload };
+      return {
+        ...state,
+        createOpen: true,
+        deleteOpen: false,
+        selected: null,
+        copySource: action.payload,
+      };
     case 'OPEN_EDIT':
-      return { ...state, editOpen: true, selected: action.payload };
+      return { ...state, editOpen: true, deleteOpen: false, selected: action.payload };
     case 'OPEN_DELETE':
       return { ...state, deleteOpen: true, selected: action.payload };
+    case 'DELETE_SUCCEEDED': {
+      if (!state.deleteOpen || state.selected !== action.payload) return state;
+      const otherModalOpen = state.createOpen || state.editOpen || state.viewOpen;
+      return {
+        ...state,
+        deleteOpen: false,
+        selected: otherModalOpen ? state.selected : null,
+      };
+    }
     case 'OPEN_VIEW':
-      return { ...state, viewOpen: true, selected: action.payload };
+      return { ...state, viewOpen: true, deleteOpen: false, selected: action.payload };
     case 'CLOSE_ALL':
       return {
         ...state,
@@ -816,44 +839,32 @@ export function useAutoCrudResource<
     const currentHooks = hooksRef.current;
     if (!modal.selected) return;
 
+    let data: unknown = modal.selected;
     try {
-      // 调用 beforeDelete 钩子
-      if (currentHooks?.beforeDelete) {
-        const result = await currentHooks.beforeDelete(modal.selected);
-
-        // 返回 boolean = 完全自定义处理
-        if (typeof result === 'boolean') {
-          if (result) {
-            toast.success('删除成功');
-            closeModals();
-            refreshResource();
-            currentHooks?.onSuccess?.('delete', modal.selected);
-          }
-          return;
-        }
-        // 返回 undefined/void = 继续执行默认删除
+      const handled = currentHooks?.beforeDelete
+        ? await currentHooks.beforeDelete(modal.selected)
+        : undefined;
+      if (handled === false) return;
+      if (handled !== true) {
+        const id = modal.selected[idKey];
+        data =
+          typeof deleteMutation.mutateAsync === 'function'
+            ? await deleteMutation.mutateAsync(id)
+            : await new Promise<unknown>((resolve, reject) => {
+                deleteMutation.mutate(id, { onSuccess: resolve, onError: reject });
+              });
       }
-
-      const id = modal.selected[idKey];
-      deleteMutation.mutate(id as string, {
-        onSuccess: (data: unknown) => {
-          toast.success('删除成功');
-          closeModals();
-          refreshResource();
-          currentHooks?.onSuccess?.('delete', data);
-        },
-        onError: (error: unknown) => {
-          const err = error as Error;
-          toast.error(`删除失败: ${err.message}`);
-          currentHooks?.onError?.('delete', err);
-        },
-      });
     } catch (error) {
       const err = error as Error;
       toast.error(`删除失败: ${err.message}`);
       currentHooks?.onError?.('delete', err);
+      return;
     }
-  }, [modal.selected, idKey, deleteMutation, closeModals, refreshResource]);
+    toast.success('删除成功');
+    dispatch({ type: 'DELETE_SUCCEEDED', payload: modal.selected });
+    refreshResource();
+    currentHooks?.onSuccess?.('delete', data);
+  }, [modal.selected, idKey, deleteMutation, refreshResource, toast]);
 
   // Handlers: Delete Many
   const deleteMany = useCallback(
