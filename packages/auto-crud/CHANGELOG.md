@@ -1,5 +1,11 @@
 # @wordrhyme/auto-crud
 
+## 1.23.1
+
+### Patch Changes
+
+- 295c869: Keep single-record deletion confirmations open while the request is pending and preserve dialogs opened by completion handlers.
+
 ## 1.23.0
 
 ### Minor Changes
