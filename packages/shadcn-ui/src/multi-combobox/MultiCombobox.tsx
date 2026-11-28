@@ -235,6 +235,73 @@ function DefaultMultiComboboxTrigger({
   );
 }
 
+// Radix mounts this subtree only while the popover is present, including its exit animation.
+function Options({ options, selectedValueSet, selectionMode, onSelect }: {
+  options: MultiComboboxOption[];
+  selectedValueSet: ReadonlySet<string>;
+  selectionMode: 'single' | 'multiple';
+  onSelect: (option: MultiComboboxOption) => void;
+}) {
+  return (
+    <>
+      {options.map((option) => {
+        const isSelected = selectedValueSet.has(option.value);
+        const Icon = option.icon;
+        const isMultiple = selectionMode === 'multiple';
+
+        return (
+          <CommandItem
+            key={option.value}
+            value={option.value}
+            title={getOptionText(option)}
+            keywords={getOptionKeywords(option)}
+            disabled={option.disabled}
+            onSelect={() => onSelect(option)}
+            data-current={isSelected ? 'true' : undefined}
+            className={cn(
+              isSelected && 'bg-accent font-medium text-accent-foreground',
+            )}
+          >
+            {isMultiple && (
+              <div
+                className={cn(
+                  'flex size-4 items-center justify-center rounded-sm border border-primary',
+                  isSelected
+                    ? 'bg-primary text-primary-foreground'
+                    : 'opacity-50',
+                )}
+              >
+                <Check
+                  className={cn(
+                    'size-4',
+                    isSelected ? 'opacity-100' : 'opacity-0',
+                  )}
+                />
+              </div>
+            )}
+            {Icon && <Icon className="size-4" />}
+            <span className="min-w-0 truncate">{getOptionText(option)}</span>
+            {option.count !== undefined && (
+              <span className="ml-auto font-mono text-xs">
+                {option.count}
+              </span>
+            )}
+            {!isMultiple && (
+              <Check
+                aria-hidden="true"
+                className={cn(
+                  'ml-auto size-4 shrink-0',
+                  isSelected ? 'opacity-100' : 'opacity-0',
+                )}
+              />
+            )}
+          </CommandItem>
+        );
+      })}
+    </>
+  );
+}
+
 const MultiCombobox: React.FC<MultiComboboxProps> = ({
   value,
   defaultValue,
@@ -440,60 +507,12 @@ const MultiCombobox: React.FC<MultiComboboxProps> = ({
               >
                 <CommandEmpty>{emptyText}</CommandEmpty>
                 <CommandGroup className="scroll-py-1">
-                  {options.map((option) => {
-                    const isSelected = selectedValueSet.has(option.value);
-                    const Icon = option.icon;
-                    const isMultiple = selectionMode === 'multiple';
-
-                    return (
-                      <CommandItem
-                        key={option.value}
-                        value={option.value}
-                        title={getOptionText(option)}
-                        keywords={getOptionKeywords(option)}
-                        disabled={option.disabled}
-                        onSelect={() => onItemSelect(option)}
-                        data-current={isSelected ? 'true' : undefined}
-                        className={cn(
-                          isSelected && 'bg-accent font-medium text-accent-foreground',
-                        )}
-                      >
-                        {isMultiple && (
-                          <div
-                            className={cn(
-                              'flex size-4 items-center justify-center rounded-sm border border-primary',
-                              isSelected
-                                ? 'bg-primary text-primary-foreground'
-                                : 'opacity-50',
-                            )}
-                          >
-                            <Check
-                              className={cn(
-                                'size-4',
-                                isSelected ? 'opacity-100' : 'opacity-0',
-                              )}
-                            />
-                          </div>
-                        )}
-                        {Icon && <Icon className="size-4" />}
-                        <span className="min-w-0 truncate">{getOptionText(option)}</span>
-                        {option.count !== undefined && (
-                          <span className="ml-auto font-mono text-xs">
-                            {option.count}
-                          </span>
-                        )}
-                        {!isMultiple && (
-                          <Check
-                            aria-hidden="true"
-                            className={cn(
-                              'ml-auto size-4 shrink-0',
-                              isSelected ? 'opacity-100' : 'opacity-0',
-                            )}
-                          />
-                        )}
-                      </CommandItem>
-                    );
-                  })}
+                  <Options
+                    options={options}
+                    selectedValueSet={selectedValueSet}
+                    selectionMode={selectionMode}
+                    onSelect={onItemSelect}
+                  />
                 </CommandGroup>
                 {loading ? (
                   <>
