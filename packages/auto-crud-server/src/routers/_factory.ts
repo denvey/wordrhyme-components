@@ -1500,7 +1500,11 @@ export function createCrudRouter<
     : listInputSchema;
 
   const listOutputSchema = z.object({
-    data: z.array(entityOutputSchema),
+    data: z.array(
+      config.listSelectSchema
+        ? z.union([entityOutputSchema, config.listSelectSchema])
+        : entityOutputSchema,
+    ),
     total: optionalTotal ? z.number().optional() : z.number(),
     page: z.number(),
     perPage: z.number(),
@@ -1897,7 +1901,9 @@ export function createCrudRouter<
             const where = combineConditions(baseWhere, extra?.where);
             const offset = (effectiveInput.page - 1) * effectiveInput.perPage;
 
-            let query = ctx.db.select().from(table).$dynamic();
+            let query = (extra?.select ? ctx.db.select(extra.select) : ctx.db.select())
+              .from(table)
+              .$dynamic();
             if (where) {
               query = query.where(where);
             }
@@ -1911,12 +1917,14 @@ export function createCrudRouter<
             const data = Promise.resolve(
               query.limit(effectiveInput.perPage).offset(offset),
             ).then((rows) =>
-              enrichCrudRows(
-                ctx,
-                config,
-                idField,
-                rows as Array<Record<string, unknown>>,
-              ),
+              extra?.enrich === false
+                ? rows
+                : enrichCrudRows(
+                    ctx,
+                    config,
+                    idField,
+                    rows as Array<Record<string, unknown>>,
+                  ),
             );
             const count = async () => {
               if (skipTotal) return undefined;
