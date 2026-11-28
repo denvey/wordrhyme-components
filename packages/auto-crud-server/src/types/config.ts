@@ -724,6 +724,11 @@ export interface CrudRouterConfig<
   /** 查询返回 Schema */
   selectSchema?: z.ZodType<TSelect>;
 
+  /** Additional list row shape accepted for server-selected projections.
+   * Other operations continue to use selectSchema. Full list rows remain valid.
+   */
+  listSelectSchema?: z.ZodType<Partial<TSelect>>;
+
   /**
    * 列表查询输入 Schema（可选）
    * - 默认使用内置基础列表输入：page、perPage、sort、filters、joinOperator
@@ -759,12 +764,27 @@ export interface CrudRouterConfig<
 
   /** Additional request conditions, ANDed before count/pagination/export limits.
    * orderBy, when provided, replaces the normal ordering. Scope and guards still apply.
+   * For list only, select projects SQL columns and enrich: false skips extension reads.
+   * Omitted options preserve full rows and extension enrichment. A projected row must
+   * satisfy selectSchema or the additional listSelectSchema.
    */
   query?: (params: {
     ctx: TContext;
     input: TListInput | TExportInput;
     operation: 'list' | 'export';
-  }) => { where?: SQL; orderBy?: SQL[] } | Promise<{ where?: SQL; orderBy?: SQL[] }>;
+  }) =>
+    | {
+        where?: SQL;
+        orderBy?: SQL[];
+        select?: Record<string, AnyColumn | SQL>;
+        enrich?: boolean;
+      }
+    | Promise<{
+        where?: SQL;
+        orderBy?: SQL[];
+        select?: Record<string, AnyColumn | SQL>;
+        enrich?: boolean;
+      }>;
 
   /**
    * Procedure 配置（统一字段）
